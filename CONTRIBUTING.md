@@ -1,30 +1,25 @@
 # Contributing
 
-Thanks for considering improvements to ABINADWAN Plugins Suite.
+Keep changes scoped to the affected Component and preserve its independently controlled lifecycle.
 
-## Scope
+## Extension contracts
 
-Keep changes scoped to one named module. Environment & Context is implemented; Humanizer and Personal Profile are roadmap items and should not be portrayed as available without code and tests.
+Use documented DSH APIs. Preserve the package-root Group carrier, per-subpath metadata and the three Component switches. Follow Host inventory for browser Component activation. Report unavailable data accurately. Keep secrets and personal records out of examples, logs and screenshots.
 
-## Before proposing a change
+Personal Profile is a read-only design draft. Collection, storage, transmission, retrieval and agent injection require the owner's approved privacy/storage design. Keep custom instructions empty by default and consent off in future drafts.
 
-- Open an issue describing the behavior, affected DeepSeek Harness version, and expected outcome.
-- For any new integration, point to a *documented* DSH API. Do not invent token totals, connected account metadata, file lists, or Git change results.
-- Keep secrets and account identifiers out of screenshots, debug logs, examples and PRs.
-- Prefer the native right-sidebar extension points. Avoid patching DSH internals or injecting elements via fragile DOM selectors.
+Humanizer instructions are original MIT-licensed content. Preserve factual fidelity, source attribution and privacy boundaries. Retain applicable licenses for any future third-party reuse.
 
 ## Development
 
-Clone the repository, then run:
-
-```bash
+```sh
+npm ci --ignore-scripts
 npm test
+npm run check:package
 ```
 
-Review `package.json`, `cordis.patch.yml`, `index.js`, `client.js` and the metadata files. There is no compile step; the package ships its JavaScript entrypoints directly.
-
-A proposed runtime change should include a test, a short explanation of DSH compatibility, and clear notes if Desktop UI execution was not verified.
+The package ships JavaScript directly. CI exercises Windows/Linux on Node 22/24, real Cordis/DSH service integration, browser lifecycle fixtures, React rendering and the extracted npm artifact. Record the DSH version and profile for any additional Desktop verification.
 
 ## Licensing
 
-This project is licensed under the [MIT License](LICENSE). Contributions are accepted under the same terms unless explicitly agreed otherwise.
+Contributions use the project's MIT License unless explicitly agreed otherwise. [License](LICENSE)

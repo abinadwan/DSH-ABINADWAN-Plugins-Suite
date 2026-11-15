@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "ABINADWAN Plugins Suite",
+    "description": "حزمة إضافات تضم بيئة وسياق الجلسة ومهارة Humanizer ومسودة الملف الشخصي للقراءة فقط.",
+    "detail": "docs/DETAIL.md"
+  }
+}

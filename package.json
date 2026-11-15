@@ -1,7 +1,7 @@
 {
   "name": "@abinadwan/dsh-plugins-suite",
-  "version": "0.4.0",
-  "description": "An open-source DeepSeek Harness plugin suite for context inspection, with future writing and personal-profile modules.",
+  "version": "0.5.0",
+  "description": "DeepSeek Harness suite with Environment & Context, a runtime Humanizer skill, and a read-only Personal Profile design draft.",
   "private": true,
   "type": "module",
   "main": "./index.js",
@@ -12,22 +12,34 @@
     "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.png",
     "./icon.svg": "./icon.svg",
-    "./environment-context/icon": "./icon.svg"
+    "./environment-context/icon": "./plugins/environment-context/icon.png",
+    "./environment-context": "./plugins/environment-context/index.js",
+    "./environment-context/locale/*.json": "./plugins/environment-context/locale/*.json",
+    "./humanizer": "./plugins/humanizer/index.js",
+    "./humanizer/locale/*.json": "./plugins/humanizer/locale/*.json",
+    "./humanizer/icon": "./plugins/humanizer/icon.png",
+    "./personal-profile": "./plugins/personal-profile/index.js",
+    "./personal-profile/locale/*.json": "./plugins/personal-profile/locale/*.json",
+    "./personal-profile/icon": "./plugins/personal-profile/icon.png",
+    "./cordis.patch.yml": "./cordis.patch.yml"
   },
   "files": [
     "index.js",
     "client.js",
     "cordis.patch.yml",
+    "icon.png",
     "icon.svg",
     "locale/*.json",
-    "docs/DETAIL.md",
+    "docs",
+    "plugins",
     "README.md",
     "LICENSE",
-    "icon.png",
-    "plugins/*/README.md"
+    "CHANGELOG.md",
+    "SECURITY.md"
   ],
   "scripts": {
-    "test": "node --test"
+    "test": "node --test",
+    "check:package": "node scripts/check-package.mjs"
   },
   "dsh": {
     "bundle": {
@@ -40,7 +52,9 @@
         "@deepseek-ai/dsh-client-ui-conversation",
         "@deepseek-ai/dsh-api-session-controller",
         "@deepseek-ai/dsh-api-workspace-controller",
-        "@deepseek-ai/dsh-client-ui-plugin-manager"
+        "@deepseek-ai/dsh-client-ui-plugin-manager",
+        "@deepseek-ai/dsh-api-remotes",
+        "@deepseek-ai/dsh-api-remote-access"
       ]
     }
   },
@@ -66,5 +80,17 @@
   "bugs": {
     "url": "https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/issues"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "@deepseek-ai/cordis-plugin-loader": "1.1.0",
+    "@deepseek-ai/dsh-app-boot": "0.2.2-rc.3",
+    "@deepseek-ai/dsh-skill": "0.2.2-rc.3",
+    "pngjs": "7.0.0",
+    "react": "19.2.0",
+    "react-dom": "19.2.0",
+    "yaml": "2.9.1"
+  },
+  "peerDependencies": {
+    "@deepseek-ai/cordis-plugin-loader": ">=1.0.6 <2"
+  }
 }

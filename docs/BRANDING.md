@@ -1,13 +1,16 @@
-# ABINADWAN Plugins Suite — Brand Guidelines
+# ABINADWAN Plugins Suite artwork
 
-The approved identity is **avatar concept #4**: a cheerful Saudi character, white thobe, red-and-white shemagh and black agal, smiling at a laptop with playful plugin/technology symbols on a burgundy background.
+Version 0.5.0 uses the four transparent PNGs approved and supplied by the repository owner. Each shipped image is a 256 × 256 RGBA derivative with its composition and alpha channel retained. All fit DSH's 256 KiB icon limit. The original uploads are 1254 × 1254 RGBA images.
 
-- **Brand:** ABINADWAN Plugins Suite
-- **Product tone:** approachable and professional, for developers and AI-agent users
-- **Primary palette:** burgundy, cream, dark plum and bright pink highlights
-- **Package icon:** `/icon.png` — raster icon derived directly from approved concept #4, downscaled for the small icon size in Plugin Manager
-- **Component artwork:** `/icon.svg` is the previous Environment & Context diagnostic-dashboard vector, retained for that individual plugin (not the suite brand).
+| Identity | Supplied artwork | Shipped resource |
+| --- | --- | --- |
+| Suite | Saudi Developer with Laptop Plugins.png | `icon.png` |
+| Environment & Context | ChatGPT Image Nov 16, 2026, 12_35_24 AM.png | `plugins/environment-context/icon.png` |
+| Humanizer | ChatGPT Image Nov 16, 2026, 12_35_43 AM.png | `plugins/humanizer/icon.png` |
+| Personal Profile | ChatGPT Image Nov 16, 2026, 12_35_55 AM.png | `plugins/personal-profile/icon.png` |
 
-The approved image is AI-generated for this project. The distributed icon is a compact app-sized derivative of that approved image; a higher-resolution illustration may be added later as a separate marketing asset.
+The suite card resolves its avatar through the package manifest. Component rows resolve their artwork through the respective subpath `/icon` export. English and Arabic display metadata follow the same component paths.
 
-The screenshot files under `docs/assets` show Environment & Context only. Future plugins should have their own icons and screenshots when implemented, while sharing the suite-level brand.
+The historical `icon.svg` and its explicit export remain for compatibility with earlier consumers. Current suite and Component metadata resolve the approved PNGs. Existing Environment screenshots document the inspector before this artwork update.
+
+The owner supplied the AI-generated artwork for distribution in this MIT-licensed project. This records provenance without asserting an additional third-party license or trademark endorsement. The suite remains an independent community project.

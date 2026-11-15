@@ -1,7 +1,7 @@
 /**
  * Browser half of @abinadwan/dsh-plugins-suite.
  * Uses DSH's documented lazy-CJS module registration and Slot API.
- * No build step, external network requests, environment-variable access or DOM injection.
+ * Native slots and scoped Cordis lifetimes. Only the manual version check contacts GitHub.
  */
 window.__ModuleLoader__.load({
   id: '@abinadwan/dsh-plugins-suite',
@@ -187,7 +187,7 @@ window.__ModuleLoader__.load({
     }
 
     // Manual update check. No network request occurs until the button is clicked.
-    const INSTALLED_VERSION = '0.4.0'
+    const INSTALLED_VERSION = '0.5.0'
     const VERSION_SOURCE = 'https://raw.githubusercontent.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/main/package.json'
     const PROJECT_URL = 'https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite'
     function versionParts(version) {
@@ -360,7 +360,7 @@ window.__ModuleLoader__.load({
           width: 30, height: 30, cursor: 'pointer' } },
         h(Icon, { size: 17 }))
     }
-    return {
+    const environmentPlugin = {
       inject: ['slots', 'sidebarRight', 'sidebarRightTabs', 'sessions', 'workspaces'],
       apply(ctx) {
         const s = ctx.sessions.list
@@ -377,22 +377,13 @@ window.__ModuleLoader__.load({
             sessions, workspaces })
         }
         ctx.effect(() => ctx.sidebarRightTabs.register({
-          id: TYPE, kind: KIND, title: () => 'Environment',
+          id: TYPE + '/environment-context', kind: KIND, title: () => 'Environment & Context',
           guide: [{ id: 'open', order: 12, title: () => 'Environment & Context',
             description: () => 'Current context and workspace details' }],
         }), 'environment-sidebar: type')
         ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
           name: 'sidebar.right.pane.tab', key: TYPE,
         }, Body))
-        // The official Plugins detail page owns update controls; never render them inside a Session tab.
-        ctx.slots.inject('plugins.detail.section', () => ctx.slots.register({
-          name: 'plugins.detail.section',
-          id: 'environment-sidebar-versions',
-          order: 50,
-        }, ({ subject }) => subject?.kind === 'bundle' &&
-          subject.pkg?.name === TYPE
-          ? h(VersionUpdates, { installedVersion: subject.pkg.version || INSTALLED_VERSION })
-          : null))
         ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({
           name: 'conversation.session.header.utilities',
           id: 'environment-sidebar-toggle', order: 35,
@@ -424,6 +415,110 @@ window.__ModuleLoader__.load({
             for (const id of timers) clearTimeout(id)
           }
         }, 'environment-sidebar: initial view')
+      },
+    }
+
+    function ProfileDraft() {
+      const fields = [
+        ['Name', 'Preferred name. Full name is optional.'],
+        ['Date of birth', 'Optional.'],
+        ['Nationality', 'Optional.'],
+        ['Gender', 'User-selected. May remain unspecified.'],
+        ['Custom agent instructions', 'Empty by default. Optional templates below.'],
+        ['Allow the agent to use approved profile information', 'Off by default. Requires explicit opt-in after design approval.'],
+      ]
+      return h('section', { 'data-personal-profile-draft': '',
+        style: { borderTop: border, padding: '20px 0', lineHeight: 1.65 } },
+        h('h3', null, 'Personal Profile — design draft'),
+        h('p', null, 'Read-only preliminary fields. Privacy, storage, access, export and deletion design awaits approval.'),
+        h('dl', null, fields.map(([label, description]) => h('div', { key: label, style: { marginBottom: 12 } },
+          h('dt', { style: { fontWeight: 650 } }, label),
+          h('dd', { style: { margin: '4px 0 0', opacity: .8 } }, description)))),
+        h('h4', null, 'Optional instruction templates'),
+        h('ul', null,
+          h('li', null, 'Use concise, direct answers and explain technical terms when needed.'),
+          h('li', null, 'Write in clear Arabic and use examples when they help.'),
+          h('li', null, 'Use a professional tone and preserve source links.')),
+        h('p', null, 'Proposed behavior after approval: apply approved style instructions automatically. Access personal or sensitive information only when relevant and explicitly allowed.'),
+        h('p', { role: 'note' }, 'This scaffold collects, saves and transmits zero profile information. Enabling it only shows this draft.'))
+    }
+    const profilePlugin = {
+      inject: ['slots'],
+      apply(ctx) {
+        ctx.slots.inject('plugins.detail.section', () => ctx.slots.register({
+          name: 'plugins.detail.section', id: 'abinadwan-profile-draft', order: 40,
+        }, ({ subject }) => (subject?.kind === 'bundle' && subject.pkg?.name === TYPE) ||
+          (subject?.kind === 'row' && subject.row?.moduleName === TYPE + '/personal-profile')
+          ? h(ProfileDraft) : null))
+      },
+    }
+    return {
+      inject: ['slots', 'remote', 'remoteAccess'],
+      apply(ctx) {
+        // The official Plugins detail page owns update controls; never render them inside a Session tab.
+        ctx.slots.inject('plugins.detail.section', () => ctx.slots.register({
+          name: 'plugins.detail.section',
+          id: 'environment-sidebar-versions',
+          order: 50,
+        }, ({ subject }) => subject?.kind === 'bundle' &&
+          subject.pkg?.name === TYPE
+          ? h(VersionUpdates, { installedVersion: subject.pkg.version || INSTALLED_VERSION })
+          : null))
+
+        // DSH discovers browser bundles at package roots. Host subpath rows
+        // govern these child fibers through the public, access-checked inventory.
+        ctx.remoteAccess.whenAccess('pluginManager/listPlugins', () => {
+          const fibers = new Map()
+          let stopped = false
+          let generation = 0
+          let pending = Promise.resolve()
+          const components = [
+            [TYPE + '/environment-context', environmentPlugin],
+            [TYPE + '/personal-profile', profilePlugin],
+          ]
+          async function refresh() {
+            const request = ++generation
+            let rows
+            try {
+              rows = await ctx.remote.pluginManager.listPlugins()
+              if (!Array.isArray(rows)) throw new Error('Invalid plugin inventory')
+            } catch {
+              rows = []
+              if (!stopped && request === generation) {
+                console.warn('[abinadwan-suite] Component inventory unavailable. UI paused until the next inventory refresh.')
+              }
+            }
+            pending = pending.then(async () => {
+              if (stopped || request !== generation) return
+              for (const [moduleName, plugin] of components) {
+                const active = rows.some(row => row.moduleName === moduleName &&
+                  row.enabled === true && row.fiberPhase === 'active')
+                const fiber = fibers.get(moduleName)
+                if (!active && fiber) {
+                  fibers.delete(moduleName)
+                  await fiber.dispose()
+                }
+                if (stopped || request !== generation) return
+                if (active && !fiber) fibers.set(moduleName, ctx.plugin(plugin))
+              }
+            }).catch(error => {
+              console.warn('[abinadwan-suite] Component UI transition failed:', error)
+            })
+            await pending
+          }
+          const unsubscribe = ctx.remote.$on('plugin-manager/changed', refresh)
+          const disconnectReset = ctx.on('connection/reset', refresh)
+          void refresh()
+          return () => {
+            stopped = true
+            generation++
+            unsubscribe()
+            disconnectReset()
+            const disposals = [...fibers.values()].map(fiber => fiber.dispose())
+            fibers.clear()
+            return Promise.all(disposals).then(() => {})
+          }
+        })
       },
     }
   },
