@@ -12,7 +12,7 @@
 
 <p align="center">
   <a href="https://github.com/abinadwan/deepseek-harness-environment-sidebar/actions/workflows/test.yml"><img alt="CI status" src="https://github.com/abinadwan/deepseek-harness-environment-sidebar/actions/workflows/test.yml/badge.svg"></a>
-  <img alt="Version 0.3.0" src="https://img.shields.io/badge/version-0.3.0-2563eb">
+  <img alt="Version 0.3.1" src="https://img.shields.io/badge/version-0.3.1-2563eb">
   <img alt="Experimental" src="https://img.shields.io/badge/status-experimental-e9a23b">
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-22c55e"></a>
   <img alt="DeepSeek Harness" src="https://img.shields.io/badge/DeepSeek-Harness-1e40af">
@@ -44,7 +44,6 @@ It is inspired by the information architecture of modern coding-agent dashboards
 | **Connectors** | Clear notice when a connector inventory cannot be obtained | Not yet integrated |
 | **Outputs** | Model output token total and last activity | Available if session projections report them; file list not included |
 | **Changes** | Clear notice that Git change information needs a separate integration | Not yet integrated |
-| **Versions & updates** | Installed version and user-triggered GitHub branch version check | Manual check; no silent update or install |
 
 **Context detail:** `contextPressure` supplies model-reported pressure/capacity when available. `contextBreakdown` supplies *heuristic* message, tool-schema and system-prompt buckets; these may not sum exactly to the pressure value and are **not** the detailed breakdown shown in Claude Code.
 
@@ -69,7 +68,7 @@ These screenshots show the **native right-sidebar inspector running in DeepSeek 
 
 ## Checking for updates
 
-Open a conversation's **Environment** inspector tab, expand **Versions & updates** and select **Check for updates**. The plugin makes one request to `raw.githubusercontent.com` to read the public repository's `main/package.json`, verifies the package name and compares semantic version numbers with this installed plugin. No request occurs before the click; no credentials, workspace paths, session messages, or logs are sent.
+Open **Plugins → Environment & Context** and find the **Versions** section below the package's Source details. Select **Check for updates**. The plugin makes one request to `raw.githubusercontent.com` to read the public repository's `main/package.json`, verifies the package name and compares semantic version numbers with this installed plugin. No request occurs before the click; no credentials, workspace paths, session messages, or logs are sent.
 
 - **Up to date** means the `main` branch currently declares the same or an older version, **not** that a release registry has been checked.
 - **Update available** means the `main` branch declares a higher version. Update manually through Plugins and fully restart Harness.
@@ -139,7 +138,7 @@ The Host entry is intentionally minimal. `client.js` is a shipped browser module
 | Real Desktop UI rendering on Windows | User-provided screenshots; not independently verified across versions |
 | Exact compatibility across DSH releases | **Not established** |
 
-Current release: **v0.3.0 (experimental)**. The extension follows the documented right-sidebar/Client-module patterns of contemporary DeepSeek Harness builds, but its functionality still depends on the version and profile installed on the user's machine.
+Current release: **v0.3.1 (experimental)**. The extension follows the documented right-sidebar/Client-module patterns of contemporary DeepSeek Harness builds, but its functionality still depends on the version and profile installed on the user's machine.
 
 ```bash
 npm test
@@ -176,7 +175,7 @@ This is **not** a full Claude Code sidebar replica. At present it does not provi
 ## Project information
 
 - **Package:** `@abinadwan/environment-sidebar`
-- **Current version:** `0.3.0`
+- **Current version:** `0.3.1`
 - **Distribution:** GitHub source (not npm)
 - **Logo:** original [SVG icon](icon.svg) with [brand notes](docs/BRANDING.md)
 - **Security:** [SECURITY.md](SECURITY.md)

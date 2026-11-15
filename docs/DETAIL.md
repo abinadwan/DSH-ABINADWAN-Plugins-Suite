@@ -2,7 +2,7 @@
 
 A read-only session inspector for **DeepSeek Harness**. Open it from the conversation header or the right sidebar's page picker.
 
-## Available in v0.3.0
+## Available in v0.3.1
 
 - **Environment** — the current workspace association and browser platform.
 - **Context** — model-reported context occupancy plus estimated messages, tool-schema and system-prompt breakdowns.
@@ -13,7 +13,7 @@ A read-only session inspector for **DeepSeek Harness**. Open it from the convers
 
 ## Updates
 
-The **Versions & updates** section provides a manual **Check for updates** button. It compares this installed version with the public `main/package.json` in the GitHub repository. This check contacts GitHub only after you click; it never installs updates or reads session data.
+The installed plugin's **Plugins → Environment & Context → Versions** section provides a manual **Check for updates** button. It is separate from the Session inspector. It compares this installed version with the public `main/package.json` in the GitHub repository. This check contacts GitHub only after you click; it never installs updates or reads session data.
 
 ## Get started
 

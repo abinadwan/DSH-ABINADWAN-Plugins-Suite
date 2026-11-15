@@ -2,6 +2,15 @@
 
 All notable changes are documented here.
 
+## [0.3.1] — 2026-11-15
+
+### Fixed
+- Relocated **Check for updates** from the conversation sidebar to the plugin's own **Plugins detail** page, using the official `plugins.detail.section` slot.
+- Matched the native Versions section pattern with a manual check control and explicit last-check status.
+- Restricted the update control to this bundle's detail page; it does not appear on unrelated plugins.
+- No changes to the Environment / Context / Connectors / Outputs / Changes sidebar panels.
+
+
 ## [0.3.0] — 2026-11-15
 
 ### Added

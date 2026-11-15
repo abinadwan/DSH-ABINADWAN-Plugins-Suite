@@ -187,7 +187,7 @@ window.__ModuleLoader__.load({
     }
 
     // Manual update check. No network request occurs until the button is clicked.
-    const INSTALLED_VERSION = '0.3.0'
+    const INSTALLED_VERSION = '0.3.1'
     const VERSION_SOURCE = 'https://raw.githubusercontent.com/abinadwan/deepseek-harness-environment-sidebar/main/package.json'
     const PROJECT_URL = 'https://github.com/abinadwan/deepseek-harness-environment-sidebar'
     function versionParts(version) {
@@ -218,8 +218,10 @@ window.__ModuleLoader__.load({
       }
       return false
     }
-    function VersionUpdates() {
+    // Installed-plugin detail page only. The session inspector remains focused on runtime data.
+    function VersionUpdates({ installedVersion = INSTALLED_VERSION }) {
       const [update, setUpdate] = React.useState({ phase: 'idle' })
+      const currentVersion = versionParts(installedVersion) ? installedVersion : INSTALLED_VERSION
       async function check() {
         if (update.phase === 'checking') return
         setUpdate({ phase: 'checking' })
@@ -236,7 +238,7 @@ window.__ModuleLoader__.load({
           if (remote?.name !== '@abinadwan/environment-sidebar') {
             throw new Error('Unexpected package identity in GitHub response')
           }
-          const newer = isNewerVersion(remote.version, INSTALLED_VERSION)
+          const newer = isNewerVersion(remote.version, currentVersion)
           if (newer === null) throw new Error('Invalid repository version')
           setUpdate({ phase: newer ? 'available' : 'current', latest: remote.version,
             checked: new Date().toLocaleTimeString() })
@@ -244,33 +246,52 @@ window.__ModuleLoader__.load({
           setUpdate({ phase: 'error', message: String(error?.message || error) })
         }
       }
-      const note = { fontSize: 11, opacity: .68, lineHeight: 1.7, margin: '8px 0' }
-      const buttonStyle = { border: '1px solid rgba(127,127,127,.38)',
-        borderRadius: 8, padding: '7px 10px', cursor: 'pointer',
-        color: 'inherit', background: 'rgba(127,127,127,.08)', fontSize: 12 }
-      let result = 'No update check has been performed.'
-      if (update.phase === 'checking') result = 'Checking GitHub…'
-      if (update.phase === 'available') result = 'Update available: v' + update.latest
-      if (update.phase === 'current') result = 'Up to date (repository v' + update.latest + ')'
-      if (update.phase === 'error') result = 'Could not check for updates. ' + update.message
-      return h('div', { 'data-environment-updates': '' },
-        line('Installed version', 'v' + INSTALLED_VERSION),
-        h('button', { type: 'button', 'data-check-updates': '',
-          onClick: check, disabled: update.phase === 'checking',
-          'aria-label': 'Check for plugin updates',
-          style: { ...buttonStyle, opacity: update.phase === 'checking' ? .65 : 1 } },
-          update.phase === 'checking' ? 'Checking…' : 'Check for updates'),
-        h('p', { role: 'status', 'aria-live': 'polite', style: {
-          ...note, opacity: 1, color: update.phase === 'available' ? '#58c8a0' : 'inherit' } },
-          result),
-        update.checked ? h('p', { style: note }, 'Last checked at ' + update.checked) : null,
-        update.phase === 'available'
-          ? h('p', { style: note }, 'Update manually in Plugins. Reinstall the GitHub source and restart Harness.') : null,
+      const soft = 'rgba(127,127,127,.16)'
+      const muted = { fontSize: 12, opacity: .72, lineHeight: 1.65, margin: 0 }
+      const text = update.phase === 'checking' ? 'Checking GitHub…'
+        : update.phase === 'available' ? 'Update available'
+        : update.phase === 'current' ? 'Up to date'
+        : update.phase === 'error' ? 'Could not check for updates'
+        : 'Not checked yet'
+      return h('section', { 'data-environment-update-section': '',
+        style: { borderTop: '1px solid ' + soft, padding: '20px 0', color: 'inherit' } },
+        h('header', { style: { display: 'flex', alignItems: 'center', gap: 12,
+          justifyContent: 'space-between', marginBottom: 14 } },
+          h('h3', { style: { fontSize: 16, margin: 0, fontWeight: 650 } }, 'Versions'),
+          h('button', { type: 'button', 'data-check-updates': '',
+            'aria-label': 'Check for plugin updates',
+            disabled: update.phase === 'checking',
+            onClick: check,
+            style: { border: 0, borderRadius: 8, padding: '7px 10px',
+              color: 'inherit', background: 'transparent', cursor: 'pointer',
+              fontSize: 12, opacity: update.phase === 'checking' ? .6 : 1 } },
+            '↻ ', update.phase === 'checking' ? 'Checking…' : update.checked ? 'Check again' : 'Check for updates')),
+        h('div', { style: { border: '1px solid rgba(127,127,127,.29)',
+          borderRadius: 12, background: 'rgba(127,127,127,.07)', padding: 17 } },
+          h('div', { style: { display: 'flex', alignItems: 'center', gap: 10 } },
+            h('span', { 'aria-hidden': true, style: { display: 'inline-flex',
+              justifyContent: 'center', alignItems: 'center', width: 29,
+              height: 29, borderRadius: 999, background: 'rgba(127,127,127,.14)',
+              color: update.phase === 'current' ? '#46ae7d' :
+                update.phase === 'available' ? '#dfaa50' : 'inherit' } },
+              update.phase === 'current' ? '✓' : update.phase === 'available' ? '↑' : '↻'),
+            h('div', null,
+              h('div', { role: 'status', 'aria-live': 'polite',
+                style: { fontWeight: 650, fontSize: 13 } }, text),
+              h('div', { style: muted },
+                update.checked ? 'Last checked at ' + update.checked : 'Latest version has not been checked'))),
+          h('div', { style: { marginTop: 12, fontSize: 12 } },
+            line('Installed', 'v' + currentVersion),
+            update.latest ? line('Repository (main)', 'v' + update.latest) : null),
+          update.phase === 'error' ? h('p', { style: { ...muted, marginTop: 10 } },
+            update.message) : null,
+          update.phase === 'available' ? h('p', { style: { ...muted, marginTop: 10 } },
+            'A newer version was declared in the repository. Review the source and update through Plugins. No automatic installation occurs.') : null),
+        h('p', { style: { ...muted, marginTop: 12 } },
+          'Manual version check against the public GitHub main branch. No request occurs until you click.'),
         h('a', { href: PROJECT_URL, target: '_blank', rel: 'noopener noreferrer',
-          style: { fontSize: 12, color: '#69a9fc', textDecoration: 'underline' } },
-          'Source and installation guide'),
-        h('p', { style: note },
-          'Checks public GitHub only when clicked. No automatic installs. Repository branch version is not a published release.'))
+          style: { display: 'inline-block', fontSize: 12, marginTop: 8,
+            color: '#69a9fc', textDecoration: 'underline' } }, 'View GitHub repository'))
     }
 
     function Details({ sessionId, useProjection, sessions, workspaces }) {
@@ -323,13 +344,12 @@ window.__ModuleLoader__.load({
         section('Outputs', outputs),
         section('Changes', [h('p', { key: 'diff', style: muted },
           'Git changes need the workspace-changes/Forge integration; no changes are invented.')]),
-        section('Versions & updates', [h(VersionUpdates, { key: 'versions' })]),
       ]
       return h('aside', { 'data-environment-right-sidebar': '',
         style: { height: '100%', overflowY: 'auto', boxSizing: 'border-box',
           padding: '6px 16px 22px', color: 'inherit', fontSize: 12, lineHeight: 1.6 } },
         ...cards,
-        h('p', { style: muted }, 'Read-only · Network access only when Check for updates is clicked.'))
+        h('p', { style: muted }, 'Read-only · No external requests from this Session panel.'))
     }
     function HeaderButton({ openInspector }) {
       return h('button', { type: 'button', onClick: openInspector,
@@ -364,6 +384,15 @@ window.__ModuleLoader__.load({
         ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
           name: 'sidebar.right.pane.tab', key: TYPE,
         }, Body))
+        // The official Plugins detail page owns update controls; never render them inside a Session tab.
+        ctx.slots.inject('plugins.detail.section', () => ctx.slots.register({
+          name: 'plugins.detail.section',
+          id: 'environment-sidebar-versions',
+          order: 50,
+        }, ({ subject }) => subject?.kind === 'bundle' &&
+          subject.pkg?.name === TYPE
+          ? h(VersionUpdates, { installedVersion: subject.pkg.version || INSTALLED_VERSION })
+          : null))
         ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({
           name: 'conversation.session.header.utilities',
           id: 'environment-sidebar-toggle', order: 35,

@@ -5,7 +5,7 @@ import {runInNewContext} from 'node:vm'
 const get=name=>readFileSync(new URL('../'+name,import.meta.url),'utf8')
 const pkg=JSON.parse(get('package.json'))
 test('bundle and Host exports',async()=>{
-  assert.equal(pkg.version,'0.3.0')
+  assert.equal(pkg.version,'0.3.1')
   assert.equal(pkg.dsh.client.platform,'web')
   assert.equal(pkg.dsh.bundle.patch,'./cordis.patch.yml')
   assert.equal((await import('../index.js')).apply(),undefined)
@@ -31,6 +31,7 @@ test('native right sidebar registers and auto-opens',()=>{
   plugin.apply(ctx)
   assert.equal(slots.find(x=>x.def)?.def.kind,'environment-dashboard')
   assert.ok(slots.find(x=>x.options?.name==='conversation.session.header.utilities'))
+  assert.ok(slots.find(x=>x.options?.name==='plugins.detail.section'))
   const body=slots.find(x=>x.options?.name==='sidebar.right.pane.tab')
   const element=body.component({sessionId:'s1',useProjection:key=>({
     contextPressure:{projectedTokens:3000,contextWindow:8000},
