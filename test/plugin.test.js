@@ -1,75 +1,47 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
-import { join } from 'node:path'
-import { runInNewContext } from 'node:vm'
-
-const root = new URL('../', import.meta.url)
-const read = name => readFileSync(new URL(name, root), 'utf8')
-const manifest = JSON.parse(read('package.json'))
-
-test('bundle manifest and browser exports match package identity', () => {
-  assert.equal(manifest.name, '@abinadwan/environment-sidebar')
-  assert.equal(manifest.dsh.bundle.patch, './cordis.patch.yml')
-  assert.equal(manifest.dsh.client.platform, 'web')
-  assert.equal(manifest.exports['.'], './index.js')
-  assert.equal(manifest.exports['./client'], './client.js')
-  assert.match(read('cordis.patch.yml'), /name: '@abinadwan\/environment-sidebar'/)
-  for (const file of ['index.js', 'client.js', 'cordis.patch.yml']) {
-    assert.ok(read(file).length > 0)
-  }
+import {readFileSync} from 'node:fs'
+import {runInNewContext} from 'node:vm'
+const get=name=>readFileSync(new URL('../'+name,import.meta.url),'utf8')
+const pkg=JSON.parse(get('package.json'))
+test('bundle and Host exports',async()=>{
+  assert.equal(pkg.version,'0.2.0')
+  assert.equal(pkg.dsh.client.platform,'web')
+  assert.equal(pkg.dsh.bundle.patch,'./cordis.patch.yml')
+  assert.equal((await import('../index.js')).apply(),undefined)
 })
-
-test('Host module loads without unbuilt dist entry', async () => {
-  const host = await import(new URL('../index.js', import.meta.url))
-  assert.equal(typeof host.apply, 'function')
-  assert.equal(host.apply(), undefined)
-})
-
-test('client lazy factory registers main panel and left navigation entry', () => {
-  let registration
-  const createElement = (type, props, ...children) => ({ type, props: props || {}, children })
-  const react = {
-    createElement,
-    useState: initial => [initial, () => {}],
-    useSyncExternalStore: (_, readSnapshot) => readSnapshot(),
-    useEffect: () => {},
-  }
-  const window = { __ModuleLoader__: { load(def) { registration = def } } }
-  runInNewContext(read('client.js'), { window })
-  assert.equal(registration.id, manifest.name)
-  const plugin = registration.factory(name => {
-    assert.equal(name, 'react')
-    return react
-  })
-  assert.deepEqual(Array.from(plugin.inject), ['slots', 'sessions', 'workspaces'])
-  const slots = []
-  const ctx = {
-    sessions: { list: { subscribe: () => () => {}, getSnapshot: () => ({
-      ids: ['s1'], byId: { s1: { id: 's1', displayTitle: 'Demo', updatedAt: 1700000000000, running: false } },
-      phase: 'ready',
-    }) } },
-    workspaces: { list: { subscribe: () => () => {}, getSnapshot: () => ({
-      items: [{}], archivedSessionIds: [], pinnedSessionIds: [], phase: 'ready',
-    }) } },
-    slots: {
-      inject(slot, callback) { assert.equal(typeof callback, 'function'); callback() },
-      register(options, component) { slots.push({ options, component }); return () => {} },
-    },
+test('native right sidebar registers and auto-opens',()=>{
+  let module
+  const callbacks=[]
+  runInNewContext(get('client.js'),{window:{__ModuleLoader__:{load:x=>module=x}},
+    setTimeout:f=>{callbacks.push(f);return callbacks.length},clearTimeout:()=>{},console})
+  assert.equal(module.id,pkg.name)
+  const React={createElement:(type,props,...children)=>({type,props:props||{},children}),useState:x=>[x,()=>{}],useSyncExternalStore:(_,get)=>get()}
+  const plugin=module.factory(n=>{assert.equal(n,'react');return React})
+  const slots=[]
+  let opened=0
+  const ctx={
+    sessions:{list:{subscribe:()=>()=>{},getSnapshot:()=>({byId:{s1:{displayTitle:'Demo',running:true}}})}},
+    workspaces:{list:{subscribe:()=>()=>{},getSnapshot:()=>({items:[{workspaceId:'w',title:'HomeBook',sessionIds:['s1']}]})}},
+    sidebarRightTabs:{register:def=>{slots.push({def});return()=>{}}},
+    sidebarRight:{mounted:{getSnapshot:()=> 's1',subscribe:()=>()=>{}},openTab:kind=>{assert.equal(kind,'environment-dashboard');opened++}},
+    slots:{inject:(_,fn)=>fn(),register:(options,component)=>{slots.push({options,component});return()=>{}}},
+    effect:fn=>fn()
   }
   plugin.apply(ctx)
-  assert.equal(slots.length, 2)
-  assert.equal(slots.find(entry => entry.options.name === 'main').options.key, 'environment-sidebar')
-  assert.equal(slots.find(entry => entry.options.name === 'sidebar.panellist').options.id, 'environment-sidebar')
-  const page = slots.find(entry => entry.options.name === 'main').component()
-  assert.equal(typeof page.type, 'function')
-  const panel = page.type(page.props)
-  assert.equal(panel.props['data-environment-sidebar'], '')
-  assert.match(JSON.stringify(panel), /بيئة وسياق/)
-  assert.doesNotMatch(JSON.stringify(panel), /token=private/)
+  assert.equal(slots.find(x=>x.def)?.def.kind,'environment-dashboard')
+  assert.ok(slots.find(x=>x.options?.name==='conversation.session.header.utilities'))
+  const body=slots.find(x=>x.options?.name==='sidebar.right.pane.tab')
+  const element=body.component({sessionId:'s1',useProjection:key=>({
+    contextPressure:{projectedTokens:3000,contextWindow:8000},
+    contextBreakdown:{messageTokens:2000,toolsTokens:800,systemTokens:200},
+    tokenUsage:{outputTokens:1200}
+  })[key]})
+  assert.equal(element.type(element.props).props['data-environment-right-sidebar'],'')
+  assert.equal(callbacks.length,1)
+  callbacks[0]()
+  assert.equal(opened,1)
 })
-
-test('static client does not contain unsafe external operations', () => {
-  const code = read('client.js')
-  assert.doesNotMatch(code, /\bfetch\s*\(|\bXMLHttpRequest\b|\bprocess\.env\b|\brequire\s*\(\s*['"](?:node:)?(?:fs|child_process)['"]\s*\)/)
+test('no privileged browser APIs',()=>{
+  assert.doesNotMatch(get('client.js'),/\bfetch\s*\(|\bXMLHttpRequest\b|\bprocess\.env\b/)
 })

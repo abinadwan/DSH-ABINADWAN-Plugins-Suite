@@ -1,62 +1,26 @@
-# Environment Sidebar for DeepSeek Harness
+# Environment & Context — DeepSeek Harness sidebar
 
-لوحة مستقلة **بيئة وسياق** في الشريط الجانبي الأيسر لتطبيق DeepSeek Harness، تتضمن ثلاث تبويبات: **بيئة التشغيل** و**السياق** و**المخرجات والنشاط**.
+**v0.2.0** switches the extension from the incorrect global left-navigation page to a native **right-sidebar tab**, following the public DeepSeek Harness [Right Sidebar API](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/subsystems/sidebar-right.md).
 
-> **الحالة:** نسخة أولى تجريبية 0.1.0. فُحصت بنيتها ووحدة تحميلها آليًا، لكن يجب اختبارها داخل إصدار DeepSeek Harness المثبت على جهاز المستخدم. هذه الإضافة ليست جزءًا من المشروع الرسمي.
+The inspector opens once per foreground Session and adds an Environment button in the conversation header and a guide entry in the right-sidebar Add menu. Sections are collapsible: **Environment, Context, Connectors, Outputs, Changes**.
 
-## ما الذي تعرضه؟
+**Live data:** workspace names (from DSH's workspace controller), Session status, actual `contextPressure` projected/pressure tokens and context capacity, heuristic `contextBreakdown` for messages/tool schemas/system prompt, total model output tokens and last Session activity.
 
-- **Environment:** منصة المتصفح ولغته والمنطقة الزمنية وحالة الاتصال، بالإضافة إلى أصل عنوان واجهة التطبيق فقط (دون query params).
-- **Context:** عدد مساحات العمل والجلسات والحالات الجارية والمؤرشفة والمثبتة. تُقرأ من `sessions.list` و`workspaces.list` الرسميين.
-- **Outputs:** آخر نشاط موثّق للجلسات (العنوان والتاريخ وحالة التشغيل). **لا تقرأ الإضافة نصوص ردود الوكيل أو محتويات الأدوات**؛ فهذا يتطلب API إضافية موثقة.
+**Not yet exposed:** exact Claude Code MCP/skills/custom-agent context categories, connected account inventory, produced file list, full Git status and PR links. These sections clearly state their limitations rather than claim fake data. No code was copied from Claude Code; the grouping is only a design reference.
 
-لا تشغّل أوامر محلية، ولا تقرأ متغيرات البيئة السرية، ولا تطلب رموز دخول، ولا تتصل بخوادم أخرى.
-
-## التثبيت من GitHub
-
-نفّذ في PowerShell على الجهاز الذي يعمل عليه DSH:
-
+## Upgrade on Windows (PowerShell)
 ```powershell
+dsh plugin --profile desktop remove @abinadwan/environment-sidebar
 dsh plugin --profile desktop add github:abinadwan/deepseek-harness-environment-sidebar
 dsh --profile desktop --dump-config
 ```
 
-ثم أعد تشغيل تطبيق DeepSeek Harness (بالـProfile نفسه). ابحث عن **بيئة وسياق** في الشريط الجانبي الأيسر.
+Then fully restart Desktop **using the same profile**, enter a normal conversation Session, and look for the Environment tab on the **right**, not the main Plugins page. The components should show **Running**. If you also installed `@yourname/environment-sidebar`, remove that obsolete package separately.
 
-**إذا كانت الإضافة القديمة** `@yourname/environment-sidebar` مثبتة، عطّلها أو أزلها من Plugins أولًا لتجنب تكرار اللوحات.
+For a pinned GitHub revision, add `#<COMMIT_SHA>` to the installation reference.
 
-للتثبيت بإصدار ثابت لأسباب أمنية استخدم commit SHA بدل رأس الفرع:
+The package includes prebuilt `index.js` and `client.js`, so no build or prepare script is required. Test the source with `npm test`; these Node smoke tests do not prove the UI is working on your installed Desktop version.
 
-```powershell
-dsh plugin --profile desktop add github:abinadwan/deepseek-harness-environment-sidebar#<COMMIT_SHA>
-```
+If installed but missing: confirm the running profile, enabled component, and Client boot audit; check for `client.js` 404 errors in Developer Tools. DeepSeek Harness Desktop can have version-specific Client plugin loading bugs unrelated to this source.
 
-يمكن أيضًا تنزيل المستودع ثم تثبيته كمسار محلي عبر `dsh plugin --profile desktop add .\deepseek-harness-environment-sidebar`، بشرط تنفيذ الأمر من المجلد الأب.
-
-هذه النسخة تحتوي على ملفي `index.js` و`client.js` الجاهزين، **ولا تحتاج** `npm run build` أو `prepare` أو صلاحية لتشغيل سكربت أثناء تثبيت GitHub.
-
-## فحص محلي
-
-```powershell
-npm test
-```
-
-اختبارات Node لا تحل محل اختبار التشغيل داخل واجهة Desktop. عند حدوث مشكلة تحقق من أن حزمة `@abinadwan/environment-sidebar` في وضع Running، ومن رسائل Browser Console، ثم طابق إصدار Harness مع [التوثيق الرسمي](https://github.com/deepseek-ai/deepseek-harness).
-
-## بنية الحزمة
-
-- `package.json`: تعريف `dsh.bundle` و`dsh.client` و`./client`
-- `cordis.patch.yml`: يضيف صف التحميل إلى Profile
-- `index.js`: مدخل Host آمن بدون إجراءات إضافية
-- `client.js`: Client Bundle بنظام lazy-CJS، يسجل `main` و`sidebar.panellist`
-- `test/plugin.test.js`: اختبارات Manifest والتسجيل والقيود الأمنية
-
-## المصادر والحقوق
-
-هذا تنفيذ مستقل يستعمل البروتوكولات الموثقة في المصدر الرسمي لـ DeepSeek Harness:
-
-- [Package and install a plugin](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/user/develop/basic/publish.md)
-- [Official decoration plugin template](https://github.com/deepseek-ai/deepseek-harness/tree/master/packages/preset/agent-preset/skills/dsh-doc/templates/decoration)
-- [ui-sidebar slot contract](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/client/ui-sidebar/README.md)
-
-DeepSeek Harness مشروع مستقل، وتظل أسماء علاماته ورخصه وملفاته بحقوق أصحابها. لا يُفترض أن هذه الإضافة معتمدة رسميًا من DeepSeek. لم تُنسخ ملفات مصدر رسمية إلى هذا المستودع. لم يُضف ترخيص عام إلى هذا المستودع الخاص دون قرار من مالكه.
+Sources: [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness), [Client Modules](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/subsystems/client-modules.md), [Token Meter](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/subsystems/token-meter.md). Independent read-only implementation: no shell, filesystem or remote-network access.

@@ -160,31 +160,152 @@ window.__ModuleLoader__.load({
           'إضافة مستقلة — لا تقرأ متغيرات البيئة السرية، ولا تنفذ أوامر، ولا تتصل بخوادم خارجية.')))
     }
 
+
+    const TYPE = '@abinadwan/environment-sidebar'
+    const KIND = 'environment-dashboard'
+    const muted = { fontSize: 11, opacity: 0.7, lineHeight: 1.6 }
+    function line(label, value) {
+      return h('div', { style: { display: 'flex', justifyContent: 'space-between',
+        gap: 10, padding: '4px 0', fontSize: 12 } },
+        h('span', null, label),
+        h('span', { style: { opacity: .75, textAlign: 'right' } }, value == null ? '—' : String(value)))
+    }
+    function section(name, rows) {
+      return h('details', { open: true, key: name, style: {
+        padding: '12px 0', borderBottom: '1px solid rgba(127,127,127,.24)' } },
+        h('summary', { style: { cursor: 'pointer', fontWeight: 650, marginBottom: 9,
+          fontSize: 12 } }, name),
+        h('div', null, ...rows))
+    }
+    const good = x => typeof x === 'number' && Number.isFinite(x) && x >= 0 ? x : undefined
+    const compact = x => {
+      const n = good(x)
+      if (n === undefined) return '—'
+      if (n < 1000) return String(Math.round(n))
+      return n < 1000000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k'
+        : (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M'
+    }
+    function Details({ sessionId, useProjection, sessions, workspaces }) {
+      const pressure = useProjection('contextPressure')
+      const breakdown = useProjection('contextBreakdown')
+      const tokenUsage = useProjection('tokenUsage')
+      const session = sessions?.byId?.[sessionId]
+      const folders = Array.isArray(workspaces?.items) ? workspaces.items : []
+      const linked = folders.filter(w => Array.isArray(w.sessionIds) && w.sessionIds.includes(sessionId))
+      const used = good(pressure?.projectedTokens ?? pressure?.pressureTokens)
+      const max = good(pressure?.contextWindow)
+      const pct = max && used !== undefined ? Math.min(100, Math.round(100 * used / max)) : undefined
+      const platform = typeof navigator === 'object' ?
+        (navigator.userAgentData?.platform || navigator.platform) : undefined
+      const environment = [
+        line('Browser', platform || 'Unavailable'),
+        line('Workspaces', linked.length),
+        ...linked.map(w => line('▣ ' + (w.title || 'Workspace'), w.path || '')),
+      ]
+      const context = []
+      if (pct === undefined) {
+        context.push(h('p', { key: 'no-pressure', style: muted },
+          'Context use is available after the model reports usage.'))
+      } else {
+        context.push(line(pct + '% used', '~' + compact(used) + ' / ' + compact(max)))
+        context.push(h('div', { role: 'progressbar', 'aria-label': 'Context occupancy',
+          'aria-valuenow': pct, 'aria-valuemin': 0, 'aria-valuemax': 100,
+          style: { background: 'rgba(127,127,127,.25)', borderRadius: 8,
+            height: 6, overflow: 'hidden', margin: '7px 0' } },
+          h('div', { style: { width: pct + '%', height: '100%', background: '#378fdb' } })))
+        context.push(line('Messages (estimated)', compact(breakdown?.messageTokens)))
+        context.push(line('Tool schemas (estimated)', compact(breakdown?.toolsTokens)))
+        context.push(line('System prompt (estimated)', compact(breakdown?.systemTokens)))
+        context.push(line('Free space', compact(Math.max(0, max - used))))
+      }
+      context.push(line('Session', session?.displayTitle || 'Unavailable'))
+      context.push(line('Status', session ? (session.running ? 'Running' : 'Idle') : 'Unavailable'))
+      const outputs = [
+        line('Output tokens', compact(tokenUsage?.outputTokens)),
+        line('Last activity', good(session?.updatedAt) === undefined ?
+          'Unavailable' : new Date(session.updatedAt).toLocaleString()),
+        h('p', { key: 'output-note', style: muted },
+          'Output file lists require a separate, permission-checked files service.'),
+      ]
+      const cards = [
+        section('Environment', environment),
+        section('Context', context),
+        section('Connectors', [h('p', { key: 'conn', style: muted },
+          'Connector inventory is not available via the documented Client APIs used here.')]),
+        section('Outputs', outputs),
+        section('Changes', [h('p', { key: 'diff', style: muted },
+          'Git changes need the workspace-changes/Forge integration; no changes are invented.')]),
+      ]
+      return h('aside', { 'data-environment-right-sidebar': '',
+        style: { height: '100%', overflowY: 'auto', boxSizing: 'border-box',
+          padding: '6px 16px 22px', color: 'inherit', fontSize: 12, lineHeight: 1.6 } },
+        ...cards,
+        h('p', { style: muted }, 'Read-only · No secret data, shell or network access.'))
+    }
+    function HeaderButton({ openInspector }) {
+      return h('button', { type: 'button', onClick: openInspector,
+        'aria-label': 'Open Environment sidebar', title: 'Environment',
+        'data-environment-header-action': '',
+        style: { background: 'transparent', border: 0, color: 'inherit',
+          display: 'inline-flex', justifyContent: 'center', alignItems: 'center',
+          width: 30, height: 30, cursor: 'pointer' } },
+        h(Icon, { size: 17 }))
+    }
     return {
-      inject: ['slots', 'sessions', 'workspaces'],
+      inject: ['slots', 'sidebarRight', 'sidebarRightTabs', 'sessions', 'workspaces'],
       apply(ctx) {
-        const sessionStore = ctx.sessions.list
-        const workspaceStore = ctx.workspaces.list
-        const subscribeSessions = listener => sessionStore.subscribe(listener)
-        const getSessions = () => sessionStore.getSnapshot()
-        const subscribeWorkspaces = listener => workspaceStore.subscribe(listener)
-        const getWorkspaces = () => workspaceStore.getSnapshot()
-
-        function Page() {
-          const sessions = React.useSyncExternalStore(subscribeSessions, getSessions, getSessions)
-          const workspaces = React.useSyncExternalStore(subscribeWorkspaces, getWorkspaces, getWorkspaces)
-          const [version, setVersion] = React.useState(0)
-          return h(EnvironmentPanel, { sessions, workspaces, viewVersion: version,
-            onRefresh: () => setVersion(value => value + 1) })
+        const s = ctx.sessions.list
+        const w = ctx.workspaces.list
+        const subS = l => s.subscribe(l)
+        const subW = l => w.subscribe(l)
+        const getS = () => s.getSnapshot()
+        const getW = () => w.getSnapshot()
+        const open = () => ctx.sidebarRight.openTab(KIND)
+        function Body(props) {
+          const sessions = React.useSyncExternalStore(subS, getS, getS)
+          const workspaces = React.useSyncExternalStore(subW, getW, getW)
+          return h(Details, { sessionId: props.sessionId, useProjection: props.useProjection,
+            sessions, workspaces })
         }
-
-        ctx.slots.inject('main', () => ctx.slots.register({
-          name: 'main', key: PANEL_ID,
-        }, Page))
-        ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
-          name: 'sidebar.panellist', id: PANEL_ID, order: 40,
-          label: 'بيئة وسياق',
-        }, Icon))
+        ctx.effect(() => ctx.sidebarRightTabs.register({
+          id: TYPE, kind: KIND, title: () => 'Environment',
+          guide: [{ id: 'open', order: 12, title: () => 'Environment & Context',
+            description: () => 'Current context and workspace details' }],
+        }), 'environment-sidebar: type')
+        ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
+          name: 'sidebar.right.pane.tab', key: TYPE,
+        }, Body))
+        ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({
+          name: 'conversation.session.header.utilities',
+          id: 'environment-sidebar-toggle', order: 35,
+          inject: () => ({ openInspector: open }),
+        }, HeaderButton))
+        ctx.effect(() => {
+          const visited = new Set()
+          const timers = new Set()
+          let done = false
+          const onSession = () => {
+            const id = ctx.sidebarRight.mounted.getSnapshot()
+            if (!id || visited.has(id)) return
+            visited.add(id)
+            const timeout = setTimeout(() => {
+              timers.delete(timeout)
+              if (done || ctx.sidebarRight.mounted.getSnapshot() !== id) return
+              try { open() } catch (e) {
+                visited.delete(id)
+                console.warn('[environment-sidebar] auto-open unavailable:', e)
+              }
+            }, 0)
+            timers.add(timeout)
+          }
+          const unsubscribe = ctx.sidebarRight.mounted.subscribe(onSession)
+          onSession()
+          return () => {
+            done = true
+            unsubscribe()
+            for (const id of timers) clearTimeout(id)
+          }
+        }, 'environment-sidebar: initial view')
       },
     }
   },
