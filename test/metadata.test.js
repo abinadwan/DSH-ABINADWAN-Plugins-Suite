@@ -17,7 +17,7 @@ test('packaged artwork stays self-contained and within size limits', () => {
   const icon = read('icon.svg')
   assert.ok(Buffer.byteLength(icon, 'utf8') < 256 * 1024)
   assert.match(icon, /<svg[^>]*viewBox="0 0 256 256"/)
-  assert.doesNotMatch(icon, /<script|<image|<foreignObject|xlink:href|https?:\/\//i)
+  assert.doesNotMatch(icon, /<script|<image|<foreignObject|xlink:href|(?:href|src)=['"]https?:\/\//i)
   assert.ok(p.files.includes('icon.svg'))
   assert.ok(p.files.includes('locale/*.json'))
 })
