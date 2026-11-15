@@ -19,7 +19,8 @@
     "icon.svg",
     "locale/*.json",
     "docs/DETAIL.md",
-    "README.md"
+    "README.md",
+    "LICENSE"
   ],
   "scripts": {
     "test": "node --test"
@@ -57,5 +58,6 @@
   "homepage": "https://github.com/abinadwan/deepseek-harness-environment-sidebar#readme",
   "bugs": {
     "url": "https://github.com/abinadwan/deepseek-harness-environment-sidebar/issues"
-  }
+  },
+  "license": "MIT"
 }

@@ -2,6 +2,10 @@
 
 All notable changes are documented here.
 
+## Unreleased
+
+- Released the project under the MIT License, including package metadata and a visible README badge.
+
 ## [0.2.1] — 2026-11-15
 
 ### Changed

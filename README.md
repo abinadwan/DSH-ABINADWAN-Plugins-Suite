@@ -14,11 +14,13 @@
   <a href="https://github.com/abinadwan/deepseek-harness-environment-sidebar/actions/workflows/test.yml"><img alt="CI status" src="https://github.com/abinadwan/deepseek-harness-environment-sidebar/actions/workflows/test.yml/badge.svg"></a>
   <img alt="Version 0.2.1" src="https://img.shields.io/badge/version-0.2.1-2563eb">
   <img alt="Experimental" src="https://img.shields.io/badge/status-experimental-e9a23b">
+  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-22c55e"></a>
   <img alt="DeepSeek Harness" src="https://img.shields.io/badge/DeepSeek-Harness-1e40af">
 </p>
 
 <p align="center">
   <a href="#features">Features</a> ·
+  <a href="#screenshots">Screenshots</a> ·
   <a href="#installation">Installation</a> ·
   <a href="#how-it-works">How it works</a> ·
   <a href="#troubleshooting">Troubleshooting</a> ·
@@ -151,6 +153,6 @@ This is **not** a full Claude Code sidebar replica. At present it does not provi
 
 ### License and attribution
 
-**No open-source license has been selected yet.** Unless and until the repository owner adds a `LICENSE` file, public visibility alone does not grant permission to redistribute or modify this project's code. See [Contributing](CONTRIBUTING.md) for how to propose changes.
+This project is open source under the [MIT License](LICENSE). You may use, modify and redistribute the code under its terms, retaining the copyright and license notice.
 
 DeepSeek Harness and Claude Code are trademarks/products of their respective owners. This is an **unofficial community extension** and is not affiliated with, sponsored by or endorsed by DeepSeek, Anthropic or OpenAI. No proprietary source code was copied from those products. Extension contracts are based on the [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) public documentation.

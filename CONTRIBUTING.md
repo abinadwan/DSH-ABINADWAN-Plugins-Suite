@@ -23,4 +23,4 @@ A proposed runtime change should include a test, a short explanation of DSH comp
 
 ## Licensing
 
-The repository has not yet been assigned an open-source license. Please discuss contribution and redistribution terms with the repository owner before submitting source intended for integration.
+This project is licensed under the [MIT License](LICENSE). Contributions are accepted under the same terms unless explicitly agreed otherwise.
