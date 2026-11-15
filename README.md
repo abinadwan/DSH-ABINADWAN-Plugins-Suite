@@ -49,6 +49,23 @@ It is inspired by the information architecture of modern coding-agent dashboards
 
 **Privacy by design:** no network calls, credential harvesting, local shell commands or filesystem reads are added by this plugin.
 
+## Screenshots
+
+These screenshots show the **native right-sidebar inspector running in DeepSeek Harness Desktop on Windows**. They were supplied by a user of the plugin and optimized as WebP images for the repository.
+
+<table>
+  <tr>
+    <th align="center">Project workspace</th>
+    <th align="center">Conversation session</th>
+  </tr>
+  <tr>
+    <td align="center" valign="top"><a href="docs/assets/environment-project.webp"><img src="docs/assets/environment-project.webp" alt="Environment and Context sidebar showing a registered workspace, context usage, outputs, and section headings" width="260"></a></td>
+    <td align="center" valign="top"><a href="docs/assets/environment-session.webp"><img src="docs/assets/environment-session.webp" alt="Environment and Context sidebar showing context usage and output tokens in a conversation session" width="260"></a></td>
+  </tr>
+</table>
+
+> The screenshots demonstrate the current UI, including **Connectors** and **Changes** notices. Those data integrations are not yet implemented; the screenshots are not intended to imply otherwise.
+
 ## Installation
 
 ### Desktop — GitHub source
@@ -108,7 +125,7 @@ The Host entry is intentionally minimal. `client.js` is a shipped browser module
 | Source manifest, Host entry and browser module tests | Covered by GitHub Actions |
 | Native tab and header-action registration smoke tests | Covered by GitHub Actions |
 | Safety-oriented static checks | Covered by GitHub Actions |
-| Real Desktop UI rendering on your installed DSH version | **Not yet independently verified** |
+| Real Desktop UI rendering on Windows | User-provided screenshots; not independently verified across versions |
 | Exact compatibility across DSH releases | **Not established** |
 
 Current release: **v0.2.1 (experimental)**. The extension follows the documented right-sidebar/Client-module patterns of contemporary DeepSeek Harness builds, but its functionality still depends on the version and profile installed on the user's machine.
