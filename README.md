@@ -4,110 +4,97 @@
 
 <h1 align="center">ABINADWAN Plugins Suite</h1>
 
-<p align="center">A modular, open-source toolkit for <a href="https://github.com/deepseek-ai/deepseek-harness">DeepSeek Harness</a>.<br/>
-One suite today; carefully scoped, independently documented components as the project grows.</p>
+<p align="center">A modular, open-source toolkit for <a href="https://github.com/deepseek-ai/deepseek-harness">DeepSeek Harness</a>.</p>
 
 <p align="center">
   <a href="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/workflows/test.yml"><img alt="CI" src="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/workflows/test.yml/badge.svg"/></a>
-  <img alt="Suite 0.4.0" src="https://img.shields.io/badge/suite-0.4.0-7b2246"/>
+  <img alt="Suite 0.5.0" src="https://img.shields.io/badge/suite-0.5.0-7b2246"/>
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-22c55e"/></a>
-  <img alt="Status experimental" src="https://img.shields.io/badge/status-experimental-e49b45"/>
 </p>
 
 ## Overview
 
-**ABINADWAN Plugins Suite** is a single-install package intended to host related DeepSeek Harness plugins. It currently contains **one working component**, Environment & Context. Humanizer and Personal Profile are **future concepts, not shipped features**.
+One installation supplies three independently toggleable DSH Components. The package card uses the approved Saudi developer avatar. Each Component resolves its own title and transparent icon.
 
-| Plugin | Status | Purpose | Documentation |
+| Component | Delivered in 0.5.0 | Default | Documentation |
 | --- | --- | --- | --- |
-| **Environment & Context** | **Available — implemented** | Inspect workspace, session, context pressure and output-token summaries | [Plugin details](plugins/environment-context/README.md) |
-| **Humanizer** | **Planned — not implemented** | Optional natural-language style tools and user-selected tone | [Planning notes](plugins/humanizer/README.md) |
-| **Personal Profile** | **Design pending — not implemented** | User-controlled preferences and optional personal information | [Planning notes](plugins/personal-profile/README.md) |
+| <img src="plugins/environment-context/icon.png" width="32" alt="Teal monitor"/> **Environment & Context** | Read-only session inspector | On | [Plugin details](plugins/environment-context/README.md) |
+| <img src="plugins/humanizer/icon.png" width="32" alt="Purple feather"/> **Humanizer** | Runtime writing Skill | On | [Usage and scope](plugins/humanizer/README.md) |
+| <img src="plugins/personal-profile/icon.png" width="32" alt="Amber ID and gear"/> **Personal Profile** | Read-only configuration draft | Off | [Preliminary fields and pending design](plugins/personal-profile/README.md) |
 
-> The number of *Components* shown in DSH is **one** until additional modules are actually implemented. This README lists a roadmap, not installable subplugins.
+## Environment & Context
 
-## Plugin 1 — Environment & Context
+The native right-side session inspector opens once when a session becomes visible and can be reopened from the conversation header.
 
-**Status: Available (v0.4.0 suite)**
+- **Environment** displays browser platform and associated workspaces.
+- **Context** displays reported context pressure, estimated message/tool/system-token categories and free capacity.
+- **Outputs** displays reported output tokens and latest session activity.
+- **Connectors & Changes** display availability notices for integrations awaiting an authorized provider.
 
-The native **right-side session inspector** is the functional plugin today. It opens once when a session becomes visible and can be reopened from the conversation header.
-
-- **Environment:** browser environment and associated workspace.
-- **Context:** reported context pressure, approximate message/tool/system-token categories, and free capacity.
-- **Outputs:** reported output tokens and latest session activity.
-- **Connectors & Changes:** explicit *not available yet* notices; no invented account lists, output files, or Git changes.
-- **Versions:** manual **Check for updates** on this suite's **Plugins detail** page, not in the session inspector. No automatic installations.
-
-[Read complete Environment & Context documentation](plugins/environment-context/README.md).
-
-### Screenshots
-
-Existing screenshots below document **Environment & Context**, not the unreleased suite modules:
+The categories are estimates. Use provider billing records for billing totals.
 
 <p align="center">
   <a href="docs/assets/environment-project.webp"><img src="docs/assets/environment-project.webp" alt="Environment & Context session sidebar with a workspace" width="240"/></a>
-  &nbsp;
-  <a href="docs/assets/environment-session.webp"><img src="docs/assets/environment-session.webp" alt="Environment & Context session sidebar showing context usage" width="240"/></a>
+  <a href="docs/assets/environment-session.webp"><img src="docs/assets/environment-session.webp" alt="Environment & Context context usage" width="240"/></a>
 </p>
 
-## Plugin 2 — Humanizer
+These existing screenshots illustrate the inspector. Component artwork is shown in the table above.
 
-**Status: Planned, not included in the current install.** A separate, optional writing-style module for clarity, tone, natural phrasing and user preferences. It is not presented as a guaranteed AI-detector bypass tool.
+## Humanizer
 
-Any automatic rewriting mechanism must be reviewed against actual Harness APIs before implementation.
+Enabling Humanizer registers **abinadwan-humanizer** in DSH's runtime Skill registry. It helps the agent edit supplied prose for clarity, natural phrasing, tone and language while preserving meaning, facts, citations and uncertainty. The skill uses original MIT-licensed instructions written for this suite.
 
-[Humanizer planning notes](plugins/humanizer/README.md).
+Ask the agent to use Humanizer and supply the text, audience and desired tone. For example, “Use Humanizer to make this email concise and professional while preserving every fact.” Arabic requests and requested dialects are supported by the instructions. Results depend on the selected model. Disabling the Component removes the skill from future discovery and loading. Content already loaded into a conversation remains in that conversation's context.
 
-## Plugin 3 — Personal Profile
+The skill runs when the agent loads it through DSH. Automatic response interception, persistent tone controls and background rewriting remain future work. Its instructions prohibit optimizing for detector scores, promising detection evasion or falsely claiming human authorship.
 
-**Status: Design discussion pending; no data storage has been built.** The planned module will separate automatically applied style preferences from personal information, which must be retrieved only when relevant and permitted. Sensitive fields, encryption, account isolation, permission controls, and deletion behavior will be finalized *before* coding.
+## Personal Profile
 
-[Personal Profile planning notes](plugins/personal-profile/README.md).
+This Component exposes a **read-only design draft** on the suite detail page when enabled. It accepts zero profile values. Profile storage, retrieval, transmission, consent enforcement and automatic style application await design approval.
 
-## Installation
+The preliminary fields cover a preferred name with optional full name, optional date of birth and nationality, user-selected gender, custom instructions empty by default with optional templates, and an opt-in for using approved profile information. The proposed behavior applies approved style instructions automatically and accesses personal or sensitive information only when relevant and allowed. See the per-plugin document for decisions still awaiting approval.
 
-> This is a **new package identity**: `@abinadwan/dsh-plugins-suite`. GitHub was renamed; the old `@abinadwan/environment-sidebar` identifier is no longer the package deployed by this suite.
+## Installation and updates
 
-On Windows PowerShell, in the profile actually used by Desktop:
+Use the profile actually run by Harness Desktop. For the `desktop` profile, run in PowerShell.
 
 ```powershell
-# Only if the old Environment plugin is still installed:
+# If the legacy package is still installed
 dsh plugin --profile desktop remove @abinadwan/environment-sidebar
 
-# Install the new suite:
+# Install or replace the suite from GitHub
 dsh plugin --profile desktop add github:abinadwan/DSH-ABINADWAN-Plugins-Suite
 dsh --profile desktop --dump-config
 ```
 
-Completely restart Harness, enable the suite, and open a normal conversation to see Environment & Context. The running profile must match the installation profile. You can pin an immutable commit with `#<full-commit-sha>` after the GitHub reference.
+Restart Harness completely, open **Plugins → ABINADWAN Plugins Suite**, enable the suite and inspect its three Components. Toggle each independently. Personal Profile starts off. When enabled, its draft appears on the suite detail page. Open a normal conversation for Environment & Context and ask the agent to use Humanizer for an editing task.
 
-The package includes ready-to-run Host and browser scripts. It is **not** published to npm and needs no `npm run build` during installation.
+If your active profile is `web` or another name, substitute that name in every command. Upgrading from 0.4.0 keeps the `abinadwan-suite` group identity and the current inspector behavior. Existing user-layer disable overrides remain applicable. The package ships ready-to-run JavaScript and installs directly from GitHub. No build step is required. An immutable version can be installed by appending `#<full-commit-sha>` to the GitHub reference.
 
-## Updates
+The suite detail page retains **Versions → Check for updates**, independently of the Environment switch. This manual action fetches the public `main/package.json`, compares versions and reports request errors. Update installation uses the command above and a restart.
 
-Go to **Plugins → ABINADWAN Plugins Suite** and find the additional **Versions** section after the package's Source details. Select **Check for updates**. It requests the public `main/package.json` from this repository **only after your click**, compares versions, and reports the result. It never installs updates automatically. A blocked browser request produces an explicit error, not an incorrect *Up to date* report.
+## Architecture and compatibility
 
-## Architecture and scope
+The bundle patch declares a package-root Cordis Group containing three Host subpath rows. DSH omits Group containers from the Components list. Subpath locale and icon exports give the rows their own identities. The package-root browser carrier remains available for suite controls and watches access-checked Host inventory to mount the Environment and Profile browser fibers. This follows the current DSH contract, where browser bundle discovery uses package-root entries. [DSH metadata contract](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/docs/cookbook/adding-a-package.md#plugin-display-metadata)
 
-- **Suite identity:** `@abinadwan/dsh-plugins-suite`, icon, localized package metadata, MIT license, documentation, manual update check.
-- **Shipped component:** Environment & Context, using the native right sidebar.
-- **Future modules:** Humanizer and Personal Profile will not be activated or exposed until designed and tested.
-- **Expansion approach:** Add separate Host subpath entries for independently toggleable components when ready. The current root Client module owns the existing sidebar; additional component scopes and permissions must be tested before enabling them.
+Humanizer uses `ctx.skills.register()`. Environment uses the native right-sidebar, conversation-header and session projection APIs. The UI follows `plugin-manager/changed` and `connection/reset`, disposes resources when a Component or access is disabled, and ignores stale inventory responses. An inventory read failure pauses Component UI until a successful refresh. The suite requires a DSH profile with Skills, Plugin Manager, Remote access and the standard web conversation/sidebar services.
 
-Source: `client.js`, `index.js`, `cordis.patch.yml`, `locale/en.json`.
+## Development and verification
 
-```bash
+```sh
+npm ci --ignore-scripts
 npm test
+npm run check:package
 ```
 
-CI covers source identity, module registration and update-check behavior; **it does not prove integration on every Harness Desktop release**.
+Tests use the actual Cordis Loader, DSH metadata reader and Skill registry, plus controlled browser-service fixtures and real React rendering. The package check extracts an npm tarball and runs the same tests against its contents. CI runs these checks on Windows and Linux with Node 22 and 24. DSH test libraries are locked at 0.2.2-rc.3. A separate local installation/configuration smoke check used DSH CLI 0.2.1-rc.5. Visual Desktop interaction and model-produced rewrites still require validation on the user's running Harness/model combination.
 
-## Privacy & security
+## Privacy and security
 
-Environment & Context reads available UI/session summaries and does not intentionally run shell commands, inspect private files or collect credentials. Only the manual update check contacts GitHub, without sending messages or personal data. Planned Personal Profile functionality has **no storage or access permissions in this version**. See [Security](SECURITY.md).
+Environment reads UI-facing session/workspace summaries and projected token usage. The runtime Humanizer instructions operate within DSH's existing model context. Text supplied to the agent follows the user's existing model/provider configuration. The suite adds no external rewriting endpoint. The manual update action contacts public GitHub without credentials or conversation data. Personal Profile accepts, persists and transmits zero personal information in this version. [Security policy](SECURITY.md)
 
-## License & attribution
+## License and attribution
 
-MIT License — see [LICENSE](LICENSE).
+MIT License. The Humanizer instructions are original to this suite. Artwork uses the four approved user-supplied PNGs, resized with transparency retained for DSH's image-size limit. [License](LICENSE) · [Artwork provenance](docs/BRANDING.md)
 
-This independent community project is not affiliated with or endorsed by DeepSeek or Anthropic. DeepSeek Harness and Claude Code remain trademarks of their respective owners. The plugin implementation uses public DeepSeek Harness extension contracts; no proprietary source was copied.
+This independent community project is unaffiliated with DeepSeek or Anthropic. DeepSeek Harness and Claude Code remain trademarks of their respective owners.

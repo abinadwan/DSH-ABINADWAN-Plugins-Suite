@@ -1,29 +1,27 @@
 # Environment & Context
 
-**Status:** Available · suite version **0.4.0**
+**Available in suite 0.5.0. Enabled by default.**
 
-This is the **only running plugin** inside ABINADWAN Plugins Suite today.
+<img src="icon.png" width="96" alt="Teal Environment & Context monitor"/>
 
-## Features
+The read-only right-hand sidebar in active Harness conversation sessions displays browser environment, workspace associations, context pressure, estimated token categories, model output-token totals and last recorded activity. Connector inventories and Git changes await separate authorized providers. Estimated categories should be treated as approximate accounting.
 
-The plugin renders a read-only **right-hand sidebar** in active Harness conversation sessions. It displays:
+## Controls
 
-- **Environment:** browser platform and workspace association, when available.
-- **Context:** reported token usage, context-window occupancy and estimated message/tool/system breakdown.
-- **Outputs:** model output token total and last recorded session activity.
-- **Connectors:** explicitly unavailable until an authorized inventory API is integrated.
-- **Changes:** explicitly unavailable until an authorized workspace/Git provider is integrated.
+Toggle **Environment & Context** in the suite's Components list. Disabling removes its sidebar registration, conversation-header action, session subscription and pending auto-open timers. Re-enabling restores them. Humanizer has its own independent switch.
 
-The inspector is not an exact reproduction of Claude Code's internal accounting. Estimated categories should not be treated as billing totals.
+The inspector opens once per visible session during each active Component lifetime. Reopen it with the Environment conversation-header button. Suite update controls remain on the suite's Plugins detail page.
 
-## Updates
+## Integration
 
-Use the **ABINADWAN Plugins Suite** detail page under Plugins to select **Check for updates**. That control is separate from the session sidebar and checks the suite version on GitHub only when requested.
+The Host module is `@abinadwan/dsh-plugins-suite/environment-context`. Its locale and icon resolve through `/environment-context/locale/en.json` and `/environment-context/icon`. The package-root browser carrier mounts the inspector in a scoped Cordis fiber only while the access-checked Host inventory reports the Component enabled and active.
 
-## Testing
+Session state and `contextPressure`, `contextBreakdown` and `tokenUsage` projections supply the inspector. Inventory failure pauses its UI until a successful change-event or reconnect refresh. The suite reads summaries and registers zero filesystem, shell or credential tools for this Component.
 
-The implemented right-sidebar registration, module identity and update-check behavior are covered by `npm test`. Real Desktop behavior depends on the running Harness version and profile.
+## Verification
+
+Tests exercise native sidebar registration, auto-open, projections, independent disable/re-enable, out-of-order inventory responses, access withdrawal and cleanup. Real React rendering is also checked.
 
 ![Workspace inspector screenshot](../../docs/assets/environment-project.webp)
 
-[Back to suite overview](../../README.md)
+[Suite overview](../../README.md)

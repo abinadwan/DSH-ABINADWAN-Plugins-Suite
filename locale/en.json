@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "ABINADWAN Plugins Suite",
-    "description": "A modular DeepSeek Harness toolkit. Environment & Context is available now; Humanizer and Personal Profile are planned.",
+    "description": "A modular DeepSeek Harness toolkit with Environment & Context, a runtime Humanizer skill and a read-only Personal Profile draft.",
     "detail": "docs/DETAIL.md"
   }
 }

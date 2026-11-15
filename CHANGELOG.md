@@ -2,6 +2,23 @@
 
 All notable changes are documented here.
 
+## [0.5.0] — 2026-11-16
+
+### Added
+
+- Three separately toggleable Host subpath Components with individual English/Arabic metadata and approved transparent PNG icons.
+- A package-root Group carrier to retain the suite avatar and suite-wide version controls while DSH lists exactly three Component rows.
+- Original MIT-licensed Humanizer runtime Skill, advertised and loaded through DSH's existing Skill registry, with lifetime-bound removal on disable.
+- Disabled-by-default Personal Profile scaffold and read-only preliminary field draft. Privacy/storage design and personal-data runtime behavior await approval.
+- Actual Cordis Loader, DSH metadata and Skill-registry integration tests, browser lifecycle/race tests, real React rendering and packed-artifact verification.
+- Locked test dependencies and Windows/Linux CI on Node 22/24.
+
+### Changed
+
+- Environment browser UI follows its Host Component's effective enablement and active phase, with complete teardown and stale-response protection.
+- Suite artwork uses the supplied Saudi developer with laptop. Component artwork uses the teal monitor, purple feather and amber ID/gear.
+- Updated per-plugin usage, installation, privacy, licensing and implementation-status documentation.
+
 ## [0.4.0] — 2026-11-16
 
 ### Changed
