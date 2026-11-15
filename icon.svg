@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="256" height="256" viewBox="0 0 256 256" role="img" aria-labelledby="title desc">
+  <title id="title">Environment &amp; Context logo</title>
+  <desc id="desc">A dark diagnostic dashboard with a glowing blue side rail and a segmented context meter.</desc>
+  <defs>
+    <linearGradient id="base" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#172A4A"/>
+      <stop offset=".55" stop-color="#0D1B33"/>
+      <stop offset="1" stop-color="#071326"/>
+    </linearGradient>
+    <linearGradient id="rail" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2379F7"/>
+      <stop offset="1" stop-color="#0A3AAB"/>
+    </linearGradient>
+    <linearGradient id="progress" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#10DBC7"/>
+      <stop offset=".52" stop-color="#179DFD"/>
+      <stop offset="1" stop-color="#527AF7"/>
+    </linearGradient>
+    <clipPath id="outer"><rect x="7" y="7" width="242" height="242" rx="48"/></clipPath>
+  </defs>
+  <rect x="7" y="7" width="242" height="242" rx="48" fill="url(#base)" stroke="#284266" stroke-width="2"/>
+  <g clip-path="url(#outer)">
+    <rect x="188" y="7" width="61" height="242" fill="url(#rail)"/>
+    <path d="M188 14V242" stroke="#60B5FF" stroke-opacity=".55" stroke-width="2"/>
+    <rect x="25" y="35" width="146" height="46" rx="13" fill="#20385D" stroke="#36547C" stroke-opacity=".42"/>
+    <circle cx="46" cy="58" r="8" fill="#15E0C4"/>
+    <rect x="65" y="51" width="84" height="7" rx="3.5" fill="#B3CEEF" opacity=".87"/>
+    <rect x="65" y="63" width="57" height="5" rx="2.5" fill="#6286B8"/>
+    <rect x="25" y="90" width="146" height="46" rx="13" fill="#20385D" stroke="#36547C" stroke-opacity=".42"/>
+    <path d="M48 108l-8 6 8 6m14-12 8 6-8 6" stroke="#F2B54A" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+    <rect x="83" y="107" width="64" height="7" rx="3.5" fill="#309AFC"/>
+    <rect x="83" y="119" width="42" height="5" rx="2.5" fill="#6286B8"/>
+    <rect x="25" y="145" width="146" height="46" rx="13" fill="#20385D" stroke="#36547C" stroke-opacity=".42"/>
+    <circle cx="44" cy="169" r="5" fill="#12DCCB"/>
+    <circle cx="61" cy="157" r="5" fill="#12DCCB"/>
+    <circle cx="63" cy="181" r="5" fill="#12DCCB"/>
+    <path d="M48 167l9-8m-9 12 11 8" stroke="#12DCCB" stroke-width="3" stroke-linecap="round"/>
+    <rect x="83" y="160" width="64" height="7" rx="3.5" fill="#AACAEF"/>
+    <rect x="83" y="173" width="47" height="5" rx="2.5" fill="#6286B8"/>
+    <rect x="25" y="205" width="146" height="14" rx="7" fill="#233A60"/>
+    <path d="M32 205h50v14H32a7 7 0 0 1-7-7 7 7 0 0 1 7-7Z" fill="url(#progress)"/>
+    <rect x="85" y="205" width="39" height="14" rx="7" fill="#1C7BEA"/>
+    <rect x="127" y="205" width="19" height="14" rx="7" fill="#E7AA3E"/>
+    <path d="M200 57h14m-14 8h14m-14 8h14" stroke="#D3E8FF" stroke-width="3.6" stroke-linecap="round"/>
+    <rect x="198" y="95" width="34" height="34" rx="9" stroke="#9BD8FF" stroke-width="2.2" fill="#0E4EC7"/>
+    <path d="M206 106h19m-19 7h14m-14 7h9" stroke="#EEF8FF" stroke-linecap="round" stroke-width="2.8"/>
+    <path d="M203 163l12-11 12 11-12 11-12-11Z" stroke="#ACD7FF" stroke-width="2.4" fill="none"/>
+    <path d="M215 174v-22" stroke="#ACD7FF" stroke-width="2"/>
+    <path d="M203 195c8-7 20-4 22 6m0 0-1-9m1 9-9-2" stroke="#B7DCFF" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+  </g>
+</svg>

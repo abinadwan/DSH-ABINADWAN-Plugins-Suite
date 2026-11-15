@@ -1,0 +1,7 @@
+{
+  "meta": {
+    "title": "Environment & context",
+    "description": "Inspect workspace context, token usage, output tokens and session activity in a read-only right sidebar.",
+    "detail": "docs/DETAIL.md"
+  }
+}

@@ -1,18 +1,24 @@
 {
   "name": "@abinadwan/environment-sidebar",
-  "version": "0.2.0",
-  "description": "Native right sidebar Environment, Context, Connectors, Outputs and Changes inspector",
+  "version": "0.2.1",
+  "description": "A read-only right sidebar for DeepSeek Harness with workspace context, token usage, and session activity.",
   "private": true,
   "type": "module",
   "main": "./index.js",
   "exports": {
     ".": "./index.js",
-    "./client": "./client.js"
+    "./client": "./client.js",
+    "./package.json": "./package.json",
+    "./locale/*.json": "./locale/*.json",
+    "./icon": "./icon.svg"
   },
   "files": [
     "index.js",
     "client.js",
     "cordis.patch.yml",
+    "icon.svg",
+    "locale/*.json",
+    "docs/DETAIL.md",
     "README.md"
   ],
   "scripts": {
@@ -31,5 +37,25 @@
         "@deepseek-ai/dsh-api-workspace-controller"
       ]
     }
+  },
+  "icon": "./icon.svg",
+  "keywords": [
+    "deepseek-harness",
+    "dsh",
+    "dsh-plugin",
+    "environment",
+    "context-window",
+    "token-usage",
+    "sidebar",
+    "session-inspector",
+    "agent-observability"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/abinadwan/deepseek-harness-environment-sidebar.git"
+  },
+  "homepage": "https://github.com/abinadwan/deepseek-harness-environment-sidebar#readme",
+  "bugs": {
+    "url": "https://github.com/abinadwan/deepseek-harness-environment-sidebar/issues"
   }
 }
