@@ -4,7 +4,7 @@ import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
 const code = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
-const URL = 'https://raw.githubusercontent.com/abinadwan/deepseek-harness-environment-sidebar/main/package.json'
+const EXPECTED_URL = 'https://raw.githubusercontent.com/abinadwan/deepseek-harness-environment-sidebar/main/package.json'
 test('checks GitHub only after a click, with no credentials and fixed endpoint', async () => {
   let loaded
   let fetchCount = 0
@@ -58,7 +58,7 @@ test('checks GitHub only after a click, with no credentials and fixed endpoint',
   assert.equal(fetchCount, 0, 'no automatic network requests')
   await checkButton.props.onClick()
   assert.equal(fetchCount, 1)
-  assert.equal(fetchUrl, URL)
+  assert.equal(fetchUrl, EXPECTED_URL)
   assert.equal(fetchOptions.credentials, 'omit')
   assert.equal(fetchOptions.referrerPolicy, 'no-referrer')
   assert.equal(fetchOptions.method, 'GET')
