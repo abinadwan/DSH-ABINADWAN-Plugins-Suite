@@ -12,7 +12,7 @@
 
 <p align="center">
   <a href="https://github.com/abinadwan/deepseek-harness-environment-sidebar/actions/workflows/test.yml"><img alt="CI status" src="https://github.com/abinadwan/deepseek-harness-environment-sidebar/actions/workflows/test.yml/badge.svg"></a>
-  <img alt="Version 0.2.1" src="https://img.shields.io/badge/version-0.2.1-2563eb">
+  <img alt="Version 0.3.0" src="https://img.shields.io/badge/version-0.3.0-2563eb">
   <img alt="Experimental" src="https://img.shields.io/badge/status-experimental-e9a23b">
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-22c55e"></a>
   <img alt="DeepSeek Harness" src="https://img.shields.io/badge/DeepSeek-Harness-1e40af">
@@ -44,10 +44,11 @@ It is inspired by the information architecture of modern coding-agent dashboards
 | **Connectors** | Clear notice when a connector inventory cannot be obtained | Not yet integrated |
 | **Outputs** | Model output token total and last activity | Available if session projections report them; file list not included |
 | **Changes** | Clear notice that Git change information needs a separate integration | Not yet integrated |
+| **Versions & updates** | Installed version and user-triggered GitHub branch version check | Manual check; no silent update or install |
 
 **Context detail:** `contextPressure` supplies model-reported pressure/capacity when available. `contextBreakdown` supplies *heuristic* message, tool-schema and system-prompt buckets; these may not sum exactly to the pressure value and are **not** the detailed breakdown shown in Claude Code.
 
-**Privacy by design:** no network calls, credential harvesting, local shell commands or filesystem reads are added by this plugin.
+**Privacy by design:** no telemetry, credential harvesting, local shell commands or filesystem reads. A request to public GitHub occurs **only when the user clicks Check for updates**; it does not send session content.
 
 ## Screenshots
 
@@ -65,6 +66,16 @@ These screenshots show the **native right-sidebar inspector running in DeepSeek 
 </table>
 
 > The screenshots demonstrate the current UI, including **Connectors** and **Changes** notices. Those data integrations are not yet implemented; the screenshots are not intended to imply otherwise.
+
+## Checking for updates
+
+Open a conversation's **Environment** inspector tab, expand **Versions & updates** and select **Check for updates**. The plugin makes one request to `raw.githubusercontent.com` to read the public repository's `main/package.json`, verifies the package name and compares semantic version numbers with this installed plugin. No request occurs before the click; no credentials, workspace paths, session messages, or logs are sent.
+
+- **Up to date** means the `main` branch currently declares the same or an older version, **not** that a release registry has been checked.
+- **Update available** means the `main` branch declares a higher version. Update manually through Plugins and fully restart Harness.
+- **Could not check** means the request failed (including offline, CORS, CSP or rate-limit issues); it does **not** mean the plugin is current.
+
+The update button never calls Harness's installer or changes your profile. This differs from the full DSH Plugin Hub update pipeline, which uses dedicated Host services. **Only upgrade a package source after checking it.**
 
 ## Installation
 
@@ -116,7 +127,7 @@ The plugin uses DeepSeek Harness extension points rather than modifying applicat
 - `sessions.list` and `workspaces.list` provide session/workspace summaries.
 - `useProjection('contextPressure' | 'contextBreakdown' | 'tokenUsage')` provides available token information.
 
-The Host entry is intentionally minimal. `client.js` is a shipped browser module and does not require an install-time build step.
+The Host entry is intentionally minimal. `client.js` is a shipped browser module and does not require an install-time build step. The canonical artwork is [`icon.svg`](icon.svg); the plugin manifest uses a rasterized [`icon.png`](icon.png) fallback to improve compatibility with image decoders.
 
 ## Compatibility and testing
 
@@ -128,7 +139,7 @@ The Host entry is intentionally minimal. `client.js` is a shipped browser module
 | Real Desktop UI rendering on Windows | User-provided screenshots; not independently verified across versions |
 | Exact compatibility across DSH releases | **Not established** |
 
-Current release: **v0.2.1 (experimental)**. The extension follows the documented right-sidebar/Client-module patterns of contemporary DeepSeek Harness builds, but its functionality still depends on the version and profile installed on the user's machine.
+Current release: **v0.3.0 (experimental)**. The extension follows the documented right-sidebar/Client-module patterns of contemporary DeepSeek Harness builds, but its functionality still depends on the version and profile installed on the user's machine.
 
 ```bash
 npm test
@@ -148,6 +159,10 @@ npm test
 
 The active model may not have reported a context window or usage yet, or the relevant projection may not be available in the running DSH version. Missing data is never synthesized.
 
+**Package card still shows a generic icon or technical package name**
+
+The package-level artwork/title and the component-row artwork/title are resolved independently by Harness. This repository provides `package.json.icon`, `./icon`, `./package.json` and exported `locale/en.json` as documented. Reinstall this release, restart the *running* Desktop profile, and reopen Plugins. If the package header still falls back while the component row is correct, check Host metadata diagnostics and report the DSH version: the package-level rendering is owned by Harness and cannot be forced by a plugin without patching Harness itself.
+
 **The older left-navigation page is still visible**
 
 Uninstall the prior `@yourname/environment-sidebar` build separately. v0.2.x uses the right-hand sidebar.
@@ -161,7 +176,7 @@ This is **not** a full Claude Code sidebar replica. At present it does not provi
 ## Project information
 
 - **Package:** `@abinadwan/environment-sidebar`
-- **Current version:** `0.2.1`
+- **Current version:** `0.3.0`
 - **Distribution:** GitHub source (not npm)
 - **Logo:** original [SVG icon](icon.svg) with [brand notes](docs/BRANDING.md)
 - **Security:** [SECURITY.md](SECURITY.md)

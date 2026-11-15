@@ -1,7 +1,7 @@
 {
   "name": "@abinadwan/environment-sidebar",
-  "version": "0.2.1",
-  "description": "A read-only right sidebar for DeepSeek Harness with workspace context, token usage, and session activity.",
+  "version": "0.3.0",
+  "description": "Inspect workspace, token usage and session activity in a native right sidebar for DeepSeek Harness.",
   "private": true,
   "type": "module",
   "main": "./index.js",
@@ -10,7 +10,8 @@
     "./client": "./client.js",
     "./package.json": "./package.json",
     "./locale/*.json": "./locale/*.json",
-    "./icon": "./icon.svg"
+    "./icon": "./icon.png",
+    "./icon.svg": "./icon.svg"
   },
   "files": [
     "index.js",
@@ -20,7 +21,8 @@
     "locale/*.json",
     "docs/DETAIL.md",
     "README.md",
-    "LICENSE"
+    "LICENSE",
+    "icon.png"
   ],
   "scripts": {
     "test": "node --test"
@@ -39,7 +41,7 @@
       ]
     }
   },
-  "icon": "./icon.svg",
+  "icon": "./icon.png",
   "keywords": [
     "deepseek-harness",
     "dsh",

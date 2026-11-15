@@ -2,7 +2,7 @@
 
 A read-only session inspector for **DeepSeek Harness**. Open it from the conversation header or the right sidebar's page picker.
 
-## Available in v0.2.1
+## Available in v0.3.0
 
 - **Environment** — the current workspace association and browser platform.
 - **Context** — model-reported context occupancy plus estimated messages, tool-schema and system-prompt breakdowns.
@@ -10,6 +10,10 @@ A read-only session inspector for **DeepSeek Harness**. Open it from the convers
 - **Connectors and Changes** — honest unavailability notices until suitable, permission-checked sources are integrated.
 
 **Not included:** full Claude Code context categories, connector/account enumeration, file change details, or Git actions.
+
+## Updates
+
+The **Versions & updates** section provides a manual **Check for updates** button. It compares this installed version with the public `main/package.json` in the GitHub repository. This check contacts GitHub only after you click; it never installs updates or reads session data.
 
 ## Get started
 

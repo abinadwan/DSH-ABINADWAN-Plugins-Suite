@@ -2,6 +2,16 @@
 
 All notable changes are documented here.
 
+## [0.3.0] — 2026-11-15
+
+### Added
+- Manual **Check for updates** panel inside the right sidebar, using the public GitHub repository version and an explicit user gesture.
+- PNG fallback artwork for Plugin Manager, while retaining the original SVG logo.
+
+### Changed
+- Improved English package display metadata and documentation for update checks and display fallbacks.
+- Preserved the existing package identifier and sidebar integration.
+
 ## Unreleased
 
 - Added user-provided Windows Desktop screenshots to the README (optimized WebP previews).

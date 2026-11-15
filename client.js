@@ -185,6 +185,94 @@ window.__ModuleLoader__.load({
       return n < 1000000 ? (n / 1000).toFixed(1).replace(/\.0$/, '') + 'k'
         : (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M'
     }
+
+    // Manual update check. No network request occurs until the button is clicked.
+    const INSTALLED_VERSION = '0.3.0'
+    const VERSION_SOURCE = 'https://raw.githubusercontent.com/abinadwan/deepseek-harness-environment-sidebar/main/package.json'
+    const PROJECT_URL = 'https://github.com/abinadwan/deepseek-harness-environment-sidebar'
+    function versionParts(version) {
+      if (typeof version !== 'string') return null
+      const found = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/.exec(version)
+      return found && [Number(found[1]), Number(found[2]), Number(found[3])].every(Number.isSafeInteger)
+        ? { numbers: [Number(found[1]), Number(found[2]), Number(found[3])], pre: found[4] || '' } : null
+    }
+    function isNewerVersion(remote, installed) {
+      const a = versionParts(remote), b = versionParts(installed)
+      if (!a || !b) return null
+      for (let i = 0; i < 3; i++) {
+        if (a.numbers[i] !== b.numbers[i]) return a.numbers[i] > b.numbers[i]
+      }
+      if (!a.pre && b.pre) return true
+      if (a.pre && !b.pre) return false
+      if (a.pre && b.pre) {
+        const aa = a.pre.split('.'), bb = b.pre.split('.')
+        for (let i = 0; i < Math.max(aa.length, bb.length); i++) {
+          if (aa[i] === undefined) return false
+          if (bb[i] === undefined) return true
+          if (aa[i] === bb[i]) continue
+          const an = /^\d+$/.test(aa[i]), bn = /^\d+$/.test(bb[i])
+          if (an && bn) return Number(aa[i]) > Number(bb[i])
+          if (an !== bn) return !an
+          return aa[i] > bb[i]
+        }
+      }
+      return false
+    }
+    function VersionUpdates() {
+      const [update, setUpdate] = React.useState({ phase: 'idle' })
+      async function check() {
+        if (update.phase === 'checking') return
+        setUpdate({ phase: 'checking' })
+        try {
+          const controllerSignal = typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+            ? AbortSignal.timeout(10000) : undefined
+          const response = await fetch(VERSION_SOURCE, {
+            method: 'GET', credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer',
+            headers: { Accept: 'application/json' },
+            ...controllerSignal ? { signal: controllerSignal } : {},
+          })
+          if (!response.ok) throw new Error('GitHub returned HTTP ' + response.status)
+          const remote = await response.json()
+          if (remote?.name !== '@abinadwan/environment-sidebar') {
+            throw new Error('Unexpected package identity in GitHub response')
+          }
+          const newer = isNewerVersion(remote.version, INSTALLED_VERSION)
+          if (newer === null) throw new Error('Invalid repository version')
+          setUpdate({ phase: newer ? 'available' : 'current', latest: remote.version,
+            checked: new Date().toLocaleTimeString() })
+        } catch (error) {
+          setUpdate({ phase: 'error', message: String(error?.message || error) })
+        }
+      }
+      const note = { fontSize: 11, opacity: .68, lineHeight: 1.7, margin: '8px 0' }
+      const buttonStyle = { border: '1px solid rgba(127,127,127,.38)',
+        borderRadius: 8, padding: '7px 10px', cursor: 'pointer',
+        color: 'inherit', background: 'rgba(127,127,127,.08)', fontSize: 12 }
+      let result = 'No update check has been performed.'
+      if (update.phase === 'checking') result = 'Checking GitHub…'
+      if (update.phase === 'available') result = 'Update available: v' + update.latest
+      if (update.phase === 'current') result = 'Up to date (repository v' + update.latest + ')'
+      if (update.phase === 'error') result = 'Could not check for updates. ' + update.message
+      return h('div', { 'data-environment-updates': '' },
+        line('Installed version', 'v' + INSTALLED_VERSION),
+        h('button', { type: 'button', 'data-check-updates': '',
+          onClick: check, disabled: update.phase === 'checking',
+          'aria-label': 'Check for plugin updates',
+          style: { ...buttonStyle, opacity: update.phase === 'checking' ? .65 : 1 } },
+          update.phase === 'checking' ? 'Checking…' : 'Check for updates'),
+        h('p', { role: 'status', 'aria-live': 'polite', style: {
+          ...note, opacity: 1, color: update.phase === 'available' ? '#58c8a0' : 'inherit' } },
+          result),
+        update.checked ? h('p', { style: note }, 'Last checked at ' + update.checked) : null,
+        update.phase === 'available'
+          ? h('p', { style: note }, 'Update manually in Plugins. Reinstall the GitHub source and restart Harness.') : null,
+        h('a', { href: PROJECT_URL, target: '_blank', rel: 'noopener noreferrer',
+          style: { fontSize: 12, color: '#69a9fc', textDecoration: 'underline' } },
+          'Source and installation guide'),
+        h('p', { style: note },
+          'Checks public GitHub only when clicked. No automatic installs. Repository branch version is not a published release.'))
+    }
+
     function Details({ sessionId, useProjection, sessions, workspaces }) {
       const pressure = useProjection('contextPressure')
       const breakdown = useProjection('contextBreakdown')
@@ -235,12 +323,13 @@ window.__ModuleLoader__.load({
         section('Outputs', outputs),
         section('Changes', [h('p', { key: 'diff', style: muted },
           'Git changes need the workspace-changes/Forge integration; no changes are invented.')]),
+        section('Versions & updates', [h(VersionUpdates, { key: 'versions' })]),
       ]
       return h('aside', { 'data-environment-right-sidebar': '',
         style: { height: '100%', overflowY: 'auto', boxSizing: 'border-box',
           padding: '6px 16px 22px', color: 'inherit', fontSize: 12, lineHeight: 1.6 } },
         ...cards,
-        h('p', { style: muted }, 'Read-only · No secret data, shell or network access.'))
+        h('p', { style: muted }, 'Read-only · Network access only when Check for updates is clicked.'))
     }
     function HeaderButton({ openInspector }) {
       return h('button', { type: 'button', onClick: openInspector,
