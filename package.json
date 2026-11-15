@@ -1,7 +1,7 @@
 {
-  "name": "@abinadwan/environment-sidebar",
-  "version": "0.3.1",
-  "description": "Inspect workspace, token usage and session activity in a native right sidebar for DeepSeek Harness.",
+  "name": "@abinadwan/dsh-plugins-suite",
+  "version": "0.4.0",
+  "description": "An open-source DeepSeek Harness plugin suite for context inspection, with future writing and personal-profile modules.",
   "private": true,
   "type": "module",
   "main": "./index.js",
@@ -11,7 +11,8 @@
     "./package.json": "./package.json",
     "./locale/*.json": "./locale/*.json",
     "./icon": "./icon.png",
-    "./icon.svg": "./icon.svg"
+    "./icon.svg": "./icon.svg",
+    "./environment-context/icon": "./icon.svg"
   },
   "files": [
     "index.js",
@@ -22,7 +23,8 @@
     "docs/DETAIL.md",
     "README.md",
     "LICENSE",
-    "icon.png"
+    "icon.png",
+    "plugins/*/README.md"
   ],
   "scripts": {
     "test": "node --test"
@@ -46,21 +48,23 @@
   "keywords": [
     "deepseek-harness",
     "dsh",
-    "dsh-plugin",
-    "environment",
+    "plugins-suite",
+    "abinadwan",
+    "saudi-avatar",
+    "environment-sidebar",
     "context-window",
     "token-usage",
-    "sidebar",
-    "session-inspector",
-    "agent-observability"
+    "ai-agents",
+    "humanizer",
+    "personal-profile"
   ],
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/abinadwan/deepseek-harness-environment-sidebar.git"
+    "url": "git+https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite.git"
   },
-  "homepage": "https://github.com/abinadwan/deepseek-harness-environment-sidebar#readme",
+  "homepage": "https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite#readme",
   "bugs": {
-    "url": "https://github.com/abinadwan/deepseek-harness-environment-sidebar/issues"
+    "url": "https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/issues"
   },
   "license": "MIT"
 }

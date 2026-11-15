@@ -1,7 +1,7 @@
 {
   "meta": {
-    "title": "Environment & Context",
-    "description": "Inspect workspace context, token usage and session activity, with a manual GitHub update check.",
+    "title": "ABINADWAN Plugins Suite",
+    "description": "A modular DeepSeek Harness toolkit. Environment & Context is available now; Humanizer and Personal Profile are planned.",
     "detail": "docs/DETAIL.md"
   }
 }

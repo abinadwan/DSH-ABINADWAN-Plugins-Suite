@@ -1,189 +1,113 @@
 <p align="center">
-  <img src="icon.svg" alt="Environment & Context icon" width="132" height="132">
+  <img src="icon.png" alt="ABINADWAN Plugins Suite — Saudi developer avatar" width="112" height="112" />
 </p>
 
-<h1 align="center">Environment & Context</h1>
+<h1 align="center">ABINADWAN Plugins Suite</h1>
+
+<p align="center">A modular, open-source toolkit for <a href="https://github.com/deepseek-ai/deepseek-harness">DeepSeek Harness</a>.<br/>
+One suite today; carefully scoped, independently documented components as the project grows.</p>
 
 <p align="center">
-  A native, read-only session inspector for <a href="https://github.com/deepseek-ai/deepseek-harness">DeepSeek Harness</a>.
-  <br>
-  Workspace state, context usage and agent activity—without leaving your conversation.
+  <a href="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/workflows/test.yml"><img alt="CI" src="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/workflows/test.yml/badge.svg"/></a>
+  <img alt="Suite 0.4.0" src="https://img.shields.io/badge/suite-0.4.0-7b2246"/>
+  <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-22c55e"/></a>
+  <img alt="Status experimental" src="https://img.shields.io/badge/status-experimental-e49b45"/>
 </p>
-
-<p align="center">
-  <a href="https://github.com/abinadwan/deepseek-harness-environment-sidebar/actions/workflows/test.yml"><img alt="CI status" src="https://github.com/abinadwan/deepseek-harness-environment-sidebar/actions/workflows/test.yml/badge.svg"></a>
-  <img alt="Version 0.3.1" src="https://img.shields.io/badge/version-0.3.1-2563eb">
-  <img alt="Experimental" src="https://img.shields.io/badge/status-experimental-e9a23b">
-  <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-22c55e"></a>
-  <img alt="DeepSeek Harness" src="https://img.shields.io/badge/DeepSeek-Harness-1e40af">
-</p>
-
-<p align="center">
-  <a href="#features">Features</a> ·
-  <a href="#screenshots">Screenshots</a> ·
-  <a href="#installation">Installation</a> ·
-  <a href="#how-it-works">How it works</a> ·
-  <a href="#troubleshooting">Troubleshooting</a> ·
-  <a href="#limitations">Limitations</a>
-</p>
-
----
 
 ## Overview
 
-**Environment & Context** adds an inspector tab to the native **right-hand sidebar** in DeepSeek Harness. It opens when a foreground conversation session is shown for the first time and can be opened again from the conversation header or the sidebar's page picker.
+**ABINADWAN Plugins Suite** is a single-install package intended to host related DeepSeek Harness plugins. It currently contains **one working component**, Environment & Context. Humanizer and Personal Profile are **future concepts, not shipped features**.
 
-It is inspired by the information architecture of modern coding-agent dashboards, but the implementation is independent. It does **not** use Claude Code internals or claim complete feature parity.
+| Plugin | Status | Purpose | Documentation |
+| --- | --- | --- | --- |
+| **Environment & Context** | **Available — implemented** | Inspect workspace, session, context pressure and output-token summaries | [Plugin details](plugins/environment-context/README.md) |
+| **Humanizer** | **Planned — not implemented** | Optional natural-language style tools and user-selected tone | [Planning notes](plugins/humanizer/README.md) |
+| **Personal Profile** | **Design pending — not implemented** | User-controlled preferences and optional personal information | [Planning notes](plugins/personal-profile/README.md) |
 
-## Features
+> The number of *Components* shown in DSH is **one** until additional modules are actually implemented. This README lists a roadmap, not installable subplugins.
 
-| Section | What it displays | Data status |
-| --- | --- | --- |
-| **Environment** | Browser platform and linked workspace names/paths | Available when the workspace is registered |
-| **Context** | Context occupancy, context capacity and available token usage | Model-reported occupancy; breakdown is estimated |
-| **Connectors** | Clear notice when a connector inventory cannot be obtained | Not yet integrated |
-| **Outputs** | Model output token total and last activity | Available if session projections report them; file list not included |
-| **Changes** | Clear notice that Git change information needs a separate integration | Not yet integrated |
+## Plugin 1 — Environment & Context
 
-**Context detail:** `contextPressure` supplies model-reported pressure/capacity when available. `contextBreakdown` supplies *heuristic* message, tool-schema and system-prompt buckets; these may not sum exactly to the pressure value and are **not** the detailed breakdown shown in Claude Code.
+**Status: Available (v0.4.0 suite)**
 
-**Privacy by design:** no telemetry, credential harvesting, local shell commands or filesystem reads. A request to public GitHub occurs **only when the user clicks Check for updates**; it does not send session content.
+The native **right-side session inspector** is the functional plugin today. It opens once when a session becomes visible and can be reopened from the conversation header.
 
-## Screenshots
+- **Environment:** browser environment and associated workspace.
+- **Context:** reported context pressure, approximate message/tool/system-token categories, and free capacity.
+- **Outputs:** reported output tokens and latest session activity.
+- **Connectors & Changes:** explicit *not available yet* notices; no invented account lists, output files, or Git changes.
+- **Versions:** manual **Check for updates** on this suite's **Plugins detail** page, not in the session inspector. No automatic installations.
 
-These screenshots show the **native right-sidebar inspector running in DeepSeek Harness Desktop on Windows**. They were supplied by a user of the plugin and optimized as WebP images for the repository.
+[Read complete Environment & Context documentation](plugins/environment-context/README.md).
 
-<table>
-  <tr>
-    <th align="center">Project workspace</th>
-    <th align="center">Conversation session</th>
-  </tr>
-  <tr>
-    <td align="center" valign="top"><a href="docs/assets/environment-project.webp"><img src="docs/assets/environment-project.webp" alt="Environment and Context sidebar showing a registered workspace, context usage, outputs, and section headings" width="260"></a></td>
-    <td align="center" valign="top"><a href="docs/assets/environment-session.webp"><img src="docs/assets/environment-session.webp" alt="Environment and Context sidebar showing context usage and output tokens in a conversation session" width="260"></a></td>
-  </tr>
-</table>
+### Screenshots
 
-> The screenshots demonstrate the current UI, including **Connectors** and **Changes** notices. Those data integrations are not yet implemented; the screenshots are not intended to imply otherwise.
+Existing screenshots below document **Environment & Context**, not the unreleased suite modules:
 
-## Checking for updates
+<p align="center">
+  <a href="docs/assets/environment-project.webp"><img src="docs/assets/environment-project.webp" alt="Environment & Context session sidebar with a workspace" width="240"/></a>
+  &nbsp;
+  <a href="docs/assets/environment-session.webp"><img src="docs/assets/environment-session.webp" alt="Environment & Context session sidebar showing context usage" width="240"/></a>
+</p>
 
-Open **Plugins → Environment & Context** and find the **Versions** section below the package's Source details. Select **Check for updates**. The plugin makes one request to `raw.githubusercontent.com` to read the public repository's `main/package.json`, verifies the package name and compares semantic version numbers with this installed plugin. No request occurs before the click; no credentials, workspace paths, session messages, or logs are sent.
+## Plugin 2 — Humanizer
 
-- **Up to date** means the `main` branch currently declares the same or an older version, **not** that a release registry has been checked.
-- **Update available** means the `main` branch declares a higher version. Update manually through Plugins and fully restart Harness.
-- **Could not check** means the request failed (including offline, CORS, CSP or rate-limit issues); it does **not** mean the plugin is current.
+**Status: Planned, not included in the current install.** A separate, optional writing-style module for clarity, tone, natural phrasing and user preferences. It is not presented as a guaranteed AI-detector bypass tool.
 
-The update button never calls Harness's installer or changes your profile. This differs from the full DSH Plugin Hub update pipeline, which uses dedicated Host services. **Only upgrade a package source after checking it.**
+Any automatic rewriting mechanism must be reviewed against actual Harness APIs before implementation.
+
+[Humanizer planning notes](plugins/humanizer/README.md).
+
+## Plugin 3 — Personal Profile
+
+**Status: Design discussion pending; no data storage has been built.** The planned module will separate automatically applied style preferences from personal information, which must be retrieved only when relevant and permitted. Sensitive fields, encryption, account isolation, permission controls, and deletion behavior will be finalized *before* coding.
+
+[Personal Profile planning notes](plugins/personal-profile/README.md).
 
 ## Installation
 
-### Desktop — GitHub source
+> This is a **new package identity**: `@abinadwan/dsh-plugins-suite`. GitHub was renamed; the old `@abinadwan/environment-sidebar` identifier is no longer the package deployed by this suite.
 
-1. Open **Plugins** in DeepSeek Harness and remove an older `@yourname/environment-sidebar` package if it is still installed.
-2. In PowerShell, install the package into the profile your Desktop app actually uses:
-
-```powershell
-dsh plugin --profile desktop add github:abinadwan/deepseek-harness-environment-sidebar
-```
-
-3. Completely restart Desktop after replacing an installed version.
-4. Open a **conversation session** (the inspector is session-scoped, so it does not appear on the global Plugins page).
-5. Look for the **Environment** tab in the right sidebar or use the button in the conversation header.
-
-To verify the profile configuration:
+On Windows PowerShell, in the profile actually used by Desktop:
 
 ```powershell
+# Only if the old Environment plugin is still installed:
+dsh plugin --profile desktop remove @abinadwan/environment-sidebar
+
+# Install the new suite:
+dsh plugin --profile desktop add github:abinadwan/DSH-ABINADWAN-Plugins-Suite
 dsh --profile desktop --dump-config
 ```
 
-To **update** an existing installation:
+Completely restart Harness, enable the suite, and open a normal conversation to see Environment & Context. The running profile must match the installation profile. You can pin an immutable commit with `#<full-commit-sha>` after the GitHub reference.
 
-```powershell
-dsh plugin --profile desktop remove @abinadwan/environment-sidebar
-dsh plugin --profile desktop add github:abinadwan/deepseek-harness-environment-sidebar
-```
+The package includes ready-to-run Host and browser scripts. It is **not** published to npm and needs no `npm run build` during installation.
 
-You can append `#<full-commit-sha>` to the GitHub reference to pin a reproducible revision. The package includes ready-to-run Host and browser files; it is **not** published to npm.
+## Updates
 
-### Install from a local clone
+Go to **Plugins → ABINADWAN Plugins Suite** and find the additional **Versions** section after the package's Source details. Select **Check for updates**. It requests the public `main/package.json` from this repository **only after your click**, compares versions, and reports the result. It never installs updates automatically. A blocked browser request produces an explicit error, not an incorrect *Up to date* report.
 
-```powershell
-git clone https://github.com/abinadwan/deepseek-harness-environment-sidebar.git
-dsh plugin --profile desktop add "./deepseek-harness-environment-sidebar"
-```
+## Architecture and scope
 
-Run the second command from the parent directory of the cloned repository.
+- **Suite identity:** `@abinadwan/dsh-plugins-suite`, icon, localized package metadata, MIT license, documentation, manual update check.
+- **Shipped component:** Environment & Context, using the native right sidebar.
+- **Future modules:** Humanizer and Personal Profile will not be activated or exposed until designed and tested.
+- **Expansion approach:** Add separate Host subpath entries for independently toggleable components when ready. The current root Client module owns the existing sidebar; additional component scopes and permissions must be tested before enabling them.
 
-## How it works
-
-The plugin uses DeepSeek Harness extension points rather than modifying application source:
-
-- `ctx.sidebarRightTabs.register(...)` creates a native right-sidebar page type.
-- `sidebar.right.pane.tab` renders the session-specific inspector.
-- `conversation.session.header.utilities` registers an entry point to reopen the inspector.
-- `ctx.sidebarRight.mounted` identifies the visible session; the inspector opens once per session.
-- `sessions.list` and `workspaces.list` provide session/workspace summaries.
-- `useProjection('contextPressure' | 'contextBreakdown' | 'tokenUsage')` provides available token information.
-
-The Host entry is intentionally minimal. `client.js` is a shipped browser module and does not require an install-time build step. The canonical artwork is [`icon.svg`](icon.svg); the plugin manifest uses a rasterized [`icon.png`](icon.png) fallback to improve compatibility with image decoders.
-
-## Compatibility and testing
-
-| Check | Status |
-| --- | --- |
-| Source manifest, Host entry and browser module tests | Covered by GitHub Actions |
-| Native tab and header-action registration smoke tests | Covered by GitHub Actions |
-| Safety-oriented static checks | Covered by GitHub Actions |
-| Real Desktop UI rendering on Windows | User-provided screenshots; not independently verified across versions |
-| Exact compatibility across DSH releases | **Not established** |
-
-Current release: **v0.3.1 (experimental)**. The extension follows the documented right-sidebar/Client-module patterns of contemporary DeepSeek Harness builds, but its functionality still depends on the version and profile installed on the user's machine.
+Source: `client.js`, `index.js`, `cordis.patch.yml`, `locale/en.json`.
 
 ```bash
 npm test
 ```
 
-## Troubleshooting
+CI covers source identity, module registration and update-check behavior; **it does not prove integration on every Harness Desktop release**.
 
-**Plugin installed, but no sidebar appears**
+## Privacy & security
 
-- Check **Plugins → Environment & context** and verify both bundle and component are enabled and the component is **Running**.
-- Check that Desktop and the installation command use the **same profile**. `desktop` and `web` are separate.
-- Open an actual conversation **Session**; global pages do not mount the session sidebar.
-- Restart Desktop fully after replacing a package.
-- Inspect Developer Tools for `client.js` loader errors, failed dependency injection, or missing slot registrations.
+Environment & Context reads available UI/session summaries and does not intentionally run shell commands, inspect private files or collect credentials. Only the manual update check contacts GitHub, without sending messages or personal data. Planned Personal Profile functionality has **no storage or access permissions in this version**. See [Security](SECURITY.md).
 
-**Context values show “Unavailable” or a dash**
+## License & attribution
 
-The active model may not have reported a context window or usage yet, or the relevant projection may not be available in the running DSH version. Missing data is never synthesized.
+MIT License — see [LICENSE](LICENSE).
 
-**Package card still shows a generic icon or technical package name**
-
-The package-level artwork/title and the component-row artwork/title are resolved independently by Harness. This repository provides `package.json.icon`, `./icon`, `./package.json` and exported `locale/en.json` as documented. Reinstall this release, restart the *running* Desktop profile, and reopen Plugins. If the package header still falls back while the component row is correct, check Host metadata diagnostics and report the DSH version: the package-level rendering is owned by Harness and cannot be forced by a plugin without patching Harness itself.
-
-**The older left-navigation page is still visible**
-
-Uninstall the prior `@yourname/environment-sidebar` build separately. v0.2.x uses the right-hand sidebar.
-
-Please open a [bug report](https://github.com/abinadwan/deepseek-harness-environment-sidebar/issues) with your DSH version, profile, the component status and relevant console error (remove any secrets first).
-
-## Limitations
-
-This is **not** a full Claude Code sidebar replica. At present it does not provide separate MCP tool, skill and custom-agent token counts; connector inventories; output-file browsing; Git change summaries; PR actions; or a compact-session button. Those features require explicit, permission-checked integrations and should not be inferred from unrelated state.
-
-## Project information
-
-- **Package:** `@abinadwan/environment-sidebar`
-- **Current version:** `0.3.1`
-- **Distribution:** GitHub source (not npm)
-- **Logo:** original [SVG icon](icon.svg) with [brand notes](docs/BRANDING.md)
-- **Security:** [SECURITY.md](SECURITY.md)
-- **Contribution guide:** [CONTRIBUTING.md](CONTRIBUTING.md)
-- **Changelog:** [CHANGELOG.md](CHANGELOG.md)
-
-### License and attribution
-
-This project is open source under the [MIT License](LICENSE). You may use, modify and redistribute the code under its terms, retaining the copyright and license notice.
-
-DeepSeek Harness and Claude Code are trademarks/products of their respective owners. This is an **unofficial community extension** and is not affiliated with, sponsored by or endorsed by DeepSeek, Anthropic or OpenAI. No proprietary source code was copied from those products. Extension contracts are based on the [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness) public documentation.
+This independent community project is not affiliated with or endorsed by DeepSeek or Anthropic. DeepSeek Harness and Claude Code remain trademarks of their respective owners. The plugin implementation uses public DeepSeek Harness extension contracts; no proprietary source was copied.

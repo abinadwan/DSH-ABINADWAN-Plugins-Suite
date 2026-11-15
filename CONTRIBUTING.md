@@ -1,6 +1,10 @@
 # Contributing
 
-Thanks for considering improvements to Environment & Context.
+Thanks for considering improvements to ABINADWAN Plugins Suite.
+
+## Scope
+
+Keep changes scoped to one named module. Environment & Context is implemented; Humanizer and Personal Profile are roadmap items and should not be portrayed as available without code and tests.
 
 ## Before proposing a change
 

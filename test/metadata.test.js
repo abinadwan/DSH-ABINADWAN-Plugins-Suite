@@ -9,9 +9,11 @@ test('English metadata is exported for Plugin Manager', () => {
   assert.equal(p.exports['./package.json'], './package.json')
   assert.equal(p.exports['./icon'], './icon.png')
   assert.equal(p.exports['./locale/*.json'], './locale/*.json')
-  assert.match(locale.meta.title, /Environment/)
+  assert.equal(locale.meta.title, 'ABINADWAN Plugins Suite')
   assert.equal(locale.meta.detail, 'docs/DETAIL.md')
   for (const f of ['icon.svg', 'locale/en.json', 'docs/DETAIL.md']) assert.ok(read(f).length > 0)
+  assert.equal(p.name, '@abinadwan/dsh-plugins-suite')
+  assert.equal(p.repository.url, 'git+https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite.git')
 })
 test('packaged artwork stays self-contained and within size limits', () => {
   const icon = read('icon.svg')

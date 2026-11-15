@@ -1,10 +1,10 @@
 /**
- * Browser half of @abinadwan/environment-sidebar.
+ * Browser half of @abinadwan/dsh-plugins-suite.
  * Uses DSH's documented lazy-CJS module registration and Slot API.
  * No build step, external network requests, environment-variable access or DOM injection.
  */
 window.__ModuleLoader__.load({
-  id: '@abinadwan/environment-sidebar',
+  id: '@abinadwan/dsh-plugins-suite',
   factory(require) {
     const React = require('react')
     const h = React.createElement
@@ -161,7 +161,7 @@ window.__ModuleLoader__.load({
     }
 
 
-    const TYPE = '@abinadwan/environment-sidebar'
+    const TYPE = '@abinadwan/dsh-plugins-suite'
     const KIND = 'environment-dashboard'
     const muted = { fontSize: 11, opacity: 0.7, lineHeight: 1.6 }
     function line(label, value) {
@@ -187,9 +187,9 @@ window.__ModuleLoader__.load({
     }
 
     // Manual update check. No network request occurs until the button is clicked.
-    const INSTALLED_VERSION = '0.3.1'
-    const VERSION_SOURCE = 'https://raw.githubusercontent.com/abinadwan/deepseek-harness-environment-sidebar/main/package.json'
-    const PROJECT_URL = 'https://github.com/abinadwan/deepseek-harness-environment-sidebar'
+    const INSTALLED_VERSION = '0.4.0'
+    const VERSION_SOURCE = 'https://raw.githubusercontent.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/main/package.json'
+    const PROJECT_URL = 'https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite'
     function versionParts(version) {
       if (typeof version !== 'string') return null
       const found = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/.exec(version)
@@ -235,7 +235,7 @@ window.__ModuleLoader__.load({
           })
           if (!response.ok) throw new Error('GitHub returned HTTP ' + response.status)
           const remote = await response.json()
-          if (remote?.name !== '@abinadwan/environment-sidebar') {
+          if (remote?.name !== '@abinadwan/dsh-plugins-suite') {
             throw new Error('Unexpected package identity in GitHub response')
           }
           const newer = isNewerVersion(remote.version, currentVersion)

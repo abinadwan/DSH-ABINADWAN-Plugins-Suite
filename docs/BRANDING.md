@@ -1,17 +1,13 @@
-# Visual identity
+# ABINADWAN Plugins Suite — Brand Guidelines
 
-The icon depicts three diagnostics rows, a segmented context-usage meter, and a luminous right sidebar. These elements communicate the product's actual purpose without copying third-party logos or mascots.
+The approved identity is **avatar concept #4**: a cheerful Saudi character, white thobe, red-and-white shemagh and black agal, smiling at a laptop with playful plugin/technology symbols on a burgundy background.
 
-| Token | Color | Usage |
-| --- | --- | --- |
-| Midnight | `#071326` | Base field |
-| Navy | `#172A4A` | Surface gradient |
-| Electric blue | `#2379F7` | Right sidebar |
-| Cyan | `#10DBC7` | Live status |
-| Amber | `#E7AA3E` | Usage accent |
+- **Brand:** ABINADWAN Plugins Suite
+- **Product tone:** approachable and professional, for developers and AI-agent users
+- **Primary palette:** burgundy, cream, dark plum and bright pink highlights
+- **Package icon:** `/icon.png` — raster icon derived directly from approved concept #4, downscaled for the small icon size in Plugin Manager
+- **Component artwork:** `/icon.svg` is the previous Environment & Context diagnostic-dashboard vector, retained for that individual plugin (not the suite brand).
 
-The definitive source is [`/icon.svg`](../icon.svg); it uses only internal vectors, gradients and strokes (no fonts, remotely loaded assets or scripts). Keep clear space around the rounded-square mark; prefer displaying at 64–160 px in GitHub documentation, or 36 px for plugin artwork.
+The approved image is AI-generated for this project. The distributed icon is a compact app-sized derivative of that approved image; a higher-resolution illustration may be added later as a separate marketing asset.
 
-The generated concept image is a design reference; the distributed vector logo is the canonical asset. Do not add third-party product wordmarks, and do not suggest official DeepSeek or Claude Code affiliation.
-
-The original vector is preserved as `icon.svg`; `icon.png` is a 160×160 rasterized fallback used by the package-level `icon` and `./icon` exports to improve image rendering compatibility. Both share the same design.
+The screenshot files under `docs/assets` show Environment & Context only. Future plugins should have their own icons and screenshots when implemented, while sharing the suite-level brand.

@@ -5,7 +5,7 @@ import { runInNewContext } from 'node:vm'
 
 const code = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
-const EXPECTED_URL = 'https://raw.githubusercontent.com/abinadwan/deepseek-harness-environment-sidebar/main/package.json'
+const EXPECTED_URL = 'https://raw.githubusercontent.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/main/package.json'
 
 function walk(node, predicate) {
   if (node == null || typeof node !== 'object') return null

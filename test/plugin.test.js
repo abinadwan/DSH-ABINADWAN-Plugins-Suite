@@ -5,7 +5,8 @@ import {runInNewContext} from 'node:vm'
 const get=name=>readFileSync(new URL('../'+name,import.meta.url),'utf8')
 const pkg=JSON.parse(get('package.json'))
 test('bundle and Host exports',async()=>{
-  assert.equal(pkg.version,'0.3.1')
+  assert.equal(pkg.version,'0.4.0')
+  assert.equal(pkg.name,'@abinadwan/dsh-plugins-suite')
   assert.equal(pkg.dsh.client.platform,'web')
   assert.equal(pkg.dsh.bundle.patch,'./cordis.patch.yml')
   assert.equal((await import('../index.js')).apply(),undefined)

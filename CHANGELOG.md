@@ -2,48 +2,16 @@
 
 All notable changes are documented here.
 
-## [0.3.1] — 2026-11-15
-
-### Fixed
-- Relocated **Check for updates** from the conversation sidebar to the plugin's own **Plugins detail** page, using the official `plugins.detail.section` slot.
-- Matched the native Versions section pattern with a manual check control and explicit last-check status.
-- Restricted the update control to this bundle's detail page; it does not appear on unrelated plugins.
-- No changes to the Environment / Context / Connectors / Outputs / Changes sidebar panels.
-
-
-## [0.3.0] — 2026-11-15
-
-### Added
-- Manual **Check for updates** panel inside the right sidebar, using the public GitHub repository version and an explicit user gesture.
-- PNG fallback artwork for Plugin Manager, while retaining the original SVG logo.
+## [0.4.0] — 2026-11-16
 
 ### Changed
-- Improved English package display metadata and documentation for update checks and display fallbacks.
-- Preserved the existing package identifier and sidebar integration.
+- Renamed the package identity to `@abinadwan/dsh-plugins-suite` under the renamed GitHub repository.
+- Adopted the **ABINADWAN Plugins Suite** name and approved Saudi developer avatar (#4) as package artwork.
+- Updated package metadata, public GitHub URLs, installation instructions and in-app manual version-check endpoint.
+- Reorganized documentation by plugin: Environment & Context (available), Humanizer (planned), Personal Profile (design pending).
+- Preserved the working Environment & Context sidebar implementation; planned modules do not run.
+- The root bundle still has one running component. No Personal Profile storage exists.
 
-## Unreleased
+## Previous Environment & Context development (legacy package)
 
-- Added user-provided Windows Desktop screenshots to the README (optimized WebP previews).
-
-- Released the project under the MIT License, including package metadata and a visible README badge.
-
-## [0.2.1] — 2026-11-15
-
-### Changed
-- Added an original vector identity and plugin-manager artwork.
-- Added English display metadata and an in-app detail document.
-- Reorganized the README into usage, feature status, architecture, troubleshooting, and security sections.
-- Added project metadata, contribution guidance, security policy and brand notes.
-- No behavioral changes to the inspector runtime.
-
-## [0.2.0] — 2026-11-15
-
-### Changed
-- Moved the inspector to the native session-scoped right sidebar.
-- Added a conversation-header opener and first-session automatic opening.
-- Added context pressure/breakdown and token usage views, while clarifying unavailable integrations.
-
-## [0.1.0] — 2026-11-15
-
-### Added
-- Initial experimental plugin with Environment / Context / Outputs panel.
+Versions `0.1.0`–`0.3.1` developed the right-sidebar inspector, package artwork, MIT licensing and a manual plugin-detail update-check control under the former `@abinadwan/environment-sidebar` identity. Git history is preserved in this renamed repository.
