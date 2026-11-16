@@ -2,6 +2,18 @@
 
 All notable changes are documented here.
 
+## [0.6.0] — 2026-11-16
+
+### Added
+
+- Native left-sidebar **Personal Profile** navigation entry opening a full-page, in-memory preview with five navigable sections and Arabic/English labels.
+- Synthetic-only information, instruction, permission, backup-review and privacy-control demonstrations. No real storage, Host access or model injection.
+
+### Changed
+
+- Package and lockfile version updated to **0.6.0**; user-facing README and in-app update-check reference the new manifest version.
+- Personal Profile Host component continues disabled and inert. The browser preview is deliberately separate from production activation.
+
 ## [0.5.0] — 2026-11-16
 
 ### Added
