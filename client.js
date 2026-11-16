@@ -188,7 +188,7 @@ window.__ModuleLoader__.load({
 
     // Only stable published GitHub Releases may trigger an in-app update offer.
     // This browser-side checker never installs anything without a separate click.
-    const INSTALLED_VERSION = '0.6.0'
+    const INSTALLED_VERSION = '0.6.1'
     const RELEASE_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/latest'
     const COMMIT_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/commits/'
     const RAW_MANIFEST = 'https://raw.githubusercontent.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/'
