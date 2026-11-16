@@ -11,7 +11,9 @@ All notable changes are documented here.
 
 ### Changed
 
-- Package and lockfile version updated to **0.6.0**; user-facing README and in-app update-check reference the new manifest version.
+- Package and lockfile version updated to **0.6.0**; user-facing documentation and updater report the installed manifest version.
+- Read-only automatic checks for **published stable GitHub Releases** at launch and every 24 hours, plus manual recheck.
+- Explicit **Update now → Confirm update** flow using the native DSH Host updater only for SHA-pinned Git bundles, with release-SHA and manifest-identity validation. No silent install or automatic migration of branch-based dependencies.
 - Personal Profile Host component continues disabled and inert. The browser preview is deliberately separate from production activation.
 
 ## [0.5.0] — 2026-11-16
