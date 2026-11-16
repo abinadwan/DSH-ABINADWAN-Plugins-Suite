@@ -49,3 +49,51 @@ node --test test/personal-profile-security.test.js
 - DeepSeek Harness: [Storage subsystem](https://github.com/deepseek-ai/deepseek-harness/blob/master/docs/subsystems/storage.md), which describes ordinary storage backends but not encrypted profile storage.
 
 **Merge policy:** Do not treat this experiment as authorization to enable Personal Profile or to record personal data. A further explicit go/no-go decision is required after Windows CI plus Desktop integration checks.
+
+## Local Windows cross-process probe (opt in)
+
+The separate script `scripts/personal-profile-windows-probe.mjs` verifies Windows DPAPI use under the **actual signed-in Windows account**, without any personal profile data, API credentials, or model requests. This is an additional check beyond CI, but **not yet a DSH Host-process integration test**. It does not register a DSH plugin, and it cannot prove Host process access or Desktop permissions.
+
+### Prerequisites
+
+- Windows 10/11 with PowerShell 5.1 and Node.js 22 or 24 available in the PowerShell terminal. Running with a different Node version is unverified.
+- Work from the `security/personal-profile-windows-dpapi-spike` branch checked out in a *separate* directory; do not replace or remove the installed suite.
+- Run both commands as the **same Windows account**, preferably in the terminal you normally use alongside Desktop. No elevation is required; do not use `Run as administrator` or a different account.
+- The probe stores a temporary, synthetic DPAPI-wrapped key under `%LOCALAPPDATA%\\ABINADWAN\\personal-profile-security-probe-v1.json`; it does not touch Desktop's profile files, real keys, settings, credentials, or any user profile fields. The default output does not include the Windows username or file contents.
+
+### PowerShell instructions
+
+From a fresh terminal, clone this *test branch* into a disposable folder:
+
+```powershell
+git clone --depth 1 --single-branch --branch security/personal-profile-windows-dpapi-spike https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite.git "$env:TEMP\\abinadwan-profile-security-check"
+cd "$env:TEMP\\abinadwan-profile-security-check"
+node --version
+node scripts/personal-profile-windows-probe.mjs prepare
+```
+
+A successful preparation prints `PASS: synthetic key protected`. Now fully **Quit DeepSeek Harness Desktop from the application or tray** (closing the window may only hide it), restart it, return to the same PowerShell directory and run:
+
+```powershell
+node scripts/personal-profile-windows-probe.mjs verify
+```
+
+On success it prints `PASS` for the separate-process DPAPI restore, GCM authentication, and removal of the temporary probe file. Do **not** send the probe file or protected blob to anyone; copy only sanitized `PASS/FAIL` messages.
+
+If the verification fails or you want to cancel, delete the synthetic file using:
+
+```powershell
+node scripts/personal-profile-windows-probe.mjs cleanup
+```
+
+If `prepare` says an existing probe is present, run `verify` or `cleanup` first; the script deliberately refuses to overwrite it. If `node` isn't available, stop; don't install unrelated runtimes or modify DSH solely to perform this check.
+
+### What this test does NOT prove
+
+- The script runs in the selected terminal's **Node.js process**, not the Electron RunAsNode **Host child process**. Reopening Desktop between commands proves account-bound persistence across time, **not actual access from inside Host**.
+- This does not verify Native Windows sleep/session-lock callbacks, reloading or revoking permissions, encryption at rest of an actual SQLite database, application update migration, or how DSH handles multiple accounts.
+- An actual Host probe and safety review are **required before making profile storage functional**. Do not copy this probe's child-process implementation directly into the production secret-handling service without code review.
+
+### Automated checks
+
+The repository also contains `test/personal-profile-desktop-probe.test.js`. Existing Windows CI runs `prepare` and `verify` as different Node processes with an isolated random directory, confirms the stored canary is encrypted, rejects record tampering and duplicate preparation, and verifies cleanup. Linux CI tests that the Windows-only entrypoint fails closed.
