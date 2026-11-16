@@ -68,11 +68,15 @@ export async function clientHarness(options = {}) {
   const access = new Access(ctx)
   const events = new Map()
   const timers = new Map()
+  const intervals = new Map()
   const mountedListeners = new Set()
-  let rows = activeRows(), timerId = 0, opened = 0, loaded
+  let rows = activeRows(), timerId = 0, intervalId = 0, opened = 0, loaded
   let inventory = options.inventory || (() => Promise.resolve(rows))
   const remote = {
-    pluginManager: { listPlugins: () => inventory() },
+    pluginManager: { listPlugins: () => inventory(),
+      listBundles: options.listBundles || (() => Promise.resolve([])),
+      updateBundle: options.updateBundle || (() => { throw new Error('Unexpected update operation') }),
+    },
     $on(name, callback) {
       events.set(name, callback)
       return () => events.delete(name)
@@ -95,7 +99,9 @@ export async function clientHarness(options = {}) {
   runInNewContext(readFileSync(new URL('../client.js', import.meta.url), 'utf8'), {
     window: { __ModuleLoader__: { load: mod => { loaded = mod } } },
     setTimeout: callback => { timers.set(++timerId, callback); return timerId },
-    clearTimeout: id => timers.delete(id), console,
+    clearTimeout: id => timers.delete(id),
+    setInterval: (callback, ms) => { intervals.set(++intervalId,{callback,ms}); return intervalId },
+    clearInterval: id => intervals.delete(id), console,
     fetch: options.fetch || (() => { throw new Error('unexpected network request') }),
     AbortSignal,
   })
@@ -107,7 +113,7 @@ export async function clientHarness(options = {}) {
   await fiber.await()
   await tick()
   return {
-    ctx, fiber, access, slots, tabs, events, timers, mountedListeners,
+    ctx, fiber, access, slots, tabs, events, timers, intervals, mountedListeners,
     loaded, get opened() { return opened },
     slot(name) { return [...slots.records.values()].find(record => record.options.name === name)?.component },
     rows: () => rows,
