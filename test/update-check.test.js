@@ -66,7 +66,7 @@ test('manual update checks report request and metadata errors, and compare prere
     ['wrong identity', async () => ({ ok: true, json: async () => ({ name: 'other', version: '9.0.0' }) }), 'error'],
     ['invalid version', async () => ({ ok: true, json: async () => ({ name: pkg.name, version: 'invalid' }) }), 'error'],
     ['current version', async () => ({ ok: true, json: async () => ({ name: pkg.name, version: pkg.version }) }), 'current'],
-    ['new prerelease', async () => ({ ok: true, json: async () => ({ name: pkg.name, version: '0.6.0-rc.1' }) }), 'available'],
+    ['new prerelease', async () => ({ ok: true, json: async () => ({ name: pkg.name, version: '0.7.0-rc.1' }) }), 'available'],
   ]) {
     await t.test(label, async () => {
       const transitions = []
