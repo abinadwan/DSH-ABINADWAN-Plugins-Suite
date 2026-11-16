@@ -1,6 +1,6 @@
 # Personal Profile
 
-**Phase 2 internal consent engine; read-only Host draft, disabled by default. The full feature is not ready.**
+**Phase 3 internal instruction management; read-only Host draft, disabled by default. The full feature is not ready.**
 
 <img src="icon.png" width="96" alt="Amber Personal Profile ID and gear"/>
 
@@ -42,3 +42,9 @@ the Host has no Config schema or injected service and renders no entry/save
 controls.
 
 [Suite overview](../../README.md)
+
+Phase 3 adds trusted internal instruction editing and preview using the same Master
+Profile and registered Profile handles. Absent overrides inherit global text;
+explicitly empty overrides suppress it. Optional original style suggestions never
+activate automatically. No instruction text reaches readers, Host, UI or models.
+See [Phase 3 model, precedence, identity and future security gates](../../docs/PERSONAL_PROFILE_PHASE3.md).

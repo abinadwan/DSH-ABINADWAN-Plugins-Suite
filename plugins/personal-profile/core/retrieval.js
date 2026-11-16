@@ -1,3 +1,5 @@
+import { assertDistinctProfileName } from './profile-identity.js'
+import { createInstructionManagement } from './instructions.js'
 import { LIMITS } from './limits.js'
 import { createMasterProfile } from './model.js'
 import { boolean, invalid, validateCustomDefinition, validateValue } from './schema.js'
@@ -37,6 +39,11 @@ export function createProfileAccess(input) {
   })
   return {
     core,
+    registerProfileEnvironment(environment) {
+      assertDistinctProfileName([...policies.keys(), ...profile.instructions.environments.keys()], environment)
+      core.addEnvironment(environment)
+    },
+    instructionManagement(environmentFor) { return createInstructionManagement(profile, environmentFor) },
     readApprovedField(environment, field) {
       const decision = evaluatePermission(profile, policies, environment, field)
       if (decision === 'private' || !profile.values.has(field)) return { status: 'denied' }
