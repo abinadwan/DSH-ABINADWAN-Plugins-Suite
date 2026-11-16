@@ -17,19 +17,26 @@ function psSource(operation) {
   // The operation is allowlisted; no caller-provided code is interpolated.
   return `
 $ErrorActionPreference = 'Stop'
+$stage = 'read'
 try {
   $encoded = [Console]::In.ReadLine()
   if ([string]::IsNullOrWhiteSpace($encoded)) { throw 'Missing input' }
+  $stage = 'decode'
   $data = [Convert]::FromBase64String($encoded)
   $scope = [System.Security.Cryptography.DataProtectionScope]::CurrentUser
   if ('${operation}' -eq 'protect') {
+    $stage = 'protect'
     $result = [System.Security.Cryptography.ProtectedData]::Protect($data, $null, $scope)
   } else {
+    $stage = 'unprotect'
     $result = [System.Security.Cryptography.ProtectedData]::Unprotect($data, $null, $scope)
   }
+  $stage = 'write'
   [Console]::Out.WriteLine([Convert]::ToBase64String($result))
 } catch {
-  [Console]::Error.WriteLine('DPAPI operation failed')
+  $exceptionType = $_.Exception.GetType().Name
+  $innerType = if ($_.Exception.InnerException) { $_.Exception.InnerException.GetType().Name } else { 'none' }
+  [Console]::Error.WriteLine('DPAPI_FAILURE:' + $stage + ':' + $exceptionType + ':' + $innerType)
   exit 1
 }
 `
@@ -48,6 +55,7 @@ function runDpapi(operation, bytes) {
       shell: false,
     })
     let stdout = ''
+    let failureCode = 'unknown'
     let outputBytes = 0
     let settled = false
     const settle = (error, value) => {
@@ -71,11 +79,15 @@ function runDpapi(operation, bytes) {
         stdout += chunk.toString('utf8')
       }
     })
-    // Deliberately do not include stderr in thrown errors: it could contain secrets.
-    proc.stderr.resume()
+    // Only allowlisted phase and exception *class names* are surfaced for diagnosis.
+    // Exception messages and stderr content are never logged or returned.
+    proc.stderr.on('data', chunk => {
+      const match = chunk.toString('utf8').match(/DPAPI_FAILURE:(read|decode|protect|unprotect|write):([A-Za-z]+):([A-Za-z]+)/)
+      if (match) failureCode = match[1] + '/' + match[2] + '/' + match[3]
+    })
     proc.on('close', code => {
       if (settled) return
-      if (code !== 0) return settle(new DpapiUnavailableError('DPAPI operation failed'))
+      if (code !== 0) return settle(new DpapiUnavailableError('DPAPI operation failed: ' + failureCode))
       const encoded = stdout.trim()
       if (!/^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/.test(encoded)) {
         return settle(new DpapiUnavailableError('Invalid DPAPI response'))
