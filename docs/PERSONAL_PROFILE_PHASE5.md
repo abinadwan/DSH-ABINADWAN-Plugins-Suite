@@ -193,7 +193,7 @@ filesystem tests do not establish these production guarantees. Stop for security
 
 ## Verification evidence
 
-Local Linux Node 24: `npm test` and `npm run check:package` each pass 118 tests,
+Initial Phase 5 Linux Node 24: `npm test` and `npm run check:package` each passed 118 tests,
 including 20 Phase 5 tests and all 98 Phase 1–4/suite regressions. Coverage includes
 AEAD roundtrips/nonces/tampering, wrong/unavailable keys, schema/size bounds,
 portable backup passwords/versions/KDF bounds, filesystem attacks, killed writes,
@@ -205,3 +205,85 @@ Independent read-only review identified four defects fixed before submission:
 precommit lock cancellation, postcommit capability invalidation, exact reviewed-byte
 revision binding and cleanup of both derived-key copies. Mandatory manual review
 and Windows tests above remain outstanding.
+
+
+## Security review fix: bounded access leases and restore reviews
+
+`access(id)` now returns a trusted access **lease** containing `host`, `reader` and
+`dispose()`. Maximum **16 simultaneous leases per storage instance**. The Host must
+call `dispose()` as soon as its operation/view ends. Disposal clears Phase 2 grants
+and approvals, removes the lease from the registry and nulls its engine reference.
+Every method, including detached instruction/reader/Host methods and `dispose()`
+itself, rejects after disposal with the generic storage error. The wrappers retain
+only a revocable cell and method path, never raw engine methods. Keeping a disposed
+wrapper alive therefore does not keep its engine/decrypted values alive. Tests
+exercise collection of an engine-owned value while wrappers remain reachable;
+this proves reference release, not memory zeroization. Leases require explicit
+Host disposal; dropped, undisposed handles still consume a bounded slot until
+lock/mutation. No garbage-collector finalizer is relied upon for authorization.
+
+Lock, successful save, merge/replace and recovery revoke **all** leases and clear
+all reviews, even across identities in that storage instance. Old leases cannot
+resume after unlock. Revoked/disposed methods reject before updating activity, so
+they cannot keep keys unlocked by extending the inactivity deadline. Failed precommit writes preserve the prior record and existing
+leases; committed-but-not-durable outcomes revoke leases just like durable commits.
+`recover(id)` now returns the same `{committed, durable, cleanupComplete}` outcome
+as save/apply, preserving Windows and postcommit uncertainty semantics.
+
+At most **16 active reviews** are retained in an explicit bounded registry.
+Every review expires **60,000 monotonic milliseconds** after creation; activity,
+failed confirmation and attempted application do not extend that deadline.
+`cancelReview(handle)` immediately drops the validated imported payload and frees
+its slot. Cancelled, expired, stale, forged, cross-instance and already-applied
+handles fail generically; stale detection also drops the retained payload.
+Successful application or any storage mutation/lock clears every retained payload.
+Capacity checks run before decrypting/validating another review.
+
+One unref'ed timer per instance clears expired payloads even if no subsequent
+storage call occurs. The callback captures no review record, does not log, does
+not refresh inactivity and reschedules only while active reviews remain. Deadlines
+are checked on operations **and immediately before each commit**, independent of
+timer delivery. Throwing, backward or nonfinite clocks fail closed and clear keys,
+leases and reviews. Event-loop suspension delays physical cleanup until execution
+resumes; expiry can never authorize an application after its deadline. These are
+trusted in-process resource bounds, not a worker/process-wide memory quota.
+Real Host inactivity/authentication/lifecycle integration remains disabled/deferred.
+
+### Permanent permission persistence: prerequisite for Phase 6
+
+**Permanent per-field/per-Profile permissions are NOT persisted in Phase 5.**
+`host.setPermission()` changes only a disposable in-memory consent engine. Closing
+a lease or reloading a record loses those policy choices; every new engine starts
+PRIVATE. A local record may store the existing master opt-in Boolean, but this does
+not persist or grant any per-field authority. Imports/recovery always reset opt-in
+OFF. The current schema intentionally rejects policy/session/approval extensions.
+
+Before Phase 6 activation, separately review a versioned policy schema using the
+existing permission model and trusted canonical Profile identities. Policy metadata
+must authenticate the storage identity, canonical Profile, field definition and
+schema version, and must commit atomically with the associated profile/definition
+changes under the same exclusive transaction. Keys remain OS-protected and separate.
+Missing, ambiguous, unknown or unmigratable identities/fields/policies must default
+PRIVATE/fail closed; old records migrate without inventing permissions. Permission
+revocation must invalidate capabilities immediately and persist before a later
+lease can authorize; commit/durability uncertainty needs explicit Host reconciliation,
+not stale-policy fallback. Bound all policy maps and reject unknown states.
+
+Backups/imports must continue resetting opt-in OFF and every imported policy PRIVATE,
+regardless of any future local permission format. Never persist or restore session
+grants, pending approvals, bearer capabilities, leases or authenticated sessions.
+No persisted instruction text confers model-injection authority. Reviewed Host user
+authentication, user confirmation, canonical identity resolution, secure migrations,
+rollback/downgrade handling and Windows lifecycle tests are mandatory before enabling
+these policies. This fix implements none of that production storage/authentication.
+
+
+Fix verification: Linux Node 24 source/package suites each pass **127 tests**
+(29 Phase 5 tests plus 98 prior regressions). New coverage includes capacity and
+slot reuse, disposal/use-after-dispose, retained-method engine collection,
+review cancellation/replay/expiry, timer-driven clock-fault cleanup, expiration at
+commit, all mutation/lock invalidations, recovery outcomes and byte-for-byte
+ciphertext integrity. An independent focused review found that rejected disposed
+methods could refresh inactivity; a failing regression reproduced this and the
+validation order was corrected. Windows/Linux Node 22/24 results are reported in
+Draft PR #7; one POSIX directory-fsync test is intentionally skipped on Windows.

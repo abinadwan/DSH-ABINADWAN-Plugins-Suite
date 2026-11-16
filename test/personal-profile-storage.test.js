@@ -14,6 +14,7 @@ function setup(t, options = {}) {
   const root = mkdtempSync(join(tmpdir(), 'profile-storage-'))
   t.after(() => rmSync(root, {recursive: true, force: true}))
   const s = syntheticStorage(root, options)
+  t.after(() => s.lock())
   s.unlock()
   return { s, root }
 }
@@ -298,4 +299,174 @@ test('locking invalidates pending approval handles and provider-owned key bytes 
   assert.equal(released, 1)
   assert.throws(() => host.decide(pending.approval, 'allow_once'))
   assert.throws(() => reader.consumeApproval(session, pending.approval))
+})
+
+test('access leases have a hard capacity, explicit disposal and immediate slot reclamation', t => {
+  const {s} = setup(t)
+  s.save('syntheticA', fixture)
+  const leases = Array.from({length: 16}, () => s.access('syntheticA'))
+  assert.throws(() => s.access('syntheticA'), /^Error: Profile storage operation failed$/)
+  const disposed = leases[0]
+  const retainedMethod = disposed.host.registerCaller
+  disposed.dispose()
+  assert.throws(() => retainedMethod())
+  assert.throws(() => disposed.dispose())
+  assert.throws(() => disposed.host.instructions.reset())
+  assert.throws(() => disposed.reader.requestField({}, 'preferredName', {}))
+  const replacement = s.access('syntheticA')
+  for (let i = 0; i < 100; i++) {
+    replacement.host.registerCaller() // retained lease remains functional
+    const transient = leases[1]
+    if (i === 0) transient.dispose()
+    s.access('syntheticA').dispose()
+  }
+  assert.equal(s.load('syntheticA').fields.preferredName, fixture.fields.preferredName)
+  s.lock(); s.unlock()
+  assert.throws(() => retainedMethod())
+  assert.throws(() => replacement.host.registerCaller())
+})
+test('reviews are bounded, expire at a fixed monotonic deadline and cancellation reclaims capacity', t => {
+  let time = 0
+  const {s} = setup(t, {now: () => time})
+  const reviews = Array.from({length: 16}, () => s.review('syntheticA', fixture))
+  assert.throws(() => s.review('syntheticA', fixture))
+  s.cancelReview(reviews[0])
+  assert.throws(() => s.apply(reviews[0]))
+  assert.throws(() => s.cancelReview(reviews[0]))
+  const later = s.review('syntheticA', fixture)
+  time = 59999
+  assert.throws(() => s.review('syntheticA', fixture)) // access never extends deadline
+  time = 60000
+  for (const r of [...reviews, later]) assert.throws(() => s.apply(r))
+  for (let i = 0; i < 100; i++) s.cancelReview(s.review('syntheticA', fixture))
+  const active = s.review('syntheticA', fixture)
+  s.apply(active)
+  assert.throws(() => s.apply(active))
+})
+test('reviews cannot cross instances or survive clock failure, lock, save or restore', t => {
+  let time = 0
+  const {s} = setup(t, {now: () => time})
+  const {s: second} = setup(t, {now: () => time})
+  s.save('syntheticA', fixture)
+  const cross = s.review('syntheticA', fixture)
+  assert.throws(() => second.apply(cross))
+  assert.throws(() => second.cancelReview(cross))
+  s.lock(); s.unlock()
+  assert.throws(() => s.apply(cross))
+  const saved = s.review('syntheticA', fixture)
+  s.save('syntheticA', fixture)
+  assert.throws(() => s.apply(saved))
+  const stale = s.review('syntheticA', fixture)
+  const replacement = s.review('syntheticA', {fields: {preferredName: 'replacement'}}, 'replace')
+  s.apply(replacement, {confirmReplace: true})
+  assert.throws(() => s.apply(stale))
+  const recovered = s.review('syntheticA', fixture)
+  s.recover('syntheticA')
+  assert.throws(() => s.apply(recovered))
+  const badClock = s.review('syntheticA', fixture)
+  time = -1
+  assert.throws(() => s.apply(badClock))
+  assert.equal(s.locked, true)
+  time = 0; s.unlock()
+  assert.throws(() => s.apply(badClock))
+})
+test('save, replace and recovery revoke all leases and consistently return commit outcomes', t => {
+  const {s} = setup(t)
+  s.save('syntheticA', fixture)
+  const assertRevoked = lease => {
+    assert.throws(() => lease.host.registerCaller())
+    assert.throws(() => lease.host.instructions.reset())
+    assert.throws(() => lease.reader.consumeApproval({}, {}))
+    assert.throws(() => lease.dispose())
+  }
+  const beforeSave = s.access('syntheticA')
+  s.save('syntheticA', fixture); assertRevoked(beforeSave)
+  const beforeReplace = s.access('syntheticA')
+  const r = s.review('syntheticA', {fields: {preferredName: 'replacement'}}, 'replace')
+  const replaced = s.apply(r, {confirmReplace: true})
+  assertRevoked(beforeReplace)
+  const beforeRecover = s.access('syntheticA')
+  const recovered = s.recover('syntheticA')
+  assertRevoked(beforeRecover)
+  for (const outcome of [replaced, recovered]) {
+    assert.equal(outcome.committed, true)
+    assert.equal(typeof outcome.durable, 'boolean')
+    assert.equal(outcome.cleanupComplete, true)
+  }
+  assert.equal(s.load('syntheticA').fields.preferredName, fixture.fields.preferredName)
+  assert.equal(s.load('syntheticA').allowAgentUseApprovedProfileInformation, false)
+})
+
+test('disposed leases release decrypted engine values even while detached methods stay reachable', async t => {
+  const {spawnSync} = await import('node:child_process')
+  const {root} = setup(t)
+  const module = new URL('../test-support/personal-profile-storage.js', import.meta.url).href
+  const script = `import assert from 'node:assert/strict';
+    import {setImmediate} from 'node:timers/promises';
+    import {syntheticStorage} from ${JSON.stringify(module)};
+    const s=syntheticStorage(process.argv[1]);s.unlock();
+    s.save('syntheticA',{fields:{gender:{kind:'custom',customValue:'synthetic'}}});
+    const lease=s.access('syntheticA'),h=lease.host;
+    const p=h.registerProfile({name:'synthetic',canonicalId:'synthetic'});
+    h.setOptIn(true);h.setPermission(p,'gender','allow');
+    const session=h.startSession(h.registerCaller(),p),scope=h.registerScope({operation:'read_field',purpose:'synthetic'});
+    let result=lease.reader.requestField(session,'gender',scope);
+    const weak=new WeakRef(result.value);result=null;
+    const held=lease.reader.requestField;lease.dispose();
+    for(let i=0;i<32;i++){await setImmediate();global.gc();if(!weak.deref())break;}
+    assert.equal(weak.deref(),undefined,'disposed engine still retains decrypted value');
+    assert.throws(()=>held(session,'gender',scope));assert.throws(()=>lease.host.instructions.reset());
+    s.lock();`
+  const result = spawnSync(process.execPath, ['--expose-gc', '--input-type=module', '-e', script, root], {timeout: 15000, encoding: 'utf8'})
+  assert.equal(result.status, 0, result.stderr)
+})
+test('review expiry timer runs without an access operation and fails closed on clock faults', t => {
+  t.mock.timers.enable({apis: ['setTimeout']})
+  let time = 0
+  const {s} = setup(t, {now: () => time})
+  s.review('syntheticA', fixture)
+  time = -1
+  t.mock.timers.tick(60000)
+  assert.equal(s.locked, true)
+})
+
+test('a review expiring at the precommit boundary cannot change the record', t => {
+  let time = 0, expire = false
+  const {s, root} = setup(t, {now: () => time, beforeRename() { if (expire) time = 60000 }})
+  s.save('syntheticA', fixture)
+  const file = join(root, readdirSync(root).find(f => f.endsWith('.record')))
+  const before = readFileSync(file)
+  const r = s.review('syntheticA', {fields: {nationality: 'synthetic'}}, 'merge')
+  expire = true
+  assert.throws(() => s.apply(r, {keepExisting: true}))
+  assert.deepEqual(readFileSync(file), before)
+  assert.throws(() => s.apply(r, {keepExisting: true}))
+})
+test('disposal, cancellation and expiry preserve encrypted bytes and file integrity', t => {
+  let time = 0
+  const {s, root} = setup(t, {now: () => time})
+  s.save('syntheticA', fixture)
+  const file = join(root, readdirSync(root).find(f => f.endsWith('.record')))
+  const before = readFileSync(file)
+  s.access('syntheticA').dispose()
+  s.cancelReview(s.review('syntheticA', fixture))
+  const expired = s.review('syntheticA', fixture)
+  time = 60000
+  assert.throws(() => s.apply(expired))
+  assert.deepEqual(readFileSync(file), before)
+  assert.ok(!before.includes(Buffer.from(fixture.fields.preferredName)))
+  assert.equal(s.load('syntheticA').fields.preferredName, fixture.fields.preferredName)
+})
+
+test('disposed methods cannot refresh the inactivity deadline', t => {
+  let time = 0
+  const {s} = setup(t, {now: () => time, inactivityMs: 900000})
+  const lease = s.access('syntheticA')
+  const retained = lease.host.registerCaller
+  lease.dispose()
+  time = 899999
+  assert.throws(() => retained())
+  time = 900000
+  assert.throws(() => s.checkInactivity())
+  assert.equal(s.locked, true)
 })

@@ -6,6 +6,8 @@ import { seal, open } from './envelope.js'
 import { normalize, imported, guarded, failure, identity } from './codec.js'
 import { merge, strategy } from './restore.js'
 
+export const STORAGE_LIMITS = Object.freeze({accessLeases: 16, reviews: 16, reviewTtlMs: 60_000})
+
 // No provider is approved in Phase 5. Caller-supplied objects, environment flags,
 // test providers and the separate DPAPI spike cannot enable this entrypoint.
 export function createProductionStorage() {
@@ -19,30 +21,70 @@ export function createProductionStorage() {
 export function assembleStorage(root, provider, {beforeRename, inactivityMs = null, now = () => performance.now()} = {}) {
   const disk = files(root, beforeRename)
   if (inactivityMs !== null && (!Number.isSafeInteger(inactivityMs) || inactivityMs < 1)) failure()
-  let key = null, generation = 0, lastActivity = 0
-  let reviews = new WeakMap()
-  const engines = new Set()
+  let key = null, generation = 0, lastActivity = 0, lastObserved = 0, reviewTimer = null
+  const reviews = new Map(), leases = new Set()
+  function releaseLease(cell) {
+    try { cell.engine?.host.setLocked(true) }
+    finally { cell.engine = null; leases.delete(cell) }
+  }
+  function removeReview(handle) {
+    const record = reviews.get(handle)
+    if (record) record.input = null
+    reviews.delete(handle)
+  }
+  function clearReviewTimer() {
+    if (reviewTimer !== null) clearTimeout(reviewTimer)
+    reviewTimer = null
+  }
+  function invalidate() {
+    for (const cell of leases) releaseLease(cell)
+    for (const handle of reviews.keys()) removeReview(handle)
+    clearReviewTimer(); generation++
+  }
   function lock() {
-    for (const e of engines) e.host.setLocked(true)
-    engines.clear(); reviews = new WeakMap(); generation++
+    invalidate()
     key?.fill(0); key = null
     guarded(() => provider.release())
   }
+  function clock() {
+    let time
+    try { time = now() } catch { time = NaN }
+    if (!Number.isFinite(time) || time < lastObserved) { lock(); failure() }
+    lastObserved = time
+    return time
+  }
+  function expireReviews(time) {
+    for (const [handle, record] of reviews) if (time >= record.expiresAt) removeReview(handle)
+    if (!reviews.size) clearReviewTimer()
+  }
+  function scheduleReviews(time) {
+    clearReviewTimer()
+    if (!reviews.size) return
+    const earliest = Math.min(...[...reviews.values()].map(r => r.expiresAt))
+    // One timer per storage instance. Callback captures no imported record.
+    reviewTimer = setTimeout(() => {
+      reviewTimer = null
+      if (!key) return
+      try {
+        const observed = clock()
+        expireReviews(observed); scheduleReviews(observed)
+      } catch { /* clock() already locked and dropped all retained state */ }
+    }, Math.max(1, Math.ceil(earliest - time)))
+    reviewTimer.unref()
+  }
   function check() {
     if (!key) failure()
-    const time = now()
-    if (!Number.isFinite(time) || time < lastActivity || (inactivityMs !== null && time - lastActivity >= inactivityMs)) { lock(); failure() }
+    const time = clock()
+    if (inactivityMs !== null && time - lastActivity >= inactivityMs) { lock(); failure() }
     lastActivity = time
+    expireReviews(time)
+    return time
   }
   function context(id, domain = 'local') { return {domain, identity: identity(id)} }
   function load(id) {
     check()
     const bytes = disk.read(id)
     return bytes ? open(bytes, key, context(id)) : null
-  }
-  function invalidate() {
-    for (const e of engines) e.host.setLocked(true)
-    engines.clear(); generation++; reviews = new WeakMap()
   }
   function save(id, input) {
     check()
@@ -56,13 +98,28 @@ export function assembleStorage(root, provider, {beforeRename, inactivityMs = nu
     const bytes = disk.read(id)
     return bytes ? createHash('sha256').update(bytes).digest('hex') : null
   }
-  function wrap(object, epoch) {
+  function checkLease(cell, epoch) {
+    if (!cell.engine || generation !== epoch) failure()
+    check()
+  }
+  // Wrappers retain only a revocable cell and method path, NEVER raw engine
+  // methods/objects. Nulling the cell releases the entire decrypted engine even
+  // when a caller retains every wrapper and detached method indefinitely.
+  function method(cell, epoch, path) {
+    return (...args) => {
+      checkLease(cell, epoch)
+      let target = cell.engine
+      for (const name of path) target = target[name]
+      return target(...args)
+    }
+  }
+  function wrapShape(object, cell, epoch, path = []) {
     return Object.freeze(Object.fromEntries(Object.entries(object).map(([name, value]) => [name,
-      typeof value === 'function' ? (...args) => {
-        check(); if (generation !== epoch) failure()
-        return value(...args)
-      } : wrap(value, epoch),
+      typeof value === 'function' ? method(cell, epoch, [...path, name]) : wrapShape(value, cell, epoch, [...path, name]),
     ])))
+  }
+  function disposer(cell, epoch) {
+    return () => { checkLease(cell, epoch); releaseLease(cell) }
   }
   return Object.freeze({
     unlock() {
@@ -73,7 +130,7 @@ export function assembleStorage(root, provider, {beforeRename, inactivityMs = nu
         acquired = provider.acquire()
         if (!Buffer.isBuffer(acquired) || acquired.length !== 32) failure()
         key = Buffer.from(acquired); acquired.fill(0)
-        lastActivity = now()
+        lastActivity = now(); lastObserved = lastActivity
         if (!Number.isFinite(lastActivity)) failure()
       } catch { acquired?.fill?.(0); lock(); failure() }
     },
@@ -82,37 +139,54 @@ export function assembleStorage(root, provider, {beforeRename, inactivityMs = nu
     checkInactivity() { check() },
     load, save,
     access(id) {
+      check()
+      if (leases.size >= STORAGE_LIMITS.accessLeases) failure()
       const input = load(id)
-      const engine = createConsentProfile(input || {})
-      engines.add(engine)
-      return wrap(engine, generation)
+      const cell = {engine: createConsentProfile(input || {})}
+      const wrapped = wrapShape(cell.engine, cell, generation)
+      leases.add(cell)
+      return Object.freeze({...wrapped, dispose: disposer(cell, generation)})
     },
     review(id, incoming, mode = 'merge') {
-      check(); strategy(mode)
+      const time = check()
+      if (reviews.size >= STORAGE_LIMITS.reviews) failure()
+      strategy(mode)
       const reviewedBytes = disk.read(id)
       const hash = reviewedBytes ? createHash('sha256').update(reviewedBytes).digest('hex') : null
       const current = reviewedBytes ? open(reviewedBytes, key, context(id)) : null
       const next = imported(incoming)
       const result = mode === 'merge' && current ? merge(current, next) : {input: next, conflicts: Object.freeze([])}
       const handle = Object.freeze({strategy: mode, conflicts: result.conflicts})
-      reviews.set(handle, {id, input: result.input, mode, hash, generation})
+      reviews.set(handle, {id, input: result.input, mode, hash, generation, expiresAt: time + STORAGE_LIMITS.reviewTtlMs})
+      scheduleReviews(time)
       return handle
+    },
+    cancelReview(handle) {
+      const time = check()
+      if (!reviews.has(handle)) failure()
+      removeReview(handle); scheduleReviews(time)
     },
     apply(handle, {keepExisting = false, confirmReplace = false} = {}) {
       check()
       const r = reviews.get(handle)
-      if (!r || r.generation !== generation || r.hash !== fingerprint(r.id) ||
-          (r.mode === 'replace' && confirmReplace !== true) ||
+      if (!r) failure()
+      if (r.generation !== generation || r.hash !== fingerprint(r.id)) {
+        removeReview(handle); failure()
+      }
+      if ((r.mode === 'replace' && confirmReplace !== true) ||
           (r.mode === 'merge' && handle.conflicts.length && keepExisting !== true)) failure()
       // Recheck revision inside the exclusive writer transaction.
       const outcome = disk.transaction(r.id, write => {
-        if (r.hash !== fingerprint(r.id)) failure()
+        if (r.hash !== fingerprint(r.id)) { removeReview(handle); failure() }
         if (r.mode === 'replace') {
           const previous = load(r.id) || {}
           write(seal(previous, key, context(r.id, 'recovery')), 'recovery')
         }
         return write(seal(imported(r.input), key, context(r.id)))
-      }, () => { if (!key || generation !== r.generation) failure() })
+      }, () => {
+        check()
+        if (!key || generation !== r.generation || reviews.get(handle) !== r) failure()
+      })
       invalidate()
       return outcome
     },
@@ -121,7 +195,7 @@ export function assembleStorage(root, provider, {beforeRename, inactivityMs = nu
       const bytes = disk.read(id, 'recovery')
       if (!bytes) failure()
       // Recovery also resets consent/permissions and never activates instructions.
-      save(id, imported(open(bytes, key, context(id, 'recovery'))))
+      return save(id, imported(open(bytes, key, context(id, 'recovery'))))
     },
   })
 }
