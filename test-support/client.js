@@ -91,12 +91,12 @@ export async function clientHarness(options = {}) {
     projectionsBySession: {
       s1: { state: 'ready', values: {
         contextPressure: { projectedTokens: 3000, contextWindow: 8000 },
-        contextBreakdown: { messageTokens: 2000, toolsTokens: 800, systemPromptTokens: 200 },
+        contextBreakdown: { messageTokens: 2000, toolsTokens: 800, systemTokens: 200 },
         tokenUsage: { outputTokens: 1200 },
       } },
       s2: { state: 'ready', values: {
         contextPressure: { projectedTokens: 1000, contextWindow: 8000 },
-        contextBreakdown: { messageTokens: 400, toolsTokens: 300, systemPromptTokens: 300 },
+        contextBreakdown: { messageTokens: 400, toolsTokens: 300, systemTokens: 300 },
         tokenUsage: { outputTokens: 17 },
       } },
     },
