@@ -97,7 +97,7 @@ test('published stable release offers a deliberate two-click pinned Host update'
   tree=react.render(component)
   assert.match(JSON.stringify(tree),new RegExp(SHA))
   await byId(tree,'data-confirm-update').props.onClick()
-  assert.deepEqual(installed,[[pkg.name,'0.7.0',{spec:'github:abinadwan/DSH-ABINADWAN-Plugins-Suite#'+SHA}]])
+  assert.deepEqual(JSON.parse(JSON.stringify(installed)),[[pkg.name,'0.7.0',{spec:'github:abinadwan/DSH-ABINADWAN-Plugins-Suite#'+SHA}]])
   tree=react.render(component)
   assert.match(JSON.stringify(tree),/Host accepted update/)
 })
