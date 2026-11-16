@@ -27,6 +27,15 @@ telemetry, callbacks, filesystem, network or process identity reads occur.
 This assumes an uncompromised Node runtime/intrinsics; arbitrary code already
 executing in the same process is not isolated by this function.
 
+**Resource boundary:** Input values and output shapes are restricted, but processing
+time and temporary memory are **not** bounded by a fixed constant. In particular,
+`Object.getOwnPropertyDescriptors(input)` enumerates all own properties and
+materializes a descriptor object before the nine-field count is checked. The
+diagnostic therefore must not be exposed as a live/unbounded untrusted-input
+service. It is test-only and operates on small synthetic fixtures; the oversized
+input regression checks rejection, **not** fixed memory or execution limits.
+A future live boundary must enforce resource limits before accepting evidence.
+
 ## Four identities and separate authority
 
 1. **Host process identity:** the actual child launched and owned by Desktop,
@@ -144,10 +153,11 @@ starting suite had Linux 210 pass/0 skip and Windows 151 pass/59 inherited skips
 Windows positive authorization/durability limitations remain. Final totals and
 CI links belong in the new Draft PR and handoff after execution.
 
-Tests cover every absent fact, enumerated negative/mismatch, unsupported version,
-identity conflation, hostile accessor/proxy/coercion attempts, extra/sensitive
-synthetic values, immutable outputs and rejection of fixtures/results by the
-existing gate. Package checks enforce exclusion of `test-support` from payload.
+Tests cover every absent or non-enumerable required fact, enumerated
+negative/mismatch, unsupported version, INVALID_INPUT precedence over otherwise
+recognized negative facts, identity conflation, hostile accessor/proxy/coercion
+attempts, extra/sensitive synthetic values, immutable outputs and rejection of
+fixtures/results by the existing gate. Package checks enforce exclusion of `test-support` from payload.
 No real sensitive data is used in tests or logs.
 
 [Windows acceptance](PERSONAL_PROFILE_WINDOWS_ACCEPTANCE.md) remains entirely
