@@ -135,7 +135,9 @@ screenshots containing account details local. Do not paste them into PR logs.
    Supply getter/inherited identity claims and missing, malformed or changed
    caller/Session/Profile claims through the synthetic resolver. Expect terminal
    token invalidation; restoring prior claims must not revive tokens, bindings
-   or pending approvals. Management patches must affect only the Profile fixed
+   or pending approvals. A second, unrelated synthetic session must keep its
+   reads and pending approval while the first is invalidated, including role
+   misuse and repeated attempts. Management patches must affect only the Profile fixed
    by that management binding, with no caller-selected Profile argument.
    Ordinary saves must preserve omitted authorization and accept only unchanged
    snapshots; attempted changes or stale replay must fail. New records start

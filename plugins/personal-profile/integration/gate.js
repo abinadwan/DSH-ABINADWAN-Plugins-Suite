@@ -22,6 +22,19 @@ export function assembleGate(storage, recordId, resolve, {now = () => performanc
     bindings.clear(); approvals.clear(); deadlines.clear()
   }
   function remove(approval) { approvals.delete(approval); deadlines.delete(approval) }
+  // Terminal revocation of ONE binding: its approvals, session grants (engine)
+  // and lease. Other authenticated sessions are re-resolved on every request
+  // and keep their own bindings; global invalidation is reserved for policy,
+  // lock and clock events (clear()).
+  function revoke(token, b) {
+    for (const [approval, owner] of approvals) if (owner === b) {
+      try { b.engine?.reader.cancelApproval(b.handle, approval) } catch { /* engine already revoked */ }
+      remove(approval)
+    }
+    try { b.engine?.host.setLocked(true) } catch { /* storage already revoked */ }
+    try { b.lease?.dispose() } catch { /* already invalidated by storage */ }
+    bindings.delete(token)
+  }
   function sweep() {
     const time = now()
     if (!Number.isFinite(time) || time < lastTime) { clear(); failure() }
@@ -48,8 +61,9 @@ export function assembleGate(storage, recordId, resolve, {now = () => performanc
       if (prior && ['role','profile','environment','caller','session'].some(k => prior[k] !== resolved[k])) failure()
     } catch {
       // Every resolver/validation failure is terminal, including failures before
-      // a canonical id was validated. Remove approvals and revoke the engine.
-      if (prior) clear()
+      // a canonical id was validated. Remove this binding's approvals and revoke
+      // its engine; an unrelated session's binding is not collateral.
+      if (prior) revoke(token, prior)
       invalid.add(token)
       failure()
     }

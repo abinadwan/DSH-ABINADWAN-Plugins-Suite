@@ -241,3 +241,101 @@ test('schema removal cannot orphan a stored policy; reviewed replacement resets 
   assert.deepEqual(s.load('master').permissionState,{version:1,profiles:{}})
   assert.equal(s.load('master').allowAgentUseApprovedProfileInformation,false)
 })
+
+// Cross-session isolation: invalidating session A must not revoke an unrelated
+// authenticated session B (different caller, session, Profile and environment).
+const positive={skip:windows?'Windows positive authorization is intentionally unavailable':false}
+function twoSessions(t){
+  const {s}=setup(t)
+  s.save('master',{fields:{preferredName:'SYNTHETIC_REGRESSION',fullName:'SYNTHETIC_B_PENDING'}})
+  s.setAuthorization('master',{optIn:true,permissions:{
+    profileA:{preferredName:'ask_first'},profileB:{preferredName:'allow',fullName:'ask_first'}}})
+  const ids=new Map(), faults=new Map(), resolved=[]
+  const issue=facts=>{const token=Object.freeze({});ids.set(token,facts);return token}
+  const factsA={role:'agent',profile:'profileA',environment:'syntheticA',caller:{},session:{}}
+  const factsB={role:'agent',profile:'profileB',environment:'syntheticB',caller:{},session:{}}
+  const A=issue(factsA), B=issue(factsB)
+  const MA=issue({...factsA,role:'management',caller:{},session:{}})
+  const MB=issue({...factsB,role:'management',caller:{},session:{}})
+  const gate=assembleGate(s,'master',token=>{
+    resolved.push(token)
+    return faults.has(token)?faults.get(token)(ids.get(token)):ids.get(token)
+  })
+  t.after(()=>gate.dispose())
+  assert.equal(gate.reader.request(B,'preferredName').status,'allowed')
+  const pendingB=gate.reader.request(B,'fullName')
+  assert.equal(pendingB.status,'approval_required')
+  const pendingA=gate.reader.request(A,'preferredName')
+  assert.equal(pendingA.status,'approval_required')
+  // B remains fully usable: reads continue and its pending approval completes.
+  const assertBIntact=()=>{
+    assert.equal(gate.reader.request(B,'preferredName').status,'allowed')
+    assert.equal(gate.management.decide(MB,pendingB.approval,'allow_once'),true)
+    assert.equal(gate.reader.consume(B,pendingB.approval).status,'allowed')
+    assert.equal(gate.reader.request(B,'preferredName').status,'allowed')
+  }
+  // A is terminal: restored claims revive neither token nor pending approval.
+  const assertATerminal=token=>{
+    assert.equal(gate.reader.request(token,'preferredName').status,'denied')
+    assert.equal(gate.management.decide(MA,pendingA.approval,'allow_once'),false)
+    assert.equal(gate.reader.consume(A,pendingA.approval).status,'denied')
+    assert.equal(gate.reader.request(A,'preferredName').status,'denied')
+  }
+  return {s,gate,ids,faults,issue,resolved,factsA,factsB,A,B,MA,MB,pendingA,pendingB,assertBIntact,assertATerminal}
+}
+for(const [name,mutate] of Object.entries(mutations)) test(`P1 resolver ${name} for session A does not invalidate unrelated session B`,positive,t=>{
+  const {gate,faults,A,assertBIntact,assertATerminal}=twoSessions(t)
+  faults.set(A,mutate)
+  assert.equal(gate.reader.request(A,'preferredName').status,'denied')
+  faults.delete(A) // identity restoration
+  assertATerminal(A)
+  assertBIntact()
+})
+test('P1 Host-revoked session A does not invalidate unrelated session B',positive,t=>{
+  const {gate,ids,factsA,A,assertBIntact,assertATerminal}=twoSessions(t)
+  ids.delete(A)
+  assert.equal(gate.reader.request(A,'preferredName').status,'denied')
+  ids.set(A,factsA)
+  assertATerminal(A)
+  assertBIntact()
+})
+test('P1 role misuse by a bound token is terminal for that token only',positive,t=>{
+  const {gate,A,MA,assertBIntact,assertATerminal}=twoSessions(t)
+  // Agent token on every management entry point.
+  assert.throws(()=>gate.management.setAuthorization(A,{optIn:false}))
+  assert.throws(()=>gate.management.setOptIn(A,false))
+  assert.throws(()=>gate.management.setPermission(A,'preferredName','allow'))
+  assert.equal(gate.management.decide(A,'synthetic','allow_once'),false)
+  assertATerminal(A)
+  // Bound management token on the reader is terminal for that management token.
+  assert.equal(gate.management.decide(MA,'synthetic','allow_once'),false)
+  assert.equal(gate.reader.request(MA,'preferredName').status,'denied')
+  assert.equal(gate.reader.cancel(MA,'synthetic'),false)
+  assert.equal(gate.management.decide(MA,'synthetic','allow_once'),false)
+  assert.throws(()=>gate.management.setOptIn(MA,false))
+  assertBIntact()
+})
+test('P1 repeated invalidation attempts neither re-resolve terminal tokens nor exhaust budgets',positive,t=>{
+  const {gate,ids,issue,resolved,factsA,A,assertBIntact}=twoSessions(t)
+  ids.set(A,{...factsA,session:{}})
+  for(let i=0;i<5;i++) assert.equal(gate.reader.request(A,'preferredName').status,'denied')
+  assert.equal(resolved.filter(token=>token===A).length,2) // bind + one terminal failure
+  // More cycles than the 64-binding and 16-lease budgets: each revocation frees its slot.
+  for(let i=0;i<80;i++) {
+    const facts={...factsA,caller:{},session:{}}, token=issue(facts)
+    assert.equal(gate.reader.request(token,'preferredName').status,'approval_required')
+    ids.set(token,{...facts,profile:'../bad'})
+    assert.equal(gate.reader.request(token,'preferredName').status,'denied')
+    ids.set(token,facts)
+    assert.equal(gate.reader.request(token,'preferredName').status,'denied')
+  }
+  assertBIntact()
+})
+test('policy changes still invalidate every session (intentional global clear)',positive,t=>{
+  const {s,gate,issue,factsB,B,MB,pendingB}=twoSessions(t)
+  gate.management.setPermission(MB,'fullName','ask_first')
+  assert.equal(gate.reader.request(B,'preferredName').status,'denied')
+  assert.equal(gate.management.decide(MB,pendingB.approval,'allow_once'),false)
+  assert.equal(gate.reader.request(issue({...factsB,caller:{},session:{}}),'preferredName').status,'allowed')
+  assert.equal(s.load('master').permissionState.profiles.profileB.fullName,'ask_first')
+})

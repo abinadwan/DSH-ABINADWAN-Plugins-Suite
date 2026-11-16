@@ -124,9 +124,13 @@ Management and agent reader objects are separate. Every request re-resolves role
 canonical Profile, environment, caller and session from a snapshot of own data
 properties. Getters and inherited claims are rejected without reading them.
 Missing, malformed or changed identity claims permanently invalidate that token,
-including failures before a Profile ID can be validated. Existing bindings,
-engines and approvals are cleared before a restored resolver could revive them;
-old tokens cannot regain access by restoring prior claims. Duplicate sessions and
+including failures before a Profile ID can be validated. That token's binding,
+engine, session grants and pending approvals are revoked before a restored
+resolver could revive them; old tokens cannot regain access by restoring prior
+claims. Revocation is scoped to the failing token: an unrelated authenticated
+session keeps its binding, reads and pending approvals, and role misuse (an agent
+token on management entry points or a management token on the reader) is
+terminal only for the misused token. Duplicate sessions and
 conflicting canonical/name bindings deny. Every read checks
 lock, durable authorization, current authenticated record revision and a revocable
 storage lease. Permission changes invalidate all engines and approvals before

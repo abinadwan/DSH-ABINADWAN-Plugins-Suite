@@ -24,6 +24,17 @@ Resolver claims must be snapshotted from own data properties: every missing,
 malformed, changed or throwing identity is terminal for old bindings, approvals
 and session grants, even when the previous identity is later restored.
 
+## Approved correction of 9de3cea (same branch and Draft PR #8)
+
+Independent review found that an identity/role failure of one bound token called
+the global `clear()`, permanently invalidating every unrelated agent token and
+discarding their pending approvals (availability defect; no confidentiality or
+escalation impact). The user authorized a scoped fix: `revoke()` removes only the
+failing binding, its approvals, engine and lease. Global `clear()` remains for
+permission/opt-in changes, storage lock, clock faults and disposal. Regression
+tests cover two independent sessions, every resolver mutation, Host revocation,
+role misuse, identity restoration and repeated attempts beyond binding/lease budgets.
+
 Compatibility evidence is corrected to official `dsh-v0.2.2-rc.3`, commit
 `38a6a5c965aa99ab525161efb7cc5cf1fe62fced`; BrowserAuth and admission are distinct
 from Profile field consent and from an OS principal. Installed package/ASAR
