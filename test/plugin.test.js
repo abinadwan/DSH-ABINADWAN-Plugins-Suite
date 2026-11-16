@@ -20,11 +20,7 @@ test('native right sidebar registers and auto-opens', async t => {
   assert.ok(app.slot('conversation.session.header.utilities'))
   assert.ok(app.slot('plugins.detail.section'))
   const body = app.slot('sidebar.right.pane.tab')
-  const element = body({ sessionId: 's1', useProjection: key => ({
-    contextPressure: { projectedTokens: 3000, contextWindow: 8000 },
-    contextBreakdown: { messageTokens: 2000, toolsTokens: 800, systemTokens: 200 },
-    tokenUsage: { outputTokens: 1200 },
-  })[key] })
+  const element = body({ sessionId: 's1' })
   assert.equal(element.type(element.props).props['data-environment-right-sidebar'], '')
   assert.equal(app.timers.size, 1)
   for (const callback of app.timers.values()) callback()
