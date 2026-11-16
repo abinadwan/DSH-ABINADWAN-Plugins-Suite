@@ -200,6 +200,7 @@ window.__ModuleLoader__.load({
     let nextAllowedCheck = 0
     let inflightCheck = null
     let versionDisposed = false
+    let versionGeneration = 0
     function versionParts(version) {
       if (typeof version !== 'string') return null
       const found = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/.exec(version)
@@ -228,8 +229,8 @@ window.__ModuleLoader__.load({
       }
       return false
     }
-    function publishVersion(next) {
-      if (versionDisposed) return
+    function publishVersion(next, expectedGeneration = versionGeneration) {
+      if (versionDisposed || expectedGeneration !== versionGeneration) return
       versionSnapshot = Object.freeze(next)
       for (const notify of versionListeners) notify()
     }
@@ -263,25 +264,27 @@ window.__ModuleLoader__.load({
       const now = Date.now()
       if (!force && now < nextAllowedCheck) return Promise.resolve()
       nextAllowedCheck = now + CHECK_INTERVAL
-      publishVersion({phase:'checking'})
+      const generation = versionGeneration
+      publishVersion({phase:'checking'}, generation)
       const task = (async () => {
         try {
           const release = await githubJSON(RELEASE_SOURCE)
           if (!release) {
-            publishVersion({phase:'unreleased', checked:new Date().toLocaleTimeString()})
+            publishVersion({phase:'unreleased', checked:new Date().toLocaleTimeString()}, generation)
             return
           }
           const latest = getReleaseVersion(release)
           const result = isNewerVersion(latest, INSTALLED_VERSION)
           if (result === null) throw new Error('Invalid release version')
           publishVersion({phase:'ready',latest,tag:release.tag_name,
-            checked:new Date().toLocaleTimeString()})
+            checked:new Date().toLocaleTimeString()}, generation)
         } catch (error) {
-          publishVersion({phase:'error',message:String(error?.message || error)})
+          publishVersion({phase:'error',message:String(error?.message || error)}, generation)
         }
       })()
-      inflightCheck = task.finally(() => {inflightCheck = null})
-      return inflightCheck
+      const pending = task.finally(() => {if (inflightCheck === pending) inflightCheck = null})
+      inflightCheck = pending
+      return pending
     }
     // Installed-plugin detail page only; never run an installer in a React effect.
     function VersionUpdates({ installedVersion = INSTALLED_VERSION, pluginManager }) {
@@ -793,11 +796,17 @@ window.__ModuleLoader__.load({
         // The suite browser lifetime owns the opt-in-free read-only version
         // check. A timer cannot install, enable or modify any plugin.
         ctx.effect(() => {
+          versionDisposed = false
+          versionGeneration++
+          nextAllowedCheck = 0
+          inflightCheck = null
           void checkRelease()
           const timer = setInterval(() => { void checkRelease() }, CHECK_INTERVAL)
           return () => {
             clearInterval(timer)
+            versionGeneration++
             versionDisposed = true
+            inflightCheck = null
             versionListeners.clear()
           }
         }, 'suite: automatic stable-release check')
