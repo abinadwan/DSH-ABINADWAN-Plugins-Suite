@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {readFileSync} from 'node:fs'
+import {readFileSync, existsSync} from 'node:fs'
 import React, {act} from 'react'
 import {renderToStaticMarkup} from 'react-dom/server'
 import {createRoot} from 'react-dom/client'
@@ -75,10 +75,15 @@ test('preview navigation changes full-page sections without Host access or persi
 
 test('demo is independent of privileged Host imports; suite version and lock agree', () => {
   const packageFile = JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'))
-  const lock = JSON.parse(readFileSync(new URL('../package-lock.json',import.meta.url),'utf8'))
   assert.equal(packageFile.version, '0.6.0')
-  assert.equal(lock.version, packageFile.version)
-  assert.equal(lock.packages[''].version, packageFile.version)
+  // npm pack deliberately omits the lockfile. Check its consistency when the
+  // test runs from the source tree; packed tests still verify the manifest.
+  const lockPath = new URL('../package-lock.json', import.meta.url)
+  if (existsSync(lockPath)) {
+    const lock = JSON.parse(readFileSync(lockPath,'utf8'))
+    assert.equal(lock.version, packageFile.version)
+    assert.equal(lock.packages[''].version, packageFile.version)
+  }
   const client = readFileSync(new URL('../client.js', import.meta.url),'utf8')
   const start = client.indexOf('// Safe browser-only preview.')
   const end = client.indexOf('function ProfileDraft()',start)
