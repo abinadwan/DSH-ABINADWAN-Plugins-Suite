@@ -1,7 +1,7 @@
 /**
  * Browser half of @abinadwan/dsh-plugins-suite.
  * Uses DSH's documented lazy-CJS module registration and Slot API.
- * Native slots and scoped Cordis lifetimes. Only the manual version check contacts GitHub.
+ * Native slots, scoped Cordis lifetimes, and an anonymous read-only stable-release check.
  */
 window.__ModuleLoader__.load({
   id: '@abinadwan/dsh-plugins-suite',
