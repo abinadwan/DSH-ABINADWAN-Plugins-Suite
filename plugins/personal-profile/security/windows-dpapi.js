@@ -23,6 +23,9 @@ try {
   if ([string]::IsNullOrWhiteSpace($encoded)) { throw 'Missing input' }
   $stage = 'decode'
   $data = [Convert]::FromBase64String($encoded)
+  $stage = 'assembly'
+  Add-Type -AssemblyName System.Security
+  $stage = 'scope'
   $scope = [System.Security.Cryptography.DataProtectionScope]::CurrentUser
   if ('${operation}' -eq 'protect') {
     $stage = 'protect'
@@ -82,7 +85,7 @@ function runDpapi(operation, bytes) {
     // Only allowlisted phase and exception *class names* are surfaced for diagnosis.
     // Exception messages and stderr content are never logged or returned.
     proc.stderr.on('data', chunk => {
-      const match = chunk.toString('utf8').match(/DPAPI_FAILURE:(read|decode|protect|unprotect|write):([A-Za-z]+):([A-Za-z]+)/)
+      const match = chunk.toString('utf8').match(/DPAPI_FAILURE:(read|decode|assembly|scope|protect|unprotect|write):([A-Za-z]+):([A-Za-z]+)/)
       if (match) failureCode = match[1] + '/' + match[2] + '/' + match[3]
     })
     proc.on('close', code => {
