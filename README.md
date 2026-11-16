@@ -77,7 +77,11 @@ Restart Harness completely, open **Plugins → ABINADWAN Plugins Suite**, enable
 
 If your active profile is `web` or another name, substitute that name in every command. Upgrading from 0.4.0 keeps the `abinadwan-suite` group identity and the current inspector behavior. Existing user-layer disable overrides remain applicable. The package ships ready-to-run JavaScript and installs directly from GitHub. No build step is required. An immutable version can be installed by appending `#<full-commit-sha>` to the GitHub reference.
 
-The suite detail page retains **Versions → Check for updates**, independently of the Environment switch. This manual action fetches the public `main/package.json`, compares versions and reports request errors. Update installation uses the command above and a restart.
+The suite detail page includes **Versions**. The suite's browser module automatically checks the newest **stable, published GitHub Release** at startup and every 24 hours while active; **Check again** is also available. A published Release is required: merely changing `main/package.json` or opening a PR does **not** make an update available. The read-only GitHub request sends no conversation data, credentials or referrer. If no stable Release exists, the status is **No published stable release yet**.
+
+**Update now** is user-initiated only and asks for **Confirm update** before any Host change. The preview resolves the release tag to an immutable SHA and checks the `package.json` identity and version at that commit. The native DSH `pluginManager.updateBundle` API then installs that pinned revision, with its own validation and attempted rollback/restart handling. **There are no silent installations.** The Host may refuse, require a restart or fail to restore the prior installation. Review its Plugins status and keep a tested recovery path.
+
+**Git install prerequisite:** Harness Desktop `v0.2.2-rc.3` reports `update: git` only for a package installed from a Git spec pinned to a **full 40-character SHA**. A legacy `github:abinadwan/DSH-ABINADWAN-Plugins-Suite` install tracking a branch is **not** automatically updatable. That installation must be migrated deliberately to a pinned Git revision first; the suite does not uninstall, replace or reconfigure it on its own. Use the source's documented install/remove workflow only after confirming the active DSH Profile and preserving a known-good SHA. A future published v0.6.0 Release must precede the first stable-update check.
 
 ## Architecture and compatibility
 
@@ -97,7 +101,7 @@ Tests use the actual Cordis Loader, DSH metadata reader and Skill registry, plus
 
 ## Privacy and security
 
-Environment reads UI-facing session/workspace summaries and projected token usage. The runtime Humanizer instructions operate within DSH's existing model context. Text supplied to the agent follows the user's existing model/provider configuration. The suite adds no external rewriting endpoint. The manual update action contacts public GitHub without credentials or conversation data. Personal Profile accepts, persists and transmits zero personal information in this version. [Security policy](SECURITY.md)
+Environment reads UI-facing session/workspace summaries and projected token usage. The runtime Humanizer instructions operate within DSH's existing model context. Text supplied to the agent follows the user's existing model/provider configuration. The suite adds no external rewriting endpoint. The read-only automatic/manual release checks contact public GitHub without credentials, referrers or conversation data. Installations require an explicit user confirmation and are delegated to the official DSH Host. Personal Profile accepts, persists and transmits zero personal information in this version. [Security policy](SECURITY.md)
 
 ## License and attribution
 
