@@ -33,8 +33,8 @@ async function prepare(file) {
     })
     await mkdir(dirname(file), {recursive: true})
     await writeFile(file, document, {flag: 'wx', encoding: 'utf8', mode: 0o600})
-    process.stdout.write('PASS: synthetic key protected with Windows CurrentUser DPAPI.\\n')
-    process.stdout.write('NEXT: restart DeepSeek Harness Desktop, then run the verify command from the same Windows user account.\\n')
+    process.stdout.write('PASS: synthetic key protected with Windows CurrentUser DPAPI.\n')
+    process.stdout.write('NEXT: restart DeepSeek Harness Desktop, then run the verify command from the same Windows user account.\n')
   } finally {
     key.fill(0)
   }
@@ -56,10 +56,10 @@ async function verify(file) {
       throw new Error('Synthetic canary mismatch')
     }
     await unlink(file)
-    process.stdout.write('PASS: same-user DPAPI key restored in a separate process.\\n')
-    process.stdout.write('PASS: AES-GCM canary authenticated and decrypted.\\n')
-    process.stdout.write('PASS: synthetic probe file removed.\\n')
-    process.stdout.write('NOTE: This proves a Windows process test, not integration inside the DSH Desktop Host.\\n')
+    process.stdout.write('PASS: same-user DPAPI key restored in a separate process.\n')
+    process.stdout.write('PASS: AES-GCM canary authenticated and decrypted.\n')
+    process.stdout.write('PASS: synthetic probe file removed.\n')
+    process.stdout.write('NOTE: This proves a Windows process test, not integration inside the DSH Desktop Host.\n')
   } finally {
     key.fill(0)
   }
@@ -68,19 +68,19 @@ async function verify(file) {
 async function cleanup(file) {
   try {
     await unlink(file)
-    process.stdout.write('PASS: synthetic probe file removed.\\n')
+    process.stdout.write('PASS: synthetic probe file removed.\n')
   } catch (error) {
     if (error?.code !== 'ENOENT') throw error
-    process.stdout.write('PASS: no probe file remains.\\n')
+    process.stdout.write('PASS: no probe file remains.\n')
   }
 }
 
 const action = process.argv[2]
 if (process.platform !== 'win32') {
-  process.stderr.write('FAIL: Windows CurrentUser DPAPI test requires Windows.\\n')
+  process.stderr.write('FAIL: Windows CurrentUser DPAPI test requires Windows.\n')
   process.exitCode = 1
 } else if (!['prepare', 'verify', 'cleanup'].includes(action) || process.argv.length !== 3) {
-  process.stderr.write('Usage: node scripts/personal-profile-windows-probe.mjs prepare|verify|cleanup\\n')
+  process.stderr.write('Usage: node scripts/personal-profile-windows-probe.mjs prepare|verify|cleanup\n')
   process.exitCode = 1
 } else {
   const path = probePath()
@@ -94,7 +94,7 @@ if (process.platform !== 'win32') {
       error?.code === 'ENOENT' ? 'synthetic probe missing (prepare first)' :
       error?.name === 'DpapiUnavailableError' ? 'DPAPI failed under this Windows account' :
       'probe failed'
-    process.stderr.write('FAIL: ' + code + '. No plaintext fallback.\\n')
+    process.stderr.write('FAIL: ' + code + '. No plaintext fallback.\n')
     process.exitCode = 1
   }
 }
