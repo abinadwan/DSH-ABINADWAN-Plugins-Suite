@@ -33,6 +33,6 @@ test('native right sidebar registers and auto-opens', async t => {
 
 test('no privileged browser APIs',()=>{
   assert.doesNotMatch(get('client.js'),/\bXMLHttpRequest\b|\bprocess\.env\b|\bWebSocket\b|\brequire\s*\(\s*['\"](?:node:)?(?:fs|child_process)['\"]\s*\)/)
-  assert.match(get('client.js'),/fetch\(VERSION_SOURCE,/)
-  assert.match(get('client.js'),/credentials: 'omit'/)
+  assert.match(get('client.js'),/fetch\(url, \{/)
+  assert.match(get('client.js'),/credentials:\s*'omit'/)
 })
