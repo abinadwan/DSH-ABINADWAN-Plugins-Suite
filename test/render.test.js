@@ -9,11 +9,7 @@ test('real React renders the Environment and read-only Profile draft', async t =
   t.after(() => app.dispose())
   const body = app.slot('sidebar.right.pane.tab')
   const sidebar = renderToStaticMarkup(React.createElement(body, {
-    sessionId: 's1', useProjection: key => ({
-      contextPressure: { projectedTokens: 3000, contextWindow: 8000 },
-      contextBreakdown: { messageTokens: 2000, toolsTokens: 800, systemTokens: 200 },
-      tokenUsage: { outputTokens: 1200 },
-    })[key],
+    sessionId: 's1',
   }))
   assert.match(sidebar, /aria-valuenow="38"/)
   assert.match(sidebar, /HomeBook/)

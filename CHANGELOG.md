@@ -2,6 +2,14 @@
 
 All notable changes are documented here.
 
+## [0.6.1] — 2026-11-16
+
+### Fixed
+
+- Corrected the right-sidebar Environment & Context tab body registration to match the tab type's full identity; fixes the Harness message "Nothing here can view this kind of content yet."
+- Corrected Session-scoped Context and Outputs data binding: read the documented session-controller projection snapshot instead of expecting an unavailable conversation-only `useProjection` prop.
+- Added tab-contract and two-Session regression coverage for the real Harness integration boundary. All profile data remains unaffected.
+
 ## [0.6.0] — 2026-11-16
 
 ### Added

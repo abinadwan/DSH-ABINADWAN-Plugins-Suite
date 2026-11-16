@@ -84,7 +84,22 @@ export async function clientHarness(options = {}) {
   }
   ctx.provide('remote', remote)
   ctx.provide('sessions', { list: { subscribe: () => () => {}, getSnapshot: () => ({
-    byId: { s1: { displayTitle: 'Demo', running: true } },
+    byId: {
+      s1: { displayTitle: 'Demo', running: true },
+      s2: { displayTitle: 'Other Session', running: false },
+    },
+    projectionsBySession: {
+      s1: { state: 'ready', values: {
+        contextPressure: { projectedTokens: 3000, contextWindow: 8000 },
+        contextBreakdown: { messageTokens: 2000, toolsTokens: 800, systemTokens: 200 },
+        tokenUsage: { outputTokens: 1200 },
+      } },
+      s2: { state: 'ready', values: {
+        contextPressure: { projectedTokens: 1000, contextWindow: 8000 },
+        contextBreakdown: { messageTokens: 400, toolsTokens: 300, systemTokens: 300 },
+        tokenUsage: { outputTokens: 17 },
+      } },
+    },
   }) } })
   ctx.provide('workspaces', { list: { subscribe: () => () => {}, getSnapshot: () => ({
     items: [{ workspaceId: 'w', title: 'HomeBook', sessionIds: ['s1'] }],

@@ -188,7 +188,7 @@ window.__ModuleLoader__.load({
 
     // Only stable published GitHub Releases may trigger an in-app update offer.
     // This browser-side checker never installs anything without a separate click.
-    const INSTALLED_VERSION = '0.6.0'
+    const INSTALLED_VERSION = '0.6.1'
     const RELEASE_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/latest'
     const COMMIT_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/commits/'
     const RAW_MANIFEST = 'https://raw.githubusercontent.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/'
@@ -400,10 +400,12 @@ window.__ModuleLoader__.load({
             textDecoration:'underline'}},'View published releases'))
     }
 
-    function Details({ sessionId, useProjection, sessions, workspaces }) {
-      const pressure = useProjection('contextPressure')
-      const breakdown = useProjection('contextBreakdown')
-      const tokenUsage = useProjection('tokenUsage')
+    function Details({ sessionId, projections, sessions, workspaces }) {
+      // This tab seat has no conversation useProjection hook. Read only the
+      // published session-controller list projection snapshot for this Session.
+      const pressure = projections?.contextPressure
+      const breakdown = projections?.contextBreakdown
+      const tokenUsage = projections?.tokenUsage
       const session = sessions?.byId?.[sessionId]
       const folders = Array.isArray(workspaces?.items) ? workspaces.items : []
       const linked = folders.filter(w => Array.isArray(w.sessionIds) && w.sessionIds.includes(sessionId))
@@ -479,8 +481,12 @@ window.__ModuleLoader__.load({
         function Body(props) {
           const sessions = React.useSyncExternalStore(subS, getS, getS)
           const workspaces = React.useSyncExternalStore(subW, getW, getW)
-          return h(Details, { sessionId: props.sessionId, useProjection: props.useProjection,
-            sessions, workspaces })
+          // Session identity is injected by the keyed seat's session scope;
+          // the seat does not pass conversation-specific projection hooks.
+          const sessionId = props.sessionId
+          const projections = sessions?.projectionsBySession?.[sessionId]?.values
+            ?? sessions?.byId?.[sessionId]?.projectionValues
+          return h(Details, { sessionId, projections, sessions, workspaces })
         }
         ctx.effect(() => ctx.sidebarRightTabs.register({
           id: TYPE + '/environment-context', kind: KIND, title: () => 'Environment & Context',
@@ -488,7 +494,9 @@ window.__ModuleLoader__.load({
             description: () => 'Current context and workspace details' }],
         }), 'environment-sidebar: type')
         ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
-          name: 'sidebar.right.pane.tab', key: TYPE,
+          // The keyed seat dispatches by the tab TYPE id, not its package root.
+          name: 'sidebar.right.pane.tab', key: TYPE + '/environment-context',
+          inject: sessionId => ({ sessionId }),
         }, Body))
         ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({
           name: 'conversation.session.header.utilities',
