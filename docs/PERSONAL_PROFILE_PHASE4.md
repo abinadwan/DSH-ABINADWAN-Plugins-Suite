@@ -16,8 +16,15 @@ The static resources must load locally; the UI itself performs no network calls.
 There are no third-party UI libraries, fonts, analytics or hosted assets.
 
 The preview and server are excluded from the production package (`test-support`
-and `scripts` are not in `files`). The package checker explicitly rejects their
-inclusion. For artifact verification only, the existing check copies tests and
+and development scripts are not in `files`). The package checker rejects all
+`test-support/` files and all `scripts/` files except the exact approved security
+probe path `scripts/personal-profile-windows-probe.mjs`. Security PR #2 intentionally
+packages that opt-in Windows DPAPI verification tool. This compatibility exception
+does not add the probe file or change Phase 4’s package file list; it takes effect
+only when that security work is integrated. No nested paths, filename variants,
+suffixes or other scripts are allowed. In particular,
+`scripts/preview-personal-profile.mjs` remains forbidden. For artifact verification only, the existing check
+copies tests and
 test-support into its temporary extraction after packing.
 
 ## Pages and behavior
@@ -75,10 +82,17 @@ no secure erasure is claimed. Never enter real personal data in this prototype.
 
 ## Verification and visual evidence
 
-- `npm test`: 94 tests passing, including eleven new component/navigation/state,
+- `npm test`: 98 tests passing, including eleven new component/navigation/state,
   validation, English/Arabic axe DOM and isolation tests.
-- `npm run check:package`: same 94 tests passing against extracted package code;
+- `npm run check:package`: same 98 tests passing against extracted package code;
   development UI/server exclusion checked before test-support is copied in.
+- Package-policy regression tests reject preview scripts, test-support assets,
+  arbitrary scripts and near-match probe paths; accept the exact approved probe;
+  and validate the actual `npm pack --dry-run` list against the current manifest.
+  This runs on both source and extracted-package checks and does not execute the
+  Windows probe. Future integration must still review PR #2’s probe/dependencies
+  and run its separate Windows security checks; an allowlisted path is not a
+  security assessment of its contents.
 - Chromium: desktop 1440px and mobile 390px, five pages with no horizontal overflow;
   keyboard skip-link/content focus; axe including color contrast on all English
   pages and Arabic information page; no script errors or external requests.

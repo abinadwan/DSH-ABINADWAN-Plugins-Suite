@@ -1,6 +1,7 @@
 import { execFileSync, spawnSync } from 'node:child_process'
 import { cpSync, mkdtempSync, readFileSync, readdirSync, rmSync } from 'node:fs'
 import { join } from 'node:path'
+import { validatePackageFiles } from '../test-support/package-policy.js'
 
 // Keep extraction beneath this checkout so the packed code can use the locked
 // test dependencies. All runtime files are loaded from the extracted package.
@@ -9,9 +10,7 @@ try {
   const [packed] = JSON.parse(execFileSync(process.execPath, [
     process.env.npm_execpath, 'pack', '--json', '--ignore-scripts', '--pack-destination', temporary,
   ], { encoding: 'utf8' }))
-  if (packed.files.some(file => /^(test-support|scripts)\//.test(file.path))) {
-    throw new Error('Development preview or tooling leaked into production package')
-  }
+  validatePackageFiles(packed.files)
   execFileSync('tar', ['-xzf', join(temporary, packed.filename), '-C', temporary])
   const directory = join(temporary, 'package')
   const manifest = JSON.parse(readFileSync(join(directory, 'package.json'), 'utf8'))
