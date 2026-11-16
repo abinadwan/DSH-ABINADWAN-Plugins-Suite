@@ -186,10 +186,20 @@ window.__ModuleLoader__.load({
         : (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M'
     }
 
-    // Manual update check. No network request occurs until the button is clicked.
+    // Only stable published GitHub Releases may trigger an in-app update offer.
+    // This browser-side checker never installs anything without a separate click.
     const INSTALLED_VERSION = '0.6.0'
-    const VERSION_SOURCE = 'https://raw.githubusercontent.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/main/package.json'
+    const RELEASE_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/latest'
+    const COMMIT_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/commits/'
+    const RAW_MANIFEST = 'https://raw.githubusercontent.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/'
+    const PINNED_SPEC_PREFIX = 'github:abinadwan/DSH-ABINADWAN-Plugins-Suite#'
     const PROJECT_URL = 'https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite'
+    const CHECK_INTERVAL = 24 * 60 * 60 * 1000
+    let versionSnapshot = Object.freeze({phase:'idle'})
+    const versionListeners = new Set()
+    let nextAllowedCheck = 0
+    let inflightCheck = null
+    let versionDisposed = false
     function versionParts(version) {
       if (typeof version !== 'string') return null
       const found = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/.exec(version)
@@ -218,80 +228,173 @@ window.__ModuleLoader__.load({
       }
       return false
     }
-    // Installed-plugin detail page only. The session inspector remains focused on runtime data.
-    function VersionUpdates({ installedVersion = INSTALLED_VERSION }) {
-      const [update, setUpdate] = React.useState({ phase: 'idle' })
-      const currentVersion = versionParts(installedVersion) ? installedVersion : INSTALLED_VERSION
-      async function check() {
-        if (update.phase === 'checking') return
-        setUpdate({ phase: 'checking' })
+    function publishVersion(next) {
+      if (versionDisposed) return
+      versionSnapshot = Object.freeze(next)
+      for (const notify of versionListeners) notify()
+    }
+    function subscribeVersion(notify) {
+      versionListeners.add(notify)
+      return () => versionListeners.delete(notify)
+    }
+    const getVersionSnapshot = () => versionSnapshot
+    function getReleaseVersion(payload) {
+      if (!payload || payload.draft !== false || payload.prerelease !== false ||
+        typeof payload.tag_name !== 'string' || !/^v\d+\.\d+\.\d+$/.test(payload.tag_name)) {
+        throw new Error('Untrusted or unsupported release metadata')
+      }
+      return payload.tag_name.slice(1)
+    }
+    async function githubJSON(url) {
+      const signal = typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+        ? AbortSignal.timeout(10000) : undefined
+      const response = await fetch(url, {
+        method:'GET', credentials:'omit', cache:'no-store', referrerPolicy:'no-referrer',
+        headers:{Accept:'application/vnd.github+json'},
+        ...signal ? {signal} : {},
+      })
+      if (response.status === 404 && url === RELEASE_SOURCE) return null
+      if (!response.ok) throw new Error('GitHub returned HTTP ' + response.status)
+      return await response.json()
+    }
+    function checkRelease(force = false) {
+      if (versionDisposed) return Promise.resolve()
+      if (inflightCheck) return inflightCheck
+      const now = Date.now()
+      if (!force && now < nextAllowedCheck) return Promise.resolve()
+      nextAllowedCheck = now + CHECK_INTERVAL
+      publishVersion({phase:'checking'})
+      const task = (async () => {
         try {
-          const controllerSignal = typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
-            ? AbortSignal.timeout(10000) : undefined
-          const response = await fetch(VERSION_SOURCE, {
-            method: 'GET', credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer',
-            headers: { Accept: 'application/json' },
-            ...controllerSignal ? { signal: controllerSignal } : {},
-          })
-          if (!response.ok) throw new Error('GitHub returned HTTP ' + response.status)
-          const remote = await response.json()
-          if (remote?.name !== '@abinadwan/dsh-plugins-suite') {
-            throw new Error('Unexpected package identity in GitHub response')
+          const release = await githubJSON(RELEASE_SOURCE)
+          if (!release) {
+            publishVersion({phase:'unreleased', checked:new Date().toLocaleTimeString()})
+            return
           }
-          const newer = isNewerVersion(remote.version, currentVersion)
-          if (newer === null) throw new Error('Invalid repository version')
-          setUpdate({ phase: newer ? 'available' : 'current', latest: remote.version,
-            checked: new Date().toLocaleTimeString() })
+          const latest = getReleaseVersion(release)
+          const result = isNewerVersion(latest, INSTALLED_VERSION)
+          if (result === null) throw new Error('Invalid release version')
+          publishVersion({phase:'ready',latest,tag:release.tag_name,
+            checked:new Date().toLocaleTimeString()})
         } catch (error) {
-          setUpdate({ phase: 'error', message: String(error?.message || error) })
+          publishVersion({phase:'error',message:String(error?.message || error)})
+        }
+      })()
+      inflightCheck = task.finally(() => {inflightCheck = null})
+      return inflightCheck
+    }
+    // Installed-plugin detail page only; never run an installer in a React effect.
+    function VersionUpdates({ installedVersion = INSTALLED_VERSION, pluginManager }) {
+      const update = React.useSyncExternalStore(subscribeVersion,getVersionSnapshot,getVersionSnapshot)
+      const [action, setAction] = React.useState({phase:'idle'})
+      const currentVersion = versionParts(installedVersion) ? installedVersion : INSTALLED_VERSION
+      const newer = update.phase === 'ready' ? isNewerVersion(update.latest,currentVersion) : false
+      const phase = update.phase === 'ready' ? (newer ? 'available' : 'current') : update.phase
+      async function prepare() {
+        setAction({phase:'checking'})
+        try {
+          if (phase !== 'available' || typeof update.tag !== 'string') throw new Error('No approved newer release')
+          // Resolve the release tag to an immutable commit, and verify the
+          // package identity and exact version at that commit.
+          const commit = await githubJSON(COMMIT_SOURCE + encodeURIComponent(update.tag))
+          const sha = commit?.sha
+          if (typeof sha !== 'string' || !/^[0-9a-f]{40}$/.test(sha)) throw new Error('Invalid release commit')
+          const manifest = await githubJSON(RAW_MANIFEST + sha + '/package.json')
+          if (manifest?.name !== '@abinadwan/dsh-plugins-suite' || manifest?.version !== update.latest) {
+            throw new Error('Release manifest does not match the expected package')
+          }
+          const bundles = await pluginManager.listBundles()
+          const installed = Array.isArray(bundles)
+            ? bundles.find(bundle => bundle?.name === '@abinadwan/dsh-plugins-suite') : null
+          // DSH rc.3 will only update a Git bundle pinned to a full SHA.
+          if (!installed || installed.update !== 'git' || installed.installed !== true) {
+            setAction({phase:'manual',message:
+              'One-time migration needed: reinstall this bundle pinned to a full 40-character commit SHA, then review updates here. No files were changed.'})
+            return
+          }
+          if (installed.version !== undefined && installed.version !== currentVersion) {
+            throw new Error('Installed bundle version changed; reopen Plugins and check again')
+          }
+          setAction({phase:'confirm',latest:update.latest,sha})
+        } catch (error) {
+          setAction({phase:'error',message:String(error?.message || error)})
+        }
+      }
+      async function applyUpdate() {
+        if (action.phase !== 'confirm' || typeof action.sha !== 'string' ||
+          !/^[0-9a-f]{40}$/.test(action.sha) || isNewerVersion(action.latest,currentVersion) !== true) return
+        const {latest,sha} = action
+        setAction({phase:'installing'})
+        try {
+          // The Host owns package management, permissions, compatibility,
+          // rollback attempt and restart reporting. Never invoke a shell here.
+          const result = await pluginManager.updateBundle('@abinadwan/dsh-plugins-suite',
+            latest,{spec:PINNED_SPEC_PREFIX + sha})
+          const state = result?.result?.application
+          if (state === 'failed' || state === 'cancelled' || result?.restore) {
+            setAction({phase:'error',message:
+              'Host reported an unsuccessful update or rollback attempt. Review the built-in Plugins status before retrying.'})
+            return
+          }
+          if (state !== 'applied' && state !== 'restart-required' && state !== 'overridden') {
+            setAction({phase:'error',message:'Update outcome not confirmed. Check the native Plugins page.'})
+            return
+          }
+          setAction({phase:'done',latest,restart:state === 'restart-required'})
+        } catch (error) {
+          setAction({phase:'error',message:'Host update did not complete: ' + String(error?.message || error)})
         }
       }
       const soft = 'rgba(127,127,127,.16)'
-      const muted = { fontSize: 12, opacity: .72, lineHeight: 1.65, margin: 0 }
-      const text = update.phase === 'checking' ? 'Checking GitHub…'
-        : update.phase === 'available' ? 'Update available'
-        : update.phase === 'current' ? 'Up to date'
-        : update.phase === 'error' ? 'Could not check for updates'
+      const muted = {fontSize:12,opacity:.72,lineHeight:1.65,margin:0}
+      const status = phase === 'checking' ? 'Checking GitHub Releases…'
+        : phase === 'available' ? 'Approved update available'
+        : phase === 'current' ? 'Up to date'
+        : phase === 'unreleased' ? 'No published stable release yet'
+        : phase === 'error' ? 'Could not check for updates'
         : 'Not checked yet'
-      return h('section', { 'data-environment-update-section': '',
-        style: { borderTop: '1px solid ' + soft, padding: '20px 0', color: 'inherit' } },
-        h('header', { style: { display: 'flex', alignItems: 'center', gap: 12,
-          justifyContent: 'space-between', marginBottom: 14 } },
-          h('h3', { style: { fontSize: 16, margin: 0, fontWeight: 650 } }, 'Versions'),
-          h('button', { type: 'button', 'data-check-updates': '',
-            'aria-label': 'Check for plugin updates',
-            disabled: update.phase === 'checking',
-            onClick: check,
-            style: { border: 0, borderRadius: 8, padding: '7px 10px',
-              color: 'inherit', background: 'transparent', cursor: 'pointer',
-              fontSize: 12, opacity: update.phase === 'checking' ? .6 : 1 } },
-            '↻ ', update.phase === 'checking' ? 'Checking…' : update.checked ? 'Check again' : 'Check for updates')),
-        h('div', { style: { border: '1px solid rgba(127,127,127,.29)',
-          borderRadius: 12, background: 'rgba(127,127,127,.07)', padding: 17 } },
-          h('div', { style: { display: 'flex', alignItems: 'center', gap: 10 } },
-            h('span', { 'aria-hidden': true, style: { display: 'inline-flex',
-              justifyContent: 'center', alignItems: 'center', width: 29,
-              height: 29, borderRadius: 999, background: 'rgba(127,127,127,.14)',
-              color: update.phase === 'current' ? '#46ae7d' :
-                update.phase === 'available' ? '#dfaa50' : 'inherit' } },
-              update.phase === 'current' ? '✓' : update.phase === 'available' ? '↑' : '↻'),
-            h('div', null,
-              h('div', { role: 'status', 'aria-live': 'polite',
-                style: { fontWeight: 650, fontSize: 13 } }, text),
-              h('div', { style: muted },
-                update.checked ? 'Last checked at ' + update.checked : 'Latest version has not been checked'))),
-          h('div', { style: { marginTop: 12, fontSize: 12 } },
-            line('Installed', 'v' + currentVersion),
-            update.latest ? line('Repository (main)', 'v' + update.latest) : null),
-          update.phase === 'error' ? h('p', { style: { ...muted, marginTop: 10 } },
-            update.message) : null,
-          update.phase === 'available' ? h('p', { style: { ...muted, marginTop: 10 } },
-            'A newer version was declared in the repository. Review the source and update through Plugins. No automatic installation occurs.') : null),
-        h('p', { style: { ...muted, marginTop: 12 } },
-          'Manual version check against the public GitHub main branch. No request occurs until you click.'),
-        h('a', { href: PROJECT_URL, target: '_blank', rel: 'noopener noreferrer',
-          style: { display: 'inline-block', fontSize: 12, marginTop: 8,
-            color: '#69a9fc', textDecoration: 'underline' } }, 'View GitHub repository'))
+      const buttonStyle = {border:'1px solid rgba(127,127,127,.35)',borderRadius:8,
+        padding:'8px 12px',fontSize:12,color:'inherit',background:'transparent',cursor:'pointer'}
+      return h('section',{'data-environment-update-section':'',
+        style:{borderTop:'1px solid ' + soft,padding:'20px 0',color:'inherit'}},
+        h('header',{style:{display:'flex',alignItems:'center',gap:12,
+          justifyContent:'space-between',marginBottom:14}},
+          h('h3',{style:{fontSize:16,margin:0,fontWeight:650}},'Versions'),
+          h('button',{type:'button','data-check-updates':'',
+            'aria-label':'Check for plugin updates',disabled:phase==='checking',
+            onClick:()=>checkRelease(true),style:buttonStyle},'↻ Check again')),
+        h('div',{style:{border:'1px solid rgba(127,127,127,.29)',borderRadius:12,
+          background:'rgba(127,127,127,.07)',padding:17}},
+          h('div',{role:'status','aria-live':'polite',style:{fontWeight:650,fontSize:13}},status),
+          h('div',{style:{marginTop:12,fontSize:12}},
+            line('Installed','v'+currentVersion),
+            update.latest ? line('Latest stable release','v'+update.latest) : null,
+            update.checked ? line('Last checked',update.checked) : null),
+          phase==='error' ? h('p',{style:{...muted,marginTop:10}},update.message) : null,
+          phase==='available' ? h('div',{style:{marginTop:12}},
+            h('button',{type:'button','data-update-now':'',disabled:action.phase==='checking'||action.phase==='installing',
+              style:buttonStyle,onClick:prepare},'Update now')) : null,
+          action.phase==='manual' || action.phase==='error'
+            ? h('p',{role:'alert',style:{...muted,marginTop:12}},action.message) : null,
+          action.phase==='confirm' ? h('div',{style:{marginTop:13}},
+            h('p',null,'Confirm installation of v'+action.latest+' via the native DSH Host. '+
+              'The update may require a restart; failed updates may require manual recovery.'),
+            h('p',{style:{...muted,overflowWrap:'anywhere'}},'Pinned SHA: '+action.sha),
+            h('button',{type:'button','data-confirm-update':'',style:buttonStyle,onClick:applyUpdate},
+              'Confirm update'),
+            h('button',{type:'button',style:buttonStyle,onClick:()=>setAction({phase:'idle'})},
+              'Cancel')) : null,
+          action.phase==='installing'
+            ? h('p',{role:'status',style:{...muted,marginTop:12}},'Updating through Harness Plugin Manager…') : null,
+          action.phase==='done'
+            ? h('p',{role:'status',style:{...muted,marginTop:12}},
+              'Host accepted update to v'+action.latest+(action.restart ? '; restart required.' : '.')) : null),
+        h('p',{style:{...muted,marginTop:12}},
+          'Checks stable GitHub Releases automatically on startup and every 24 hours. '+
+          'No installation runs without your confirmation. Git installations must be pinned to a full commit.'),
+        h('a',{href:PROJECT_URL+'/releases',target:'_blank',rel:'noopener noreferrer',
+          style:{display:'inline-block',fontSize:12,marginTop:8,color:'#69a9fc',
+            textDecoration:'underline'}},'View published releases'))
     }
 
     function Details({ sessionId, useProjection, sessions, workspaces }) {
@@ -687,6 +790,17 @@ window.__ModuleLoader__.load({
     return {
       inject: ['slots', 'remote', 'remoteAccess'],
       apply(ctx) {
+        // The suite browser lifetime owns the opt-in-free read-only version
+        // check. A timer cannot install, enable or modify any plugin.
+        ctx.effect(() => {
+          void checkRelease()
+          const timer = setInterval(() => { void checkRelease() }, CHECK_INTERVAL)
+          return () => {
+            clearInterval(timer)
+            versionDisposed = true
+            versionListeners.clear()
+          }
+        }, 'suite: automatic stable-release check')
         // Global left navigation and full-page synthetic preview are browser-only.
         // This never turns on the disabled Host Personal Profile component.
         ctx.slots.inject('main', () => ctx.slots.register({
@@ -703,7 +817,8 @@ window.__ModuleLoader__.load({
           order: 50,
         }, ({ subject }) => subject?.kind === 'bundle' &&
           subject.pkg?.name === TYPE
-          ? h(VersionUpdates, { installedVersion: subject.pkg.version || INSTALLED_VERSION })
+          ? h(VersionUpdates, { installedVersion: subject.pkg.version || INSTALLED_VERSION,
+              pluginManager: ctx.remote.pluginManager })
           : null))
 
         // DSH discovers browser bundles at package roots. Host subpath rows
