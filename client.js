@@ -187,7 +187,7 @@ window.__ModuleLoader__.load({
     }
 
     // Manual update check. No network request occurs until the button is clicked.
-    const INSTALLED_VERSION = '0.5.0'
+    const INSTALLED_VERSION = '0.6.0'
     const VERSION_SOURCE = 'https://raw.githubusercontent.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/main/package.json'
     const PROJECT_URL = 'https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite'
     function versionParts(version) {
