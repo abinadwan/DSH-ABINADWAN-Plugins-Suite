@@ -1,6 +1,6 @@
 # ABINADWAN Plugins Suite
 
-Experimental community package · v0.5.0
+Experimental community package · v0.6.0
 
 Three independently toggleable Components share one suite installation. The package card uses the Saudi developer avatar, and the rows have individual transparent artwork.
 
@@ -24,7 +24,7 @@ Disabled by default. Enabling displays a read-only field draft below. Privacy an
 
 ## Versions
 
-**Check for updates** manually compares the installed suite with public GitHub main. Use Plugins or the install command to update and then restart Harness.
+The suite checks **published stable GitHub Releases** at startup and every 24 hours, with manual **Check again**. If a stable newer release exists, **Update now** lets you verify the source and explicitly confirm a pinned update through the DSH Host Plugin Manager. Git installations without a pinned 40-character SHA require a one-time manual migration. No silent installation takes place, and a restart may be required.
 
 ## Install
 
