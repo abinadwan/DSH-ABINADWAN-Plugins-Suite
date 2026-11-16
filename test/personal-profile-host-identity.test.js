@@ -35,6 +35,33 @@ for (const field of Object.keys(fixture())) {
     assert.equal(calls, 0)
   })
 }
+for (const field of Object.keys(fixture())) {
+  test(`required synthetic fact ${field} must be enumerable`, () => {
+    const input = fixture()
+    Object.defineProperty(input, field, {
+      value: input[field], enumerable: false, configurable: true,
+    })
+    check(input, 'INVALID_INPUT')
+  })
+}
+
+test('malformed facts take INVALID_INPUT priority over recognized negative evidence', () => {
+  // Invalid fields must win even when another field has a valid denial category,
+  // regardless of whether the negative fact occurs earlier or later.
+  check({...fixture(), version:'unsupported', lifecycleBinding:42}, 'INVALID_INPUT')
+  check({...fixture(), version:'unknown', lifecycleBinding:'stale'}, 'INVALID_INPUT')
+  check({...fixture(), hostProcess:'mismatched', profileAccountBinding:Symbol('sentinel')}, 'INVALID_INPUT')
+
+  let getterCalls = 0
+  const input = {...fixture(), hostProcess:'mismatched'}
+  Object.defineProperty(input, 'lifecycleBinding', {
+    enumerable: true,
+    get() { getterCalls++; throw Error('SYNTHETIC_SENSITIVE_SENTINEL') },
+  })
+  check(input, 'INVALID_INPUT')
+  assert.equal(getterCalls, 0)
+})
+
 const failures = {
   version:['unsupported','UNSUPPORTED_VERSION'], provenance:['untrusted','UNTRUSTED_CONTEXT'],
   hostProcess:['terminal','HOST_PROCESS_UNVERIFIED'], desktopBinding:['mismatched','DESKTOP_BINDING_DENIED'],
@@ -70,7 +97,7 @@ test('hostile shapes, accessors, proxies and thrown values produce fixed codes o
   const nullPrototype = Object.assign(Object.create(null),fixture())
   check(nullPrototype,'SYNTHETIC_FACTS_COMPLETE')
 })
-test('diagnostic is read only, bounded, repeatable and outputs cannot alter later results', () => {
+test('diagnostic is read only, repeatable and outputs cannot alter later results', () => {
   const input = Object.freeze(fixture())
   const first = check(input,'SYNTHETIC_FACTS_COMPLETE')
   assert.throws(()=>{first.liveHost='VERIFIED'},TypeError)
