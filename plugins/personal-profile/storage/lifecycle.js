@@ -3,7 +3,7 @@ import { performance } from 'node:perf_hooks'
 import { createConsentProfile } from '../core/consent.js'
 import { files } from './files.js'
 import { seal, open } from './envelope.js'
-import { normalize, imported, guarded, failure, identity } from './codec.js'
+import { normalize, imported, guarded, failure, identity, profileInput } from './codec.js'
 import { merge, strategy } from './restore.js'
 
 export const STORAGE_LIMITS = Object.freeze({accessLeases: 16, reviews: 16, reviewTtlMs: 60_000})
@@ -22,6 +22,7 @@ export function assembleStorage(root, provider, {beforeRename, inactivityMs = nu
   const disk = files(root, beforeRename)
   if (inactivityMs !== null && (!Number.isSafeInteger(inactivityMs) || inactivityMs < 1)) failure()
   let key = null, generation = 0, lastActivity = 0, lastObserved = 0, reviewTimer = null
+  let authorizationReady = false
   const reviews = new Map(), leases = new Set()
   function releaseLease(cell) {
     try { cell.engine?.host.setLocked(true) }
@@ -88,6 +89,7 @@ export function assembleStorage(root, provider, {beforeRename, inactivityMs = nu
   }
   function save(id, input) {
     check()
+    authorizationReady = false
     const bytes = seal(normalize(input), key, context(id))
     const epoch = generation
     const outcome = disk.transaction(id, write => write(bytes), () => { if (!key || generation !== epoch) failure() })
@@ -138,11 +140,35 @@ export function assembleStorage(root, provider, {beforeRename, inactivityMs = nu
     get locked() { return key === null },
     checkInactivity() { check() },
     load, save,
+    get authorizationReady() { return authorizationReady && key !== null && !disk.authorizationBlocked() },
+    setPermission(id, canonicalId, field, state) {
+      check()
+      // Revoke every retained lease before any validation, I/O, or later read.
+      invalidate(); authorizationReady = false
+      const epoch = generation
+      try {
+        identity(canonicalId)
+        let completed = false
+        const outcome = disk.transaction(id, write => {
+          disk.beginAuthorizationChange()
+          const current = load(id)
+          if (!current) failure()
+          const policies = current.permissionState.profiles
+          const fields = Object.hasOwn(policies, canonicalId) ? policies[canonicalId] : {}
+          current.permissionState.profiles = {...policies, [canonicalId]: {...fields, [field]: state}}
+          const result = write(seal(normalize(current), key, context(id)))
+          completed = disk.completeAuthorizationChange(result)
+          return result
+        }, () => { check(); if (generation !== epoch) failure() })
+        authorizationReady = completed && outcome.cleanupComplete
+        return outcome
+      } catch { authorizationReady = false; failure() }
+    },
     access(id) {
       check()
       if (leases.size >= STORAGE_LIMITS.accessLeases) failure()
       const input = load(id)
-      const cell = {engine: createConsentProfile(input || {})}
+      const cell = {engine: createConsentProfile(profileInput(input || {}))}
       const wrapped = wrapShape(cell.engine, cell, generation)
       leases.add(cell)
       return Object.freeze({...wrapped, dispose: disposer(cell, generation)})
@@ -168,6 +194,7 @@ export function assembleStorage(root, provider, {beforeRename, inactivityMs = nu
     },
     apply(handle, {keepExisting = false, confirmReplace = false} = {}) {
       check()
+      authorizationReady = false
       const r = reviews.get(handle)
       if (!r) failure()
       if (r.generation !== generation || r.hash !== fingerprint(r.id)) {

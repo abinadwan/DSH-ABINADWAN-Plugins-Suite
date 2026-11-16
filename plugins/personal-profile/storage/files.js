@@ -95,5 +95,32 @@ export function files(root, beforeRename = () => {}) {
       if (!committed) { try { unlinkSync(temp) } catch { /* encrypted orphan only */ } }
     }
   }
-  return {read, transaction, check: () => guarded(checkRoot)}
+  const fence = join(root, '.authorization-blocked')
+  function authorizationBlocked() {
+    checkRoot()
+    for (const file of [fence, join(root, '.writer-lock')]) {
+      try { lstatSync(file); return true } catch (e) { if (e.code !== 'ENOENT') failure() }
+    }
+    return false
+  }
+  function syncDirectory() {
+    const fd = openSync(root, constants.O_RDONLY)
+    try { fsyncSync(fd) } finally { closeSync(fd) }
+  }
+  function beginAuthorizationChange() {
+    checkRoot()
+    const fd = openSync(fence, 'wx', 0o600)
+    try { writeFileSync(fd, 'blocked-v1'); fsyncSync(fd) } finally { closeSync(fd) }
+    if (process.platform !== 'win32') syncDirectory()
+  }
+  function completeAuthorizationChange(outcome) {
+    if (!outcome.committed || !outcome.durable || !outcome.cleanupComplete) return false
+    checkRoot(); unlinkSync(fence)
+    try { syncDirectory(); return true } catch {
+      // Refuse later authorization if fence removal durability is uncertain.
+      try { beginAuthorizationChange() } catch {}
+      failure()
+    }
+  }
+  return {read, transaction, authorizationBlocked, beginAuthorizationChange, completeAuthorizationChange, check: () => guarded(checkRoot)}
 }
