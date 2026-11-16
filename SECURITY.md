@@ -14,6 +14,8 @@ Use GitHub Issues for non-sensitive bugs. Keep credentials, personal data and un
 
 **Personal Profile** is a disabled-by-default static design draft. The source accepts, persists, retrieves, injects and transmits zero profile records. No profile configuration schema or editable form exists. The ordinary DSH Component toggle stores only enablement. Storage, privacy and consent design requires approval before implementation.
 
-The manual **Check for updates** button requests public GitHub `main/package.json` only after a click. It omits credentials and referrers and sends zero conversation or profile data. Users initiate installation through DSH.
+The suite automatically checks the public **latest stable GitHub Release** when its browser module starts and every 24 hours while active; the user may also click **Check again**. These read-only requests omit credentials and referrers and send zero conversation or profile data. No automatic install, shell execution, Host activation, or update attempt occurs during checks.
+
+For **Update now**, the user must explicitly confirm. The browser verifies the release tag's commit SHA and package identity/version, then delegates installation to DSH's native Host updater, which requires an existing Git dependency pinned to a 40-character SHA. Host dependency resolution, compatibility, rollback attempts and restart reporting apply. A failed update may require manual recovery; the suite never claims guaranteed rollback. Unpinned Git installations are not silently migrated.
 
 This policy describes the current implementation. DSH, the configured model provider and other plugins have their own data handling.

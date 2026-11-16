@@ -6,7 +6,7 @@ import { Group } from '@deepseek-ai/cordis-plugin-loader'
 const get=name=>readFileSync(new URL('../'+name,import.meta.url),'utf8')
 const pkg=JSON.parse(get('package.json'))
 test('bundle and Host exports',async()=>{
-  assert.equal(pkg.version,'0.5.0')
+  assert.equal(pkg.version,'0.6.0')
   assert.equal(pkg.name,'@abinadwan/dsh-plugins-suite')
   assert.equal(pkg.dsh.client.platform,'web')
   assert.equal(pkg.dsh.bundle.patch,'./cordis.patch.yml')
@@ -33,6 +33,6 @@ test('native right sidebar registers and auto-opens', async t => {
 
 test('no privileged browser APIs',()=>{
   assert.doesNotMatch(get('client.js'),/\bXMLHttpRequest\b|\bprocess\.env\b|\bWebSocket\b|\brequire\s*\(\s*['\"](?:node:)?(?:fs|child_process)['\"]\s*\)/)
-  assert.match(get('client.js'),/fetch\(VERSION_SOURCE,/)
-  assert.match(get('client.js'),/credentials: 'omit'/)
+  assert.match(get('client.js'),/fetch\(url, \{/)
+  assert.match(get('client.js'),/credentials:\s*'omit'/)
 })

@@ -1,7 +1,7 @@
 /**
  * Browser half of @abinadwan/dsh-plugins-suite.
  * Uses DSH's documented lazy-CJS module registration and Slot API.
- * Native slots and scoped Cordis lifetimes. Only the manual version check contacts GitHub.
+ * Native slots, scoped Cordis lifetimes, and an anonymous read-only stable-release check.
  */
 window.__ModuleLoader__.load({
   id: '@abinadwan/dsh-plugins-suite',
@@ -186,10 +186,21 @@ window.__ModuleLoader__.load({
         : (n / 1000000).toFixed(1).replace(/\.0$/, '') + 'M'
     }
 
-    // Manual update check. No network request occurs until the button is clicked.
-    const INSTALLED_VERSION = '0.5.0'
-    const VERSION_SOURCE = 'https://raw.githubusercontent.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/main/package.json'
+    // Only stable published GitHub Releases may trigger an in-app update offer.
+    // This browser-side checker never installs anything without a separate click.
+    const INSTALLED_VERSION = '0.6.0'
+    const RELEASE_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/latest'
+    const COMMIT_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/commits/'
+    const RAW_MANIFEST = 'https://raw.githubusercontent.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/'
+    const PINNED_SPEC_PREFIX = 'github:abinadwan/DSH-ABINADWAN-Plugins-Suite#'
     const PROJECT_URL = 'https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite'
+    const CHECK_INTERVAL = 24 * 60 * 60 * 1000
+    let versionSnapshot = Object.freeze({phase:'idle'})
+    const versionListeners = new Set()
+    let nextAllowedCheck = 0
+    let inflightCheck = null
+    let versionDisposed = false
+    let versionGeneration = 0
     function versionParts(version) {
       if (typeof version !== 'string') return null
       const found = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?(?:\+[0-9A-Za-z.-]+)?$/.exec(version)
@@ -218,80 +229,175 @@ window.__ModuleLoader__.load({
       }
       return false
     }
-    // Installed-plugin detail page only. The session inspector remains focused on runtime data.
-    function VersionUpdates({ installedVersion = INSTALLED_VERSION }) {
-      const [update, setUpdate] = React.useState({ phase: 'idle' })
-      const currentVersion = versionParts(installedVersion) ? installedVersion : INSTALLED_VERSION
-      async function check() {
-        if (update.phase === 'checking') return
-        setUpdate({ phase: 'checking' })
+    function publishVersion(next, expectedGeneration = versionGeneration) {
+      if (versionDisposed || expectedGeneration !== versionGeneration) return
+      versionSnapshot = Object.freeze(next)
+      for (const notify of versionListeners) notify()
+    }
+    function subscribeVersion(notify) {
+      versionListeners.add(notify)
+      return () => versionListeners.delete(notify)
+    }
+    const getVersionSnapshot = () => versionSnapshot
+    function getReleaseVersion(payload) {
+      if (!payload || payload.draft !== false || payload.prerelease !== false ||
+        typeof payload.tag_name !== 'string' || !/^v\d+\.\d+\.\d+$/.test(payload.tag_name)) {
+        throw new Error('Untrusted or unsupported release metadata')
+      }
+      return payload.tag_name.slice(1)
+    }
+    async function githubJSON(url) {
+      const signal = typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
+        ? AbortSignal.timeout(10000) : undefined
+      const response = await fetch(url, {
+        method:'GET', credentials:'omit', cache:'no-store', referrerPolicy:'no-referrer',
+        headers:{Accept:'application/vnd.github+json'},
+        ...signal ? {signal} : {},
+      })
+      if (response.status === 404 && url === RELEASE_SOURCE) return null
+      if (!response.ok) throw new Error('GitHub returned HTTP ' + response.status)
+      return await response.json()
+    }
+    function checkRelease(force = false) {
+      if (versionDisposed) return Promise.resolve()
+      if (inflightCheck) return inflightCheck
+      const now = Date.now()
+      if (!force && now < nextAllowedCheck) return Promise.resolve()
+      nextAllowedCheck = now + CHECK_INTERVAL
+      const generation = versionGeneration
+      publishVersion({phase:'checking'}, generation)
+      const task = (async () => {
         try {
-          const controllerSignal = typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
-            ? AbortSignal.timeout(10000) : undefined
-          const response = await fetch(VERSION_SOURCE, {
-            method: 'GET', credentials: 'omit', cache: 'no-store', referrerPolicy: 'no-referrer',
-            headers: { Accept: 'application/json' },
-            ...controllerSignal ? { signal: controllerSignal } : {},
-          })
-          if (!response.ok) throw new Error('GitHub returned HTTP ' + response.status)
-          const remote = await response.json()
-          if (remote?.name !== '@abinadwan/dsh-plugins-suite') {
-            throw new Error('Unexpected package identity in GitHub response')
+          const release = await githubJSON(RELEASE_SOURCE)
+          if (!release) {
+            publishVersion({phase:'unreleased', checked:new Date().toLocaleTimeString()}, generation)
+            return
           }
-          const newer = isNewerVersion(remote.version, currentVersion)
-          if (newer === null) throw new Error('Invalid repository version')
-          setUpdate({ phase: newer ? 'available' : 'current', latest: remote.version,
-            checked: new Date().toLocaleTimeString() })
+          const latest = getReleaseVersion(release)
+          const result = isNewerVersion(latest, INSTALLED_VERSION)
+          if (result === null) throw new Error('Invalid release version')
+          publishVersion({phase:'ready',latest,tag:release.tag_name,
+            checked:new Date().toLocaleTimeString()}, generation)
         } catch (error) {
-          setUpdate({ phase: 'error', message: String(error?.message || error) })
+          publishVersion({phase:'error',message:String(error?.message || error)}, generation)
+        }
+      })()
+      const pending = task.finally(() => {if (inflightCheck === pending) inflightCheck = null})
+      inflightCheck = pending
+      return pending
+    }
+    // Installed-plugin detail page only; never run an installer in a React effect.
+    function VersionUpdates({ installedVersion = INSTALLED_VERSION, pluginManager }) {
+      const update = React.useSyncExternalStore(subscribeVersion,getVersionSnapshot,getVersionSnapshot)
+      const [action, setAction] = React.useState({phase:'idle'})
+      const currentVersion = versionParts(installedVersion) ? installedVersion : INSTALLED_VERSION
+      const newer = update.phase === 'ready' ? isNewerVersion(update.latest,currentVersion) : false
+      const phase = update.phase === 'ready' ? (newer ? 'available' : 'current') : update.phase
+      async function prepare() {
+        setAction({phase:'checking'})
+        try {
+          if (phase !== 'available' || typeof update.tag !== 'string') throw new Error('No approved newer release')
+          // Resolve the release tag to an immutable commit, and verify the
+          // package identity and exact version at that commit.
+          const commit = await githubJSON(COMMIT_SOURCE + encodeURIComponent(update.tag))
+          const sha = commit?.sha
+          if (typeof sha !== 'string' || !/^[0-9a-f]{40}$/.test(sha)) throw new Error('Invalid release commit')
+          const manifest = await githubJSON(RAW_MANIFEST + sha + '/package.json')
+          if (manifest?.name !== '@abinadwan/dsh-plugins-suite' || manifest?.version !== update.latest) {
+            throw new Error('Release manifest does not match the expected package')
+          }
+          const bundles = await pluginManager.listBundles()
+          const installed = Array.isArray(bundles)
+            ? bundles.find(bundle => bundle?.name === '@abinadwan/dsh-plugins-suite') : null
+          // DSH rc.3 will only update a Git bundle pinned to a full SHA.
+          if (!installed || installed.update !== 'git' || installed.installed !== true) {
+            setAction({phase:'manual',message:
+              'One-time migration needed: reinstall this bundle pinned to a full 40-character commit SHA, then review updates here. No files were changed.'})
+            return
+          }
+          if (installed.version !== undefined && installed.version !== currentVersion) {
+            throw new Error('Installed bundle version changed; reopen Plugins and check again')
+          }
+          setAction({phase:'confirm',latest:update.latest,sha})
+        } catch (error) {
+          setAction({phase:'error',message:String(error?.message || error)})
+        }
+      }
+      async function applyUpdate() {
+        if (action.phase !== 'confirm' || typeof action.sha !== 'string' ||
+          !/^[0-9a-f]{40}$/.test(action.sha) || isNewerVersion(action.latest,currentVersion) !== true) return
+        const {latest,sha} = action
+        setAction({phase:'installing'})
+        try {
+          // The Host owns package management, permissions, compatibility,
+          // rollback attempt and restart reporting. Never invoke a shell here.
+          const result = await pluginManager.updateBundle('@abinadwan/dsh-plugins-suite',
+            latest,{spec:PINNED_SPEC_PREFIX + sha})
+          const state = result?.result?.application
+          if (state === 'failed' || state === 'cancelled' || result?.restore) {
+            setAction({phase:'error',message:
+              'Host reported an unsuccessful update or rollback attempt. Review the built-in Plugins status before retrying.'})
+            return
+          }
+          if (state !== 'applied' && state !== 'restart-required' && state !== 'overridden') {
+            setAction({phase:'error',message:'Update outcome not confirmed. Check the native Plugins page.'})
+            return
+          }
+          setAction({phase:'done',latest,restart:state === 'restart-required'})
+        } catch (error) {
+          setAction({phase:'error',message:'Host update did not complete: ' + String(error?.message || error)})
         }
       }
       const soft = 'rgba(127,127,127,.16)'
-      const muted = { fontSize: 12, opacity: .72, lineHeight: 1.65, margin: 0 }
-      const text = update.phase === 'checking' ? 'Checking GitHub…'
-        : update.phase === 'available' ? 'Update available'
-        : update.phase === 'current' ? 'Up to date'
-        : update.phase === 'error' ? 'Could not check for updates'
+      const muted = {fontSize:12,opacity:.72,lineHeight:1.65,margin:0}
+      const status = phase === 'checking' ? 'Checking GitHub Releases…'
+        : phase === 'available' ? 'Approved update available'
+        : phase === 'current' ? 'Up to date'
+        : phase === 'unreleased' ? 'No published stable release yet'
+        : phase === 'error' ? 'Could not check for updates'
         : 'Not checked yet'
-      return h('section', { 'data-environment-update-section': '',
-        style: { borderTop: '1px solid ' + soft, padding: '20px 0', color: 'inherit' } },
-        h('header', { style: { display: 'flex', alignItems: 'center', gap: 12,
-          justifyContent: 'space-between', marginBottom: 14 } },
-          h('h3', { style: { fontSize: 16, margin: 0, fontWeight: 650 } }, 'Versions'),
-          h('button', { type: 'button', 'data-check-updates': '',
-            'aria-label': 'Check for plugin updates',
-            disabled: update.phase === 'checking',
-            onClick: check,
-            style: { border: 0, borderRadius: 8, padding: '7px 10px',
-              color: 'inherit', background: 'transparent', cursor: 'pointer',
-              fontSize: 12, opacity: update.phase === 'checking' ? .6 : 1 } },
-            '↻ ', update.phase === 'checking' ? 'Checking…' : update.checked ? 'Check again' : 'Check for updates')),
-        h('div', { style: { border: '1px solid rgba(127,127,127,.29)',
-          borderRadius: 12, background: 'rgba(127,127,127,.07)', padding: 17 } },
-          h('div', { style: { display: 'flex', alignItems: 'center', gap: 10 } },
-            h('span', { 'aria-hidden': true, style: { display: 'inline-flex',
-              justifyContent: 'center', alignItems: 'center', width: 29,
-              height: 29, borderRadius: 999, background: 'rgba(127,127,127,.14)',
-              color: update.phase === 'current' ? '#46ae7d' :
-                update.phase === 'available' ? '#dfaa50' : 'inherit' } },
-              update.phase === 'current' ? '✓' : update.phase === 'available' ? '↑' : '↻'),
-            h('div', null,
-              h('div', { role: 'status', 'aria-live': 'polite',
-                style: { fontWeight: 650, fontSize: 13 } }, text),
-              h('div', { style: muted },
-                update.checked ? 'Last checked at ' + update.checked : 'Latest version has not been checked'))),
-          h('div', { style: { marginTop: 12, fontSize: 12 } },
-            line('Installed', 'v' + currentVersion),
-            update.latest ? line('Repository (main)', 'v' + update.latest) : null),
-          update.phase === 'error' ? h('p', { style: { ...muted, marginTop: 10 } },
-            update.message) : null,
-          update.phase === 'available' ? h('p', { style: { ...muted, marginTop: 10 } },
-            'A newer version was declared in the repository. Review the source and update through Plugins. No automatic installation occurs.') : null),
-        h('p', { style: { ...muted, marginTop: 12 } },
-          'Manual version check against the public GitHub main branch. No request occurs until you click.'),
-        h('a', { href: PROJECT_URL, target: '_blank', rel: 'noopener noreferrer',
-          style: { display: 'inline-block', fontSize: 12, marginTop: 8,
-            color: '#69a9fc', textDecoration: 'underline' } }, 'View GitHub repository'))
+      const buttonStyle = {border:'1px solid rgba(127,127,127,.35)',borderRadius:8,
+        padding:'8px 12px',fontSize:12,color:'inherit',background:'transparent',cursor:'pointer'}
+      return h('section',{'data-environment-update-section':'',
+        style:{borderTop:'1px solid ' + soft,padding:'20px 0',color:'inherit'}},
+        h('header',{style:{display:'flex',alignItems:'center',gap:12,
+          justifyContent:'space-between',marginBottom:14}},
+          h('h3',{style:{fontSize:16,margin:0,fontWeight:650}},'Versions'),
+          h('button',{type:'button','data-check-updates':'',
+            'aria-label':'Check for plugin updates',disabled:phase==='checking',
+            onClick:()=>checkRelease(true),style:buttonStyle},'↻ Check again')),
+        h('div',{style:{border:'1px solid rgba(127,127,127,.29)',borderRadius:12,
+          background:'rgba(127,127,127,.07)',padding:17}},
+          h('div',{role:'status','aria-live':'polite',style:{fontWeight:650,fontSize:13}},status),
+          h('div',{style:{marginTop:12,fontSize:12}},
+            line('Installed','v'+currentVersion),
+            update.latest ? line('Latest stable release','v'+update.latest) : null,
+            update.checked ? line('Last checked',update.checked) : null),
+          phase==='error' ? h('p',{style:{...muted,marginTop:10}},update.message) : null,
+          phase==='available' ? h('div',{style:{marginTop:12}},
+            h('button',{type:'button','data-update-now':'',disabled:action.phase==='checking'||action.phase==='installing',
+              style:buttonStyle,onClick:prepare},'Update now')) : null,
+          action.phase==='manual' || action.phase==='error'
+            ? h('p',{role:'alert',style:{...muted,marginTop:12}},action.message) : null,
+          action.phase==='confirm' ? h('div',{style:{marginTop:13}},
+            h('p',null,'Confirm installation of v'+action.latest+' via the native DSH Host. '+
+              'The update may require a restart; failed updates may require manual recovery.'),
+            h('p',{style:{...muted,overflowWrap:'anywhere'}},'Pinned SHA: '+action.sha),
+            h('button',{type:'button','data-confirm-update':'',style:buttonStyle,onClick:applyUpdate},
+              'Confirm update'),
+            h('button',{type:'button',style:buttonStyle,onClick:()=>setAction({phase:'idle'})},
+              'Cancel')) : null,
+          action.phase==='installing'
+            ? h('p',{role:'status',style:{...muted,marginTop:12}},'Updating through Harness Plugin Manager…') : null,
+          action.phase==='done'
+            ? h('p',{role:'status',style:{...muted,marginTop:12}},
+              'Host accepted update to v'+action.latest+(action.restart ? '; restart required.' : '.')) : null),
+        h('p',{style:{...muted,marginTop:12}},
+          'Checks stable GitHub Releases automatically on startup and every 24 hours. '+
+          'No installation runs without your confirmation. Git installations must be pinned to a full commit.'),
+        h('a',{href:PROJECT_URL+'/releases',target:'_blank',rel:'noopener noreferrer',
+          style:{display:'inline-block',fontSize:12,marginTop:8,color:'#69a9fc',
+            textDecoration:'underline'}},'View published releases'))
     }
 
     function Details({ sessionId, useProjection, sessions, workspaces }) {
@@ -418,6 +524,238 @@ window.__ModuleLoader__.load({
       },
     }
 
+    // Safe browser-only preview. Never imports Host storage or registers agent capabilities.
+    // The root bundle owns this panel independently of the disabled Host subcomponent.
+    const PROFILE_PANEL_ID = TYPE + '/personal-profile-page'
+    function ProfilePanelIcon({ size = 20 }) {
+      return h('svg', { width: size, height: size, viewBox: '0 0 24 24',
+        fill: 'none', stroke: 'currentColor', strokeWidth: 1.8,
+        strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
+      h('rect', { x: 3, y: 2.5, width: 18, height: 19, rx: 3 }),
+      h('circle', { cx: 9, cy: 9, r: 2 }),
+      h('path', { d: 'M5.5 16c.6-2.8 6.4-2.8 7 0M14 8h4M14 12h4M14 16h4' }))
+    }
+    function PersonalProfilePage() {
+      const [language, setLanguage] = React.useState('ar')
+      const [page, setPage] = React.useState('information')
+      const [profile, setProfile] = React.useState('Synthetic Studio')
+      const [values, setValues] = React.useState({})
+      const [custom, setCustom] = React.useState([])
+      const [newLabel, setNewLabel] = React.useState('')
+      const [globalInstruction, setGlobalInstruction] = React.useState('')
+      const [overrides, setOverrides] = React.useState({})
+      const [policies, setPolicies] = React.useState({})
+      const [optIn, setOptIn] = React.useState(false)
+      const [approval, setApproval] = React.useState('')
+      const [locked, setLocked] = React.useState(false)
+      const [autoLock, setAutoLock] = React.useState('5')
+      const [sessionVisible, setSessionVisible] = React.useState(true)
+      const [backupReview, setBackupReview] = React.useState('')
+      const [backupStrategy, setBackupStrategy] = React.useState('merge')
+      const [backupAck, setBackupAck] = React.useState(false)
+      const ar = {
+        information:'معلوماتي', instructions:'تعليمات الوكيل', access:'التحكم في الوصول',
+        backup:'النسخ والاستعادة', privacy:'الخصوصية والأمان', title:'الملف الشخصي',
+        subtitle:'صفحة تجريبية داخل التطبيق، ببيانات اصطناعية فقط',
+        warning:'معاينة فقط — لا تدخل بيانات حقيقية. لا يوجد حفظ أو تشفير أو اتصال بالوكيل. ستضيع التغييرات عند إعادة تحميل الواجهة.',
+        profile:'الملف التجريبي', language:'اللغة', preferredName:'الاسم المفضل',
+        fullName:'الاسم الكامل', dateOfBirth:'تاريخ الميلاد', nationality:'الجنسية',
+        gender:'الجنس', custom:'حقول إضافية', add:'أضف حقلًا تجريبيًا', remove:'حذف',
+        label:'اسم الحقل', global:'تعليمات عامة', override:'تعليمات خاصة بهذا الملف',
+        inherit:'استخدام التعليمات العامة', customMode:'تعليمات مخصصة', effective:'المعاينة النهائية',
+        optIn:'السماح باستخدام المعلومات المعتمدة (محاكاة)', fieldPolicies:'صلاحيات كل حقل',
+        private:'خاص', ask:'اسأل أولًا', allow:'سماح', approval:'الموافقة المؤقتة (محاكاة)',
+        once:'مرة واحدة', session:'لهذه الجلسة', deny:'رفض',
+        backupHint:'مراجعة الإجراءات فقط. لا يتم استيراد أو تصدير أي ملفات.',
+        export:'مراجعة التصدير', import:'مراجعة الاستعادة', merge:'دمج', replace:'استبدال الكل',
+        confirm:'أفهم أن هذا مجرد استعراض ولن يُحفظ شيء.', unavailable:'التنفيذ غير متاح',
+        lock:'محاكاة القفل', unlock:'إلغاء القفل التجريبي', lockText:'الحقول مخفية لمحاكاة القفل فقط، دون حماية فعلية.',
+        autoLock:'القفل التلقائي (تصميم فقط)', never:'أبدًا', five:'5 دقائق', fifteen:'15 دقيقة',
+        endSession:'إنهاء جلسة تجريبية', history:'سجل الموافقات', historyText:'لا يوجد سجل حقيقي. بيانات العرض اصطناعية.',
+        privacyWarning:'هذا العرض ليس مخزنًا آمنًا. لا تستخدم بيانات شخصية أو كلمات مرور.',
+        reset:'إعادة ضبط المعاينة', missing:'غير محدد', note:'كل تغيير هنا مؤقت ومحلي في ذاكرة الصفحة.',
+        synthetic:'مثال اصطناعي فقط', yes:'نعم', no:'لا', noInstruction:'لا توجد تعليمات.',
+      }
+      const en = {
+        information:'My Information', instructions:'Agent Instructions', access:'Access Control',
+        backup:'Backup & Restore', privacy:'Privacy & Security', title:'Personal Profile',
+        subtitle:'In-app preview with fictional data only',
+        warning:'Preview only — do not enter real information. No saving, encryption or agent connection. Changes disappear on reload.',
+        profile:'Synthetic profile', language:'Language', preferredName:'Preferred name',
+        fullName:'Full name', dateOfBirth:'Date of birth', nationality:'Nationality',
+        gender:'Gender', custom:'Custom fields', add:'Add synthetic field', remove:'Remove',
+        label:'Field label', global:'Global instructions', override:'Profile instructions',
+        inherit:'Inherit global', customMode:'Custom instructions', effective:'Effective preview',
+        optIn:'Allow approved information (simulation)', fieldPolicies:'Per-field policies',
+        private:'Private', ask:'Ask First', allow:'Allow', approval:'Temporary consent (simulation)',
+        once:'Allow Once', session:'This Session', deny:'Deny',
+        backupHint:'Review only. No file is imported or exported.',
+        export:'Review export', import:'Review restore', merge:'Merge', replace:'Replace all',
+        confirm:'I understand this is a demonstration; no changes will be saved.',
+        unavailable:'Unavailable', lock:'Simulate lock', unlock:'Reset simulated lock',
+        lockText:'Editors are hidden for demonstration only. No real protection.',
+        autoLock:'Automatic lock (design only)', never:'Never', five:'5 minutes', fifteen:'15 minutes',
+        endSession:'End synthetic session', history:'Consent history',
+        historyText:'No real history is collected. All examples are fictional.',
+        privacyWarning:'This preview is not secure storage. Never enter personal data or passwords.',
+        reset:'Reset preview', missing:'Unspecified', note:'Changes exist only in this browser view.',
+        synthetic:'Synthetic example only', yes:'Yes', no:'No', noInstruction:'No instructions.',
+      }
+      const t = key => (language === 'ar' ? ar : en)[key] || key
+      const rtl = language === 'ar'
+      const surface = { border:'1px solid rgba(128,128,128,.3)', borderRadius:13,
+        padding:20, background:'rgba(128,128,128,.045)', marginBottom:16 }
+      const label = { display:'block', fontWeight:650, marginBottom:6, fontSize:13 }
+      const control = { display:'block', width:'100%', boxSizing:'border-box',
+        padding:'9px 11px', border:'1px solid rgba(128,128,128,.45)', borderRadius:8,
+        background:'var(--dsh-input-bg, transparent)', color:'inherit', font:'inherit' }
+      const btn = { border:'1px solid rgba(128,128,128,.35)', borderRadius:8,
+        padding:'9px 13px', font:'inherit', background:'rgba(128,128,128,.08)',
+        color:'inherit', cursor:'pointer' }
+      const fields = ['preferredName','fullName','dateOfBirth','nationality','gender']
+      const profiles = ['Synthetic Studio','Synthetic Lab']
+      const sections = ['information','instructions','access','backup','privacy']
+      function card(title, ...children) {
+        return h('section', { style:surface, 'aria-label':title },
+          h('h2', { style:{fontSize:17,margin:'0 0 13px'} }, title), ...children)
+      }
+      function input(key, title, value, change, props = {}) {
+        return h('div', { key, style:{marginBottom:14,minWidth:0} },
+          h('label', { htmlFor:'pp-'+key, style:label }, title),
+          h('input', { id:'pp-'+key, style:control, type:'text', maxLength:1024,
+            value:value || '', onChange:e=>change(e.target.value), autoComplete:'off',
+            dir:'auto', ...props }))
+      }
+      function dropdown(key, title, value, options, onChange) {
+        return h('div', { key, style:{marginBottom:14} },
+          h('label', { htmlFor:'pp-'+key, style:label }, title),
+          h('select', { id:'pp-'+key, style:control, value, onChange:e=>onChange(e.target.value) },
+            options.map(([v,txt])=>h('option',{key:v,value:v},txt))))
+      }
+      const notice = h('p', { role:'note', style:{padding:'12px 15px',
+        border:'1px solid rgba(208,158,52,.7)', borderRadius:10,
+        background:'rgba(208,158,52,.1)',fontSize:13,lineHeight:1.7} }, t('warning'))
+      const setField = (id,value) => setValues(prev => ({...prev,[id]:value}))
+      let contents
+      if (locked) {
+        contents = card(t('privacy'), h('p',{role:'status'},t('lockText')),
+          h('button',{type:'button',style:btn,onClick:()=>setLocked(false)},t('unlock')))
+      } else if (page === 'information') {
+        contents = h(React.Fragment,null,
+          card(t('information'),
+            h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))',gap:'0 18px'}},
+              ...fields.map(id=>id === 'gender'
+                ? dropdown(id,t(id),values.gender || '',[['',t('missing')],['male',rtl?'ذكر':'Male'],['female',rtl?'أنثى':'Female'],['unspecified',t('missing')]],v=>setField(id,v))
+                : input(id,t(id),values[id] || '',v=>setField(id,v),
+                  id==='dateOfBirth'?{placeholder:'YYYY-MM-DD',maxLength:10}:{})))),
+          card(t('custom'),
+            ...custom.map(f=>h('div',{key:f.id,style:{display:'flex',gap:10,alignItems:'end',flexWrap:'wrap'}},
+              h('div',{style:{flex:'1 1 220px'}},input(f.id,f.label,values[f.id] || '',v=>setField(f.id,v))),
+              h('button',{type:'button',style:{...btn,marginBottom:14},
+                onClick:()=>{setCustom(old=>old.filter(x=>x.id!==f.id));setField(f.id,'')}},t('remove')))),
+            input('new-label',t('label'),newLabel,setNewLabel,{maxLength:80}),
+            h('button',{type:'button',style:btn,disabled:!newLabel.trim()||custom.length>=8,
+              onClick:()=>{const next='example'+(custom.length+1)+'-'+Date.now().toString(36);
+                setCustom(old=>[...old,{id:next,label:newLabel.trim()}]);setNewLabel('')}},
+              t('add'))))
+      } else if (page === 'instructions') {
+        const override = Object.hasOwn(overrides,profile)
+        const effective = override ? overrides[profile] : globalInstruction
+        contents = h(React.Fragment,null,
+          card(t('global'),
+            h('label',{htmlFor:'pp-global',style:label},t('global')),
+            h('textarea',{id:'pp-global',rows:5,maxLength:8192,style:control,
+              value:globalInstruction,onChange:e=>setGlobalInstruction(e.target.value),dir:'auto'})),
+          card(t('override'),
+            dropdown('mode',t('override'),override?'custom':'inherit',
+              [['inherit',t('inherit')],['custom',t('customMode')]],v=>setOverrides(old=>{
+                const copy={...old}
+                if(v==='inherit')delete copy[profile]
+                else copy[profile]=''
+                return copy
+              })),
+            override?h('textarea',{id:'pp-override',rows:5,maxLength:8192,style:control,
+              'aria-label':t('override'),value:overrides[profile],
+              onChange:e=>setOverrides(old=>({...old,[profile]:e.target.value})),dir:'auto'}):null),
+          card(t('effective'),h('output',{style:{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}},
+            effective || t('noInstruction'))))
+      } else if (page === 'access') {
+        const policy = policies[profile] || {}
+        contents = h(React.Fragment,null,
+          card(t('access'),
+            h('label',{style:{display:'flex',gap:10,alignItems:'center',marginBottom:15}},
+              h('input',{type:'checkbox',checked:optIn,onChange:e=>setOptIn(e.target.checked),
+                'aria-label':t('optIn')}),t('optIn')),
+            h('p',{style:{fontSize:13,opacity:.78}},t('synthetic')),
+            h('h3',{style:{fontSize:15}},t('fieldPolicies')),
+            ...[...fields,...custom.map(x=>x.id)].map(id=>dropdown('policy-'+id,
+              custom.find(x=>x.id===id)?.label||t(id),
+              policy[id]||'private',[['private',t('private')],['ask_first',t('ask')],['allow',t('allow')]],
+              v=>setPolicies(old=>({...old,[profile]:{...(old[profile]||{}),[id]:v}}))))),
+          card(t('approval'),
+            h('div',{style:{display:'flex',gap:8,flexWrap:'wrap'}},
+              ...[['once',t('once')],['session',t('session')],['deny',t('deny')]].map(([k,l])=>
+                h('button',{key:k,type:'button',style:btn,onClick:()=>setApproval(l)},l))),
+            h('p',{role:'status',style:{marginTop:13}},approval?approval+' — '+t('synthetic'):t('synthetic'))))
+      } else if (page === 'backup') {
+        contents = card(t('backup'),h('p',null,t('backupHint')),
+          h('div',{style:{display:'flex',flexWrap:'wrap',gap:8}},
+            h('button',{style:btn,type:'button',onClick:()=>{setBackupReview('export');setBackupAck(false)}},t('export')),
+            h('button',{style:btn,type:'button',onClick:()=>{setBackupReview('import');setBackupAck(false)}},t('import'))),
+          backupReview?h('div',{style:{marginTop:20}},
+            h('h3',{style:{fontSize:15}},backupReview==='export'?t('export'):t('import')),
+            backupReview==='import'?dropdown('backup-strategy',t('backup'),backupStrategy,
+              [['merge',t('merge')],['replace',t('replace')]],setBackupStrategy):null,
+            h('label',{style:{display:'flex',gap:8,alignItems:'center',marginBottom:12}},
+              h('input',{type:'checkbox',checked:backupAck,onChange:e=>setBackupAck(e.target.checked)}),
+              t('confirm')),
+            h('button',{style:{...btn,opacity:.6},disabled:true,type:'button'},t('unavailable'))):null)
+      } else {
+        contents = h(React.Fragment,null,
+          card(t('privacy'),
+            h('p',null,t('privacyWarning')),
+            h('button',{type:'button',style:btn,onClick:()=>setLocked(true)},t('lock')),
+            dropdown('auto-lock',t('autoLock'),autoLock,
+              [['0',t('never')],['5',t('five')],['15',t('fifteen')]],setAutoLock)),
+          card(t('session'),
+            h('p',null,sessionVisible?t('synthetic'):t('missing')),
+            h('button',{type:'button',style:btn,disabled:!sessionVisible,
+              onClick:()=>setSessionVisible(false)},t('endSession'))),
+          card(t('history'),h('p',null,t('historyText'))))
+      }
+      return h('div',{'data-personal-profile-panel':'preview-only',lang:language,
+        dir:rtl?'rtl':'ltr',style:{height:'100%',overflowY:'auto',boxSizing:'border-box',
+          padding:'max(var(--dsh-frame-top-clearance, 0px), 28px) clamp(18px,4vw,56px) 52px',
+          color:'inherit',lineHeight:1.6}},
+        h('div',{style:{maxWidth:1050,margin:'0 auto'}},
+          h('header',{style:{display:'flex',flexWrap:'wrap',gap:12,
+            alignItems:'center',justifyContent:'space-between'}},
+            h('div',null,h('h1',{style:{margin:'0 0 4px',fontSize:'clamp(22px,3vw,32px)'}},t('title')),
+              h('p',{style:{margin:'0 0 12px',opacity:.7}},t('subtitle'))),
+            h('div',{style:{width:145}},dropdown('language',t('language'),language,
+              [['ar','العربية'],['en','English']],setLanguage))),
+          notice,
+          h('div',{style:{display:'flex',gap:10,flexWrap:'wrap',justifyContent:'space-between',alignItems:'center'}},
+            dropdown('profile',t('profile'),profile,profiles.map(x=>[x,x]),
+              v=>{setProfile(v);setApproval('')}),
+            h('button',{type:'button',style:btn,onClick:()=>{
+              setValues({});setCustom([]);setNewLabel('');setGlobalInstruction('');
+              setOverrides({});setPolicies({});setOptIn(false);setApproval('');
+              setLocked(false);setAutoLock('5');setSessionVisible(true);
+              setBackupReview('');setBackupStrategy('merge');setBackupAck(false);
+              setPage('information');setProfile(profiles[0])
+            }},t('reset'))),
+          h('nav',{role:'tablist','aria-label':t('title'),
+            style:{display:'flex',gap:6,flexWrap:'wrap',marginBottom:20}},
+            ...sections.map(id=>h('button',{key:id,type:'button',role:'tab',
+              id:'pp-tab-'+id,'aria-selected':page===id,
+              'aria-controls':'pp-content',onClick:()=>setPage(id),
+              style:{...btn,background:page===id?'rgba(128,128,128,.22)':'transparent',
+                fontWeight:page===id?700:500}},t(id)))),
+          h('div',{role:'tabpanel',id:'pp-content','aria-labelledby':'pp-tab-'+page},contents),
+          h('p',{style:{fontSize:12,opacity:.65,marginTop:25}},t('note'))))
+    }
+
     function ProfileDraft() {
       const fields = [
         ['Name', 'Preferred name. Full name is optional.'],
@@ -455,6 +793,32 @@ window.__ModuleLoader__.load({
     return {
       inject: ['slots', 'remote', 'remoteAccess'],
       apply(ctx) {
+        // The suite browser lifetime owns the opt-in-free read-only version
+        // check. A timer cannot install, enable or modify any plugin.
+        ctx.effect(() => {
+          versionDisposed = false
+          versionGeneration++
+          nextAllowedCheck = 0
+          inflightCheck = null
+          void checkRelease()
+          const timer = setInterval(() => { void checkRelease() }, CHECK_INTERVAL)
+          return () => {
+            clearInterval(timer)
+            versionGeneration++
+            versionDisposed = true
+            inflightCheck = null
+            versionListeners.clear()
+          }
+        }, 'suite: automatic stable-release check')
+        // Global left navigation and full-page synthetic preview are browser-only.
+        // This never turns on the disabled Host Personal Profile component.
+        ctx.slots.inject('main', () => ctx.slots.register({
+          name: 'main', key: PROFILE_PANEL_ID,
+        }, PersonalProfilePage))
+        ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
+          name: 'sidebar.panellist', id: PROFILE_PANEL_ID, order: 40,
+          label: () => 'Personal Profile',
+        }, ProfilePanelIcon))
         // The official Plugins detail page owns update controls; never render them inside a Session tab.
         ctx.slots.inject('plugins.detail.section', () => ctx.slots.register({
           name: 'plugins.detail.section',
@@ -462,7 +826,8 @@ window.__ModuleLoader__.load({
           order: 50,
         }, ({ subject }) => subject?.kind === 'bundle' &&
           subject.pkg?.name === TYPE
-          ? h(VersionUpdates, { installedVersion: subject.pkg.version || INSTALLED_VERSION })
+          ? h(VersionUpdates, { installedVersion: subject.pkg.version || INSTALLED_VERSION,
+              pluginManager: ctx.remote.pluginManager })
           : null))
 
         // DSH discovers browser bundles at package roots. Host subpath rows

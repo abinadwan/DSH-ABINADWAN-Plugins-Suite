@@ -1,6 +1,6 @@
 # Personal Profile
 
-**Phase 3 internal instruction management; read-only Host draft, disabled by default. The full feature is not ready.**
+**v0.6.0: left-sidebar UI preview is available; Host profile storage and agent access remain disabled. This is not a working personal-data feature.**
 
 <img src="icon.png" width="96" alt="Amber Personal Profile ID and gear"/>
 
@@ -9,6 +9,31 @@ Plugins detail page. It accepts zero profile values. Its unchanged Host register
 no configuration schemas, agent instructions, tools, storage handlers or network
 operations. The on/off switch is ordinary DSH plugin configuration and carries no
 profile values.
+
+## Left-sidebar preview (v0.6.0)
+
+Installing/updating the suite to v0.6.0 adds a **Personal Profile** item to the global
+**left sidebar**. It opens a full-height page with five sections:
+
+- My Information — fictional, editable sample fields and custom fields.
+- Agent Instructions — simulated global/per-Profile inheritance and override preview.
+- Access Control — simulated per-field policy and consent choices; no real permissions.
+- Backup & Restore — review interactions only; no import/export, password, or disk writes.
+- Privacy & Security — simulated lock, auto-lock choices and synthetic session controls.
+
+The browser page supports Arabic and English. Sample edits exist **only in React
+memory** and disappear when the page/bundle reloads. It neither reads nor writes
+real Harness Profile values, uses no privileged Host transport, and sends no
+data to an agent or remote service. **Do not enter real personal information.**
+
+The left-sidebar launcher belongs to the browser bundle, so it can be visible
+while the independent Host Personal Profile subcomponent remains disabled.
+The old read-only design card on the Plugins detail page is separate.
+There is **no Save button or persistent storage** in this release.
+
+For implementation and security boundaries see
+[Phase 4 prototype](../../docs/PERSONAL_PROFILE_PHASE4.md) and
+[Phase 6A integration QA](../../docs/PERSONAL_PROFILE_PHASE6A.md).
 
 Phase 1 adds isolated in-memory modules under `core/`, exercised only with
 synthetic fixtures. The optional master fields are Preferred Name, Full Name,
@@ -49,8 +74,9 @@ explicitly empty overrides suppress it. Optional original style suggestions neve
 activate automatically. No instruction text reaches readers, Host, UI or models.
 See [Phase 3 model, precedence, identity and future security gates](../../docs/PERSONAL_PROFILE_PHASE3.md).
 
-Phase 4 adds an isolated, synthetic-only development UI; it is not mounted in
-Harness or shipped as a production entrypoint. See
+Phase 4 created the original isolated, synthetic-only development UI. That
+original standalone preview remains test-only; v0.6.0 adds a separate browser
+panel inside Harness without activating Host services. See
 [prototype preview, boundaries and visual evidence](../../docs/PERSONAL_PROFILE_PHASE4.md).
 
 Phase 6A adds internal synthetic integration QA only. See the
