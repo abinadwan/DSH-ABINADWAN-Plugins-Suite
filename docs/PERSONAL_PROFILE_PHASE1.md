@@ -27,8 +27,8 @@ Custom fields accept string, finite number, boolean, or date values, never
 arbitrary objects. Empty strings are permitted for string values; absence means
 no value was supplied. Null and undefined are not stored field values.
 
-Identifiers are case-sensitive ASCII letters followed by letters, digits or
-underscores (maximum 64 characters). Built-in identifiers cannot be redefined.
+Field identifiers are case-sensitive ASCII letters followed by letters, digits or
+underscores (maximum 64 UTF-16 code units). Built-in identifiers cannot be redefined.
 Object prototype names and model metadata names are reserved. Custom labels
 must be nonempty strings. Duplicate definitions and environments are rejected.
 Inputs use plain or null-prototype records with own data properties; symbols,
@@ -39,6 +39,69 @@ Agent Instructions are separate from personal values. Global/per-environment
 instruction strings are inert structure only: no merging, execution, template
 selection or automatic injection occurs. Instructions cannot be requested as
 profile fields. Merely adding instructions does not create environment access.
+
+## Harness Profile names
+
+Environment names use a separate validator from field identifiers. Verified against
+[official `resolveProfileDir` source at commit `39163dd`](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/packages/boot/app-boot/src/profile.ts#L164-L172)
+and the source shipped in our locked `@deepseek-ai/dsh-app-boot@0.2.2-rc.3`:
+Harness rejects empty names, names containing `/` or `\`, exactly `.` or `..`, and
+exactly `node_modules`. It does **not** impose the ASCII field-ID regex; hyphens
+(including shipped `sdk-minimal`), leading digits/underscores, dots within names,
+spaces and Unicode are accepted by that resolver. Tests cross-check accepted
+synthetic names with the official package's side-effect-free `resolveProfileDir`
+using an explicit synthetic home path. No profile directory is created.
+
+Personal Profile additionally rejects C0/C1 control characters (including NUL),
+object-prototype/model-reserved names, non-string input and names over 255 UTF-16
+code units. These are local safety/resource restrictions, not upstream naming
+rules. Names are exact, case-sensitive keys: no trimming, case folding or Unicode
+normalization; differently spelled names cannot inherit permissions. No filesystem
+path is derived by the core, and this is not a portable filesystem-name validator.
+The same validation applies to environment instructions, registration, policy
+updates and retrieval (invalid retrieval requests fail closed).
+
+## Input and resource limits
+
+`core/limits.js` defines fixed internal budgets. Lengths count JavaScript UTF-16
+code units (`string.length`), so an astral character consumes two units. Inputs
+are rejected, never truncated or coerced, with the fixed error above.
+
+| Input | Inclusive maximum |
+| --- | --- |
+| Preferred Name, Full Name, Nationality, custom string value, custom Gender text | 1,024 units each |
+| Custom-field label | 128 units |
+| Global Agent Instructions | 8,192 units |
+| Each environment's Agent Instructions | 8,192 units |
+| Custom-field definitions | 64 |
+| Distinct environment names across instructions and registered policies | 64 |
+| Environment/Profile name | 255 units |
+| Field identifier | 64 units |
+
+Dates retain the fixed 10-character calendar format. Booleans/numbers remain
+scalar and type checked. Empty string values/instructions remain permitted;
+labels/custom Gender text remain nonempty. There are no limits on the meaning or
+execution of instructions because they are never executed.
+
+These budgets accommodate normal names, notes and instructions while bounding
+retained data and the environment × field permission map to 64 × 69 entries.
+Environment instruction entries reserve distinct-name capacity but grant no
+access; registering one of those names consumes no extra name slot. New policy
+maps still start entirely private. At capacity, modifying existing permissions
+and revoking access continue to work.
+
+Array lengths and record entry counts are checked before processing contents;
+field records allow at most 69 entries, environment-instruction records 64, and
+fixed schema records only their declared key count. Keys longer than 255 units
+are rejected. Validation and size checks complete before custom-field or
+environment registration mutates state; rejected operations neither reserve
+identifiers/capacity nor alter existing values/permissions. Constructors expose
+no partially initialized model when validation fails.
+
+These caps bound accepted state and ordinary validation work. They cannot prevent
+allocation of a huge caller-created input or the temporary own-key list produced
+by JavaScript reflection. They are not process memory quotas or a sandbox; hostile
+Proxies/in-process code remain outside this phase's trust boundary.
 
 ## Policy and retrieval contracts
 

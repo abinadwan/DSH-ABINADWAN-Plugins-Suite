@@ -1,3 +1,4 @@
+import { LIMITS } from './limits.js'
 import { createMasterProfile } from './model.js'
 import { boolean, invalid, validateCustomDefinition, validateValue } from './schema.js'
 import { addEnvironment, addPrivateField, setPermission } from './policies.js'
@@ -9,12 +10,12 @@ export function createProfileCore(input) {
   const profile = createMasterProfile(input)
   const policies = new Map()
   return Object.freeze({
-    addEnvironment(environment) { addEnvironment(policies, profile.definitions, environment) },
+    addEnvironment(environment) { addEnvironment(policies, profile.definitions, environment, profile.instructions.environments) },
     setPermission(environment, field, state) { setPermission(policies, profile.definitions, environment, field, state) },
     setOptIn(enabled) { profile.allowAgentUseApprovedProfileInformation = boolean(enabled) },
     addCustomField(input, value) {
       const definition = validateCustomDefinition(input)
-      if (profile.definitions.has(definition.id)) invalid()
+      if (profile.customFields.size >= LIMITS.customFields || profile.definitions.has(definition.id)) invalid()
       // Validate everything before changing any state; omitted values are optional.
       const validated = value === undefined ? undefined : validateValue(definition.type, value)
       profile.definitions.set(definition.id, definition.type)

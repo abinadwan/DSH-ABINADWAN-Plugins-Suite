@@ -1,3 +1,5 @@
+import { LIMITS } from './limits.js'
+
 // Internal validation only. Never include supplied identifiers or values in errors.
 export function invalid() { throw new TypeError('Invalid profile input') }
 
@@ -7,24 +9,36 @@ const reserved = new Set([
   'allowAgentUseApprovedProfileInformation', 'permissions', 'values', 'definitions',
 ])
 export function validateIdentifier(id) {
-  if (typeof id !== 'string' || !/^[a-zA-Z][a-zA-Z0-9_]{0,63}$/.test(id) || reserved.has(id)) invalid()
+  if (typeof id !== 'string' || id.length > LIMITS.fieldIdentifier || !/^[a-zA-Z][a-zA-Z0-9_]*$/.test(id) || reserved.has(id)) invalid()
   return id
 }
 
+// Harness resolveProfileDir accepts basename strings, including hyphens, spaces
+// and Unicode. See the pinned official source in PERSONAL_PROFILE_PHASE1.md.
+// Local safety/resource restrictions additionally reject controls/reserved names.
+export function validateEnvironmentName(name) {
+  if (typeof name !== 'string' || name.length === 0 || name.length > LIMITS.profileName ||
+      name === '.' || name === '..' || name === 'node_modules' ||
+      /[/\\\u0000-\u001f\u007f-\u009f]/.test(name) || reserved.has(name)) invalid()
+  return name
+}
+
 // Inspect descriptors before reading: no inherited properties, symbols or getters.
-export function entries(record, allowed) {
+export function entries(record, allowed, maximum = allowed?.length ?? LIMITS.recordEntries) {
   if (record === null || typeof record !== 'object' ||
       ![Object.prototype, null].includes(Object.getPrototypeOf(record))) invalid()
-  return Reflect.ownKeys(record).map(key => {
+  const keys = Reflect.ownKeys(record)
+  if (keys.length > maximum) invalid()
+  return keys.map(key => {
     const descriptor = Object.getOwnPropertyDescriptor(record, key)
-    if (typeof key !== 'string' || !Object.hasOwn(descriptor, 'value') ||
+    if (typeof key !== 'string' || key.length > LIMITS.profileName || !Object.hasOwn(descriptor, 'value') ||
         (allowed && !allowed.includes(key))) invalid()
     return [key, descriptor.value]
   })
 }
 
-export function text(value) {
-  if (typeof value !== 'string') invalid()
+export function text(value, maximum = LIMITS.personalText) {
+  if (typeof value !== 'string' || value.length > maximum) invalid()
   return value
 }
 export function boolean(value) {
@@ -42,7 +56,7 @@ export function validateCustomDefinition(input) {
   validateIdentifier(definition.id)
   if (Object.hasOwn(builtinTypes, definition.id) ||
       !['string', 'number', 'boolean', 'date'].includes(definition.type) ||
-      !text(definition.label).trim()) invalid()
+      !text(definition.label, LIMITS.customLabel).trim()) invalid()
   return Object.freeze(definition)
 }
 

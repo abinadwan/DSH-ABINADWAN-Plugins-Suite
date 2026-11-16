@@ -23,6 +23,10 @@ Safe retrieval handles only one explicitly requested field. The core is not
 connected to the Host, registered as an agent tool, or exposed as a public API.
 
 See [Phase 1 data model, contracts and security limitations](../../docs/PERSONAL_PROFILE_PHASE1.md).
+Harness Profile names now support hyphens and other official basename forms,
+with additional local safety checks. Fixed limits bound text, labels, instructions,
+custom fields and environments; see the Phase 1 document for exact budgets.
+
 Real approvals are planned for Phase 2. Collection, persistence, encryption,
 transmission, instruction execution and user-facing consent remain unimplemented.
 An in-memory check does not provide operating-system isolation.

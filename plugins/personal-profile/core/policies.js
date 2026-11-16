@@ -1,13 +1,15 @@
-import { invalid, validateIdentifier } from './schema.js'
+import { LIMITS } from './limits.js'
+import { invalid, validateIdentifier, validateEnvironmentName } from './schema.js'
 
-export function addEnvironment(policies, definitions, environment) {
-  validateIdentifier(environment)
-  if (policies.has(environment)) invalid()
+export function addEnvironment(policies, definitions, environment, instructionEnvironments = new Map()) {
+  validateEnvironmentName(environment)
+  if (policies.has(environment) ||
+      new Set([...policies.keys(), ...instructionEnvironments.keys(), environment]).size > LIMITS.environments) invalid()
   policies.set(environment, new Map([...definitions.keys()].map(id => [id, 'private'])))
 }
 
 export function setPermission(policies, definitions, environment, field, state) {
-  validateIdentifier(environment)
+  validateEnvironmentName(environment)
   validateIdentifier(field)
   if (!['allow', 'ask_first', 'private'].includes(state) ||
       !definitions.has(field) || !policies.has(environment)) invalid()

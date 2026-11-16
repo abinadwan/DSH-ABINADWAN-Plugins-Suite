@@ -1,4 +1,5 @@
-import { entries, invalid, text, boolean, builtinDefinitions, validateCustomDefinition, validateIdentifier, validateValue } from './schema.js'
+import { LIMITS } from './limits.js'
+import { entries, invalid, text, boolean, builtinDefinitions, validateCustomDefinition, validateIdentifier, validateEnvironmentName, validateValue } from './schema.js'
 
 // Internal model constructor; not a disclosure API or a persisted record.
 export function createMasterProfile(input = {}) {
@@ -7,7 +8,7 @@ export function createMasterProfile(input = {}) {
   const customFields = new Map()
   if (Object.hasOwn(options, 'customFields')) {
     const list = options.customFields
-    if (!Array.isArray(list) || Object.getPrototypeOf(list) !== Array.prototype) invalid()
+    if (!Array.isArray(list) || list.length > LIMITS.customFields || Object.getPrototypeOf(list) !== Array.prototype) invalid()
     const items = []
     for (const key of Reflect.ownKeys(list)) {
       if (key === 'length') continue
@@ -35,9 +36,9 @@ export function createMasterProfile(input = {}) {
   const instructions = { global: '', environments: new Map() }
   if (Object.hasOwn(options, 'instructions')) {
     for (const [key, value] of entries(options.instructions, ['global', 'environments'])) {
-      if (key === 'global') instructions.global = text(value)
-      else for (const [environment, instruction] of entries(value)) {
-        instructions.environments.set(validateIdentifier(environment), text(instruction))
+      if (key === 'global') instructions.global = text(value, LIMITS.instructions)
+      else for (const [environment, instruction] of entries(value, undefined, LIMITS.environments)) {
+        instructions.environments.set(validateEnvironmentName(environment), text(instruction, LIMITS.instructions))
       }
     }
   }

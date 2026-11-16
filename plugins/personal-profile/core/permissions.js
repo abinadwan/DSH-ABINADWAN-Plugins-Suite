@@ -1,9 +1,9 @@
-import { entries, validateIdentifier } from './schema.js'
+import { entries, validateIdentifier, validateEnvironmentName } from './schema.js'
 
 // Policy-only decision: never receives or returns a field value.
 export function evaluatePermission(profile, policies, environment, field) {
   try {
-    validateIdentifier(environment)
+    validateEnvironmentName(environment)
     validateIdentifier(field)
     // Reject inherited/accessor metadata before reading it.
     profile = Object.fromEntries(entries(profile))
