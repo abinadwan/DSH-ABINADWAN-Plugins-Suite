@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/workflows/test.yml"><img alt="CI" src="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/workflows/test.yml/badge.svg"/></a>
-  <img alt="Suite 0.5.0" src="https://img.shields.io/badge/suite-0.5.0-7b2246"/>
+  <img alt="Suite 0.6.0" src="https://img.shields.io/badge/suite-0.6.0-7b2246"/>
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-22c55e"/></a>
 </p>
 
@@ -16,11 +16,17 @@
 
 One installation supplies three independently toggleable DSH Components. The package card uses the approved Saudi developer avatar. Each Component resolves its own title and transparent icon.
 
-| Component | Delivered in 0.5.0 | Default | Documentation |
+| Component | Delivered in 0.6.0 | Default | Documentation |
 | --- | --- | --- | --- |
 | <img src="plugins/environment-context/icon.png" width="32" alt="Teal monitor"/> **Environment & Context** | Read-only session inspector | On | [Plugin details](plugins/environment-context/README.md) |
 | <img src="plugins/humanizer/icon.png" width="32" alt="Purple feather"/> **Humanizer** | Runtime writing Skill | On | [Usage and scope](plugins/humanizer/README.md) |
-| <img src="plugins/personal-profile/icon.png" width="32" alt="Amber ID and gear"/> **Personal Profile** | Read-only configuration draft | Off | [Preliminary fields and pending design](plugins/personal-profile/README.md) |
+| <img src="plugins/personal-profile/icon.png" width="32" alt="Amber ID and gear"/> **Personal Profile** | Synthetic left-sidebar preview (no saving) | Host Off | [Preliminary fields and pending design](plugins/personal-profile/README.md) |
+
+## Personal Profile (0.6.0 preview)
+
+A dedicated **Personal Profile** entry in the **left sidebar** opens a full-page five-section preview: My Information, Agent Instructions, Access Control, Backup & Restore, and Privacy & Security. The page supports Arabic/English labels and editable **fictional values held only in browser memory**. It does not persist, encrypt, export, load real account data or provide any agent permissions.
+
+**Do not enter real personal information.** The Host Personal Profile component remains disabled by default and `apply() {}` still registers no backend services. The sidebar demo is visible with the suite's browser bundle even while the Host component is disabled. It is not a working production profile.
 
 ## Environment & Context
 
