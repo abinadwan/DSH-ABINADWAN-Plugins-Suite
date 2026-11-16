@@ -35,7 +35,8 @@
     "README.md",
     "LICENSE",
     "CHANGELOG.md",
-    "SECURITY.md"
+    "SECURITY.md",
+    "scripts/personal-profile-windows-probe.mjs"
   ],
   "scripts": {
     "test": "node --test",
