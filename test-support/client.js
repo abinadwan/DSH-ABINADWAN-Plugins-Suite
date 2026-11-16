@@ -19,7 +19,10 @@ class Slots extends Service {
   constructor(ctx) { super(ctx, 'slots') }
   inject(_name, callback) { return this.ctx.effect(callback) }
   register(options, component) {
-    const key = options.id || options.key || options.name
+    // A sidebar launcher and its matching main panel deliberately share an id.
+    // Real Slots partition by slot name, so the harness must not overwrite one.
+    const key = options.name === 'sidebar.panellist'
+      ? 'sidebar.panellist:' + options.id : options.id || options.key || options.name
     return this.ctx.effect(() => {
       this.records.set(key, { options, component })
       return () => this.records.delete(key)
