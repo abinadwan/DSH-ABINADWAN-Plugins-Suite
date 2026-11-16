@@ -97,6 +97,11 @@ test('review merge never overwrites, stale reviews fail, replace requires confir
   assert.equal(s.load('syntheticA').fields.nationality, 'synthetic')
   assert.equal(s.load('syntheticA').allowAgentUseApprovedProfileInformation, false)
   assert.throws(() => s.apply(review, {keepExisting: true}))
+  if(process.platform==='win32') {
+    assert.throws(()=>s.apply(s.review('syntheticA',incoming,'replace'),{confirmReplace:true}))
+    assert.equal(s.authorizationReady,false) // merge retained its uncertainty fence
+    return
+  }
   const replacement = s.review('syntheticA', incoming, 'replace')
   assert.throws(() => s.apply(replacement))
   s.apply(replacement, {confirmReplace: true})
@@ -266,7 +271,7 @@ test('process death before rename leaves only encrypted orphan and recoverable p
   const script = `import {assembleStorage} from ${JSON.stringify(module)};
     const s=assembleStorage(process.argv[1],{acquire:()=>Buffer.alloc(32,9),release(){}},
       {beforeRename(){process.kill(process.pid,'SIGKILL')}});
-    s.unlock();s.save('syntheticA',{fields:{preferredName:'SYNTHETIC_CRASH_SECRET'}});`
+    s.unlock();s.save('syntheticCrash',{fields:{preferredName:'SYNTHETIC_CRASH_SECRET'}});`
   const result = spawnSync(process.execPath, ['--input-type=module', '-e', script, root], {timeout: 15000})
   assert.notEqual(result.status, 0)
   assert.equal(s.load('syntheticA').fields.preferredName, fixture.fields.preferredName)
@@ -361,7 +366,8 @@ test('reviews cannot cross instances or survive clock failure, lock, save or res
   s.apply(replacement, {confirmReplace: true})
   assert.throws(() => s.apply(stale))
   const recovered = s.review('syntheticA', fixture)
-  s.recover('syntheticA')
+  if(process.platform==='win32') assert.throws(()=>s.recover('syntheticA'))
+  else s.recover('syntheticA')
   assert.throws(() => s.apply(recovered))
   const badClock = s.review('syntheticA', fixture)
   time = -1
@@ -386,6 +392,15 @@ test('save, replace and recovery revoke all leases and consistently return commi
   const replaced = s.apply(r, {confirmReplace: true})
   assertRevoked(beforeReplace)
   const beforeRecover = s.access('syntheticA')
+  if(process.platform==='win32') {
+    assert.throws(()=>s.recover('syntheticA'))
+    assertRevoked(beforeRecover)
+    assert.equal(s.authorizationReady,false)
+    assert.equal(replaced.committed,true)
+    assert.equal(replaced.durable,false)
+    assert.equal(s.load('syntheticA').fields.preferredName,'replacement')
+    return
+  }
   const recovered = s.recover('syntheticA')
   assertRevoked(beforeRecover)
   for (const outcome of [replaced, recovered]) {

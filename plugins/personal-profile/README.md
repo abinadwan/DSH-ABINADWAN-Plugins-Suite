@@ -52,3 +52,9 @@ See [Phase 3 model, precedence, identity and future security gates](../../docs/P
 Phase 4 adds an isolated, synthetic-only development UI; it is not mounted in
 Harness or shipped as a production entrypoint. See
 [prototype preview, boundaries and visual evidence](../../docs/PERSONAL_PROFILE_PHASE4.md).
+
+Phase 6A adds internal synthetic integration QA only. See the
+[verified Harness API research and security decision](../../docs/PERSONAL_PROFILE_PHASE6A.md)
+and [manual Windows acceptance plan](../../docs/PERSONAL_PROFILE_WINDOWS_ACCEPTANCE.md).
+Every real-device check remains NOT EXECUTED. The live component is still
+read-only and disabled by default; no storage or access gate is activated.
