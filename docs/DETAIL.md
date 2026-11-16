@@ -31,7 +31,8 @@ The suite checks **published stable GitHub Releases** at startup and every 24 ho
 Use the profile actually run by Harness, such as `desktop`.
 
 ```powershell
-dsh plugin --profile desktop add github:abinadwan/DSH-ABINADWAN-Plugins-Suite
+# Replace RELEASE_COMMIT_SHA with the full SHA for a published release
+dsh plugin --profile desktop add github:abinadwan/DSH-ABINADWAN-Plugins-Suite#RELEASE_COMMIT_SHA
 ```
 
 Restart Harness, enable the suite and use the switches in Components. [Full documentation](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite) · [Report an issue](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/issues)
