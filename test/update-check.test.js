@@ -1,88 +1,176 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { readFileSync } from 'node:fs'
-import { clientHarness, walk, ReactStub } from '../test-support/client.js'
+import {readFileSync} from 'node:fs'
+import {clientHarness, walk, base, tick} from '../test-support/client.js'
 
-const code = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
-const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
-const EXPECTED_URL = 'https://raw.githubusercontent.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/main/package.json'
+const pkg=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'))
+const code=readFileSync(new URL('../client.js',import.meta.url),'utf8')
+const RELEASE='https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/latest'
+const COMMIT='https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/commits/v0.7.0'
+const SHA='a'.repeat(40)
+const RAW='https://raw.githubusercontent.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/'+SHA+'/package.json'
 
-test('update controls belong to this plugin detail page, never to the Session sidebar', async t => {
-  let requests = 0, requestUrl, requestOptions
-  const transitions = []
-  const fetchStub = async (url, options) => {
-    requests++
-    requestUrl = url
-    requestOptions = options
-    return { ok: true, json: async () => ({
-      name: pkg.name, version: '9.2.0',
-    }) }
+function harnessReact() {
+  const states=[]
+  let index=0
+  return {
+    createElement:(type,props,...children)=>({type,props:props??{},children}),
+    useState:(initial)=>{
+      const i=index++
+      if(!(i in states)) states[i]=initial
+      return [states[i],next=>{states[i]=typeof next==='function'?next(states[i]):next}]
+    },
+    useSyncExternalStore:(_subscribe,get)=>get(),
+    render(component){index=0;return component.type(component.props)},
   }
-  const React = {
-    createElement: (type, props, ...children) => ({type, props: props ?? {}, children}),
-    useState: initial => [initial, next => transitions.push(next)],
-    useSyncExternalStore: (_, get) => get(),
-  }
-  const app = await clientHarness({ React, fetch: fetchStub })
-  t.after(() => app.dispose())
-  assert.equal(requests, 0)
-  const slots = { get: name => app.slot(name) }
-  const inspector = slots.get('sidebar.right.pane.tab')
-  assert.ok(inspector)
-  const rightNode = inspector({sessionId: 's1', useProjection: () => ({})})
-  const rightTree = rightNode.type(rightNode.props)
-  assert.equal(rightTree.props['data-environment-right-sidebar'], '')
-  assert.equal(walk(rightTree, n => n.type === 'button' && n.props?.['data-check-updates'] === ''), null)
-  assert.doesNotMatch(JSON.stringify(rightTree), /Versions & updates/)
+}
+function detail(app) {
+  const component=app.slots.records.get('environment-sidebar-versions')?.component
+  assert.ok(component)
+  return component({subject:{kind:'bundle',pkg:{name:base,version:pkg.version}}})
+}
+function byId(tree,id) {
+  const found=walk(tree,node=>node.props?.[id]==='')
+  assert.ok(found,'missing control '+id)
+  return found
+}
+function reply(value,status=200) {
+  return {ok:status>=200&&status<300,status,json:async()=>value}
+}
 
-  const detailSlot = slots.get('plugins.detail.section')
-  assert.ok(detailSlot)
-  assert.equal(detailSlot({subject: {kind: 'bundle', pkg: {name: 'someone/other', version: '1.0.0'}}}), null)
-  assert.equal(detailSlot({subject: {kind: 'row', pkg: {name: pkg.name}, row: {}}}), null)
-
-  const pageNode = detailSlot({subject: {kind: 'bundle', pkg: {name: pkg.name, version: pkg.version}}})
-  assert.equal(pageNode.type.name, 'VersionUpdates')
-  const page = pageNode.type(pageNode.props)
-  assert.equal(page.props['data-environment-update-section'], '')
-  const button = walk(page, n => n.type === 'button' && n.props?.['data-check-updates'] === '')
-  assert.ok(button)
-  assert.equal(requests, 0, 'no automatic network requests before click')
-  await button.props.onClick()
-  assert.equal(requests, 1)
-  assert.equal(requestUrl, EXPECTED_URL)
-  assert.equal(requestOptions.credentials, 'omit')
-  assert.equal(requestOptions.referrerPolicy, 'no-referrer')
-  assert.equal(requestOptions.method, 'GET')
-  assert.equal(transitions[0].phase, 'checking')
-  assert.equal(transitions.at(-1).phase, 'available')
-  assert.equal(transitions.at(-1).latest, '9.2.0')
-  assert.match(code, new RegExp("const INSTALLED_VERSION = '" + pkg.version.replace(/\./g, '\\.') + "'"))
+test('auto-check on bundle startup sees no published releases, schedules once and never installs', async t=>{
+  const urls=[],updates=[]
+  const react=harnessReact()
+  const app=await clientHarness({
+    React:react,fetch:async url=>{
+      urls.push(url)
+      return reply({message:'Not Found'},404)
+    },
+    updateBundle:async(...args)=>{updates.push(args);throw Error('must not install')},
+  })
+  t.after(()=>app.dispose())
+  await tick()
+  assert.deepEqual(urls,[RELEASE])
+  assert.equal(updates.length,0)
+  assert.equal(app.intervals.size,1)
+  assert.equal([...app.intervals.values()][0].ms,24*60*60*1000)
+  const component=detail(app)
+  let tree=react.render(component)
+  assert.match(JSON.stringify(tree),/No published stable release yet/)
+  assert.equal(walk(tree,node=>node.props?.['data-update-now']===''),null)
+  await byId(tree,'data-check-updates').props.onClick()
+  assert.deepEqual(urls,[RELEASE,RELEASE])
+  tree=react.render(component)
+  assert.match(JSON.stringify(tree),/No published stable release yet/)
+  assert.match(code,new RegExp("const INSTALLED_VERSION = '"+pkg.version.replace(/\./g,'\\.')+"'"))
 })
 
-test('manual update checks report request and metadata errors, and compare prereleases', async t => {
-  for (const [label, fetch, expected] of [
-    ['HTTP failure', async () => ({ ok: false, status: 503 }), 'error'],
-    ['network failure', async () => { throw new Error('offline') }, 'error'],
-    ['wrong identity', async () => ({ ok: true, json: async () => ({ name: 'other', version: '9.0.0' }) }), 'error'],
-    ['invalid version', async () => ({ ok: true, json: async () => ({ name: pkg.name, version: 'invalid' }) }), 'error'],
-    ['current version', async () => ({ ok: true, json: async () => ({ name: pkg.name, version: pkg.version }) }), 'current'],
-    ['new prerelease', async () => ({ ok: true, json: async () => ({ name: pkg.name, version: '0.7.0-rc.1' }) }), 'available'],
-  ]) {
-    await t.test(label, async () => {
-      const transitions = []
-      const app = await clientHarness({ fetch, React: {
-        ...ReactStub, useState: initial => [initial, value => transitions.push(value)],
-      } })
+test('published stable release offers a deliberate two-click pinned Host update',async t=>{
+  const urls=[],installed=[],react=harnessReact()
+  const app=await clientHarness({
+    React:react,
+    fetch:async (url,options)=>{
+      urls.push({url,options})
+      if(url===RELEASE)return reply({tag_name:'v0.7.0',draft:false,prerelease:false})
+      if(url===COMMIT)return reply({sha:SHA})
+      if(url===RAW)return reply({name:pkg.name,version:'0.7.0'})
+      throw Error('unexpected remote path: '+url)
+    },
+    listBundles:async()=>[{name:pkg.name,installed:true,update:'git',version:pkg.version}],
+    updateBundle:async(...args)=>{installed.push(args);return {result:{application:'applied'}}},
+  })
+  t.after(()=>app.dispose())
+  await tick()
+  assert.equal(urls.length,1,'on startup, only fetch the latest release manifest')
+  assert.equal(installed.length,0)
+  const component=detail(app)
+  let tree=react.render(component)
+  assert.match(JSON.stringify(tree),/Approved update available/)
+  await byId(tree,'data-update-now').props.onClick()
+  assert.equal(installed.length,0,'preparation never installs a package')
+  assert.deepEqual(urls.map(x=>x.url),[RELEASE,COMMIT,RAW])
+  for(const item of urls) {
+    assert.equal(item.options.credentials,'omit')
+    assert.equal(item.options.referrerPolicy,'no-referrer')
+    assert.equal(item.options.method,'GET')
+  }
+  tree=react.render(component)
+  assert.match(JSON.stringify(tree),new RegExp(SHA))
+  await byId(tree,'data-confirm-update').props.onClick()
+  assert.deepEqual(installed,[[pkg.name,'0.7.0',{spec:'github:abinadwan/DSH-ABINADWAN-Plugins-Suite#'+SHA}]])
+  tree=react.render(component)
+  assert.match(JSON.stringify(tree),/Host accepted update/)
+})
+
+test('unpinned Git installation has no update capability and cannot trigger native install',async t=>{
+  const updates=[],react=harnessReact()
+  const app=await clientHarness({
+    React:react,
+    fetch:async url=>{
+      if(url===RELEASE)return reply({tag_name:'v0.7.0',draft:false,prerelease:false})
+      if(url===COMMIT)return reply({sha:SHA})
+      if(url===RAW)return reply({name:pkg.name,version:'0.7.0'})
+      throw Error('unexpected request')
+    },
+    listBundles:async()=>[{name:pkg.name,installed:true,version:pkg.version,update:undefined}],
+    updateBundle:async(...args)=>updates.push(args),
+  })
+  t.after(()=>app.dispose())
+  await tick()
+  const component=detail(app)
+  await byId(react.render(component),'data-update-now').props.onClick()
+  const tree=react.render(component)
+  assert.match(JSON.stringify(tree),/One-time migration needed/)
+  assert.equal(walk(tree,n=>n.props?.['data-confirm-update']===''),null)
+  assert.deepEqual(updates,[])
+})
+
+test('mismatched release manifest and prerelease metadata never offer install',async t=>{
+  for(const [label,release,manifest,expected] of [
+    ['draft',{tag_name:'v0.7.0',draft:true,prerelease:false},undefined,/Could not check for updates/],
+    ['prerelease',{tag_name:'v0.7.0',draft:false,prerelease:true},undefined,/Could not check for updates/],
+    ['malformed tag',{tag_name:'main',draft:false,prerelease:false},undefined,/Could not check for updates/],
+    ['version mismatch',{tag_name:'v0.7.0',draft:false,prerelease:false},{name:pkg.name,version:'9.9.9'},/Release manifest does not match/],
+  ]){
+    await t.test(label,async()=>{
+      const updates=[],react=harnessReact()
+      const app=await clientHarness({
+        React:react,fetch:async url=>{
+          if(url===RELEASE)return reply(release)
+          if(url===COMMIT)return reply({sha:SHA})
+          if(url===RAW)return reply(manifest)
+          throw Error('unexpected request')
+        },
+        listBundles:async()=>[{name:pkg.name,update:'git',installed:true}],
+        updateBundle:async(...a)=>updates.push(a),
+      })
       try {
-        const node = app.slot('plugins.detail.section')({ subject: {
-          kind: 'bundle', pkg: { name: pkg.name, version: pkg.version },
-        } })
-        const button = walk(node.type(node.props), item => item.props?.['data-check-updates'] === '')
-        await button.props.onClick()
-        assert.equal(transitions.at(-1).phase, expected)
-      } finally {
-        await app.dispose()
-      }
+        await tick()
+        const component=detail(app)
+        let tree=react.render(component)
+        assert.match(JSON.stringify(tree),expected.test('Could not check for updates')?expected:/Approved update available/)
+        if(manifest){
+          await byId(tree,'data-update-now').props.onClick()
+          tree=react.render(component)
+          assert.match(JSON.stringify(tree),expected)
+        } else {
+          assert.equal(walk(tree,n=>n.props?.['data-update-now']===''),null)
+        }
+        assert.equal(updates.length,0)
+      } finally {await app.dispose()}
     })
   }
+})
+
+test('suite disposal clears update interval and cancels later scheduled checks',async()=>{
+  let requests=0
+  const app=await clientHarness({fetch:async()=>{
+    requests++
+    return reply({message:'Not found'},404)
+  }})
+  await tick()
+  assert.equal(app.intervals.size,1)
+  await app.dispose()
+  assert.equal(app.intervals.size,0)
+  assert.equal(requests,1)
 })
