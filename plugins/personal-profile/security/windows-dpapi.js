@@ -42,7 +42,7 @@ function runDpapi(operation, bytes) {
   }
   if (operation !== 'protect' && operation !== 'unprotect') throw new TypeError('Invalid DPAPI operation')
   return new Promise((resolve, reject) => {
-    const proc = spawn('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', psSource(operation)], {
+    const proc = spawn('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-EncodedCommand', Buffer.from(psSource(operation), 'utf16le').toString('base64')], {
       windowsHide: true,
       stdio: ['pipe', 'pipe', 'pipe'],
       shell: false,
