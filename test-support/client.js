@@ -2,37 +2,77 @@ import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
 import { Context, Service } from '@deepseek-ai/cordis'
 
+// A faithful double of the DeepSeek Harness v0.2.2-rc.3 browser contracts the
+// suite depends on. The shapes below are taken from the upstream sources:
+// - `remote.<namespace>` is its own Cordis service (api/gateway
+//   `remoteServiceKey`), so reading `ctx.remote.pluginManager` without
+//   injecting `remote.pluginManager` throws under the real Cordis 4 proxy.
+// - every generated Remote method resolves to `RemoteResult<T>`
+//   (`{ok:true,value}` | `{ok:false,error}`), never to the bare value.
+// - list/keyed Slot entries that throw while rendering are abdicated by the
+//   renderer for the rest of their registration (ui-renderer scoped-slots).
+// - `whenAccess(action, ...)` follows one access answer per endpoint.
+
 export const base = '@abinadwan/dsh-plugins-suite'
 export const activeRows = () => ['environment-context', 'humanizer', 'personal-profile'].map((name, index) => ({
   entryId: `component-${index}`, moduleName: `${base}/${name}`,
   enabled: index !== 2, fiberPhase: index === 2 ? null : 'active',
 }))
+export const withProfile = (rows, enabled) => rows.map(row => row.moduleName === `${base}/personal-profile`
+  ? { ...row, enabled, fiberPhase: enabled ? 'active' : null } : row)
 export const tick = () => new Promise(resolve => setImmediate(resolve))
+export const ok = value => ({ ok: true, value })
+export const refused = (code, message) => ({ ok: false, error: { code, message } })
 export const ReactStub = {
   createElement: (type, props, ...children) => ({ type, props: props ?? {}, children }),
   useState: initial => [initial, () => {}],
+  useEffect: () => {},
+  useRef: initial => ({ current: initial }),
   useSyncExternalStore: (_, get) => get(),
 }
 
 class Slots extends Service {
   records = new Map()
+  abdicated = new Set()
+  registrations = []
   constructor(ctx) { super(ctx, 'slots') }
   inject(_name, callback) { return this.ctx.effect(callback) }
   register(options, component) {
-    // A sidebar launcher and its matching main panel deliberately share an id.
-    // Real Slots partition by slot name, so the harness must not overwrite one.
+    // Real Slots partition cells by slot name. Keep the historic lookup keys,
+    // but refuse a duplicate cell exactly as SlotCore.register does.
     const key = options.name === 'sidebar.panellist'
       ? 'sidebar.panellist:' + options.id : options.id || options.key || options.name
+    if (options.name === 'sidebar.panellist' || options.name === 'plugins.detail.section') {
+      if (options.id === undefined) throw new Error(`list slot "${options.name}" requires options.id`)
+    }
+    if (this.records.has(key)) throw new Error(`slot cell ${key} already has an entry`)
     return this.ctx.effect(() => {
-      this.records.set(key, { options, component })
-      return () => this.records.delete(key)
+      const record = { options, component }
+      this.records.set(key, record)
+      this.registrations.push(key)
+      return () => { if (this.records.get(key) === record) this.records.delete(key) }
     })
+  }
+  /** Render a list entry the way the Harness outlet does: a crash abdicates it. */
+  renderList(name, props) {
+    const out = []
+    for (const [key, record] of this.records) {
+      if (record.options.name !== name || this.abdicated.has(record)) continue
+      try {
+        out.push({ key, node: record.component(props) })
+      } catch (error) {
+        this.abdicated.add(record)
+        out.push({ key, error })
+      }
+    }
+    return out
   }
 }
 class Tabs extends Service {
   records = new Map()
   constructor(ctx) { super(ctx, 'sidebarRightTabs') }
   register(def) {
+    if ([...this.records.values()].some(item => item.id === def.id)) throw new Error(`tab type ${def.id} is taken`)
     return this.ctx.effect(() => {
       this.records.set(def.kind, def)
       return () => this.records.delete(def.kind)
@@ -40,11 +80,14 @@ class Tabs extends Service {
   }
 }
 class Access extends Service {
+  static allowed = new Set(['pluginManager/listPlugins'])
   granted = true
   watchers = new Set()
+  requested = []
   constructor(ctx) { super(ctx, 'remoteAccess') }
   whenAccess(action, callback) {
-    if (action !== 'pluginManager/listPlugins') throw new Error('unexpected access request')
+    this.requested.push(action)
+    if (!Access.allowed.has(action)) throw new Error('unexpected access request ' + action)
     const watcher = { ctx: this.ctx, callback }
     return this.ctx.effect(() => {
       this.watchers.add(watcher)
@@ -60,50 +103,93 @@ class Access extends Service {
     }
   }
 }
+class Remote extends Service {
+  events = new Map()
+  constructor(ctx) { super(ctx, 'remote') }
+  $on(name, callback) {
+    this.events.set(name, callback)
+    return () => this.events.delete(name)
+  }
+}
+class PluginManagerRemote extends Service {
+  constructor(ctx, calls) {
+    super(ctx, 'remote.pluginManager')
+    this.calls = calls
+  }
+  listPlugins() { return this.calls.listPlugins() }
+  listBundles() { return this.calls.listBundles() }
+  updateBundle(...args) { return this.calls.updateBundle(...args) }
+}
+
+/** A mutable observable store, as `ctx.sessions.list` / `ctx.workspaces.list` are. */
+export function observable(initial) {
+  let value = initial
+  const listeners = new Set()
+  return {
+    listeners,
+    getSnapshot: () => value,
+    subscribe: listener => { listeners.add(listener); return () => listeners.delete(listener) },
+    set(next) { value = next; for (const listener of [...listeners]) listener() },
+  }
+}
+
+export function sessionSnapshot() {
+  return {
+    ids: ['s1', 's2'],
+    phase: 'ready',
+    byId: {
+      s1: { id: 's1', displayTitle: 'Demo', running: true },
+      s2: { id: 's2', displayTitle: 'Other Session', running: false },
+    },
+    projectionsBySession: {
+      s1: { state: 'ready', error: null, values: {
+        contextPressure: { projectedTokens: 3000, contextWindow: 8000 },
+        contextBreakdown: { messageTokens: 2000, toolsTokens: 800, systemTokens: 200 },
+        tokenUsage: { outputTokens: 1200 },
+      } },
+      s2: { state: 'ready', error: null, values: {
+        contextPressure: { projectedTokens: 1000, contextWindow: 8000 },
+        contextBreakdown: { messageTokens: 400, toolsTokens: 300, systemTokens: 300 },
+        tokenUsage: { outputTokens: 17 },
+      } },
+    },
+  }
+}
 
 export async function clientHarness(options = {}) {
   const ctx = new Context()
   const slots = new Slots(ctx)
   const tabs = new Tabs(ctx)
   const access = new Access(ctx)
-  const events = new Map()
+  const remote = new Remote(ctx)
   const timers = new Map()
   const intervals = new Map()
   const mountedListeners = new Set()
   let rows = activeRows(), timerId = 0, intervalId = 0, opened = 0, loaded
-  let inventory = options.inventory || (() => Promise.resolve(rows))
-  const remote = {
-    pluginManager: { listPlugins: () => inventory(),
-      listBundles: options.listBundles || (() => Promise.resolve([])),
-      updateBundle: options.updateBundle || (() => { throw new Error('Unexpected update operation') }),
-    },
-    $on(name, callback) {
-      events.set(name, callback)
-      return () => events.delete(name)
-    },
+  // Inventory callbacks return the bare Host value; the double wraps it into a
+  // RemoteResult exactly as the generated Remote face does. A callback may also
+  // return a RemoteResult itself (`ok(...)` / `refused(...)`) to model failures.
+  const wrap = async producer => {
+    const value = await producer()
+    return value && typeof value === 'object' && typeof value.ok === 'boolean' ? value : ok(value)
   }
-  ctx.provide('remote', remote)
-  ctx.provide('sessions', { list: { subscribe: () => () => {}, getSnapshot: () => ({
-    byId: {
-      s1: { displayTitle: 'Demo', running: true },
-      s2: { displayTitle: 'Other Session', running: false },
-    },
-    projectionsBySession: {
-      s1: { state: 'ready', values: {
-        contextPressure: { projectedTokens: 3000, contextWindow: 8000 },
-        contextBreakdown: { messageTokens: 2000, toolsTokens: 800, systemTokens: 200 },
-        tokenUsage: { outputTokens: 1200 },
-      } },
-      s2: { state: 'ready', values: {
-        contextPressure: { projectedTokens: 1000, contextWindow: 8000 },
-        contextBreakdown: { messageTokens: 400, toolsTokens: 300, systemTokens: 300 },
-        tokenUsage: { outputTokens: 17 },
-      } },
-    },
-  }) } })
-  ctx.provide('workspaces', { list: { subscribe: () => () => {}, getSnapshot: () => ({
-    items: [{ workspaceId: 'w', title: 'HomeBook', sessionIds: ['s1'] }],
-  }) } })
+  let inventory = options.inventory || (() => rows)
+  const calls = {
+    listPlugins: () => wrap(() => inventory()),
+    listBundles: () => wrap(options.listBundles || (() => [])),
+    updateBundle: (...args) => wrap(() => (options.updateBundle || (() => { throw new Error('Unexpected update operation') }))(...args)),
+  }
+  // The gateway mounts each namespace from its own plugin fiber
+  // (api/gateway createNamespace: `ownerCtx.plugin({ name: 'remote.<ns>', apply })`).
+  // A service provided that way is reachable only by consumers that inject it.
+  await ctx.plugin({ name: 'remote.pluginManager', apply: child => { new PluginManagerRemote(child, calls) } })
+  const sessions = observable(options.sessions || sessionSnapshot())
+  const workspaces = observable({
+    items: [{ workspaceId: 'w', title: 'HomeBook', path: 'C:/Work/HomeBook', sessionIds: ['s1'] }],
+    archivedSessionIds: [], pinnedSessionIds: [], state: 'idle', phase: 'ready', error: null,
+  })
+  ctx.provide('sessions', { list: sessions })
+  ctx.provide('workspaces', { list: workspaces })
   ctx.provide('sidebarRight', {
     mounted: { getSnapshot: () => 's1', subscribe: listener => {
       mountedListeners.add(listener)
@@ -116,8 +202,9 @@ export async function clientHarness(options = {}) {
     setTimeout: callback => { timers.set(++timerId, callback); return timerId },
     clearTimeout: id => timers.delete(id),
     setInterval: (callback, ms) => { intervals.set(++intervalId,{callback,ms}); return intervalId },
-    clearInterval: id => intervals.delete(id), console,
+    clearInterval: id => intervals.delete(id), console: options.console || console,
     fetch: options.fetch || (() => { throw new Error('unexpected network request') }),
+    navigator: options.navigator,
     AbortSignal,
   })
   const plugin = loaded.factory(name => {
@@ -128,13 +215,14 @@ export async function clientHarness(options = {}) {
   await fiber.await()
   await tick()
   return {
-    ctx, fiber, access, slots, tabs, events, timers, intervals, mountedListeners,
-    loaded, get opened() { return opened },
+    ctx, fiber, access, slots, tabs, events: remote.events, timers, intervals, mountedListeners,
+    sessions, workspaces, loaded, plugin, get opened() { return opened },
     slot(name) { return [...slots.records.values()].find(record => record.options.name === name)?.component },
+    entries(name) { return [...slots.records.values()].filter(record => record.options.name === name) },
     rows: () => rows,
     setRows(next) { rows = next },
     inventory(next) { inventory = next },
-    async changed() { events.get('plugin-manager/changed')?.(); await tick() },
+    async changed() { remote.events.get('plugin-manager/changed')?.({ reason: 'test' }); await tick(); await tick() },
     async dispose() { await ctx.fiber.dispose(); await tick() },
   }
 }

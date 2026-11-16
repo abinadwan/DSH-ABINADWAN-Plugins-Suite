@@ -5,15 +5,25 @@ import React, {act} from 'react'
 import {renderToStaticMarkup} from 'react-dom/server'
 import {createRoot} from 'react-dom/client'
 import {JSDOM} from 'jsdom'
-import {clientHarness, base} from '../test-support/client.js'
+import {clientHarness, base, withProfile} from '../test-support/client.js'
+
+async function profileOn(app) {
+  app.setRows(withProfile(app.rows(), true))
+  await app.changed()
+  await app.changed()
+  return app
+}
 
 const panelId = base + '/personal-profile-page'
 const panel = app => app.slots.records.get(panelId)?.component
 
-test('v0.6.0 browser registers a native left-sidebar launcher and matching full main page while Host is off', async t => {
+test('Personal Profile On registers a native left-sidebar launcher and matching full main page', async t => {
   const app = await clientHarness({React})
   t.after(() => app.dispose())
-  assert.equal(app.rows().find(row => row.moduleName === base + '/personal-profile').enabled, false)
+  assert.equal(app.slots.records.has(panelId), false, 'nothing while the Host row is Off')
+  assert.equal(app.slots.records.has('sidebar.panellist:' + panelId), false)
+  await profileOn(app)
+  assert.equal(app.rows().find(row => row.moduleName === base + '/personal-profile').enabled, true)
   const menu = app.slots.records.get('sidebar.panellist:' + panelId)
   const main = app.slots.records.get(panelId)
   assert.equal(menu?.options.name, 'sidebar.panellist')
@@ -34,7 +44,7 @@ test('v0.6.0 browser registers a native left-sidebar launcher and matching full 
 })
 
 test('preview navigation changes full-page sections without Host access or persistence', async t => {
-  const app = await clientHarness({React})
+  const app = await profileOn(await clientHarness({React}))
   const documentBefore = globalThis.document
   const windowBefore = globalThis.window
   const envBefore = globalThis.IS_REACT_ACT_ENVIRONMENT
@@ -75,7 +85,7 @@ test('preview navigation changes full-page sections without Host access or persi
 
 test('demo is independent of privileged Host imports; suite version and lock agree', () => {
   const packageFile = JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'))
-  assert.equal(packageFile.version, '0.6.1')
+  assert.equal(packageFile.version, '0.6.2')
   // npm pack deliberately omits the lockfile. Check its consistency when the
   // test runs from the source tree; packed tests still verify the manifest.
   const lockPath = new URL('../package-lock.json', import.meta.url)

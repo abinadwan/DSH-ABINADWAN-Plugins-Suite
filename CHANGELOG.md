@@ -2,6 +2,22 @@
 
 All notable changes are documented here.
 
+## [0.6.2] — Unreleased
+
+### Fixed
+
+- **Update checker missing from the Plugins detail page.** The browser half read `ctx.remote.pluginManager` without injecting `remote.pluginManager`. Each Harness Remote namespace is its own Cordis service, and Cordis 4 throws `cannot get property "remote.pluginManager" without inject`; the Slot renderer then abdicated the crashed `plugins.detail.section` entry, so nothing was shown. The root plugin now injects `remote.pluginManager`.
+- **Environment & Context never started.** The same missing inject, plus treating Remote answers as bare arrays: every Harness Remote method resolves to `RemoteResult` (`{ ok, value }`). The component inventory therefore always read as empty, and the Environment browser fiber, its tab type, tab body and header button were never registered. Inventory, bundle listing and update answers are now unwrapped and validated.
+- **Personal Profile visible while Off.** The left-sidebar launcher and full-page preview were registered by the suite root, independently of the component switch. They now live in the Personal Profile browser fiber with the detail-page draft, so all three are registered only while the component is On and are removed when it is switched Off.
+- The Environment tab uses the Session-scoped `useProjection` hook the tab seat supplies, so context and token figures follow new model responses, with the Session list projection as fallback and explicit loading/unavailable text.
+
+### Changed
+
+- Update section renamed **Suite updates (GitHub Releases)** and now shows the Host-reported version, the running browser-module version (with a mismatch warning), the latest stable release, the last check and the Host's update method for this installation.
+- Unpinned Git installations get a step-by-step migration explanation with the verified pinned spec; nothing is uninstalled or replaced automatically. Updates of pinned installations reuse the installed repository location, require `pluginManager/updateBundle` access, and report Host refusals, failures and rollbacks instead of success.
+- Offline, unreachable, rate-limited and unreadable GitHub responses are reported explicitly.
+- The test harness now models the Harness v0.2.2-rc.3 contracts (Remote namespaces as fiber-provided services, `RemoteResult`, list-entry abdication) instead of plain-object doubles.
+
 ## [0.6.1] — 2026-11-16
 
 ### Fixed

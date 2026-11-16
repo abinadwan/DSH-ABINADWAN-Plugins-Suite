@@ -26,9 +26,10 @@ memory** and disappear when the page/bundle reloads. It neither reads nor writes
 real Harness Profile values, uses no privileged Host transport, and sends no
 data to an agent or remote service. **Do not enter real personal information.**
 
-The left-sidebar launcher belongs to the browser bundle, so it can be visible
-while the independent Host Personal Profile subcomponent remains disabled.
-The old read-only design card on the Plugins detail page is separate.
+Since v0.6.2 the left-sidebar launcher, its page and the read-only design card
+on the Plugins detail page are registered only while the Host **Personal
+Profile** component is switched On and running; switching it Off unregisters
+all three. Enabling it still activates no storage, Host integration or agent access.
 There is **no Save button or persistent storage** in this release.
 
 For implementation and security boundaries see
