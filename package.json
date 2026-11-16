@@ -94,5 +94,8 @@
   },
   "peerDependencies": {
     "@deepseek-ai/cordis-plugin-loader": ">=1.0.6 <2"
+  },
+  "dependencies": {
+    "@noble/hashes": "2.0.1"
   }
 }
