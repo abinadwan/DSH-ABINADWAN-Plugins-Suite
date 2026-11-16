@@ -68,8 +68,9 @@ Use the profile actually run by Harness Desktop. For the `desktop` profile, run 
 # If the legacy package is still installed
 dsh plugin --profile desktop remove @abinadwan/environment-sidebar
 
-# Install or replace the suite from GitHub
-dsh plugin --profile desktop add github:abinadwan/DSH-ABINADWAN-Plugins-Suite
+# Install from the verified SHA of a published stable release.
+# Replace RELEASE_COMMIT_SHA with the full 40-character SHA before running.
+dsh plugin --profile desktop add github:abinadwan/DSH-ABINADWAN-Plugins-Suite#RELEASE_COMMIT_SHA
 dsh --profile desktop --dump-config
 ```
 
