@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/workflows/test.yml"><img alt="CI" src="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/workflows/test.yml/badge.svg"/></a>
-  <img alt="Suite 0.6.1" src="https://img.shields.io/badge/suite-0.6.1-7b2246"/>
+  <img alt="Suite 0.6.2" src="https://img.shields.io/badge/suite-0.6.2-7b2246"/>
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-22c55e"/></a>
 </p>
 
@@ -22,11 +22,11 @@ One installation supplies three independently toggleable DSH Components. The pac
 | <img src="plugins/humanizer/icon.png" width="32" alt="Purple feather"/> **Humanizer** | Runtime writing Skill | On | [Usage and scope](plugins/humanizer/README.md) |
 | <img src="plugins/personal-profile/icon.png" width="32" alt="Amber ID and gear"/> **Personal Profile** | Synthetic left-sidebar preview (no saving) | Host Off | [Preliminary fields and pending design](plugins/personal-profile/README.md) |
 
-## Personal Profile (0.6.0 preview)
+## Personal Profile (preview)
 
 A dedicated **Personal Profile** entry in the **left sidebar** opens a full-page five-section preview: My Information, Agent Instructions, Access Control, Backup & Restore, and Privacy & Security. The page supports Arabic/English labels and editable **fictional values held only in browser memory**. It does not persist, encrypt, export, load real account data or provide any agent permissions.
 
-**Do not enter real personal information.** The Host Personal Profile component remains disabled by default and `apply() {}` still registers no backend services. The sidebar demo is visible with the suite's browser bundle even while the Host component is disabled. It is not a working production profile.
+**Do not enter real personal information.** The Host Personal Profile component remains disabled by default and `apply() {}` still registers no backend services. Since 0.6.2 the left-sidebar entry, its page and the detail-page draft exist **only while the Personal Profile component is switched On**; switching it Off removes them as soon as Harness reports the component change (no restart needed when Harness reports it live). It is not a working production profile.
 
 ## Environment & Context
 
@@ -78,11 +78,11 @@ Restart Harness completely, open **Plugins → ABINADWAN Plugins Suite**, enable
 
 If your active profile is `web` or another name, substitute that name in every command. Upgrading from 0.4.0 keeps the `abinadwan-suite` group identity and the current inspector behavior. Existing user-layer disable overrides remain applicable. The package ships ready-to-run JavaScript and installs directly from GitHub. No build step is required. An immutable version can be installed by appending `#<full-commit-sha>` to the GitHub reference.
 
-The suite detail page includes **Versions**. The suite's browser module automatically checks the newest **stable, published GitHub Release** at startup and every 24 hours while active; **Check again** is also available. A published Release is required: merely changing `main/package.json` or opening a PR does **not** make an update available. The read-only GitHub request sends no conversation data, credentials or referrer. If no stable Release exists, the status is **No published stable release yet**.
+The suite detail page includes a **Suite updates (GitHub Releases)** section below the source information. It shows the version the Host reports, the version of the browser module running in the window, the latest stable release, the last check time and the update method the Host reports for this installation. The suite's browser module automatically checks the newest **stable, published GitHub Release** at startup and every 24 hours while active; **Check again** is also available. A published Release is required: merely changing `main/package.json` or opening a PR does **not** make an update available. The read-only GitHub request sends no conversation data, credentials or referrer. If no stable Release exists, the status is **No published stable release yet**.
 
-**Update now** is user-initiated only and asks for **Confirm update** before any Host change. The preview resolves the release tag to an immutable SHA and checks the `package.json` identity and version at that commit. The native DSH `pluginManager.updateBundle` API then installs that pinned revision, with its own validation and attempted rollback/restart handling. **There are no silent installations.** The Host may refuse, require a restart or fail to restore the prior installation. Review its Plugins status and keep a tested recovery path.
+**Update now** is user-initiated only and asks for **Confirm update** before any Host change. The preview resolves the release tag to an immutable SHA and checks the `package.json` identity and version at that commit. The Harness Host's own `pluginManager.updateBundle` method (the same one the native Plugins update dialog uses) then installs that pinned revision, with its own validation and attempted rollback/restart handling. **There are no silent installations.** The Host may refuse, require a restart or fail to restore the prior installation. Review its Plugins status and keep a tested recovery path.
 
-**Git install prerequisite:** Harness Desktop `v0.2.2-rc.3` reports `update: git` only for a package installed from a Git spec pinned to a **full 40-character SHA**. A legacy `github:abinadwan/DSH-ABINADWAN-Plugins-Suite` install tracking a branch is **not** automatically updatable. That installation must be migrated deliberately to a pinned Git revision first; the suite does not uninstall, replace or reconfigure it on its own. Use the source's documented install/remove workflow only after confirming the active DSH Profile and preserving a known-good SHA. A published stable GitHub Release must precede any installable update offer.
+**Git install prerequisite:** Harness Desktop `v0.2.2-rc.3` reports `update: git` only for a package installed from a Git spec pinned to a **full 40-character SHA**. A legacy `github:abinadwan/DSH-ABINADWAN-Plugins-Suite` install tracking a branch is **not** automatically updatable. That installation must be migrated deliberately to a pinned Git revision first; the suite does not uninstall, replace or reconfigure it on its own. When you press **Update now** on such an installation, the section explains this and shows the verified pinned spec for the release; you can then decide to uninstall and re-add the bundle with that spec yourself. Use the source's documented install/remove workflow only after confirming the active DSH Profile and preserving a known-good SHA. A published stable GitHub Release must precede any installable update offer.
 
 ## Architecture and compatibility
 
