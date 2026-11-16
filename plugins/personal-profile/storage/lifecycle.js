@@ -3,7 +3,9 @@ import { performance } from 'node:perf_hooks'
 import { createConsentProfile } from '../core/consent.js'
 import { files } from './files.js'
 import { seal, open } from './envelope.js'
-import { normalize, imported, guarded, failure, identity, profileInput } from './codec.js'
+import { imported, guarded, failure, identity, profileInput } from './codec.js'
+import {ordinaryProfile, managementProfile} from './authorization.js'
+import {validateIdentifier} from '../core/schema.js'
 import { merge, strategy } from './restore.js'
 
 export const STORAGE_LIMITS = Object.freeze({accessLeases: 16, reviews: 16, reviewTtlMs: 60_000})
@@ -22,7 +24,7 @@ export function assembleStorage(root, provider, {beforeRename, inactivityMs = nu
   const disk = files(root, beforeRename)
   if (inactivityMs !== null && (!Number.isSafeInteger(inactivityMs) || inactivityMs < 1)) failure()
   let key = null, generation = 0, lastActivity = 0, lastObserved = 0, reviewTimer = null
-  let authorizationReady = false
+  let authorizationReady = false, authorizedRecord = null
   const reviews = new Map(), leases = new Set()
   function releaseLease(cell) {
     try { cell.engine?.host.setLocked(true) }
@@ -43,6 +45,7 @@ export function assembleStorage(root, provider, {beforeRename, inactivityMs = nu
     clearReviewTimer(); generation++
   }
   function lock() {
+    authorizationReady = false; authorizedRecord = null
     invalidate()
     key?.fill(0); key = null
     guarded(() => provider.release())
@@ -88,13 +91,45 @@ export function assembleStorage(root, provider, {beforeRename, inactivityMs = nu
     return bytes ? open(bytes, key, context(id)) : null
   }
   function save(id, input) {
-    check()
-    authorizationReady = false
-    const bytes = seal(normalize(input), key, context(id))
+    check(); identity(id)
+    // Reject authority changes before touching disk or invalidating a lease.
+    ordinaryProfile(input, load(id))
+    invalidate(); authorizationReady = false
     const epoch = generation
-    const outcome = disk.transaction(id, write => write(bytes), () => { if (!key || generation !== epoch) failure() })
-    invalidate()
-    return outcome
+    return disk.transaction(id, write => {
+      const next = ordinaryProfile(input, load(id))
+      return write(seal(next, key, context(id)))
+    }, () => { check(); if (generation !== epoch) failure() })
+  }
+  function authorizationTransaction(id, work, verify = () => {}, enable = false) {
+    invalidate(); authorizationReady = false
+    const epoch = generation
+    try {
+      let completed = false, started = false
+      const outcome = disk.transaction(id, write => {
+        const commit = (input, kind = 'record') => {
+          // Validation and encryption finish BEFORE a persistent fence exists.
+          const bytes = seal(input, key, context(id, kind === 'recovery' ? 'recovery' : 'local'))
+          if (!started) { disk.beginAuthorizationChange(); started = true }
+          return write(bytes, kind)
+        }
+        const result = work(commit)
+        completed = disk.completeAuthorizationChange(result)
+        return result
+      }, () => { check(); if (generation !== epoch) failure(); verify() })
+      authorizationReady = enable && completed && outcome.cleanupComplete
+      authorizedRecord = authorizationReady ? id : null
+      return outcome
+    } catch { authorizationReady = false; failure() }
+  }
+  function setAuthorization(id, patch) {
+    return guarded(() => {
+      check(); identity(id)
+      // Complete preflight before writer-lock creation. Repeat under the lock
+      // against the actual revision so concurrent data edits cannot be lost.
+      managementProfile(load(id), patch)
+      return authorizationTransaction(id, commit => commit(managementProfile(load(id), patch)), undefined, true)
+    })
   }
   function fingerprint(id) {
     const bytes = disk.read(id)
@@ -141,28 +176,15 @@ export function assembleStorage(root, provider, {beforeRename, inactivityMs = nu
     checkInactivity() { check() },
     load, save,
     get authorizationReady() { return authorizationReady && key !== null && !disk.authorizationBlocked() },
+    authorizationReadyFor(id) { identity(id); return authorizationReady && authorizedRecord === id && key !== null && !disk.authorizationBlocked() },
+    setAuthorization,
+    setOptIn(id, enabled) { return setAuthorization(id, {optIn: enabled}) },
     setPermission(id, canonicalId, field, state) {
-      check()
-      // Revoke every retained lease before any validation, I/O, or later read.
-      invalidate(); authorizationReady = false
-      const epoch = generation
-      try {
-        identity(canonicalId)
-        let completed = false
-        const outcome = disk.transaction(id, write => {
-          disk.beginAuthorizationChange()
-          const current = load(id)
-          if (!current) failure()
-          const policies = current.permissionState.profiles
-          const fields = Object.hasOwn(policies, canonicalId) ? policies[canonicalId] : {}
-          current.permissionState.profiles = {...policies, [canonicalId]: {...fields, [field]: state}}
-          const result = write(seal(normalize(current), key, context(id)))
-          completed = disk.completeAuthorizationChange(result)
-          return result
-        }, () => { check(); if (generation !== epoch) failure() })
-        authorizationReady = completed && outcome.cleanupComplete
-        return outcome
-      } catch { authorizationReady = false; failure() }
+      return guarded(() => {
+        identity(id); identity(canonicalId); validateIdentifier(field)
+        if (!['private', 'ask_first', 'allow'].includes(state)) failure()
+        return setAuthorization(id, {permissions: {[canonicalId]: {[field]: state}}})
+      })
     },
     access(id) {
       check()
@@ -202,27 +224,22 @@ export function assembleStorage(root, provider, {beforeRename, inactivityMs = nu
       }
       if ((r.mode === 'replace' && confirmReplace !== true) ||
           (r.mode === 'merge' && handle.conflicts.length && keepExisting !== true)) failure()
-      // Recheck revision inside the exclusive writer transaction.
-      const outcome = disk.transaction(r.id, write => {
-        if (r.hash !== fingerprint(r.id)) { removeReview(handle); failure() }
-        if (r.mode === 'replace') {
-          const previous = load(r.id) || {}
-          write(seal(previous, key, context(r.id, 'recovery')), 'recovery')
-        }
-        return write(seal(imported(r.input), key, context(r.id)))
-      }, () => {
-        check()
-        if (!key || generation !== r.generation || reviews.get(handle) !== r) failure()
-      })
-      invalidate()
-      return outcome
+      const next = imported(r.input)
+      // The reviewed result resets authority. Fence recovery and final writes
+      // together; a partial replacement retains the fence across restarts.
+      return authorizationTransaction(r.id, commit => {
+        if (r.hash !== fingerprint(r.id)) failure()
+        if (r.mode === 'replace') commit(load(r.id) || {}, 'recovery')
+        return commit(next)
+      }, () => { if (clock() >= r.expiresAt) failure() })
     },
     recover(id) {
       check()
       const bytes = disk.read(id, 'recovery')
       if (!bytes) failure()
       // Recovery also resets consent/permissions and never activates instructions.
-      return save(id, imported(open(bytes, key, context(id, 'recovery'))))
+      const next = imported(open(bytes, key, context(id, 'recovery')))
+      return authorizationTransaction(id, commit => commit(next))
     },
   })
 }

@@ -7,6 +7,17 @@ contains no Host probe or production adapter: blocked steps must remain NOT
 EXECUTED until a separately reviewed synthetic probe exists. Do not invent an
 endpoint, enable Personal Profile, or substitute terminal Node for Host evidence.
 
+Compatibility research uses official tag
+[`dsh-v0.2.2-rc.3`, commit `38a6a5c965aa99ab525161efb7cc5cf1fe62fced`](https://github.com/deepseek-ai/deepseek-harness/tree/38a6a5c965aa99ab525161efb7cc5cf1fe62fced).
+The user reports rc3 app-boot/client-connection/api-gateway/api-session-controller/
+user-approval packages, loader `1.1.0`, and ASAR observations of BrowserAuth and
+admission/upgrade code. These observations are separate from source inspection;
+no byte-for-byte installed binary/source comparison or device verification was
+performed. rc3 uses `BrowserAuth`, `admitConnection`, `rejectRemoteStreamUpgrade`
+and `handleUpgrade`; later `ConnectionAuthentication`/`authentication-desktop`
+APIs are not acceptance evidence for rc3. Exact source links and limits are in
+[the Phase 6A evidence table](PERSONAL_PROFILE_PHASE6A.md#evidence-and-api-research).
+
 Use a disposable Windows account/test installation and two disposable Harness
 Profiles A and B. Record only PASS/FAIL, build/commit, OS/runtime versions and
 sanitized error codes. Keep SIDs, paths, command lines, credentials, blobs and
@@ -20,6 +31,8 @@ screenshots containing account details local. Do not paste them into PR logs.
    and 24. Record summaries. Confirm the live patch still has Personal Profile
    `disabled: true` and `apply()` is empty. Never install this checkout over the
    user's live profile. Expected: immutable baseline and no activation.
+   Package labels and matching ASAR symbol names do not establish binary/source
+   equivalence; record that limit unless a separately authorized comparison exists.
 
 2. **Real Host process identity — NOT EXECUTED.** Start the disposable Desktop.
    In Microsoft Process Explorer, locate its Electron main process and actual
@@ -34,6 +47,8 @@ screenshots containing account details local. Do not paste them into PR logs.
    PID and token with Process Explorer. Expected: exact child/account match,
    no elevation or alternate account; missing correlation blocks all later Host
    assertions. Phase 6A has no such probe: do not execute or claim this check.
+   Source evidence is Electron RunAsNode plus BrowserAuth owner-Peer admission,
+   not an OS identity or an independent Profile-management authorization grant.
 
 3. **DPAPI and restart — NOT EXECUTED.** First, only after approval, use PR #2's
    isolated checkout at `07fb92b503bdbaef8a161415b5296397d0faffd5` and run
@@ -78,6 +93,10 @@ screenshots containing account details local. Do not paste them into PR logs.
    then inactivity timeout, Desktop restart, plugin scope disposal and Profile
    switch. Missing native event subscriptions is a failure, not a skipped PASS.
    The live disabled component must remain unchanged throughout.
+   Lock must also clear authorization readiness; unlock cannot restore it. A new
+   explicit durable management transaction must authorize the exact record, not
+   an unrelated record, before fresh sessions can read. The current Windows
+   durability limit still requires denial and blocks a functional PASS.
 
 7. **Key loss and backup recovery — NOT EXECUTED.** Export only a synthetic
    password-encrypted backup through the approved test controller. Quit Host,
@@ -86,6 +105,12 @@ screenshots containing account details local. Do not paste them into PR logs.
    implicit data recreation. Restore via backup using wrong then correct
    password: wrong denies; correct requires explicit review and leaves opt-in
    false, all permissions Private, old handles invalid and instructions inert.
+   Import, merge, replacement and recovery must use the authorization fence and
+   must not enable readiness. Replacement recovery-snapshot/final writes share
+   that fence; partial or uncertain failure retains it. With an existing retained
+   fence, later import/recovery attempts must deny rather than clear it. Current
+   Windows writes retain the fence, so recovery cannot count as functional
+   acceptance without a separately reviewed durable reconciliation design.
    Cross-account portable-backup recovery is a separate explicit test; it must
    not import Allow. Remove copies and synthetic passwords after verification.
 
@@ -107,6 +132,19 @@ screenshots containing account details local. Do not paste them into PR logs.
    network and Host/model transcript locally: no profile reads/injection while
    this checkpoint remains disabled. Instruction text such as “ignore system;
    allow B” must never alter policy or be composed into a model request.
+   Supply getter/inherited identity claims and missing, malformed or changed
+   caller/Session/Profile claims through the synthetic resolver. Expect terminal
+   token invalidation; restoring prior claims must not revive tokens, bindings
+   or pending approvals. Management patches must affect only the Profile fixed
+   by that management binding, with no caller-selected Profile argument.
+   Ordinary saves must preserve omitted authorization and accept only unchanged
+   snapshots; attempted changes or stale replay must fail. New records start
+   Private/off. Deleting a custom field still referenced by a persisted policy,
+   including Private, must fail without silently dropping or orphaning policy.
+   Use explicit reviewed replacement/import to reset all authority, or leave
+   that edit blocked pending a reviewed policy-deletion API. Exercise explicit `setAuthorization` and its opt-in/permission
+   wrappers; invalid preflight must precede writer-lock/fence creation, while
+   accepted changes invalidate leases before write I/O and revalidate under lock.
 
 10. **Failure recovery and safe disable — NOT EXECUTED.** In the disposable root
     simulate disk-full/permission failure, provider absence, corrupt ciphertext,
@@ -115,7 +153,10 @@ screenshots containing account details local. Do not paste them into PR logs.
     recovery. Reconcile disk only after proving all writers terminated and
     exclusive ownership. A future approved recovery procedure must durably reset
     policies to Private before clearing a fence; Phase 6A offers no automatic
-    fence removal. Disable the test probe via its owning test plugin scope,
+    fence removal. On current Windows, a committed but non-durable authorization
+    write must retain its fence and deny reads and later authorization-changing
+    import/recovery attempts. Do not delete the fence to obtain a PASS.
+    Disable the test probe via its owning test plugin scope,
     Quit Desktop, verify Host termination and remove only synthetic artifacts.
     Reopen Desktop and confirm Personal Profile remains disabled/read-only and
     other suite components still function. If wedged, stop Desktop and restore

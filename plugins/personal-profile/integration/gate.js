@@ -3,7 +3,7 @@
 import {performance} from 'node:perf_hooks'
 import {createHash} from 'node:crypto'
 import {identity, failure} from '../storage/codec.js'
-import {validateEnvironmentName} from '../core/schema.js'
+import {entries, validateEnvironmentName} from '../core/schema.js'
 import {profileNameKey} from '../core/profile-identity.js'
 
 const revision = input => createHash('sha256').update(JSON.stringify(input)).digest('hex')
@@ -36,17 +36,22 @@ export function assembleGate(storage, recordId, resolve, {now = () => performanc
   function auth(token, role) {
     try { sweep() } catch { clear(); failure() }
     if (disposed || storage.locked || !token || typeof token !== 'object' || invalid.has(token)) failure()
-    let resolved
-    try { resolved = resolve(token) } catch { if (bindings.has(token)) clear(); failure() }
-    if (!resolved || resolved.role !== role || !resolved.caller || !resolved.session ||
-        typeof resolved.caller !== 'object' || typeof resolved.session !== 'object') {
-      if (bindings.has(token)) clear()
-      failure()
-    }
-    identity(resolved.profile); validateEnvironmentName(resolved.environment)
     const prior = bindings.get(token)
-    if (prior && ['role','profile','environment','caller','session'].some(k => prior[k] !== resolved[k])) {
-      try { prior.engine?.host.setLocked(true) } catch {}; invalid.add(token); failure()
+    let resolved
+    try {
+      // Snapshot own data descriptors: no getter/prototype identity claims.
+      resolved = Object.fromEntries(entries(resolve(token), ['role','profile','environment','caller','session']))
+      if (!['agent','management'].includes(resolved.role) || resolved.role !== role ||
+          !resolved.caller || !resolved.session || typeof resolved.caller !== 'object' ||
+          typeof resolved.session !== 'object') failure()
+      identity(resolved.profile); validateEnvironmentName(resolved.environment)
+      if (prior && ['role','profile','environment','caller','session'].some(k => prior[k] !== resolved[k])) failure()
+    } catch {
+      // Every resolver/validation failure is terminal, including failures before
+      // a canonical id was validated. Remove approvals and revoke the engine.
+      if (prior) clear()
+      invalid.add(token)
+      failure()
     }
     if (prior) return prior
     if (bindings.size >= 64) failure()
@@ -62,7 +67,7 @@ export function assembleGate(storage, recordId, resolve, {now = () => performanc
   function active(token) {
     const b = auth(token,'agent')
     // Lease validates generation on EVERY operation; load checks lock/inactivity.
-    if (!storage.authorizationReady) failure()
+    if (!storage.authorizationReadyFor(recordId)) failure()
     const input = storage.load(recordId)
     if (!input) failure()
     if (b.engine) {
@@ -98,17 +103,34 @@ export function assembleGate(storage, recordId, resolve, {now = () => performanc
       cancel(token,approval) { try { const b=active(token); if(approvals.get(approval)!==b) return false; remove(approval); return b.engine.reader.cancelApproval(b.handle,approval) } catch {return false} },
     }),
     management:Object.freeze({
+      setAuthorization(token, input) {
+        const b=auth(token,'management')
+        const patch=Object.fromEntries(entries(input,['optIn','fields']))
+        const update={}
+        if (Object.hasOwn(patch,'optIn')) update.optIn=patch.optIn
+        if (Object.hasOwn(patch,'fields')) update.permissions={[b.profile]:patch.fields}
+        const result=storage.setAuthorization(recordId,update)
+        clear()
+        return result
+      },
+      setOptIn(token, enabled) {
+        auth(token,'management')
+        const result=storage.setOptIn(recordId,enabled)
+        clear()
+        return result
+      },
       setPermission(token,field,state) {
         const b=auth(token,'management')
         // Read role/profile before invalidation; changes invalidate every session.
         const profile=b.profile
+        const result=storage.setPermission(recordId,profile,field,state)
         clear()
-        return storage.setPermission(recordId,profile,field,state)
+        return result
       },
       decide(token,approval,outcome) {
         try {
           const manager=auth(token,'management'), b=approvals.get(approval)
-          if(!b || b.profile!==manager.profile || !storage.authorizationReady) return false
+          if(!b || b.profile!==manager.profile || !storage.authorizationReadyFor(recordId)) return false
           b.lease.host.setLocked(false)
           return b.engine.host.decide(approval,outcome)
         } catch {return false}
