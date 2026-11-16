@@ -1,7 +1,11 @@
 # Phase 6B-1 — synthetic Windows Host identity design
 
 Status: **live Host UNVERIFIED; Profile access DENIED; device checks NOT EXECUTED**.
-Parent: `ed0949a8315bb5a4683c087efdbeaa9691cf8662` (Phase 6A, Draft PR #8).
+Historical parent: `ed0949a8315bb5a4683c087efdbeaa9691cf8662` (Phase 6A).
+After PR #3–#8 merged in order, PR #9 was retargeted to `main` at
+`434838c72141431d9c77ce9765f8aee59e775552`; the original parent is not
+the current PR review base. PR checks must use the *new* GitHub merge ref into
+`main`, rather than an older PR CI run checked out against the Phase 6A branch.
 This phase adds only a read-only synthetic diagnostic, regression tests and this
 binding design. It does not implement authenticated identity or an OS boundary.
 
