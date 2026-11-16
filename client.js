@@ -188,12 +188,16 @@ window.__ModuleLoader__.load({
 
     // Only stable published GitHub Releases may trigger an in-app update offer.
     // This browser-side checker never installs anything without a separate click.
-    const INSTALLED_VERSION = '0.6.1'
+    const INSTALLED_VERSION = '0.6.2'
+    const PACKAGE_NAME = '@abinadwan/dsh-plugins-suite'
     const RELEASE_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/latest'
     const COMMIT_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/commits/'
     const RAW_MANIFEST = 'https://raw.githubusercontent.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/'
     const PINNED_SPEC_PREFIX = 'github:abinadwan/DSH-ABINADWAN-Plugins-Suite#'
+    // Host-normalised repository location (plugin-manager `pinnedGitOrigin`), lower-cased for the identity check.
+    const REPOSITORY_LOCATION = 'github.com/abinadwan/dsh-abinadwan-plugins-suite'
     const PROJECT_URL = 'https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite'
+    const FULL_COMMIT = /^[0-9a-f]{40}$/
     const CHECK_INTERVAL = 24 * 60 * 60 * 1000
     let versionSnapshot = Object.freeze({phase:'idle'})
     const versionListeners = new Set()
@@ -229,10 +233,21 @@ window.__ModuleLoader__.load({
       }
       return false
     }
+    /**
+     * Every generated Harness Remote method resolves to `RemoteResult<T>`:
+     * `{ ok: true, value }` or `{ ok: false, error }`. Never treat the envelope
+     * itself as the value.
+     */
+    function remoteValue(answer, label) {
+      if (answer && answer.ok === true) return answer.value
+      const error = answer && answer.ok === false ? answer.error : undefined
+      const reason = error && (error.message || error.code)
+      throw new Error(label + ' failed: ' + (reason ? String(reason) : 'invalid Host response'))
+    }
     function publishVersion(next, expectedGeneration = versionGeneration) {
       if (versionDisposed || expectedGeneration !== versionGeneration) return
       versionSnapshot = Object.freeze(next)
-      for (const notify of versionListeners) notify()
+      for (const notify of [...versionListeners]) notify()
     }
     function subscribeVersion(notify) {
       versionListeners.add(notify)
@@ -246,18 +261,33 @@ window.__ModuleLoader__.load({
       }
       return payload.tag_name.slice(1)
     }
+    const offline = () => typeof navigator === 'object' && navigator !== null && navigator.onLine === false
     async function githubJSON(url) {
+      if (offline()) throw new Error('This device appears to be offline')
       const signal = typeof AbortSignal !== 'undefined' && typeof AbortSignal.timeout === 'function'
         ? AbortSignal.timeout(10000) : undefined
-      const response = await fetch(url, {
-        method:'GET', credentials:'omit', cache:'no-store', referrerPolicy:'no-referrer',
-        headers:{Accept:'application/vnd.github+json'},
-        ...signal ? {signal} : {},
-      })
+      let response
+      try {
+        response = await fetch(url, {
+          method:'GET', credentials:'omit', cache:'no-store', referrerPolicy:'no-referrer',
+          headers:{Accept:'application/vnd.github+json'},
+          ...signal ? {signal} : {},
+        })
+      } catch (error) {
+        throw new Error('GitHub could not be reached (' + String(error?.message || error) + ')')
+      }
       if (response.status === 404 && url === RELEASE_SOURCE) return null
+      if (response.status === 403 || response.status === 429) {
+        throw new Error('GitHub refused the request (HTTP ' + response.status + ', possibly rate limited). Try again later')
+      }
       if (!response.ok) throw new Error('GitHub returned HTTP ' + response.status)
-      return await response.json()
+      try {
+        return await response.json()
+      } catch {
+        throw new Error('GitHub returned an unreadable response')
+      }
     }
+    const stamp = () => new Date().toLocaleTimeString()
     function checkRelease(force = false) {
       if (versionDisposed) return Promise.resolve()
       if (inflightCheck) return inflightCheck
@@ -265,34 +295,92 @@ window.__ModuleLoader__.load({
       if (!force && now < nextAllowedCheck) return Promise.resolve()
       nextAllowedCheck = now + CHECK_INTERVAL
       const generation = versionGeneration
-      publishVersion({phase:'checking'}, generation)
+      publishVersion({...versionSnapshot, phase:'checking'}, generation)
       const task = (async () => {
         try {
           const release = await githubJSON(RELEASE_SOURCE)
           if (!release) {
-            publishVersion({phase:'unreleased', checked:new Date().toLocaleTimeString()}, generation)
+            publishVersion({phase:'unreleased', checked:stamp()}, generation)
             return
           }
           const latest = getReleaseVersion(release)
-          const result = isNewerVersion(latest, INSTALLED_VERSION)
-          if (result === null) throw new Error('Invalid release version')
-          publishVersion({phase:'ready',latest,tag:release.tag_name,
-            checked:new Date().toLocaleTimeString()}, generation)
+          if (isNewerVersion(latest, INSTALLED_VERSION) === null) throw new Error('Invalid release version')
+          publishVersion({phase:'ready',latest,tag:release.tag_name,checked:stamp()}, generation)
         } catch (error) {
-          publishVersion({phase:'error',message:String(error?.message || error)}, generation)
+          publishVersion({phase:'error',message:String(error?.message || error),checked:stamp()}, generation)
         }
       })()
       const pending = task.finally(() => {if (inflightCheck === pending) inflightCheck = null})
       inflightCheck = pending
       return pending
     }
+    /** The repository location of a Git spec, normalised as the Host's `pinnedGitOrigin` does. */
+    function gitLocation(spec) {
+      const hash = spec.indexOf('#')
+      return (hash === -1 ? spec : spec.slice(0, hash))
+        .replace(/^github:/i, 'github.com/').replace(/^git\+/i, '')
+        .replace(/^[a-z][a-z0-9+.-]*:\/\//i, '').replace(/^[^@/]+@/, '').replace(/^([^/:]+):(?!\d)/, '$1/')
+        .replace(/\/+$/, '').replace(/\.git$/i, '').toLowerCase()
+    }
+    /**
+     * Classify how the Host installed this bundle, from its `listBundles()` row.
+     * Only a Git spec pinned to a full commit of this repository's root can be
+     * updated in place by the Host (`BundleInfo.update === 'git'`).
+     */
+    function installMode(bundle) {
+      if (!bundle || bundle.installed !== true) return { kind:'missing' }
+      const source = typeof bundle.source === 'string' ? bundle.source : ''
+      if (bundle.update === 'registry') return { kind:'registry', source }
+      if (source && gitLocation(source) !== REPOSITORY_LOCATION) return { kind:'foreign', source }
+      if (bundle.update !== 'git') return { kind:'unpinned', source }
+      const hash = source.indexOf('#')
+      const params = hash === -1 ? [] : source.slice(hash + 1).split('&')
+      const paths = params.filter(part => part.startsWith('path:'))
+      const commits = params.filter(part => !part.startsWith('path:'))
+      const path = paths.length ? paths[0].slice(5).replace(/^\/+|\/+$/g, '') : ''
+      if (paths.length > 1 || path !== '' || commits.length !== 1 || !FULL_COMMIT.test(commits[0].toLowerCase())) {
+        return { kind:'unpinned', source }
+      }
+      return { kind:'pinned', source, commit:commits[0].toLowerCase(), location:source.slice(0, hash) }
+    }
+    const useAccess = (hook, action) => typeof hook === 'function' ? hook(action) === true : false
+    function useMounted() {
+      const mounted = React.useRef(true)
+      React.useEffect(() => {
+        mounted.current = true
+        return () => { mounted.current = false }
+      }, [])
+      return mounted
+    }
+    const MIGRATION_STEPS = [
+      'Harness can update a Git-installed bundle in place only when it was installed from a spec pinned to a full 40-character commit. Nothing was changed.',
+      'One-time migration (manual, at your discretion): note which components are switched on, Uninstall this bundle from this page, then use Add plugin with the pinned spec shown below, and switch the components back on.',
+      'The suite stores no personal data, so uninstalling removes no profile information. If the pinned install fails, reinstall from the same spec or from the original source.',
+    ]
     // Installed-plugin detail page only; never run an installer in a React effect.
-    function VersionUpdates({ installedVersion = INSTALLED_VERSION, pluginManager }) {
+    function VersionUpdates({ installedVersion, pluginManager, useRemoteAccess }) {
       const update = React.useSyncExternalStore(subscribeVersion,getVersionSnapshot,getVersionSnapshot)
       const [action, setAction] = React.useState({phase:'idle'})
-      const currentVersion = versionParts(installedVersion) ? installedVersion : INSTALLED_VERSION
+      const [mode, setMode] = React.useState({kind:'unknown'})
+      const mounted = useMounted()
+      const canList = useAccess(useRemoteAccess, 'pluginManager/listBundles')
+      const canUpdate = useAccess(useRemoteAccess, 'pluginManager/updateBundle')
+      const hostVersion = versionParts(installedVersion) ? installedVersion : undefined
+      const currentVersion = hostVersion || INSTALLED_VERSION
       const newer = update.phase === 'ready' ? isNewerVersion(update.latest,currentVersion) : false
       const phase = update.phase === 'ready' ? (newer ? 'available' : 'current') : update.phase
+      // A read-only Host lookup so the page states up front whether in-app
+      // updates are possible for this installation. It never changes anything.
+      React.useEffect(() => {
+        if (!canList || !pluginManager) return undefined
+        let live = true
+        Promise.resolve().then(() => pluginManager.listBundles()).then(answer => {
+          const bundles = remoteValue(answer, 'Plugin list')
+          const bundle = Array.isArray(bundles) ? bundles.find(item => item?.name === PACKAGE_NAME) : undefined
+          if (live) setMode(installMode(bundle))
+        }).catch(error => { if (live) setMode({kind:'error',message:String(error?.message || error)}) })
+        return () => { live = false }
+      }, [canList, pluginManager, update.checked])
       async function prepare() {
         setAction({phase:'checking'})
         try {
@@ -300,109 +388,145 @@ window.__ModuleLoader__.load({
           // Resolve the release tag to an immutable commit, and verify the
           // package identity and exact version at that commit.
           const commit = await githubJSON(COMMIT_SOURCE + encodeURIComponent(update.tag))
-          const sha = commit?.sha
-          if (typeof sha !== 'string' || !/^[0-9a-f]{40}$/.test(sha)) throw new Error('Invalid release commit')
+          const sha = typeof commit?.sha === 'string' ? commit.sha.toLowerCase() : ''
+          if (!FULL_COMMIT.test(sha)) throw new Error('Invalid release commit')
           const manifest = await githubJSON(RAW_MANIFEST + sha + '/package.json')
-          if (manifest?.name !== '@abinadwan/dsh-plugins-suite' || manifest?.version !== update.latest) {
+          if (manifest?.name !== PACKAGE_NAME || manifest?.version !== update.latest) {
             throw new Error('Release manifest does not match the expected package')
           }
-          const bundles = await pluginManager.listBundles()
-          const installed = Array.isArray(bundles)
-            ? bundles.find(bundle => bundle?.name === '@abinadwan/dsh-plugins-suite') : null
-          // DSH rc.3 will only update a Git bundle pinned to a full SHA.
-          if (!installed || installed.update !== 'git' || installed.installed !== true) {
-            setAction({phase:'manual',message:
-              'One-time migration needed: reinstall this bundle pinned to a full 40-character commit SHA, then review updates here. No files were changed.'})
+          if (!canList || !pluginManager) throw new Error('Plugin management access is not available in this window')
+          const bundles = remoteValue(await pluginManager.listBundles(), 'Plugin list')
+          const bundle = Array.isArray(bundles) ? bundles.find(item => item?.name === PACKAGE_NAME) : undefined
+          const current = installMode(bundle)
+          if (mounted.current) setMode(current)
+          if (current.kind === 'missing') throw new Error('This bundle is not listed as installed by the Host')
+          if (current.kind === 'foreign') throw new Error('This bundle was installed from another repository; it will not be updated from here')
+          if (current.kind === 'registry') throw new Error('This copy is managed from a registry; use the native Versions section')
+          if (current.kind !== 'pinned') {
+            if (mounted.current) setAction({phase:'manual',latest:update.latest,sha,spec:PINNED_SPEC_PREFIX + sha})
             return
           }
-          if (installed.version !== undefined && installed.version !== currentVersion) {
+          if (bundle.version !== currentVersion) {
             throw new Error('Installed bundle version changed; reopen Plugins and check again')
           }
-          setAction({phase:'confirm',latest:update.latest,sha})
+          if (current.commit === sha) throw new Error('The installed commit already matches this release')
+          if (!canUpdate) throw new Error('This window may not update plugins; use the owner session')
+          if (mounted.current) setAction({phase:'confirm',latest:update.latest,sha,spec:current.location + '#' + sha})
         } catch (error) {
-          setAction({phase:'error',message:String(error?.message || error)})
+          if (mounted.current) setAction({phase:'error',message:String(error?.message || error)})
         }
       }
       async function applyUpdate() {
-        if (action.phase !== 'confirm' || typeof action.sha !== 'string' ||
-          !/^[0-9a-f]{40}$/.test(action.sha) || isNewerVersion(action.latest,currentVersion) !== true) return
-        const {latest,sha} = action
-        setAction({phase:'installing'})
+        if (action.phase !== 'confirm' || !FULL_COMMIT.test(action.sha) ||
+          typeof action.spec !== 'string' || !action.spec.endsWith('#' + action.sha) ||
+          gitLocation(action.spec) !== REPOSITORY_LOCATION ||
+          isNewerVersion(action.latest,currentVersion) !== true || !canUpdate) return
+        const {latest,spec} = action
+        setAction({phase:'installing',latest})
         try {
           // The Host owns package management, permissions, compatibility,
-          // rollback attempt and restart reporting. Never invoke a shell here.
-          const result = await pluginManager.updateBundle('@abinadwan/dsh-plugins-suite',
-            latest,{spec:PINNED_SPEC_PREFIX + sha})
-          const state = result?.result?.application
-          if (state === 'failed' || state === 'cancelled' || result?.restore) {
-            setAction({phase:'error',message:
-              'Host reported an unsuccessful update or rollback attempt. Review the built-in Plugins status before retrying.'})
-            return
+          // removal, reinstallation on failure and restart reporting.
+          const result = remoteValue(await pluginManager.updateBundle(PACKAGE_NAME, latest, {spec}), 'Host update')
+          const outcome = result?.result
+          const state = outcome?.application
+          if (result?.restore) {
+            const restored = result.restore.application
+            throw new Error('The new version did not install' +
+              (outcome?.error?.code ? ' (' + outcome.error.code + ')' : '') + '; the Host ' +
+              (restored === 'failed' || restored === 'cancelled'
+                ? 'could not reinstall the previous version. Reinstall it from the Plugins page'
+                : 'reinstalled the previous version'))
+          }
+          if (state === 'failed' || state === 'cancelled') {
+            throw new Error('Host reported ' + state + (outcome?.error?.code ? ' (' + outcome.error.code + ')' : '') +
+              ' at the ' + (result?.step || 'update') + ' step')
           }
           if (state !== 'applied' && state !== 'restart-required' && state !== 'overridden') {
-            setAction({phase:'error',message:'Update outcome not confirmed. Check the native Plugins page.'})
-            return
+            throw new Error('Update outcome not confirmed. Check the native Plugins page')
           }
-          setAction({phase:'done',latest,restart:state === 'restart-required'})
+          if (mounted.current) setAction({phase:'done',latest,restart:state === 'restart-required'})
         } catch (error) {
-          setAction({phase:'error',message:'Host update did not complete: ' + String(error?.message || error)})
+          if (mounted.current) setAction({phase:'error',message:String(error?.message || error)})
         }
       }
       const soft = 'rgba(127,127,127,.16)'
       const muted = {fontSize:12,opacity:.72,lineHeight:1.65,margin:0}
       const status = phase === 'checking' ? 'Checking GitHub Releases…'
-        : phase === 'available' ? 'Approved update available'
+        : phase === 'available' ? 'Update available: v' + update.latest
         : phase === 'current' ? 'Up to date'
         : phase === 'unreleased' ? 'No published stable release yet'
         : phase === 'error' ? 'Could not check for updates'
         : 'Not checked yet'
+      const method = mode.kind === 'pinned' ? 'Git, pinned to ' + mode.commit.slice(0, 12)
+        : mode.kind === 'unpinned' ? 'Git, not pinned to a commit (in-app update unavailable)'
+        : mode.kind === 'registry' ? 'Registry'
+        : mode.kind === 'foreign' ? 'Another repository'
+        : mode.kind === 'missing' ? 'Not listed by the Host'
+        : mode.kind === 'error' ? 'Unavailable (' + mode.message + ')'
+        : 'Checking…'
       const buttonStyle = {border:'1px solid rgba(127,127,127,.35)',borderRadius:8,
         padding:'8px 12px',fontSize:12,color:'inherit',background:'transparent',cursor:'pointer'}
-      return h('section',{'data-environment-update-section':'',
+      const busy = action.phase === 'checking' || action.phase === 'installing'
+      return h('section',{'data-environment-update-section':'','aria-label':'Suite updates',
         style:{borderTop:'1px solid ' + soft,padding:'20px 0',color:'inherit'}},
         h('header',{style:{display:'flex',alignItems:'center',gap:12,
           justifyContent:'space-between',marginBottom:14}},
-          h('h3',{style:{fontSize:16,margin:0,fontWeight:650}},'Versions'),
+          h('h3',{style:{fontSize:16,margin:0,fontWeight:650}},'Suite updates (GitHub Releases)'),
           h('button',{type:'button','data-check-updates':'',
-            'aria-label':'Check for plugin updates',disabled:phase==='checking',
-            onClick:()=>checkRelease(true),style:buttonStyle},'↻ Check again')),
+            'aria-label':'Check for plugin updates',disabled:phase==='checking' || busy,
+            onClick:()=>{void checkRelease(true)},style:buttonStyle},'↻ Check again')),
         h('div',{style:{border:'1px solid rgba(127,127,127,.29)',borderRadius:12,
           background:'rgba(127,127,127,.07)',padding:17}},
           h('div',{role:'status','aria-live':'polite',style:{fontWeight:650,fontSize:13}},status),
           h('div',{style:{marginTop:12,fontSize:12}},
-            line('Installed','v'+currentVersion),
-            update.latest ? line('Latest stable release','v'+update.latest) : null,
-            update.checked ? line('Last checked',update.checked) : null),
+            line('Installed (Host)', hostVersion ? 'v' + hostVersion : 'Unavailable'),
+            line('Browser module', 'v' + INSTALLED_VERSION),
+            line('Latest stable release', update.latest ? 'v' + update.latest : '—'),
+            line('Last checked', update.checked || '—'),
+            line('Update method', method)),
+          hostVersion && hostVersion !== INSTALLED_VERSION
+            ? h('p',{role:'note','data-version-mismatch':'',style:{...muted,marginTop:10}},
+              'The Host reports v' + hostVersion + ' but this window runs browser module v' + INSTALLED_VERSION +
+              '. Reload the window or restart Harness so both halves run the same version.') : null,
           phase==='error' ? h('p',{style:{...muted,marginTop:10}},update.message) : null,
-          phase==='available' ? h('div',{style:{marginTop:12}},
-            h('button',{type:'button','data-update-now':'',disabled:action.phase==='checking'||action.phase==='installing',
+          phase==='available' && action.phase !== 'confirm' && action.phase !== 'done' ? h('div',{style:{marginTop:12}},
+            h('button',{type:'button','data-update-now':'',disabled:busy,
               style:buttonStyle,onClick:prepare},'Update now')) : null,
-          action.phase==='manual' || action.phase==='error'
+          action.phase==='checking'
+            ? h('p',{role:'status',style:{...muted,marginTop:12}},'Verifying the release and this installation…') : null,
+          action.phase==='error'
             ? h('p',{role:'alert',style:{...muted,marginTop:12}},action.message) : null,
-          action.phase==='confirm' ? h('div',{style:{marginTop:13}},
-            h('p',null,'Confirm installation of v'+action.latest+' via the native DSH Host. '+
-              'The update may require a restart; failed updates may require manual recovery.'),
-            h('p',{style:{...muted,overflowWrap:'anywhere'}},'Pinned SHA: '+action.sha),
-            h('button',{type:'button','data-confirm-update':'',style:buttonStyle,onClick:applyUpdate},
-              'Confirm update'),
-            h('button',{type:'button',style:buttonStyle,onClick:()=>setAction({phase:'idle'})},
-              'Cancel')) : null,
+          action.phase==='manual' ? h('div',{role:'alert','data-update-migration':'',style:{marginTop:12}},
+            ...MIGRATION_STEPS.map((text,index)=>h('p',{key:index,style:{...muted,marginTop:index?8:0}},text)),
+            h('p',{style:{...muted,marginTop:8}},'Pinned spec for v' + action.latest + ':'),
+            h('code',{'data-pinned-spec':'',style:{display:'block',fontSize:12,overflowWrap:'anywhere',
+              userSelect:'all',padding:'6px 8px',border:'1px solid ' + soft,borderRadius:6,marginTop:4}},action.spec)) : null,
+          action.phase==='confirm' ? h('div',{role:'dialog','aria-label':'Confirm suite update',style:{marginTop:13}},
+            h('p',{style:{fontSize:13,margin:'0 0 8px'}},'Install v'+action.latest+' over v'+currentVersion+' through the Harness Plugins Host?'),
+            h('p',{style:muted},'The Host removes the installed version, installs the pinned commit, and reinstalls the '+
+              'current version if that fails. A restart may be required.'),
+            h('p',{style:{...muted,overflowWrap:'anywhere',marginTop:8}},'Pinned spec: '+action.spec),
+            h('div',{style:{display:'flex',gap:8,marginTop:10}},
+              h('button',{type:'button','data-confirm-update':'',style:buttonStyle,onClick:applyUpdate},
+                'Confirm update'),
+              h('button',{type:'button','data-cancel-update':'',style:buttonStyle,onClick:()=>setAction({phase:'idle'})},
+                'Cancel'))) : null,
           action.phase==='installing'
             ? h('p',{role:'status',style:{...muted,marginTop:12}},'Updating through Harness Plugin Manager…') : null,
           action.phase==='done'
             ? h('p',{role:'status',style:{...muted,marginTop:12}},
-              'Host accepted update to v'+action.latest+(action.restart ? '; restart required.' : '.')) : null),
+              'Host applied the update to v'+action.latest+(action.restart ? '; restart Harness to finish.' : '.')) : null),
         h('p',{style:{...muted,marginTop:12}},
           'Checks stable GitHub Releases automatically on startup and every 24 hours. '+
-          'No installation runs without your confirmation. Git installations must be pinned to a full commit.'),
+          'Nothing is installed without your confirmation, and installation is always performed by Harness itself.'),
         h('a',{href:PROJECT_URL+'/releases',target:'_blank',rel:'noopener noreferrer',
           style:{display:'inline-block',fontSize:12,marginTop:8,color:'#69a9fc',
             textDecoration:'underline'}},'View published releases'))
     }
 
-    function Details({ sessionId, projections, sessions, workspaces }) {
-      // This tab seat has no conversation useProjection hook. Read only the
-      // published session-controller list projection snapshot for this Session.
+    function Details({ sessionId, projections, projectionState, sessions, workspaces }) {
+      // Values come from the tab seat's Session-scoped `useProjection` hook when
+      // the Host supplies it, else from this Session's list projection snapshot.
       const pressure = projections?.contextPressure
       const breakdown = projections?.contextBreakdown
       const tokenUsage = projections?.tokenUsage
@@ -421,8 +545,11 @@ window.__ModuleLoader__.load({
       ]
       const context = []
       if (pct === undefined) {
-        context.push(h('p', { key: 'no-pressure', style: muted },
-          'Context use is available after the model reports usage.'))
+        context.push(h('p', { key: 'no-pressure', style: muted, 'data-context-fallback': projectionState || 'empty' },
+          projectionState === 'loading' ? 'Loading context usage for this Session…'
+            : projectionState === 'error' || projectionState === 'migration-required'
+              ? 'Context usage is unavailable for this Session.'
+              : 'Context use is available after the model reports usage.'))
       } else {
         context.push(line(pct + '% used', '~' + compact(used) + ' / ' + compact(max)))
         context.push(h('div', { role: 'progressbar', 'aria-label': 'Context occupancy',
@@ -478,15 +605,29 @@ window.__ModuleLoader__.load({
         const getS = () => s.getSnapshot()
         const getW = () => w.getSnapshot()
         const open = () => ctx.sidebarRight.openTab(KIND)
+        // `sidebar.right.pane.tab` is a strict Session-scope seat: the Harness
+        // standard kit passes `sessionId` and the Session-bound `useProjection`
+        // hook (ui-session SessionStandardProps). The hook re-renders this body
+        // as projection frames arrive after each model response. Whether the
+        // hook exists is fixed for a registration, so the hook order is stable.
+        function useLiveProjections(useProjection) {
+          if (typeof useProjection !== 'function') return undefined
+          return {
+            contextPressure: useProjection('contextPressure'),
+            contextBreakdown: useProjection('contextBreakdown'),
+            tokenUsage: useProjection('tokenUsage'),
+          }
+        }
         function Body(props) {
           const sessions = React.useSyncExternalStore(subS, getS, getS)
           const workspaces = React.useSyncExternalStore(subW, getW, getW)
-          // Session identity is injected by the keyed seat's session scope;
-          // the seat does not pass conversation-specific projection hooks.
+          const live = useLiveProjections(props.useProjection)
           const sessionId = props.sessionId
-          const projections = sessions?.projectionsBySession?.[sessionId]?.values
-            ?? sessions?.byId?.[sessionId]?.projectionValues
-          return h(Details, { sessionId, projections, sessions, workspaces })
+          const listed = sessions?.projectionsBySession?.[sessionId]
+          const fallback = listed?.values ?? sessions?.byId?.[sessionId]?.projectionValues
+          const projections = live && (live.contextPressure || live.contextBreakdown || live.tokenUsage)
+            ? live : fallback
+          return h(Details, { sessionId, projections, projectionState: listed?.state, sessions, workspaces })
         }
         ctx.effect(() => ctx.sidebarRightTabs.register({
           id: TYPE + '/environment-context', kind: KIND, title: () => 'Environment & Context',
@@ -533,7 +674,7 @@ window.__ModuleLoader__.load({
     }
 
     // Safe browser-only preview. Never imports Host storage or registers agent capabilities.
-    // The root bundle owns this panel independently of the disabled Host subcomponent.
+    // Registered only by `profilePlugin`, i.e. only while the Host Personal Profile row is On.
     const PROFILE_PANEL_ID = TYPE + '/personal-profile-page'
     function ProfilePanelIcon({ size = 20 }) {
       return h('svg', { width: size, height: size, viewBox: '0 0 24 24',
@@ -788,19 +929,43 @@ window.__ModuleLoader__.load({
         h('p', null, 'Proposed behavior after approval: apply approved style instructions automatically. Access personal or sensitive information only when relevant and explicitly allowed.'),
         h('p', { role: 'note' }, 'This scaffold collects, saves and transmits zero profile information. Enabling it only shows this draft.'))
     }
+    const PROFILE_MODULE = TYPE + '/personal-profile'
+    /** The Host's own enablement of the Profile row on the subject page; false when it says Off. */
+    function profileRowEnabled(subject) {
+      if (subject?.kind === 'row') return subject.row?.moduleName === PROFILE_MODULE && subject.row.enabled === true
+      const row = Array.isArray(subject?.pkg?.rows)
+        ? subject.pkg.rows.find(item => item?.moduleName === PROFILE_MODULE) : undefined
+      return row === undefined ? true : row.enabled === true
+    }
+    // Every Personal Profile surface lives in this child fiber, which the
+    // suite starts only while the Host row is enabled and active, and disposes
+    // (unregistering each Slot entry) as soon as the row is switched Off.
+    // It never imports Host storage or registers agent capabilities.
     const profilePlugin = {
       inject: ['slots'],
       apply(ctx) {
+        // Global left navigation and full-page synthetic preview are browser-only.
+        ctx.slots.inject('main', () => ctx.slots.register({
+          name: 'main', key: PROFILE_PANEL_ID,
+        }, PersonalProfilePage))
+        ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
+          name: 'sidebar.panellist', id: PROFILE_PANEL_ID, order: 40,
+          label: () => 'Personal Profile',
+        }, ProfilePanelIcon))
         ctx.slots.inject('plugins.detail.section', () => ctx.slots.register({
           name: 'plugins.detail.section', id: 'abinadwan-profile-draft', order: 40,
-        }, ({ subject }) => (subject?.kind === 'bundle' && subject.pkg?.name === TYPE) ||
-          (subject?.kind === 'row' && subject.row?.moduleName === TYPE + '/personal-profile')
+        }, ({ subject }) => ((subject?.kind === 'bundle' && subject.pkg?.name === TYPE) ||
+          (subject?.kind === 'row' && subject.row?.moduleName === PROFILE_MODULE)) && profileRowEnabled(subject)
           ? h(ProfileDraft) : null))
       },
     }
     return {
-      inject: ['slots', 'remote', 'remoteAccess'],
+      // `remote.pluginManager` is its own Cordis service (one per Remote
+      // namespace). It must be injected here: Cordis 4 throws "cannot get
+      // property without inject" when an un-injected namespace is read.
+      inject: ['slots', 'remote', 'remote.pluginManager', 'remoteAccess'],
       apply(ctx) {
+        const pluginManager = ctx.remote.pluginManager
         // The suite browser lifetime owns the opt-in-free read-only version
         // check. A timer cannot install, enable or modify any plugin.
         ctx.effect(() => {
@@ -818,25 +983,17 @@ window.__ModuleLoader__.load({
             versionListeners.clear()
           }
         }, 'suite: automatic stable-release check')
-        // Global left navigation and full-page synthetic preview are browser-only.
-        // This never turns on the disabled Host Personal Profile component.
-        ctx.slots.inject('main', () => ctx.slots.register({
-          name: 'main', key: PROFILE_PANEL_ID,
-        }, PersonalProfilePage))
-        ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
-          name: 'sidebar.panellist', id: PROFILE_PANEL_ID, order: 40,
-          label: () => 'Personal Profile',
-        }, ProfilePanelIcon))
         // The official Plugins detail page owns update controls; never render them inside a Session tab.
+        // `useRemoteAccess` is the root-scope standard hook every Slot entry receives.
+        function VersionSlot({ subject, useRemoteAccess }) {
+          if (subject?.kind !== 'bundle' || subject.pkg?.name !== TYPE) return null
+          return h(VersionUpdates, { installedVersion: subject.pkg.version, pluginManager, useRemoteAccess })
+        }
         ctx.slots.inject('plugins.detail.section', () => ctx.slots.register({
           name: 'plugins.detail.section',
           id: 'environment-sidebar-versions',
           order: 50,
-        }, ({ subject }) => subject?.kind === 'bundle' &&
-          subject.pkg?.name === TYPE
-          ? h(VersionUpdates, { installedVersion: subject.pkg.version || INSTALLED_VERSION,
-              pluginManager: ctx.remote.pluginManager })
-          : null))
+        }, VersionSlot))
 
         // DSH discovers browser bundles at package roots. Host subpath rows
         // govern these child fibers through the public, access-checked inventory.
@@ -853,12 +1010,13 @@ window.__ModuleLoader__.load({
             const request = ++generation
             let rows
             try {
-              rows = await ctx.remote.pluginManager.listPlugins()
+              rows = remoteValue(await pluginManager.listPlugins(), 'Plugin inventory')
               if (!Array.isArray(rows)) throw new Error('Invalid plugin inventory')
-            } catch {
+            } catch (error) {
               rows = []
               if (!stopped && request === generation) {
-                console.warn('[abinadwan-suite] Component inventory unavailable. UI paused until the next inventory refresh.')
+                console.warn('[abinadwan-suite] Component inventory unavailable. UI paused until the next inventory refresh.',
+                  String(error?.message || error))
               }
             }
             pending = pending.then(async () => {

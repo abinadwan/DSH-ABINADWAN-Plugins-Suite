@@ -1,6 +1,6 @@
 {
   "name": "@abinadwan/dsh-plugins-suite",
-  "version": "0.6.1",
+  "version": "0.6.2",
   "description": "DeepSeek Harness suite with Environment & Context, Humanizer and a synthetic Personal Profile left-sidebar preview.",
   "private": true,
   "type": "module",
