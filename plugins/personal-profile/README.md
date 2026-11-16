@@ -1,6 +1,6 @@
 # Personal Profile
 
-**Phase 1 internal core; read-only Host draft, disabled by default. The full feature is not ready.**
+**Phase 2 internal consent engine; read-only Host draft, disabled by default. The full feature is not ready.**
 
 <img src="icon.png" width="96" alt="Amber Personal Profile ID and gear"/>
 
@@ -27,8 +27,13 @@ Harness Profile names now support hyphens and other official basename forms,
 with additional local safety checks. Fixed limits bound text, labels, instructions,
 custom fields and environments; see the Phase 1 document for exact budgets.
 
-Real approvals are planned for Phase 2. Collection, persistence, encryption,
-transmission, instruction execution and user-facing consent remain unimplemented.
+Phase 2 adds an isolated in-memory consent facade with Allow Once, Allow for This
+Session and Deny, plus expiry, cancellation, replay protection and lifecycle
+invalidation. Harness native approvals remain one-shot; session grants belong to
+this separate layer. No permanent Allow decision exists.
+See [Phase 2 contracts, trust boundaries and canonical Profile identity requirements](../../docs/PERSONAL_PROFILE_PHASE2.md).
+Actual UI approvals, Host authentication/integration, collection, persistence,
+encryption, transmission and instruction execution remain unimplemented.
 An in-memory check does not provide operating-system isolation.
 
 Tests cover validation, property-name attacks, default denial, environment
