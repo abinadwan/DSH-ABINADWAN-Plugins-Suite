@@ -8,8 +8,8 @@ import { boolean, invalid, validateIdentifier } from './schema.js'
 // methods, context issuance, or the factory as agent tools. No actual auth here.
 export function createConsentProfile(input, { now = () => performance.now() } = {}) {
   if (typeof now !== 'function') invalid()
-  const { core, readApprovedField } = createProfileAccess(input)
-  const contexts = createConsentContexts(core)
+  const { core, readApprovedField, instructionManagement, registerProfileEnvironment } = createProfileAccess(input)
+  const contexts = createConsentContexts({ addEnvironment: registerProfileEnvironment })
   const ledger = createConsentLedger(now)
   let locked = false
   const deny = () => ({ status: 'denied' })
@@ -23,6 +23,7 @@ export function createConsentProfile(input, { now = () => performance.now() } = 
     return environment
   }
   const host = Object.freeze({
+    instructions: instructionManagement(contexts.environment),
     registerProfile: contexts.registerProfile,
     registerCaller: contexts.registerCaller,
     startSession: contexts.startSession,

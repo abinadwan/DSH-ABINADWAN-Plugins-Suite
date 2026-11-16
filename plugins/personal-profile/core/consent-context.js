@@ -1,3 +1,4 @@
+import { profileNameKey } from './profile-identity.js'
 import { entries, invalid, text, validateEnvironmentName } from './schema.js'
 
 export const handle = () => Object.freeze(Object.create(null))
@@ -12,11 +13,12 @@ export function createConsentContexts(core) {
     registerProfile(input) {
       const { name, canonicalId } = Object.fromEntries(entries(input, ['name', 'canonicalId']))
       validateEnvironmentName(name)
-      if (!text(canonicalId, 1024) || names.has(name) || canonicalIds.has(canonicalId)) invalid()
+      const nameKey = profileNameKey(name)
+      if (!text(canonicalId, 1024) || names.has(nameKey) || canonicalIds.has(canonicalId)) invalid()
       core.addEnvironment(name) // Validate/capacity check before reserving identity.
       const token = handle()
       profiles.set(token, name)
-      names.add(name)
+      names.add(nameKey)
       canonicalIds.add(canonicalId)
       return token
     },

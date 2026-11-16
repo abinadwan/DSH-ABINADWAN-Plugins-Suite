@@ -1,3 +1,4 @@
+import { assertDistinctProfileName } from './profile-identity.js'
 import { LIMITS } from './limits.js'
 import { entries, invalid, text, boolean, builtinDefinitions, validateCustomDefinition, validateIdentifier, validateEnvironmentName, validateValue } from './schema.js'
 
@@ -38,6 +39,7 @@ export function createMasterProfile(input = {}) {
     for (const [key, value] of entries(options.instructions, ['global', 'environments'])) {
       if (key === 'global') instructions.global = text(value, LIMITS.instructions)
       else for (const [environment, instruction] of entries(value, undefined, LIMITS.environments)) {
+        assertDistinctProfileName(instructions.environments.keys(), environment)
         instructions.environments.set(validateEnvironmentName(environment), text(instruction, LIMITS.instructions))
       }
     }
