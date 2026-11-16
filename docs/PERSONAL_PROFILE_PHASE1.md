@@ -134,7 +134,11 @@ objects are copied and frozen; scalar values cannot alias mutable input objects.
 The facade exposes no mutable model or policies. Lower-level modules are internal
 implementation details, not caller-facing disclosure interfaces.
 
-## Planned Phase 2 integration and security limits
+## Phase 2 integration and security limits
+
+Phase 2 now provides a separate internal consent layer; see
+[the Phase 2 contracts](PERSONAL_PROFILE_PHASE2.md). The following describes the
+original Phase 1 boundary, which remains unchanged for its standalone facade.
 
 Phase 2 must design actual consent sessions bound to the authenticated caller,
 environment, requested field and purpose, including expiry, cancellation,
