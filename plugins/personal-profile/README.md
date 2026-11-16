@@ -48,3 +48,7 @@ Profile and registered Profile handles. Absent overrides inherit global text;
 explicitly empty overrides suppress it. Optional original style suggestions never
 activate automatically. No instruction text reaches readers, Host, UI or models.
 See [Phase 3 model, precedence, identity and future security gates](../../docs/PERSONAL_PROFILE_PHASE3.md).
+
+Phase 4 adds an isolated, synthetic-only development UI; it is not mounted in
+Harness or shipped as a production entrypoint. See
+[prototype preview, boundaries and visual evidence](../../docs/PERSONAL_PROFILE_PHASE4.md).

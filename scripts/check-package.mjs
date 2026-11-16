@@ -9,6 +9,9 @@ try {
   const [packed] = JSON.parse(execFileSync(process.execPath, [
     process.env.npm_execpath, 'pack', '--json', '--ignore-scripts', '--pack-destination', temporary,
   ], { encoding: 'utf8' }))
+  if (packed.files.some(file => /^(test-support|scripts)\//.test(file.path))) {
+    throw new Error('Development preview or tooling leaked into production package')
+  }
   execFileSync('tar', ['-xzf', join(temporary, packed.filename), '-C', temporary])
   const directory = join(temporary, 'package')
   const manifest = JSON.parse(readFileSync(join(directory, 'package.json'), 'utf8'))
