@@ -171,3 +171,11 @@ exists; then record date, tester, exact build/probe revision, PASS/FAIL, sanitiz
 observations and unresolved issues separately. Any failed or blocked security
 check is NO-GO. A passed device plan would still require a new explicit security
 review and production-activation approval; it cannot authorize enabling this PR.
+
+## Phase 6B-1 clarification
+
+The [Phase 6B-1 synthetic diagnostic and identity design](PERSONAL_PROFILE_PHASE6B1.md)
+is test-only and excluded from the package. It is not the in-Host probe required
+by step 2 and cannot mark any device check PASS. All checks above remain NOT
+EXECUTED; each actual device test needs separate later explicit approval. No
+real identity collection or live-host operation is authorized in Phase 6B-1.
