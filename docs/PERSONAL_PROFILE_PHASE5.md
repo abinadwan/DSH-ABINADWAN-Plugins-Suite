@@ -1,5 +1,7 @@
 # Personal Profile Phase 5: encrypted storage and backup foundations
 
+> **Superseded (historical record).** Version 0.7.0 replaced this design with native Harness settings; see [the current design](PERSONAL_PROFILE_LOCAL_SETTINGS.md). Nothing described here is in the runtime or the package.
+
 **Security-review draft. Tested cryptographic components, not production-ready secure
 storage. Production Personal Profile remains disabled and read-only.** No live
 Harness, browser, agent, transport, telemetry, model injection or data collection

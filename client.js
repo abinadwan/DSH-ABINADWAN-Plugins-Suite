@@ -188,7 +188,7 @@ window.__ModuleLoader__.load({
 
     // Only stable published GitHub Releases may trigger an in-app update offer.
     // This browser-side checker never installs anything without a separate click.
-    const INSTALLED_VERSION = '0.6.3'
+    const INSTALLED_VERSION = '0.7.0'
     const PACKAGE_NAME = '@abinadwan/dsh-plugins-suite'
     const RELEASE_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/latest'
     const COMMIT_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/commits/'
@@ -355,7 +355,7 @@ window.__ModuleLoader__.load({
     const MIGRATION_STEPS = [
       'Harness can update a Git-installed bundle in place only when it was installed from a spec pinned to a full 40-character commit. Nothing was changed.',
       'One-time migration (manual, at your discretion): note which components are switched on, Uninstall this bundle from this page, then use Add plugin with the pinned spec shown below, and switch the components back on.',
-      'The suite stores no personal data, so uninstalling removes no profile information. If the pinned install fails, reinstall from the same spec or from the original source.',
+      'Personal Profile settings are stored in this Harness Profile\'s configuration and uninstalling may remove them. If you use Personal Profile, first copy a JSON backup from Personal Profile → Backup & Restore (access permissions are not included). If the pinned install fails, reinstall from the same spec or from the original source.',
     ]
     // Installed-plugin detail page only; never run an installer in a React effect.
     function VersionUpdates({ installedVersion, pluginManager, useRemoteAccess }) {
@@ -673,7 +673,7 @@ window.__ModuleLoader__.load({
       },
     }
 
-    // Safe browser-only preview. Never imports Host storage or registers agent capabilities.
+    // Native settings editor. Only the official settings Remote writes values. No agent capabilities.
     // Registered only by `profilePlugin`, i.e. only while the Host Personal Profile row is On.
     const PROFILE_PANEL_ID = TYPE + '/personal-profile-page'
     function ProfilePanelIcon({ size = 20 }) {
@@ -745,94 +745,201 @@ window.__ModuleLoader__.load({
       if(pref.custom) lines.push(pref.custom)
       return [...new Set(lines)].join('\n')
     }
-    function PersonalProfilePage() {
-      const [language, setLanguage] = React.useState('ar')
-      const [page, setPage] = React.useState('information')
-      const [profile, setProfile] = React.useState('Synthetic Studio')
-      const [values, setValues] = React.useState({})
-      const [custom, setCustom] = React.useState([])
-      const [newLabel, setNewLabel] = React.useState('')
-      const [instructionScope, setInstructionScope] = React.useState('global')
-      const [globalPreferences, setGlobalPreferences] = React.useState(neutralProfilePreferences)
-      const [overrides, setOverrides] = React.useState({})
-      const [policies, setPolicies] = React.useState({})
-      const [optIn, setOptIn] = React.useState(false)
-      const [approval, setApproval] = React.useState('')
-      const [locked, setLocked] = React.useState(false)
-      const [autoLock, setAutoLock] = React.useState('5')
-      const [sessionVisible, setSessionVisible] = React.useState(true)
-      const [backupReview, setBackupReview] = React.useState('')
-      const [backupStrategy, setBackupStrategy] = React.useState('merge')
-      const [backupAck, setBackupAck] = React.useState(false)
+    const PROFILE_NS = 'abinadwan-personal-profile'
+    const PERSONAL_FIELDS = ['preferredName','nationality','gender']
+    const privatePolicies = () => Object.fromEntries(PERSONAL_FIELDS.map(key=>[key,'private']))
+    const emptyProfileRecord = () => ({version:1,locale:'ar',
+      information:{preferredName:'',nationality:'',gender:''},global:neutralProfilePreferences(),
+      workspaces:[],allowPersonalInformation:false,allowCloud:false})
+    const newWorkspaceRecord = id => ({id,override:false,preferences:neutralProfilePreferences(),policies:privatePolicies()})
+    // Payload guard for the whole record (serialized UTF-16 units), not a
+    // workspace count: Harness owns Workspaces. Matches the restore text limit.
+    const PROFILE_MAX_CHARS = 3_000_000
+    const profileTooLarge = value => JSON.stringify(value).length > PROFILE_MAX_CHARS
+    const isDefaultWorkspace = w => JSON.stringify(w)===JSON.stringify(newWorkspaceRecord(w.id))
+    const profileKeys = (value,keys) => value && typeof value==='object' && !Array.isArray(value) &&
+      Object.keys(value).length===keys.length && keys.every(key=>Object.hasOwn(value,key))
+    // Strict wire/backup decoder. Reject unknown fields and invalid versions;
+    // never echo user-supplied content into errors. No implicit legacy migration.
+    function decodeProfile(value) {
+      const check = (condition) => { if(!condition) throw new Error('Invalid Personal Profile settings') }
+      const validText = (v,n) => typeof v==='string' && v.length<=n
+      const preference = p => {
+        check(profileKeys(p,['style','responseLanguage','traits','presets','custom']))
+        check(PROFILE_STYLES.some(i=>i[0]===p.style)&&PROFILE_LANGUAGES.some(i=>i[0]===p.responseLanguage))
+        check(profileKeys(p.traits,PROFILE_TRAITS.map(i=>i[0])) &&
+          Object.values(p.traits).every(n=>[0,1,2].includes(n)))
+        check(Array.isArray(p.presets)&&p.presets.length<=8&&new Set(p.presets).size===p.presets.length&&
+          p.presets.every(id=>PROFILE_PRESETS.some(i=>i[0]===id))&&validText(p.custom,8192))
+        return {style:p.style,responseLanguage:p.responseLanguage,traits:{...p.traits},presets:[...p.presets],custom:p.custom}
+      }
+      check(profileKeys(value,['version','locale','information','global','workspaces','allowPersonalInformation','allowCloud']))
+      check(!profileTooLarge(value))
+      check(value.version===1&&['ar','en'].includes(value.locale)&&typeof value.allowPersonalInformation==='boolean'&&typeof value.allowCloud==='boolean')
+      const i=value.information
+      check(profileKeys(i,PERSONAL_FIELDS)&&validText(i.preferredName,128)&&validText(i.nationality,128)&&['','male','female','unspecified'].includes(i.gender))
+      check(Array.isArray(value.workspaces))
+      const seen=new Set()
+      const workspaces=value.workspaces.map(w=>{
+        check(profileKeys(w,['id','override','preferences','policies'])&&validText(w.id,256)&&w.id.length>0&&
+          !seen.has(w.id)&&typeof w.override==='boolean')
+        seen.add(w.id)
+        check(profileKeys(w.policies,PERSONAL_FIELDS)&&Object.values(w.policies).every(v=>['private','ask_first','allow'].includes(v)))
+        return {id:w.id,override:w.override,preferences:preference(w.preferences),policies:{...w.policies}}
+      })
+      return {version:1,locale:value.locale,information:{...i},global:preference(value.global),workspaces,
+        allowPersonalInformation:value.allowPersonalInformation,allowCloud:value.allowCloud}
+    }
+    function profileView(view) {
+      if(view?.ns!==PROFILE_NS || !Number.isSafeInteger(view.revision)||view.revision<0||!profileKeys(view.value,['record'])) throw new Error('Settings unavailable')
+      return {revision:view.revision,record:decodeProfile(view.value.record)}
+    }
+    function withoutAuthority(record) {
+      return {...record,allowPersonalInformation:false,allowCloud:false,
+        workspaces:record.workspaces.map(w=>({...w,policies:privatePolicies()}))}
+    }
+    function mergeBackup(current,incoming) {
+      const known=new Set(current.workspaces.map(w=>w.id))
+      const workspaces=[...current.workspaces,...incoming.workspaces.filter(w=>!known.has(w.id))]
+      return withoutAuthority({...current,information:Object.fromEntries(PERSONAL_FIELDS.map(k=>[k,current.information[k]||incoming.information[k]])),workspaces})
+    }
+    function PersonalProfilePage({settings,workspaceSource,connectionSource,useRemoteAccess}) {
+      const canRead=typeof useRemoteAccess==='function' ? useRemoteAccess('settings/describe') : false
+      const canWrite=typeof useRemoteAccess==='function' ? useRemoteAccess('settings/replace') : false
+      const workspacesSnapshot=React.useSyncExternalStore(workspaceSource.subscribe,workspaceSource.getSnapshot,workspaceSource.getSnapshot)
+      const generation=React.useSyncExternalStore(connectionSource.subscribe,connectionSource.getSnapshot,connectionSource.getSnapshot)
+      const [record,setRecord]=React.useState(emptyProfileRecord)
+      const [saved,setSaved]=React.useState(null)
+      const [revision,setRevision]=React.useState(null)
+      const [status,setStatus]=React.useState('loading')
+      const [profile,setProfile]=React.useState('')
+      const [page,setPage]=React.useState('information')
+      const [instructionScope,setInstructionScope]=React.useState('global')
+      const [backupText,setBackupText]=React.useState('')
+      const [restoreText,setRestoreText]=React.useState('')
+      const [backupStrategy,setBackupStrategy]=React.useState('merge')
+      const [restoreReview,setRestoreReview]=React.useState(null)
+      const [restoreAck,setRestoreAck]=React.useState(false)
+      const request=React.useRef(0)
+      const inFlight=React.useRef(false)
+      const access=React.useRef({canRead,canWrite,generation})
+      access.current={canRead,canWrite,generation}
+      const lifetimeValid = g=>connectionSource.getSnapshot()===g&&access.current.canRead
+      const load = async () => {
+        const id=++request.current,g=connectionSource.getSnapshot()
+        inFlight.current=true;setConfirmReload(false);setStatus('loading');setRevision(null);setSaved(null)
+        setRecord(emptyProfileRecord());setBackupText('');setRestoreText('');setRestoreReview(null);setRestoreAck(false)
+        if(!access.current.canRead){inFlight.current=false;setStatus('unavailable');return}
+        try {
+          const response=await settings.describe()
+          if(id!==request.current||!lifetimeValid(g))return
+          if(response?.ok!==true||!Array.isArray(response.value?.namespaces))throw new Error('Unavailable')
+          const snapshot=profileView(response.value.namespaces.find(x=>x.ns===PROFILE_NS))
+          if(response.value.writable!==true)throw new Error('Read only')
+          setRecord(snapshot.record);setSaved(snapshot.record);setRevision(snapshot.revision);setStatus('ready')
+        } catch {if(id===request.current&&lifetimeValid(g))setStatus('unavailable')}
+        finally {if(id===request.current)inFlight.current=false}
+      }
+      const [confirmReload,setConfirmReload]=React.useState(false)
+      const dirtyRef=React.useRef(false)
+      React.useEffect(()=>{
+        // A reconnect or access change re-reads only a clean page. A dirty draft
+        // stays on screen: Save remains revision-checked, Reload asks first.
+        if(dirtyRef.current){
+          request.current++;inFlight.current=false
+          setStatus(access.current.canRead?'reconnected':'unavailable')
+        }else void load()
+        return()=>{request.current++;inFlight.current=false}
+      },[canRead,generation])
+      const save = async () => {
+        if(inFlight.current||revision===null||!canRead||!canWrite||generation!==connectionSource.getSnapshot())return
+        let next
+        try{if(profileTooLarge(record)){setStatus('tooLarge');return}next=decodeProfile(record)}catch{setStatus('invalid');return}
+        const id=++request.current,g=generation
+        inFlight.current=true;setStatus('saving')
+        try{
+          const response=await settings.replace(PROFILE_NS,{record:next},revision)
+          if(id!==request.current||!lifetimeValid(g))return
+          if(response?.ok!==true){
+            setStatus(response?.error?.code==='settings/conflict'?'conflict':'failed');return
+          }
+          const snapshot=profileView(response.value)
+          if(JSON.stringify(snapshot.record)!==JSON.stringify(next))throw new Error('Unconfirmed write')
+          setRecord(snapshot.record);setSaved(snapshot.record);setRevision(snapshot.revision);setStatus('saved')
+        }catch{if(id===request.current&&lifetimeValid(g))setStatus('failed')}
+        finally{if(id===request.current)inFlight.current=false}
+      }
+      const language=record.locale,values=record.information,globalPreferences=record.global
+      const busy=status==='loading'||status==='saving'
+      const editable=canRead&&canWrite&&revision!==null&&!busy&&generation===connectionSource.getSnapshot()
+      const dirty=saved!==null&&JSON.stringify(record)!==JSON.stringify(saved)
+      dirtyRef.current=dirty
+      const unsavedWork=dirty||status==='failed'||status==='conflict'||status==='reconnected'
+      const requestReload=()=>{if(unsavedWork)setConfirmReload(true);else void load()}
+      const profiles=workspacesSnapshot?.phase==='ready'&&workspacesSnapshot?.state!=='error'
+        ?(workspacesSnapshot.items||[]).filter(w=>typeof w.workspaceId==='string'&&w.workspaceId.length>0&&w.workspaceId.length<=256)
+        :[]
+      const activeWorkspace=profiles.some(w=>w.workspaceId===profile)?profile:(profiles[0]?.workspaceId||'')
+      const workspace=record.workspaces.find(w=>w.id===activeWorkspace)||newWorkspaceRecord(activeWorkspace)
+      const writeWorkspace=updater=>{
+        if(!activeWorkspace)return
+        setRecord(old=>{
+          const found=old.workspaces.find(w=>w.id===activeWorkspace)
+          const next=updater(found||newWorkspaceRecord(activeWorkspace))
+          // A row equal to the defaults (inherit, neutral, all Private) is not stored.
+          const others=old.workspaces.filter(w=>w.id!==activeWorkspace)
+          if(isDefaultWorkspace(next))return found?{...old,workspaces:others}:old
+          return {...old,workspaces:found?old.workspaces.map(w=>w.id===activeWorkspace?next:w):[...old.workspaces,next]}
+        })
+      }
+      const setLanguage=v=>setRecord(old=>({...old,locale:v}))
+      const setGlobalPreferences=updater=>setRecord(old=>({...old,global:updater(old.global)}))
+      const setField=(id,value)=>setRecord(old=>({...old,information:{...old.information,[id]:value}}))
       const ar = {
-        information:'معلوماتي', instructions:'تعليمات الوكيل', access:'التحكم في الوصول',
-        backup:'النسخ والاستعادة', privacy:'الخصوصية والأمان', title:'الملف الشخصي',
-        subtitle:'صفحة تجريبية داخل التطبيق، ببيانات اصطناعية فقط',
-        warning:'معاينة فقط — لا تدخل بيانات حقيقية. لا يوجد حفظ أو تشفير أو اتصال بالوكيل. ستضيع التغييرات عند إعادة تحميل الواجهة.',
-        profile:'الملف التجريبي', language:'اللغة', preferredName:'الاسم المفضل',
-        fullName:'الاسم الكامل', dateOfBirth:'تاريخ الميلاد', nationality:'الجنسية',
-        gender:'الجنس', custom:'حقول إضافية', add:'أضف حقلًا تجريبيًا', remove:'حذف',
-        label:'اسم الحقل', global:'تعليمات عامة', override:'تعليمات خاصة بهذا الملف',
-        scope:'نطاق التعليمات', environment:'إعدادات البيئة الحالية',
-        personality:'الشخصية', styleTone:'الأسلوب والنبرة', responseLanguage:'لغة الردود',
-        characteristics:'خصائص الردود', presets:'خيارات سلوكية جاهزة', customInstructions:'تعليمات مخصصة',
-        less:'أقل', neutral:'متوازن', more:'أكثر',
-        inherited:'تستخدم هذه البيئة الإعدادات العامة دون تعديلها.',
-        overrideHint:'الإعدادات الخاصة تستبدل العامة بالكامل؛ ابدأ بإعدادات محايدة.',
-        preferenceHint:'اختيارات اختيارية. التعليمات المخصصة تُعرض أخيرًا؛ لا تُرسل للوكيل.',
-        languageHint:'لغة الردود مستقلة عن لغة الواجهة. اكتب أي تفضيل للهجة ضمن التعليمات المخصصة.',
-        previewHint:'معاينة محلية فقط. لا حفظ دائم أو تطبيق فعلي على الوكيل.',
-        presetHint:'لا تُفعّل الخيارات الجاهزة تلقائيًا. اختر ما تحتاجه.',
-        resetPreferences:'إعادة ضبط إعدادات هذا النطاق',
-        inherit:'استخدام التعليمات العامة', customMode:'تعليمات مخصصة', effective:'المعاينة النهائية',
-        optIn:'السماح باستخدام المعلومات المعتمدة (محاكاة)', fieldPolicies:'صلاحيات كل حقل',
-        private:'خاص', ask:'اسأل أولًا', allow:'سماح', approval:'الموافقة المؤقتة (محاكاة)',
-        once:'مرة واحدة', session:'لهذه الجلسة', deny:'رفض',
-        backupHint:'مراجعة الإجراءات فقط. لا يتم استيراد أو تصدير أي ملفات.',
-        export:'مراجعة التصدير', import:'مراجعة الاستعادة', merge:'دمج', replace:'استبدال الكل',
-        confirm:'أفهم أن هذا مجرد استعراض ولن يُحفظ شيء.', unavailable:'التنفيذ غير متاح',
-        lock:'محاكاة القفل', unlock:'إلغاء القفل التجريبي', lockText:'الحقول مخفية لمحاكاة القفل فقط، دون حماية فعلية.',
-        autoLock:'القفل التلقائي (تصميم فقط)', never:'أبدًا', five:'5 دقائق', fifteen:'15 دقيقة',
-        endSession:'إنهاء جلسة تجريبية', history:'سجل الموافقات', historyText:'لا يوجد سجل حقيقي. بيانات العرض اصطناعية.',
-        privacyWarning:'هذا العرض ليس مخزنًا آمنًا. لا تستخدم بيانات شخصية أو كلمات مرور.',
-        reset:'إعادة ضبط المعاينة', missing:'غير محدد', note:'كل تغيير هنا مؤقت ومحلي في ذاكرة الصفحة.',
-        synthetic:'مثال اصطناعي فقط', yes:'نعم', no:'لا', noInstruction:'لا توجد تعليمات.',
+        information:'معلوماتي', instructions:'تعليمات الوكيل', access:'التحكم في الوصول', backup:'النسخ والاستعادة', privacy:'الخصوصية والأمان',title:'الملف الشخصي',
+        subtitle:'إعدادات محلية ضمن ملف Harness الحالي',warning:'يُحفظ هذا المحتوى محليًا دون تشفير خاص بالإضافة. لا تكتب كلمات مرور أو مفاتيح أو معلومات حساسة. لا تُرسل هذه الإضافة أيًا من هذه الإعدادات إلى نموذج حاليًا.',
+        profile:'مساحة العمل',language:'لغة الواجهة',preferredName:'الاسم المفضل',nationality:'الجنسية',gender:'الجنس',
+        global:'الإعدادات العامة لهذا الملف',override:'تخصيص مساحة العمل',scope:'نطاق التعليمات',environment:'مساحة العمل',
+        personality:'الشخصية',styleTone:'الأسلوب والنبرة',responseLanguage:'لغة الردود',characteristics:'خصائص الردود',presets:'خيارات سلوكية جاهزة',customInstructions:'تعليمات مخصصة',
+        less:'أقل',neutral:'متوازن',more:'أكثر',inherited:'تستخدم مساحة العمل الإعدادات العامة.',overrideHint:'الإعدادات الخاصة تستبدل العامة بالكامل.',
+        preferenceHint:'كل الاختيارات اختيارية. لا تُحقن التعليمات في الوكيل حاليًا.',languageHint:'لغة الردود مستقلة عن لغة الواجهة. اللهجة تُكتب ضمن التعليمات.',
+        previewHint:'تُعرض التعليمات الناتجة هنا فقط؛ الربط بالوكيل غير متاح بعد.',presetHint:'لا اختيار افتراضيًا.',resetPreferences:'إعادة ضبط إعدادات هذا النطاق',
+        inherit:'استخدام العامة',customMode:'تخصيص',effective:'المعاينة النهائية',optIn:'السماح باستخدام المعلومات الشخصية (إعداد محفوظ، غير مفعّل في الوكيل)',
+        fieldPolicies:'صلاحيات مساحة العمل',private:'خاص',ask:'اسأل أولًا',allow:'سماح',
+        cloud:'السماح بإرسال المعلومات الشخصية إلى مزود سحابي (إعداد محفوظ، غير مفعّل)',accessHint:'لا يتم الوصول للمعلومات أو إرسالها حاليًا. القيم التالية تفضيلات سياسات فقط إلى حين ربط الوكيل.',
+        backupHint:'نسخ JSON محلي يدوي دون تشفير. استعادة الإعدادات تزيل جميع صلاحيات الوصول والإرسال.',
+        export:'عرض نسخة JSON',import:'مراجعة النسخة',merge:'دمج دون استبدال موجود',replace:'استبدال الكل',confirm:'أوافق على الاستعادة وإعادة الصلاحيات إلى خاص وإيقاف الإرسال.',
+        applyRestore:'تطبيق الاستعادة على المسودة',restoreReady:'النسخة صالحة للمراجعة. اضغط تطبيق ثم حفظ.',
+        reset:'إعادة ضبط المسودة',missing:'غير محدد',noInstruction:'لا توجد تعليمات.',save:'حفظ التغييرات',reload:'إعادة التحميل (تجاهل المسودة)',
+        loading:'جارٍ قراءة الإعدادات…',unavailable:'الإعدادات المحلية غير متاحة أو غير قابلة للكتابة. لم يتم حفظ شيء.',ready:'الإعدادات محمّلة.',saving:'جارٍ الحفظ…',saved:'تم تأكيد الحفظ من Harness.',
+        failed:'تعذر تأكيد الحفظ. أعد التحميل للتحقق قبل المحاولة.',conflict:'تغيرت الإعدادات في نافذة أخرى. أعد التحميل ثم أعد تعديلها.',invalid:'الإعدادات أو النسخة غير صالحة.',dirty:'توجد تغييرات غير محفوظة.',
+        tooLarge:'الإعدادات أكبر من الحد المسموح للحفظ. لم يُحفظ شيء، وبقيت تعديلاتك في المسودة.',
+        reconnected:'أُعيد الاتصال. بقيت مسودتك في الصفحة: يمكنك الحفظ (يتحقق Harness من الإصدار) أو إعادة التحميل.',
+        discardWarning:'لديك تغييرات غير محفوظة ستُفقد عند إعادة التحميل. للاحتفاظ بها انسخ نسخة JSON أولًا من «النسخ والاستعادة».',
+        discardConfirm:'تجاهل التغييرات وإعادة التحميل',discardCancel:'متابعة التعديل',
       }
       const en = {
-        information:'My Information', instructions:'Agent Instructions', access:'Access Control',
-        backup:'Backup & Restore', privacy:'Privacy & Security', title:'Personal Profile',
-        subtitle:'In-app preview with fictional data only',
-        warning:'Preview only — do not enter real information. No saving, encryption or agent connection. Changes disappear on reload.',
-        profile:'Synthetic profile', language:'Language', preferredName:'Preferred name',
-        fullName:'Full name', dateOfBirth:'Date of birth', nationality:'Nationality',
-        gender:'Gender', custom:'Custom fields', add:'Add synthetic field', remove:'Remove',
-        label:'Field label', global:'Global instructions', override:'Profile instructions',
-        scope:'Instruction scope', environment:'Current environment',
-        personality:'Personality', styleTone:'Style and tone', responseLanguage:'Response language',
-        characteristics:'Response characteristics', presets:'Behavior presets', customInstructions:'Custom instructions',
-        less:'Less', neutral:'Balanced', more:'More',
-        inherited:'This environment inherits the global settings without changing them.',
-        overrideHint:'Environment settings replace global settings completely and start neutral.',
-        preferenceHint:'All choices are optional. Custom instructions appear last; nothing is sent to the agent.',
-        languageHint:'Response language is separate from the interface language. Add any dialect preference in custom instructions.',
-        previewHint:'Local preview only. No persistent saving or agent application.',
-        presetHint:'No presets are selected automatically. Choose only what you need.',
-        resetPreferences:'Reset this scope',
-        inherit:'Inherit global', customMode:'Custom instructions', effective:'Effective preview',
-        optIn:'Allow approved information (simulation)', fieldPolicies:'Per-field policies',
-        private:'Private', ask:'Ask First', allow:'Allow', approval:'Temporary consent (simulation)',
-        once:'Allow Once', session:'This Session', deny:'Deny',
-        backupHint:'Review only. No file is imported or exported.',
-        export:'Review export', import:'Review restore', merge:'Merge', replace:'Replace all',
-        confirm:'I understand this is a demonstration; no changes will be saved.',
-        unavailable:'Unavailable', lock:'Simulate lock', unlock:'Reset simulated lock',
-        lockText:'Editors are hidden for demonstration only. No real protection.',
-        autoLock:'Automatic lock (design only)', never:'Never', five:'5 minutes', fifteen:'15 minutes',
-        endSession:'End synthetic session', history:'Consent history',
-        historyText:'No real history is collected. All examples are fictional.',
-        privacyWarning:'This preview is not secure storage. Never enter personal data or passwords.',
-        reset:'Reset preview', missing:'Unspecified', note:'Changes exist only in this browser view.',
-        synthetic:'Synthetic example only', yes:'Yes', no:'No', noInstruction:'No instructions.',
+        information:'My Information',instructions:'Agent Instructions',access:'Access Control',backup:'Backup & Restore',privacy:'Privacy & Security',title:'Personal Profile',
+        subtitle:'Local settings in the active Harness Profile',warning:'Stored locally without plugin-level encryption. Do not enter passwords, keys or sensitive information. This plugin does not currently send these settings to a model.',
+        profile:'Workspace',language:'Interface language',preferredName:'Preferred name',nationality:'Nationality',gender:'Gender',
+        global:'Global in this Profile',override:'Workspace override',scope:'Instruction scope',environment:'Workspace',
+        personality:'Personality',styleTone:'Style and tone',responseLanguage:'Response language',characteristics:'Response characteristics',presets:'Behavior presets',customInstructions:'Custom instructions',
+        less:'Less',neutral:'Balanced',more:'More',inherited:'This workspace inherits global preferences.',overrideHint:'Workspace preferences fully replace global preferences.',
+        preferenceHint:'Optional choices. Nothing is injected into the agent yet.',languageHint:'Response language is separate from interface language. Put dialect preferences in custom instructions.',
+        previewHint:'Effective text preview only; agent integration is not yet available.',presetHint:'None selected by default.',resetPreferences:'Reset this scope',
+        inherit:'Inherit global',customMode:'Custom override',effective:'Effective preview',optIn:'Allow use of personal information (saved preference, not active in agent)',
+        fieldPolicies:'Workspace policies',private:'Private',ask:'Ask First',allow:'Allow',
+        cloud:'Allow personal information to be sent to a cloud provider (saved preference, not active)',accessHint:'No information is disclosed or sent today. These are saved policy preferences, not active enforcement.',
+        backupHint:'Manual local JSON backup, not encrypted. Restoring resets all access and cloud permissions.',
+        export:'Show JSON backup',import:'Review backup',merge:'Merge without replacing existing values',replace:'Replace all',confirm:'Confirm restore, reset all policies to Private, and disable sharing.',
+        applyRestore:'Apply restore to draft',restoreReady:'Backup validated for review. Apply, then Save.',
+        reset:'Reset draft',missing:'Unspecified',noInstruction:'No instructions.',save:'Save changes',reload:'Reload (discard draft)',
+        loading:'Reading settings…',unavailable:'Local settings unavailable or not writable. Nothing saved.',ready:'Settings loaded.',saving:'Saving…',saved:'Save confirmed by Harness.',
+        failed:'Save not confirmed. Reload to verify before retrying.',conflict:'Settings changed in another window. Reload and reapply edits.',invalid:'Invalid settings or backup.',dirty:'Unsaved changes.',
+        tooLarge:'Settings are too large to save. Nothing was saved; your edits remain in the draft.',
+        reconnected:'Connection was reset. Your draft is kept on this page: you can Save (Harness checks the revision) or Reload.',
+        discardWarning:'You have unsaved changes that Reload will discard. To keep them, first copy a JSON backup from Backup & Restore.',
+        discardConfirm:'Discard changes and reload',discardCancel:'Keep editing',
       }
       const t = key => (language === 'ar' ? ar : en)[key] || key
       const rtl = language === 'ar'
@@ -845,8 +952,7 @@ window.__ModuleLoader__.load({
       const btn = { border:'1px solid rgba(128,128,128,.35)', borderRadius:8,
         padding:'9px 13px', font:'inherit', background:'rgba(128,128,128,.08)',
         color:'inherit', cursor:'pointer' }
-      const fields = ['preferredName','fullName','dateOfBirth','nationality','gender']
-      const profiles = ['Synthetic Studio','Synthetic Lab']
+      const fields = PERSONAL_FIELDS
       const sections = ['information','instructions','access','backup','privacy']
       function card(title, ...children) {
         return h('section', { style:surface, 'aria-label':title },
@@ -855,7 +961,7 @@ window.__ModuleLoader__.load({
       function input(key, title, value, change, props = {}) {
         return h('div', { key, style:{marginBottom:14,minWidth:0} },
           h('label', { htmlFor:'pp-'+key, style:label }, title),
-          h('input', { id:'pp-'+key, style:control, type:'text', maxLength:1024,
+          h('input', { id:'pp-'+key, style:control, type:'text', maxLength:128,
             value:value || '', onChange:e=>change(e.target.value), autoComplete:'off',
             dir:'auto', ...props }))
       }
@@ -869,38 +975,21 @@ window.__ModuleLoader__.load({
       const notice = h('p', { role:'note', style:{padding:'12px 15px',
         border:'1px solid rgba(208,158,52,.7)', borderRadius:10,
         background:'rgba(208,158,52,.1)',fontSize:13,lineHeight:1.7} }, t('warning'))
-      const setField = (id,value) => setValues(prev => ({...prev,[id]:value}))
       let contents
-      if (locked) {
-        contents = card(t('privacy'), h('p',{role:'status'},t('lockText')),
-          h('button',{type:'button',style:btn,onClick:()=>setLocked(false)},t('unlock')))
-      } else if (page === 'information') {
-        contents = h(React.Fragment,null,
-          card(t('information'),
-            h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))',gap:'0 18px'}},
-              ...fields.map(id=>id === 'gender'
-                ? dropdown(id,t(id),values.gender || '',[['',t('missing')],['male',rtl?'ذكر':'Male'],['female',rtl?'أنثى':'Female'],['unspecified',t('missing')]],v=>setField(id,v))
-                : input(id,t(id),values[id] || '',v=>setField(id,v),
-                  id==='dateOfBirth'?{placeholder:'YYYY-MM-DD',maxLength:10}:{})))),
-          card(t('custom'),
-            ...custom.map(f=>h('div',{key:f.id,style:{display:'flex',gap:10,alignItems:'end',flexWrap:'wrap'}},
-              h('div',{style:{flex:'1 1 220px'}},input(f.id,f.label,values[f.id] || '',v=>setField(f.id,v))),
-              h('button',{type:'button',style:{...btn,marginBottom:14},
-                onClick:()=>{setCustom(old=>old.filter(x=>x.id!==f.id));setField(f.id,'')}},t('remove')))),
-            input('new-label',t('label'),newLabel,setNewLabel,{maxLength:80}),
-            h('button',{type:'button',style:btn,disabled:!newLabel.trim()||custom.length>=8,
-              onClick:()=>{const next='example'+(custom.length+1)+'-'+Date.now().toString(36);
-                setCustom(old=>[...old,{id:next,label:newLabel.trim()}]);setNewLabel('')}},
-              t('add'))))
+      if (page === 'information') {
+        contents = card(t('information'),
+          h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))',gap:'0 18px'}},
+            ...fields.map(id=>id==='gender'
+              ? dropdown(id,t(id),values.gender,[['',t('missing')],['male',rtl?'ذكر':'Male'],['female',rtl?'أنثى':'Female'],['unspecified',t('missing')]],v=>setField(id,v))
+              : input(id,t(id),values[id],v=>setField(id,v)))))
       } else if (page === 'instructions') {
         const environmentScope = instructionScope === 'environment'
-        const override = Object.hasOwn(overrides,profile)
-        const effective = environmentScope && override ? overrides[profile] : globalPreferences
-        const editable = !environmentScope || override
+        const override = workspace.override
+        const effective = environmentScope && override ? workspace.preferences : globalPreferences
+        const scopeEditable = !environmentScope || (!!activeWorkspace&&override)
         const writePreferences = updater => {
           if (!environmentScope) setGlobalPreferences(updater)
-          else setOverrides(old=>Object.hasOwn(old,profile)
-            ? {...old,[profile]:updater(old[profile])} : old)
+          else if(override)writeWorkspace(w=>({...w,preferences:updater(w.preferences)}))
         }
         const setPreference = (key,value) => writePreferences(old=>({...old,[key]:value}))
         const localLabel = item => item[rtl?1:2]
@@ -909,23 +998,19 @@ window.__ModuleLoader__.load({
           card(t('scope'),
             dropdown('instructions-scope',t('scope'),instructionScope,
               [['global',t('global')],['environment',t('environment')]],setInstructionScope),
-            environmentScope ? dropdown('mode',t('override'),override?'custom':'inherit',
-              [['inherit',t('inherit')],['custom',t('customMode')]],v=>setOverrides(old=>{
-                const copy={...old}
-                if(v==='inherit') delete copy[profile]
-                else if(!Object.hasOwn(copy,profile)) copy[profile]=neutralProfilePreferences()
-                return copy
-              })) : null,
+            environmentScope && activeWorkspace ? dropdown('mode',t('override'),override?'custom':'inherit',
+              [['inherit',t('inherit')],['custom',t('customMode')]],v=>writeWorkspace(w=>({...w,
+                override:v==='custom',preferences:neutralProfilePreferences()}))) : null,
             environmentScope ? h('p',{style:muted},override?t('overrideHint'):t('inherited')) : null),
-          editable ? card(t('personality'),
+          scopeEditable ? card(t('personality'),
             dropdown('style',t('styleTone'),effective.style,
               PROFILE_STYLES.map(item=>[item[0],localLabel(item)]),v=>setPreference('style',v)),
             h('p',{style:muted},t('preferenceHint'))) : null,
-          editable ? card(t('responseLanguage'),
+          scopeEditable ? card(t('responseLanguage'),
             dropdown('response-language',t('responseLanguage'),effective.responseLanguage,
               PROFILE_LANGUAGES.map(item=>[item[0],localLabel(item)]),v=>setPreference('responseLanguage',v)),
             h('p',{style:muted},t('languageHint'))) : null,
-          editable ? card(t('characteristics'),
+          scopeEditable ? card(t('characteristics'),
             ...PROFILE_TRAITS.map(item=>{
               const [key]=item
               const level=effective.traits[key]
@@ -944,7 +1029,7 @@ window.__ModuleLoader__.load({
                 h('div',{style:{display:'flex',justifyContent:'space-between',fontSize:11,opacity:.75}},
                   h('span',null,t('less')),h('span',null,t('neutral')),h('span',null,t('more'))))
             })) : null,
-          editable ? card(t('presets'),
+          scopeEditable ? card(t('presets'),
             h('p',{style:muted},t('presetHint')),
             ...PROFILE_PRESETS.map(item=>h('label',{key:item[0],htmlFor:'pp-preset-'+item[0],
               style:{display:'flex',alignItems:'start',gap:10,margin:'12px 0',cursor:'pointer'}},
@@ -953,7 +1038,7 @@ window.__ModuleLoader__.load({
                   presets:checked?[...new Set([...old.presets,item[0]])]:old.presets.filter(id=>id!==item[0])}))}}),
               h('span',null,h('strong',null,localLabel(item)),
                 h('span',{style:{display:'block',fontSize:12,opacity:.76}},rtl?item[3]:item[4]))))) : null,
-          editable ? card(t('customInstructions'),
+          scopeEditable ? card(t('customInstructions'),
             h('label',{htmlFor:environmentScope?'pp-override':'pp-global',style:label},t('customInstructions')),
             h('textarea',{id:environmentScope?'pp-override':'pp-global',rows:6,maxLength:8192,style:control,
               value:effective.custom,onChange:e=>setPreference('custom',e.target.value),dir:'auto'}),
@@ -963,50 +1048,45 @@ window.__ModuleLoader__.load({
             h('output',{id:'pp-effective-instructions',dir:'auto',
               style:{display:'block',whiteSpace:'pre-wrap',overflowWrap:'anywhere'}},activePreview||t('noInstruction'))))
       } else if (page === 'access') {
-        const policy = policies[profile] || {}
-        contents = h(React.Fragment,null,
-          card(t('access'),
-            h('label',{style:{display:'flex',gap:10,alignItems:'center',marginBottom:15}},
-              h('input',{type:'checkbox',checked:optIn,onChange:e=>setOptIn(e.target.checked),
-                'aria-label':t('optIn')}),t('optIn')),
-            h('p',{style:{fontSize:13,opacity:.78}},t('synthetic')),
-            h('h3',{style:{fontSize:15}},t('fieldPolicies')),
-            ...[...fields,...custom.map(x=>x.id)].map(id=>dropdown('policy-'+id,
-              custom.find(x=>x.id===id)?.label||t(id),
-              policy[id]||'private',[['private',t('private')],['ask_first',t('ask')],['allow',t('allow')]],
-              v=>setPolicies(old=>({...old,[profile]:{...(old[profile]||{}),[id]:v}}))))),
-          card(t('approval'),
-            h('div',{style:{display:'flex',gap:8,flexWrap:'wrap'}},
-              ...[['once',t('once')],['session',t('session')],['deny',t('deny')]].map(([k,l])=>
-                h('button',{key:k,type:'button',style:btn,onClick:()=>setApproval(l)},l))),
-            h('p',{role:'status',style:{marginTop:13}},approval?approval+' — '+t('synthetic'):t('synthetic'))))
-      } else if (page === 'backup') {
-        contents = card(t('backup'),h('p',null,t('backupHint')),
-          h('div',{style:{display:'flex',flexWrap:'wrap',gap:8}},
-            h('button',{style:btn,type:'button',onClick:()=>{setBackupReview('export');setBackupAck(false)}},t('export')),
-            h('button',{style:btn,type:'button',onClick:()=>{setBackupReview('import');setBackupAck(false)}},t('import'))),
-          backupReview?h('div',{style:{marginTop:20}},
-            h('h3',{style:{fontSize:15}},backupReview==='export'?t('export'):t('import')),
-            backupReview==='import'?dropdown('backup-strategy',t('backup'),backupStrategy,
-              [['merge',t('merge')],['replace',t('replace')]],setBackupStrategy):null,
-            h('label',{style:{display:'flex',gap:8,alignItems:'center',marginBottom:12}},
-              h('input',{type:'checkbox',checked:backupAck,onChange:e=>setBackupAck(e.target.checked)}),
-              t('confirm')),
-            h('button',{style:{...btn,opacity:.6},disabled:true,type:'button'},t('unavailable'))):null)
-      } else {
-        contents = h(React.Fragment,null,
-          card(t('privacy'),
-            h('p',null,t('privacyWarning')),
-            h('button',{type:'button',style:btn,onClick:()=>setLocked(true)},t('lock')),
-            dropdown('auto-lock',t('autoLock'),autoLock,
-              [['0',t('never')],['5',t('five')],['15',t('fifteen')]],setAutoLock)),
-          card(t('session'),
-            h('p',null,sessionVisible?t('synthetic'):t('missing')),
-            h('button',{type:'button',style:btn,disabled:!sessionVisible,
-              onClick:()=>setSessionVisible(false)},t('endSession'))),
-          card(t('history'),h('p',null,t('historyText'))))
+        contents = card(t('access'),h('p',null,t('accessHint')),
+          h('label',{style:{display:'flex',gap:10,alignItems:'center',marginBottom:15}},
+            h('input',{id:'pp-opt-in',type:'checkbox',checked:record.allowPersonalInformation,
+              onChange:e=>setRecord(old=>({...old,allowPersonalInformation:e.target.checked}))}),t('optIn')),
+          h('label',{style:{display:'flex',gap:10,alignItems:'center',marginBottom:15}},
+            h('input',{id:'pp-cloud',type:'checkbox',checked:record.allowCloud,
+              onChange:e=>setRecord(old=>({...old,allowCloud:e.target.checked}))}),t('cloud')),
+          h('h3',{style:{fontSize:15}},t('fieldPolicies')),
+          ...activeWorkspace?fields.map(id=>dropdown('policy-'+id,t(id),workspace.policies[id],
+            [['private',t('private')],['ask_first',t('ask')],['allow',t('allow')]],
+            v=>writeWorkspace(w=>({...w,policies:{...w.policies,[id]:v}})))):[])
+      } else if(page==='backup') {
+        const review=()=>{
+          try {
+            if(!restoreText||restoreText.length>3_000_000)throw new Error('Invalid')
+            const incoming=withoutAuthority(decodeProfile(JSON.parse(restoreText)))
+            const candidate=backupStrategy==='merge'?mergeBackup(record,incoming):incoming
+            setRestoreReview(decodeProfile(candidate));setRestoreAck(false)
+          // Never clear a conflict/failed state: those require a reload before Save.
+          }catch{setRestoreReview(null);setRestoreAck(false);setStatus(s=>s==='conflict'||s==='failed'?s:'invalid')}
+        }
+        contents=card(t('backup'),h('p',null,t('backupHint')),
+          h('button',{type:'button',style:btn,onClick:()=>setBackupText(JSON.stringify(withoutAuthority(decodeProfile(record)),null,2))},t('export')),
+          backupText?h('textarea',{id:'pp-export-json',readOnly:true,rows:8,style:control,value:backupText,'aria-label':t('export')}):null,
+          h('textarea',{id:'pp-restore-json',rows:6,maxLength:3_000_000,style:{...control,marginTop:14},value:restoreText,'aria-label':t('import'),
+            onChange:e=>{setRestoreText(e.target.value);setRestoreReview(null);setRestoreAck(false)}}),
+          dropdown('backup-strategy',t('backup'),backupStrategy,[['merge',t('merge')],['replace',t('replace')]],
+            v=>{setBackupStrategy(v);setRestoreReview(null);setRestoreAck(false)}),
+          h('button',{type:'button',style:btn,onClick:review},t('import')),
+          restoreReview?h('div',{style:{marginTop:12}},
+            h('p',{role:'status'},t('restoreReady')),
+            h('label',null,h('input',{id:'pp-restore-confirm',type:'checkbox',checked:restoreAck,onChange:e=>setRestoreAck(e.target.checked)}),t('confirm')),
+            h('button',{id:'pp-restore-apply',type:'button',style:btn,disabled:!restoreAck,onClick:()=>{
+              setRecord(restoreReview);setRestoreText('');setRestoreReview(null);setRestoreAck(false);setBackupText('')
+            }},t('applyRestore'))):null)
+      }else {
+        contents=card(t('privacy'),h('p',null,t('warning')),h('p',null,t('accessHint')))
       }
-      return h('div',{'data-personal-profile-panel':'preview-only',lang:language,
+      return h('div',{'data-personal-profile-panel':'native-settings',lang:language,
         dir:rtl?'rtl':'ltr',style:{height:'100%',overflowY:'auto',boxSizing:'border-box',
           padding:'max(var(--dsh-frame-top-clearance, 0px), 28px) clamp(18px,4vw,56px) 52px',
           color:'inherit',lineHeight:1.6}},
@@ -1015,19 +1095,22 @@ window.__ModuleLoader__.load({
             alignItems:'center',justifyContent:'space-between'}},
             h('div',null,h('h1',{style:{margin:'0 0 4px',fontSize:'clamp(22px,3vw,32px)'}},t('title')),
               h('p',{style:{margin:'0 0 12px',opacity:.7}},t('subtitle'))),
-            h('div',{style:{width:145}},dropdown('language',t('language'),language,
+            h('fieldset',{disabled:!editable,style:{width:145,border:0,padding:0,margin:0}},dropdown('language',t('language'),language,
               [['ar','العربية'],['en','English']],setLanguage))),
           notice,
-          h('div',{style:{display:'flex',gap:10,flexWrap:'wrap',justifyContent:'space-between',alignItems:'center'}},
-            dropdown('profile',t('profile'),profile,profiles.map(x=>[x,x]),
-              v=>{setProfile(v);setApproval('')}),
-            h('button',{type:'button',style:btn,onClick:()=>{
-              setValues({});setCustom([]);setNewLabel('');setGlobalPreferences(neutralProfilePreferences());setInstructionScope('global');
-              setOverrides({});setPolicies({});setOptIn(false);setApproval('');
-              setLocked(false);setAutoLock('5');setSessionVisible(true);
-              setBackupReview('');setBackupStrategy('merge');setBackupAck(false);
-              setPage('information');setProfile(profiles[0])
-            }},t('reset'))),
+          h('div',{style:{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center',marginBottom:12}},
+            h('button',{id:'pp-save',type:'button',style:btn,disabled:!editable||!dirty||status==='conflict'||status==='failed',onClick:save},t('save')),
+            h('button',{id:'pp-reload',type:'button',style:btn,disabled:busy||!canRead,onClick:requestReload},t('reload')),
+            h('button',{type:'button',style:btn,disabled:!editable,onClick:()=>{setRecord({...emptyProfileRecord(),locale:language});setRestoreReview(null);setBackupText('');setRestoreText('')}},t('reset'))),
+          h('p',{id:'pp-save-status',role:'status'},t(status)+(dirty?' '+t('dirty'):'')),
+          confirmReload?h('div',{id:'pp-reload-prompt',role:'alert',style:{padding:'12px 15px',marginBottom:12,
+            border:'1px solid rgba(208,58,52,.6)',borderRadius:10,background:'rgba(208,58,52,.08)'}},
+            h('p',{style:{margin:'0 0 10px'}},t('discardWarning')),
+            h('div',{style:{display:'flex',gap:10,flexWrap:'wrap'}},
+              h('button',{id:'pp-reload-confirm',type:'button',style:btn,disabled:busy||!canRead,onClick:()=>{void load()}},t('discardConfirm')),
+              h('button',{id:'pp-reload-cancel',type:'button',style:btn,onClick:()=>setConfirmReload(false)},t('discardCancel')))):null,
+          h('fieldset',{disabled:!editable,style:{border:0,margin:0,padding:0,minWidth:0}},
+            activeWorkspace?dropdown('profile',t('profile'),activeWorkspace,profiles.map(w=>[w.workspaceId,w.title||w.workspaceId]),v=>{setProfile(v);setRestoreReview(null);setRestoreAck(false)}):null,
           h('nav',{role:'tablist','aria-label':t('title'),
             style:{display:'flex',gap:6,flexWrap:'wrap',marginBottom:20}},
             ...sections.map(id=>h('button',{key:id,type:'button',role:'tab',
@@ -1035,33 +1118,14 @@ window.__ModuleLoader__.load({
               'aria-controls':'pp-content',onClick:()=>setPage(id),
               style:{...btn,background:page===id?'rgba(128,128,128,.22)':'transparent',
                 fontWeight:page===id?700:500}},t(id)))),
-          h('div',{role:'tabpanel',id:'pp-content','aria-labelledby':'pp-tab-'+page},contents),
-          h('p',{style:{fontSize:12,opacity:.65,marginTop:25}},t('note'))))
+          h('div',{role:'tabpanel',id:'pp-content','aria-labelledby':'pp-tab-'+page},contents))))
     }
 
     function ProfileDraft() {
-      const fields = [
-        ['Name', 'Preferred name. Full name is optional.'],
-        ['Date of birth', 'Optional.'],
-        ['Nationality', 'Optional.'],
-        ['Gender', 'User-selected. May remain unspecified.'],
-        ['Custom agent instructions', 'Empty by default. Optional templates below.'],
-        ['Allow the agent to use approved profile information', 'Off by default. Requires explicit opt-in after design approval.'],
-      ]
-      return h('section', { 'data-personal-profile-draft': '',
-        style: { borderTop: border, padding: '20px 0', lineHeight: 1.65 } },
-        h('h3', null, 'Personal Profile — design draft'),
-        h('p', null, 'Read-only preliminary fields. Privacy, storage, access, export and deletion design awaits approval.'),
-        h('dl', null, fields.map(([label, description]) => h('div', { key: label, style: { marginBottom: 12 } },
-          h('dt', { style: { fontWeight: 650 } }, label),
-          h('dd', { style: { margin: '4px 0 0', opacity: .8 } }, description)))),
-        h('h4', null, 'Optional instruction templates'),
-        h('ul', null,
-          h('li', null, 'Use concise, direct answers and explain technical terms when needed.'),
-          h('li', null, 'Write in clear Arabic and use examples when they help.'),
-          h('li', null, 'Use a professional tone and preserve source links.')),
-        h('p', null, 'Proposed behavior after approval: apply approved style instructions automatically. Access personal or sensitive information only when relevant and explicitly allowed.'),
-        h('p', { role: 'note' }, 'This scaffold collects, saves and transmits zero profile information. Enabling it only shows this draft.'))
+      return h('section',{'data-personal-profile-draft':'',style:{borderTop:border,padding:'20px 0'}},
+        h('h3',null,'Personal Profile — local settings'),
+        h('p',null,'Preferred name, Nationality, Gender and optional Custom Instructions. All access is Private by default.'),
+        h('p',null,'Saved in the active Harness Profile without plugin-level encryption. Open Personal Profile to edit. Agent and cloud disclosure are not implemented.'))
     }
     const PROFILE_MODULE = TYPE + '/personal-profile'
     /** The Host's own enablement of the Profile row on the subject page; false when it says Off. */
@@ -1074,14 +1138,22 @@ window.__ModuleLoader__.load({
     // Every Personal Profile surface lives in this child fiber, which the
     // suite starts only while the Host row is enabled and active, and disposes
     // (unregistering each Slot entry) as soon as the row is switched Off.
-    // It never imports Host storage or registers agent capabilities.
+    // No agent capabilities; all writes go through the native settings service.
     const profilePlugin = {
-      inject: ['slots'],
+      inject: ['slots','remote','remote.settings','workspaces'],
       apply(ctx) {
-        // Global left navigation and full-page synthetic preview are browser-only.
+        const workspaceSource=ctx.workspaces.list
+        const listeners=new Set()
+        let generation=0
+        const connectionSource={getSnapshot:()=>generation,subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn)}}
+        ctx.on('connection/reset',()=>{generation++;for(const fn of [...listeners])fn()})
+        const settings=ctx.remote.settings
+        function ProfileSlot(props) {
+          return h(PersonalProfilePage,{settings,workspaceSource,connectionSource,useRemoteAccess:props?.useRemoteAccess})
+        }
         ctx.slots.inject('main', () => ctx.slots.register({
           name: 'main', key: PROFILE_PANEL_ID,
-        }, PersonalProfilePage))
+        }, ProfileSlot))
         ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
           name: 'sidebar.panellist', id: PROFILE_PANEL_ID, order: 40,
           label: () => 'Personal Profile',

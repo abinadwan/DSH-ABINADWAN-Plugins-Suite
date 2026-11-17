@@ -1,7 +1,7 @@
 {
   "name": "@abinadwan/dsh-plugins-suite",
-  "version": "0.6.3",
-  "description": "DeepSeek Harness suite with Environment & Context, Humanizer and a synthetic Personal Profile left-sidebar preview.",
+  "version": "0.7.0",
+  "description": "DeepSeek Harness suite with Environment & Context, Humanizer and local Personal Profile settings.",
   "private": true,
   "type": "module",
   "main": "./index.js",
@@ -30,7 +30,11 @@
     "icon.png",
     "icon.svg",
     "locale/*.json",
-    "docs",
+    "docs/DETAIL.md",
+    "docs/BRANDING.md",
+    "docs/PERSONAL_PROFILE_LOCAL_SETTINGS.md",
+    "docs/PERSONAL_PROFILE_WINDOWS_ACCEPTANCE.md",
+    "docs/assets/environment-*.webp",
     "plugins",
     "README.md",
     "LICENSE",
@@ -96,6 +100,6 @@
     "@deepseek-ai/cordis-plugin-loader": ">=1.0.6 <2"
   },
   "dependencies": {
-    "@noble/hashes": "2.0.1"
+    "@deepseek-ai/schemastery": "3.19.0"
   }
 }

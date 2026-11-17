@@ -70,7 +70,7 @@ test('access withdrawal and suite disposal prevent late mounts and release all r
   assert.equal(app.mountedListeners.size, 0)
 })
 
-test('Profile component renders an honest read-only draft, with no data-entry or save controls', async t => {
+test('Profile component detail explains native settings without collecting input', async t => {
   const app = await clientHarness()
   t.after(() => app.dispose())
   assert.equal([...app.slots.records.values()].some(x => x.options.id === 'abinadwan-profile-draft'), false)
@@ -84,8 +84,7 @@ test('Profile component renders an honest read-only draft, with no data-entry or
   assert.ok(walk(tree, x => x.props?.['data-personal-profile-draft'] === ''))
   assert.equal(walk(tree, x => ['input', 'textarea', 'select', 'form'].includes(x.type)), null)
   const text = JSON.stringify(tree)
-  for (const label of ['Name', 'Date of birth', 'Nationality', 'Gender', 'Custom agent instructions',
-    'Allow the agent to use approved profile information', 'Off', 'Empty']) assert.ok(text.includes(label), label)
+  for (const label of ['Preferred name','Nationality','Gender','Custom Instructions','Private','not implemented']) assert.ok(text.includes(label), label)
   app.setRows([])
   await app.changed()
   assert.equal(app.slots.records.has('abinadwan-profile-draft'), false)

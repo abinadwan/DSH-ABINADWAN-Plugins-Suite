@@ -7,6 +7,6 @@
           name: '@abinadwan/dsh-plugins-suite/environment-context'
         - id: abinadwan-humanizer
           name: '@abinadwan/dsh-plugins-suite/humanizer'
-        - id: abinadwan-personal-profile
-          name: '@abinadwan/dsh-plugins-suite/personal-profile'
-          disabled: true
+    - id: abinadwan-personal-profile
+      name: '@abinadwan/dsh-plugins-suite/personal-profile'
+      disabled: true

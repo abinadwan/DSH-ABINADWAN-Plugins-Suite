@@ -1,5 +1,7 @@
 # Personal Profile Phase 3 implementation plan
 
+> **Superseded (historical record).** Version 0.7.0 replaced this design with native Harness settings; see [the current design](../../PERSONAL_PROFILE_LOCAL_SETTINGS.md). Nothing described here is in the runtime or the package.
+
 Goal: implement the user's detailed Phase 3 specification on exactly
 6e815f9c26d995b675dda161a58d4873793888e7, targeting Phase 2 in a new draft PR.
 Architecture: reuse Master Profile instructions and Phase 2 trusted opaque Profile

@@ -1,5 +1,7 @@
 # Phase 3: internal Agent Instructions management
 
+> **Superseded (historical record).** Version 0.7.0 replaced this design with native Harness settings; see [the current design](PERSONAL_PROFILE_LOCAL_SETTINGS.md). Nothing described here is in the runtime or the package.
+
 Status: in-memory management only, using synthetic tests. No Host integration,
 agent registration, instruction injection, UI, persistence or real data collection.
 The Personal Profile Component remains disabled by default and read-only.

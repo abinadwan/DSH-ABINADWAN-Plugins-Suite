@@ -1,5 +1,7 @@
 # Personal Profile UI implementation plan
 
+> **Superseded (historical record).** Version 0.7.0 replaced this design with native Harness settings; see [the current design](../../PERSONAL_PROFILE_LOCAL_SETTINGS.md). Nothing described here is in the runtime or the package.
+
 Goal: implement the five requested pages as an isolated, synthetic, memory-only prototype.
 Architecture: native accessible DOM components, a fixture state module, shared pure Phase 1 validators, and a loopback-only allowlisted development server. No runtime or package exports change. Follow the suite's rounded cards, neutral borders and Arabic support, with a responsive navigation rail.
 

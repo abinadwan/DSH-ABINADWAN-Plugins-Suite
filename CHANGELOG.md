@@ -2,6 +2,36 @@
 
 All notable changes are documented here.
 
+## [0.7.0] — Unreleased (candidate)
+
+### Changed
+
+- **Personal Profile now persists locally through the native Harness Settings service.** The browser page reads `settings.describe()` and writes the whole record with `settings.replace(namespace, section, expectedRevision)`. Save is reported only after Harness confirms the committed value; refusals, revision conflicts and malformed answers are shown as such and keep the draft. Settings belong to the active Harness Profile; per-Workspace overrides use Host Workspace IDs.
+- Reduced the stored information to optional preferred name, nationality and gender. Full name, date of birth and custom personal fields were removed. Response preferences, custom instructions and the effective preview remain.
+- Manual local JSON backup and reviewed restore (merge or explicit replacement). Exports contain no active grants; imports reset every field policy to Private and both sharing switches to Off, and are applied only to the draft until Save.
+- The Personal Profile Host entry moved from the suite Group to a direct, settings-owned Include entry with the same id (`abinadwan-personal-profile`), still disabled by default. Existing enablement overrides keep applying. Disabling only the suite Group no longer disables Personal Profile; the bundle selection still governs every row.
+- Runtime dependency `@noble/hashes` replaced by `@deepseek-ai/schemastery` 3.19.0 (the version Harness rc.3 vendors), used only for the settings schema.
+- The packaged docs now include only active documentation; superseded design documents and prototype screenshots remain in the repository.
+- Corrected the update-migration text: Personal Profile settings may be removed by uninstalling, so it asks you to copy a JSON backup first.
+
+### Removed
+
+- The superseded encrypted storage, key management, simulated lock, consent ledger, Host-identity diagnostic and integration-gate prototypes (Phases 1–6B), with their tests. They are kept in Git history and PR #15, not runtime. See the removed-test audit in `docs/PERSONAL_PROFILE_LOCAL_SETTINGS.md`.
+
+### Security and privacy
+
+- No plugin-level encryption: settings and backups are readable by anyone with access to the Profile configuration or the backup text. Saved access policies and sharing switches are not enforced controls; no agent injection, model disclosure or network transmission path exists.
+
+### Fixed during Phase 6D QA
+
+- Outdated render test expecting the former "design draft" text.
+- An invalid backup review could clear a conflict/failed state and re-enable Save before reload (the Host revision check still prevented an overwrite).
+
+### Hardening
+
+- Removed the hard-coded 64-Workspace limit from the schema, decoder, editing and backup merge. Edits beyond 64 Workspaces were silently ignored before. Only Workspaces that differ from the inherited/Private defaults are stored. A single 3,000,000-character payload guard for the whole record remains and reports an explicit error.
+- **Reload** now asks for confirmation (Arabic and English) when the draft has unsaved changes or the last save failed or conflicted; cancelling keeps the whole draft. A connection reset no longer silently replaces a dirty draft by re-reading.
+
 ## [0.6.3] — Unreleased
 
 ### Changed

@@ -1,5 +1,7 @@
 # Personal Profile — Phase 4 UI prototype
 
+> **Superseded (historical record).** Version 0.7.0 replaced this design with native Harness settings; see [the current design](PERSONAL_PROFILE_LOCAL_SETTINGS.md). Nothing described here is in the runtime or the package.
+
 This development/test-only prototype implements five navigable pages using
 synthetic, disposable fixture state. The production Host remains disabled and
 read-only. `client.js`, `index.js`, the patch, all Phase 1–3 engine modules and

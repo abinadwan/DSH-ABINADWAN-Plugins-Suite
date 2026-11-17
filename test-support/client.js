@@ -111,6 +111,11 @@ class Remote extends Service {
     return () => this.events.delete(name)
   }
 }
+class SettingsRemote extends Service {
+  constructor(ctx, settings) { super(ctx,'remote.settings');this.settings=settings }
+  describe(){return this.settings.describe()}
+  replace(...args){return this.settings.replace(...args)}
+}
 class PluginManagerRemote extends Service {
   constructor(ctx, calls) {
     super(ctx, 'remote.pluginManager')
@@ -183,9 +188,11 @@ export async function clientHarness(options = {}) {
   // (api/gateway createNamespace: `ownerCtx.plugin({ name: 'remote.<ns>', apply })`).
   // A service provided that way is reachable only by consumers that inject it.
   await ctx.plugin({ name: 'remote.pluginManager', apply: child => { new PluginManagerRemote(child, calls) } })
+  const settings=options.settings||{describe:()=>Promise.resolve(refused('access/denied','not available')),replace:()=>Promise.resolve(refused('access/denied','not available'))}
+  await ctx.plugin({name:'remote.settings',apply:child=>{new SettingsRemote(child,settings)}})
   const sessions = observable(options.sessions || sessionSnapshot())
   const workspaces = observable({
-    items: [{ workspaceId: 'w', title: 'HomeBook', path: 'C:/Work/HomeBook', sessionIds: ['s1'] }],
+    items: options.workspaceItems || [{ workspaceId: 'w', title: 'HomeBook', path: 'C:/Work/HomeBook', sessionIds: ['s1'] }],
     archivedSessionIds: [], pinnedSessionIds: [], state: 'idle', phase: 'ready', error: null,
   })
   ctx.provide('sessions', { list: sessions })

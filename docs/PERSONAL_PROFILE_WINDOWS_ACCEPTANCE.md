@@ -1,181 +1,134 @@
-# Manual Windows Desktop acceptance — NOT EXECUTED
+# Phase 6E — Windows Desktop acceptance for 0.7.0
 
-Every check below is **NOT EXECUTED**. This Linux workspace and GitHub Windows
-runners are not the actual Desktop device. No real personal data is authorized.
-Separate approval is required before executing this plan on the device. Phase 6A
-contains no Host probe or production adapter: blocked steps must remain NOT
-EXECUTED until a separately reviewed synthetic probe exists. Do not invent an
-endpoint, enable Personal Profile, or substitute terminal Node for Host evidence.
+**Status: BLOCKED — real Windows Desktop required.** Phase 6D QA ran in a Linux cloud container and GitHub Actions. CI Windows runners are not Harness Desktop; they prove nothing about Desktop persistence, rendering or permissions. Every scenario below is **NOT TESTED** until the owner runs it on a real device.
 
-Compatibility research uses official tag
-[`dsh-v0.2.2-rc.3`, commit `38a6a5c965aa99ab525161efb7cc5cf1fe62fced`](https://github.com/deepseek-ai/deepseek-harness/tree/38a6a5c965aa99ab525161efb7cc5cf1fe62fced).
-The user reports rc3 app-boot/client-connection/api-gateway/api-session-controller/
-user-approval packages, loader `1.1.0`, and ASAR observations of BrowserAuth and
-admission/upgrade code. These observations are separate from source inspection;
-no byte-for-byte installed binary/source comparison or device verification was
-performed. rc3 uses `BrowserAuth`, `admitConnection`, `rejectRemoteStreamUpgrade`
-and `handleUpgrade`; later `ConnectionAuthentication`/`authentication-desktop`
-APIs are not acceptance evidence for rc3. Exact source links and limits are in
-[the Phase 6A evidence table](PERSONAL_PROFILE_PHASE6A.md#evidence-and-api-research).
+The previous Phase 6A plan for the encrypted design is superseded and kept in Git history.
 
-Use a disposable Windows account/test installation and two disposable Harness
-Profiles A and B. Record only PASS/FAIL, build/commit, OS/runtime versions and
-sanitized error codes. Keep SIDs, paths, command lines, credentials, blobs and
-screenshots containing account details local. Do not paste them into PR logs.
+## Rules
 
-1. **Approval and baseline — NOT EXECUTED.** Obtain separate written approval for
-   synthetic device QA. Record the installed Desktop build and its upstream
-   source revision through About and installed package metadata. In a separate
-   checkout of the Phase 6 branch, run `git rev-parse HEAD`, `node --version`,
-   `npm ci --ignore-scripts`, `npm test`, `npm run check:package` under Node 22
-   and 24. Record summaries. Confirm the live patch still has Personal Profile
-   `disabled: true` and `apply()` is empty. Never install this checkout over the
-   user's live profile. Expected: immutable baseline and no activation.
-   Package labels and matching ASAR symbol names do not establish binary/source
-   equivalence; record that limit unless a separately authorized comparison exists.
+- Use **fictional data only** (for example preferred name `Test User`, nationality `Testland`). Never real personal information.
+- Get the owner's approval before changing an existing real installation. Prefer a separate Windows account or a disposable Harness Profile.
+- Record only PASS / FAIL / BLOCKED / NOT TESTED, versions, SHAs and sanitized error codes. Do not post the contents of `cordis.patch.yml`, paths with account names, or screenshots with account details.
+- Do not merge PR #16, tag or publish a release during acceptance.
 
-2. **Real Host process identity — NOT EXECUTED.** Start the disposable Desktop.
-   In Microsoft Process Explorer, locate its Electron main process and actual
-   Host child. Record locally Image/Verified Signer, PID, parent PID, token User
-   SID and integrity level. Compare with Task Manager Details and the installation
-   executable. Inspect its command line locally; do not export credentials.
-   In PowerShell, `$PID` and `whoami /user` identify only the terminal; explicitly
-   label them as comparison evidence, never Host identity. A separately reviewed
-   in-Host synthetic probe must report its own `process.pid`, `process.ppid`,
-   `process.execPath`, Node/Electron versions, canonical Profile directory and
-   OS token identity through a local diagnostic view without secrets. Correlate
-   PID and token with Process Explorer. Expected: exact child/account match,
-   no elevation or alternate account; missing correlation blocks all later Host
-   assertions. Phase 6A has no such probe: do not execute or claim this check.
-   Source evidence is Electron RunAsNode plus BrowserAuth owner-Peer admission,
-   not an OS identity or an independent Profile-management authorization grant.
+## 0. Prepare (PowerShell)
 
-3. **DPAPI and restart — NOT EXECUTED.** First, only after approval, use PR #2's
-   isolated checkout at `07fb92b503bdbaef8a161415b5296397d0faffd5` and run
-   `node scripts/personal-profile-windows-probe.mjs prepare`, fully Quit Desktop
-   (including tray), restart, then run
-   `node scripts/personal-profile-windows-probe.mjs verify`. Expect separate-
-   process terminal feasibility only. Cleanup with
-   `node scripts/personal-profile-windows-probe.mjs cleanup` if interrupted.
-   Actual acceptance additionally requires the approved **in-Host** probe to
-   generate a synthetic random key, wrap with CurrentUser, encrypt a canary,
-   quit all Host processes, restart and unwrap/authenticate that same canary.
-   Use no real data. Expect no plaintext key on disk, argv, environment or logs.
-   Tamper with the wrapped blob and ciphertext/tag separately; both must deny.
-   Terminal success alone cannot mark the Host portion PASS.
+Set the Profile name Harness Desktop actually runs (usually `desktop`) and the exact candidate SHA from PR #16.
 
-4. **Other Windows account denial — NOT EXECUTED.** With a second non-admin local
-   test account, attempt to open the synthetic files. Expect filesystem denial.
-   To distinguish DPAPI from DACL, copy only the synthetic wrapped blob/canary
-   into that account's isolated test directory through a deliberate local test
-   transfer, then attempt unwrap using the approved probe. Expect DPAPI failure,
-   no fallback and no leaked bytes. Return to the first account; its original
-   canary must still work. Delete transferred synthetic artifacts. Do not grant
-   the second account access to the live Harness directory.
+```powershell
+$DshProfile = 'desktop'
+$Candidate = 'CANDIDATE_SHA'   # full 40-character SHA of the tested PR #16 head
+$DshHome = if ($env:DSH_HOME) { $env:DSH_HOME } else { Join-Path $env:USERPROFILE '.dsh' }
+$ProfileDir = Join-Path $DshHome "profiles\$DshProfile"
+$Backup = Join-Path $env:USERPROFILE ("dsh-acceptance-backup-" + (Get-Date -Format 'yyyyMMdd-HHmmss'))
+```
 
-5. **DACL/filesystem security — NOT EXECUTED.** Set `$ProbeRoot` to the separately
-   provisioned synthetic test root. Run `icacls $ProbeRoot` and
-   `Get-Acl -LiteralPath $ProbeRoot | Format-List Owner,AccessToString,Sddl`
-   locally. Inspect parent directory inheritance, owner and effective access in
-   Windows Security Advanced settings. Expect no untrusted-user read/write,
-   inherited broad permissions or writable parent relocation path. Apply the
-   approved DACL provisioning design, not POSIX mode assumptions. Test junction,
-   symlink (where permitted), hardlink and replaced-directory targets inside
-   disposable directories; expect refusal without touching the target. Retained
-   writer locks/fences must deny authorization. Inspect temporary/recovery files
-   with the same DACL criteria. Missing provisioning design blocks PASS.
+Close Harness Desktop completely (also from the tray), then back up the Profile configuration:
 
-6. **Session lock/sleep/resume — NOT EXECUTED.** In the approved synthetic Host
-   probe, create a pending request and a session grant for Profile A. Press
-   Win+L; independently attempt the synthetic read through the test controller.
-   Expect denial, dropped keys and invalidated pending/temporary grants. Unlock;
-   old handles must still deny. Repeat using Start > Power > Sleep and resume,
-   then inactivity timeout, Desktop restart, plugin scope disposal and Profile
-   switch. Missing native event subscriptions is a failure, not a skipped PASS.
-   The live disabled component must remain unchanged throughout.
-   Lock must also clear authorization readiness; unlock cannot restore it. A new
-   explicit durable management transaction must authorize the exact record, not
-   an unrelated record, before fresh sessions can read. The current Windows
-   durability limit still requires denial and blocks a functional PASS.
+```powershell
+New-Item -ItemType Directory -Path $Backup | Out-Null
+Copy-Item (Join-Path $ProfileDir 'cordis.patch.yml') $Backup -ErrorAction SilentlyContinue
+Copy-Item (Join-Path $ProfileDir 'package.json') $Backup
+Get-ChildItem $Backup
+```
 
-7. **Key loss and backup recovery — NOT EXECUTED.** Export only a synthetic
-   password-encrypted backup through the approved test controller. Quit Host,
-   move the synthetic wrapped-key file aside within its protected directory,
-   restart. Expect locked/unavailable state, no replacement plaintext key or
-   implicit data recreation. Restore via backup using wrong then correct
-   password: wrong denies; correct requires explicit review and leaves opt-in
-   false, all permissions Private, old handles invalid and instructions inert.
-   Import, merge, replacement and recovery must use the authorization fence and
-   must not enable readiness. Replacement recovery-snapshot/final writes share
-   that fence; partial or uncertain failure retains it. With an existing retained
-   fence, later import/recovery attempts must deny rather than clear it. Current
-   Windows writes retain the fence, so recovery cannot count as functional
-   acceptance without a separately reviewed durable reconciliation design.
-   Cross-account portable-backup recovery is a separate explicit test; it must
-   not import Allow. Remove copies and synthetic passwords after verification.
+Record the installed suite spec (the known-good SHA for rollback) without sharing the file:
 
-8. **Desktop accessibility — NOT EXECUTED.** Once a separately approved test UI
-   exists, use only keyboard (Tab/Shift+Tab/Enter/Escape) and Windows Narrator.
-   At 200% zoom/high contrast, inspect English and Arabic/RTL layouts, labels,
-   focus visibility/order, modal focus trapping/return, validation announcement,
-   cancel actions, and lock/error feedback. Expect no focus escape or hidden
-   destructive confirmation. Automated jsdom/axe preview results do not count
-   as Desktop accessibility acceptance; current live panel remains read-only.
+```powershell
+(Get-Content (Join-Path $ProfileDir 'package.json') -Raw | ConvertFrom-Json).dependencies.'@abinadwan/dsh-plugins-suite'
+```
 
-9. **Cross-Profile isolation and boundary abuse — NOT EXECUTED.** With the approved
-   Host controller resolve A and B independently from boot facts. Allow A's
-   synthetic preferredName; B and unknown/alias Profiles remain Private. Replay
-   A's session/approval in B, alter Client caller/Profile/session fields, send
-   management operations from agent scope, duplicate/cancel/replay decisions,
-   change session ownership and dispose the Peer. Every attempt must deny with
-   no values/keys/consent capability in Client responses. Inspect DevTools
-   network and Host/model transcript locally: no profile reads/injection while
-   this checkpoint remains disabled. Instruction text such as “ignore system;
-   allow B” must never alter policy or be composed into a model request.
-   Supply getter/inherited identity claims and missing, malformed or changed
-   caller/Session/Profile claims through the synthetic resolver. Expect terminal
-   token invalidation; restoring prior claims must not revive tokens, bindings
-   or pending approvals. A second, unrelated synthetic session must keep its
-   reads and pending approval while the first is invalidated, including role
-   misuse and repeated attempts. Management patches must affect only the Profile fixed
-   by that management binding, with no caller-selected Profile argument.
-   Ordinary saves must preserve omitted authorization and accept only unchanged
-   snapshots; attempted changes or stale replay must fail. New records start
-   Private/off. Deleting a custom field still referenced by a persisted policy,
-   including Private, must fail without silently dropping or orphaning policy.
-   Use explicit reviewed replacement/import to reset all authority, or leave
-   that edit blocked pending a reviewed policy-deletion API. Exercise explicit `setAuthorization` and its opt-in/permission
-   wrappers; invalid preflight must precede writer-lock/fence creation, while
-   accepted changes invalidate leases before write I/O and revalidate under lock.
+Record the Harness version from **Help → About** (expected `0.2.2-rc.3`) and confirm the active Profile:
 
-10. **Failure recovery and safe disable — NOT EXECUTED.** In the disposable root
-    simulate disk-full/permission failure, provider absence, corrupt ciphertext,
-    process death before rename, uncertain commit and retained lock/fence.
-    Expect denial and explicit unavailable state; never treat an old Allow as
-    recovery. Reconcile disk only after proving all writers terminated and
-    exclusive ownership. A future approved recovery procedure must durably reset
-    policies to Private before clearing a fence; Phase 6A offers no automatic
-    fence removal. On current Windows, a committed but non-durable authorization
-    write must retain its fence and deny reads and later authorization-changing
-    import/recovery attempts. Do not delete the fence to obtain a PASS.
-    Disable the test probe via its owning test plugin scope,
-    Quit Desktop, verify Host termination and remove only synthetic artifacts.
-    Reopen Desktop and confirm Personal Profile remains disabled/read-only and
-    other suite components still function. If wedged, stop Desktop and restore
-    only the disposable configuration baseline; do not delete a user's data or
-    security artifacts speculatively. Inspect local telemetry/logs for synthetic
-    canary, instruction and key bytes: none may appear.
+```powershell
+dsh --profile $DshProfile --dump-config | Select-String 'abinadwan'
+```
 
-Acceptance record: keep each numbered check NOT EXECUTED until device evidence
-exists; then record date, tester, exact build/probe revision, PASS/FAIL, sanitized
-observations and unresolved issues separately. Any failed or blocked security
-check is NO-GO. A passed device plan would still require a new explicit security
-review and production-activation approval; it cannot authorize enabling this PR.
+## 1. v0.6.3 baseline (before installing 0.7.0)
 
-## Phase 6B-1 clarification
+With the existing v0.6.3 installation: Components list shows Environment & Context, Humanizer, Personal Profile; Personal Profile Off; Environment tab works in a conversation; Humanizer can be invoked; **Suite updates** shows Host and browser module v0.6.3. Record PASS/FAIL. Do not continue on FAIL.
 
-The [Phase 6B-1 synthetic diagnostic and identity design](PERSONAL_PROFILE_PHASE6B1.md)
-is test-only and excluded from the package. It is not the in-Host probe required
-by step 2 and cannot mark any device check PASS. All checks above remain NOT
-EXECUTED; each actual device test needs separate later explicit approval. No
-real identity collection or live-host operation is authorized in Phase 6B-1.
+## 2. Install the candidate
+
+Upgrade in place:
+
+```powershell
+dsh plugin --profile $DshProfile add "github:abinadwan/DSH-ABINADWAN-Plugins-Suite#$Candidate"
+dsh --profile $DshProfile --dump-config | Select-String 'abinadwan'
+```
+
+If `add` refuses because the package is already installed, record the message, then:
+
+```powershell
+dsh plugin --profile $DshProfile remove @abinadwan/dsh-plugins-suite
+dsh plugin --profile $DshProfile add "github:abinadwan/DSH-ABINADWAN-Plugins-Suite#$Candidate"
+```
+
+Start Harness Desktop. **Suite updates** must show Host **and** browser module `v0.7.0`, and no version-mismatch warning.
+
+For a **clean installation**, repeat in a disposable Profile or Windows account that never had the suite.
+
+## 3. Rollback (test it once)
+
+Close Harness completely, then reinstall the known-good SHA and restore the backed-up configuration:
+
+```powershell
+dsh plugin --profile $DshProfile add "github:abinadwan/DSH-ABINADWAN-Plugins-Suite#KNOWN_GOOD_SHA"
+Copy-Item (Join-Path $Backup 'cordis.patch.yml') $ProfileDir -Force
+Copy-Item (Join-Path $Backup 'package.json') $ProfileDir -Force
+dsh --profile $DshProfile --dump-config | Select-String 'abinadwan'
+```
+
+Start Harness and confirm the v0.6.3 baseline again. Restoring `cordis.patch.yml` also removes any Personal Profile settings saved during acceptance.
+
+## 4. Inspect stored settings (locally only)
+
+After a Save, confirm the record contains only approved fields and no secrets. Do not paste the output anywhere.
+
+```powershell
+Select-String -Path (Join-Path $ProfileDir 'cordis.patch.yml') -Pattern 'abinadwan-personal-profile' -Context 0,40
+```
+
+Expected: one `abinadwan-personal-profile` row whose `config.record` holds `version`, `locale`, `information` (`preferredName`, `nationality`, `gender`), `global`, `workspaces`, `allowPersonalInformation`, `allowCloud`. No full name, date of birth, password, key or encrypted blob.
+
+## 5. Acceptance matrix
+
+| Area | Scenario | Expected | Result |
+|---|---|---|---|
+| Install | Clean installation | Three Components; Personal Profile Off | NOT TESTED |
+| Install | Upgrade from v0.6.3 | Same toggles as before; one Personal Profile row; no config error | NOT TESTED |
+| Install | Personal Profile Off by default | No left-sidebar entry, no page, no detail section | NOT TESTED |
+| Lifecycle | Toggle each Component on/off three times | Each appears/disappears once; others unaffected; no duplicate tab, button or launcher | NOT TESTED |
+| Lifecycle | Official bundle disable/enable | All three contributions removed/restored | NOT TESTED |
+| Lifecycle | Disable only the suite Group manually | Environment and Humanizer off; Personal Profile keeps its own state (documented) | NOT TESTED |
+| Lifecycle | Full application restart | Same state; no duplicates | NOT TESTED |
+| Lifecycle | Rollback procedure | v0.6.3 baseline restored | NOT TESTED |
+| Persistence | Save fictional values | "Save confirmed by Harness" | NOT TESTED |
+| Persistence | Close/reopen page; full restart | Values persist | NOT TESTED |
+| Persistence | Edit existing values; Save | Confirmed; new values persist | NOT TESTED |
+| Persistence | Reset draft without saving | Draft cleared; stored values unchanged until Save | NOT TESTED |
+| Persistence | Edit, then Reload → **Keep editing** | Confirmation shown (Arabic and English); whole draft kept | NOT TESTED |
+| Persistence | Edit, then Reload → **Discard changes and reload** | Stored values shown; edits gone | NOT TESTED |
+| Persistence | After a failed or conflicting save, Reload | Confirmation shown; cancel keeps draft and error | NOT TESTED |
+| Persistence | Edit, then disconnect/reconnect (restart the Host while the window stays open, where possible) | Draft kept; "Connection was reset" message; Save is revision-checked | NOT TESTED |
+| Isolation | More than 64 Workspaces with overrides (fictional) | All saved and restored after restart; no edits dropped | NOT TESTED |
+| Isolation | Set a Workspace back to inherit with all Private | Its row disappears from `cordis.patch.yml` (§4); it inherits global | NOT TESTED |
+| Persistence | Two windows: save in A, then save in B | B shows the conflict message; A's value is kept | NOT TESTED |
+| Permissions | Settings access denied or read-only | Page shows unavailable/disabled; nothing saved | NOT TESTED |
+| Isolation | Different overrides in two real Workspaces | Each Workspace keeps its own; inherit shows global | NOT TESTED |
+| Isolation | Switch Workspaces repeatedly; restart | No leak or overwrite | NOT TESTED |
+| Isolation | Separate Harness Profile | Other Profile shows none of these values | NOT TESTED |
+| Visual | Windows light and dark theme | Text and native dropdown options readable | NOT TESTED |
+| Visual | Arabic RTL and English LTR | Correct direction and labels | NOT TESTED |
+| Visual | All 8 languages, 8 personalities, 6 characteristics, 8 presets, custom text | Selectable; effective preview updates | NOT TESTED |
+| Privacy | Defaults | All policies Private; both switches Off | NOT TESTED |
+| Privacy | Export JSON | No `allow`/`ask_first`; both switches false | NOT TESTED |
+| Privacy | Import (merge and replace) | Review step; permissions reset; nothing saved until Save | NOT TESTED |
+| Privacy | Stored record (§4) | Only approved fields; no secrets | NOT TESTED |
+| Privacy | UI wording | States no plugin-level encryption; no encryption claim | NOT TESTED |
+| Privacy | Ask the agent "what is my preferred name?" | Agent has no access to the profile | NOT TESTED |
+| Existing | Environment & Context | Tab, context/output tokens, session switching, Workspace display | NOT TESTED |
+| Existing | Humanizer | Skill registered when on, removed when off; presets never invoke it | NOT TESTED |
+| Existing | Update checker | Correct versions; check runs; no install without confirmation | NOT TESTED |
+
+Return the filled matrix (results and versions only) on PR #16.

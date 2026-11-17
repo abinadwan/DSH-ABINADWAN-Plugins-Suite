@@ -1,6 +1,6 @@
 # ABINADWAN Plugins Suite
 
-Experimental community package · v0.6.3
+Experimental community package · v0.7.0
 
 Three independently toggleable Components share one suite installation. The package card uses the Saudi developer avatar, and the rows have individual transparent artwork.
 
@@ -20,7 +20,7 @@ Enabled by default. Registers the runtime Skill **abinadwan-humanizer**. Ask the
 
 <img src="../plugins/personal-profile/icon.png" width="64" alt="Amber ID and gear"/>
 
-Disabled by default. Enabling displays a read-only field draft below. Privacy and storage design awaits approval. The draft accepts, saves and transmits zero profile values. Automatic approved style instructions and relevant, permitted personal-data access remain proposed future behavior.
+Disabled by default. When enabled, a **Personal Profile** page in the left sidebar edits optional preferred name, nationality and gender, response preferences (eight personalities, Automatic plus seven response languages, six characteristics, eight behavior presets, custom instructions) with an effective-instructions preview, and per-Workspace overrides. **Save** writes through the native Harness settings of the active Profile and is confirmed only after Harness accepts it. Settings and JSON backups are not encrypted by this plugin; do not enter sensitive information. Nothing is sent to the agent or a model: access and sharing switches are saved preferences only.
 
 ## Versions
 
