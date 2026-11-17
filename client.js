@@ -188,7 +188,7 @@ window.__ModuleLoader__.load({
 
     // Only stable published GitHub Releases may trigger an in-app update offer.
     // This browser-side checker never installs anything without a separate click.
-    const INSTALLED_VERSION = '0.7.0'
+    const INSTALLED_VERSION = '0.7.1'
     const PACKAGE_NAME = '@abinadwan/dsh-plugins-suite'
     const RELEASE_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/latest'
     const COMMIT_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/commits/'
@@ -1121,6 +1121,22 @@ window.__ModuleLoader__.load({
           h('div',{role:'tabpanel',id:'pp-content','aria-labelledby':'pp-tab-'+page},contents))))
     }
 
+    // Contains a Personal Profile render failure inside the page. Without it the
+    // Host Slot boundary retires the `main` entry and the content area is blank.
+    const ProfileErrorBoundary=typeof React.Component==='function'?class extends React.Component{
+      constructor(props){super(props);this.state={failed:false}}
+      // No logging: profile code never writes to the console (privacy policy).
+      static getDerivedStateFromError(){return {failed:true}}
+      render(){
+        if(!this.state.failed)return this.props.children
+        return h('div',{'data-personal-profile-error':'',role:'alert',style:{padding:'max(var(--dsh-frame-top-clearance, 0px), 28px) clamp(18px,4vw,56px)',lineHeight:1.6}},
+          h('h1',{style:{fontSize:22,margin:'0 0 8px'}},'Personal Profile — الملف الشخصي'),
+          h('p',{dir:'rtl',lang:'ar'},'تعذر عرض صفحة الملف الشخصي. لم يتم حفظ أو تغيير أي إعداد.'),
+          h('p',{lang:'en'},'Personal Profile could not be displayed. No settings were saved or changed.'),
+          h('button',{type:'button',onClick:()=>this.setState({failed:false}),style:{border:'1px solid rgba(128,128,128,.35)',borderRadius:8,padding:'9px 13px',font:'inherit',background:'rgba(128,128,128,.08)',color:'inherit',cursor:'pointer'}},'Retry — إعادة المحاولة'))
+      }
+    }:null
+
     function ProfileDraft() {
       return h('section',{'data-personal-profile-draft':'',style:{borderTop:border,padding:'20px 0'}},
         h('h3',null,'Personal Profile — local settings'),
@@ -1142,14 +1158,19 @@ window.__ModuleLoader__.load({
     const profilePlugin = {
       inject: ['slots','remote','remote.settings','workspaces'],
       apply(ctx) {
-        const workspaceSource=ctx.workspaces.list
+        // `ctx.workspaces.list` is the Host's ClientWorkspaceModel class
+        // instance: its subscribe/getSnapshot read `this`. Bind them here, as
+        // Environment & Context does, before handing them to useSyncExternalStore.
+        const list=ctx.workspaces.list
+        const workspaceSource={subscribe:listener=>list.subscribe(listener),getSnapshot:()=>list.getSnapshot()}
         const listeners=new Set()
         let generation=0
         const connectionSource={getSnapshot:()=>generation,subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn)}}
         ctx.on('connection/reset',()=>{generation++;for(const fn of [...listeners])fn()})
         const settings=ctx.remote.settings
         function ProfileSlot(props) {
-          return h(PersonalProfilePage,{settings,workspaceSource,connectionSource,useRemoteAccess:props?.useRemoteAccess})
+          const page=h(PersonalProfilePage,{settings,workspaceSource,connectionSource,useRemoteAccess:props?.useRemoteAccess})
+          return ProfileErrorBoundary?h(ProfileErrorBoundary,null,page):page
         }
         ctx.slots.inject('main', () => ctx.slots.register({
           name: 'main', key: PROFILE_PANEL_ID,

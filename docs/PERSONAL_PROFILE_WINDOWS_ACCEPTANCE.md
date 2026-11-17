@@ -1,6 +1,17 @@
-# Phase 6E — Windows Desktop acceptance for 0.7.0
+# Phase 6E — Windows Desktop acceptance for 0.7.1
 
-**Status: BLOCKED — real Windows Desktop required.** Phase 6D QA ran in a Linux cloud container and GitHub Actions. CI Windows runners are not Harness Desktop; they prove nothing about Desktop persistence, rendering or permissions. Every scenario below is **NOT TESTED** until the owner runs it on a real device.
+## Recorded result on 0.7.0 (first Windows run)
+
+| Step | Result |
+|---|---|
+| Installation | PASS |
+| Harness restart | PASS |
+| Personal Profile sidebar registration | PASS |
+| Personal Profile page rendering | **FAIL**: content area completely blank |
+
+Cause: the page passed the Host's `ctx.workspaces.list.subscribe`/`getSnapshot` class methods to `useSyncExternalStore` without their receiver, so the first render threw and the Host retired the `main` Slot entry. Fixed in 0.7.1 (see CHANGELOG). **Repeat this whole document on the 0.7.1 candidate SHA.** Based on the Host source, 0.7.0 is expected to log (in DevTools, if available) `slot entry crashed in 'main': TypeError: Cannot read properties of undefined (reading 'refreshSnapshot')`. On 0.7.1 that message must not appear.
+
+**Status for 0.7.1: NOT TESTED — real Windows Desktop required.** Phase 6D QA ran in a Linux cloud container and GitHub Actions. CI Windows runners are not Harness Desktop; they prove nothing about Desktop persistence, rendering or permissions. Every scenario below is **NOT TESTED** until the owner runs it on a real device.
 
 The previous Phase 6A plan for the encrypted design is superseded and kept in Git history.
 
@@ -9,15 +20,15 @@ The previous Phase 6A plan for the encrypted design is superseded and kept in Gi
 - Use **fictional data only** (for example preferred name `Test User`, nationality `Testland`). Never real personal information.
 - Get the owner's approval before changing an existing real installation. Prefer a separate Windows account or a disposable Harness Profile.
 - Record only PASS / FAIL / BLOCKED / NOT TESTED, versions, SHAs and sanitized error codes. Do not post the contents of `cordis.patch.yml`, paths with account names, or screenshots with account details.
-- Do not merge PR #16, tag or publish a release during acceptance.
+- Do not merge the 0.7.1 PR, tag or publish a release during acceptance.
 
 ## 0. Prepare (PowerShell)
 
-Set the Profile name Harness Desktop actually runs (usually `desktop`) and the exact candidate SHA from PR #16.
+Set the Profile name Harness Desktop actually runs (usually `desktop`) and the exact 0.7.1 candidate SHA (the head of the 0.7.1 fix PR).
 
 ```powershell
 $DshProfile = 'desktop'
-$Candidate = 'CANDIDATE_SHA'   # full 40-character SHA of the tested PR #16 head
+$Candidate = 'CANDIDATE_SHA'   # full 40-character SHA of the tested 0.7.1 PR head
 $DshHome = if ($env:DSH_HOME) { $env:DSH_HOME } else { Join-Path $env:USERPROFILE '.dsh' }
 $ProfileDir = Join-Path $DshHome "profiles\$DshProfile"
 $Backup = Join-Path $env:USERPROFILE ("dsh-acceptance-backup-" + (Get-Date -Format 'yyyyMMdd-HHmmss'))
@@ -44,9 +55,9 @@ Record the Harness version from **Help → About** (expected `0.2.2-rc.3`) and c
 dsh --profile $DshProfile --dump-config | Select-String 'abinadwan'
 ```
 
-## 1. v0.6.3 baseline (before installing 0.7.0)
+## 1. Baseline (before installing 0.7.1)
 
-With the existing v0.6.3 installation: Components list shows Environment & Context, Humanizer, Personal Profile; Personal Profile Off; Environment tab works in a conversation; Humanizer can be invoked; **Suite updates** shows Host and browser module v0.6.3. Record PASS/FAIL. Do not continue on FAIL.
+With the existing installation (v0.6.3, or the 0.7.0 candidate from the first run): Components list shows Environment & Context, Humanizer, Personal Profile; Personal Profile Off; Environment tab works in a conversation; Humanizer can be invoked; **Suite updates** shows Host and browser module matching that version. Record PASS/FAIL. On 0.7.0 the Personal Profile page is expected to be blank; that is the known bug, not a reason to stop.
 
 ## 2. Install the candidate
 
@@ -64,7 +75,7 @@ dsh plugin --profile $DshProfile remove @abinadwan/dsh-plugins-suite
 dsh plugin --profile $DshProfile add "github:abinadwan/DSH-ABINADWAN-Plugins-Suite#$Candidate"
 ```
 
-Start Harness Desktop. **Suite updates** must show Host **and** browser module `v0.7.0`, and no version-mismatch warning.
+Start Harness Desktop. **Suite updates** must show Host **and** browser module `v0.7.1`, and no version-mismatch warning.
 
 For a **clean installation**, repeat in a disposable Profile or Windows account that never had the suite.
 
@@ -97,6 +108,8 @@ Expected: one `abinadwan-personal-profile` row whose `config.record` holds `vers
 |---|---|---|---|
 | Install | Clean installation | Three Components; Personal Profile Off | NOT TESTED |
 | Install | Upgrade from v0.6.3 | Same toggles as before; one Personal Profile row; no config error | NOT TESTED |
+| Render | Enable Personal Profile, select it in the left sidebar | Page shows the title, workspace selector, tabs and "Settings loaded." status; never a blank area | NOT TESTED |
+| Render | Restart Harness with Personal Profile On, open it again | Page renders; no `slot entry crashed in 'main'` in DevTools | NOT TESTED |
 | Install | Personal Profile Off by default | No left-sidebar entry, no page, no detail section | NOT TESTED |
 | Lifecycle | Toggle each Component on/off three times | Each appears/disappears once; others unaffected; no duplicate tab, button or launcher | NOT TESTED |
 | Lifecycle | Official bundle disable/enable | All three contributions removed/restored | NOT TESTED |
@@ -131,4 +144,4 @@ Expected: one `abinadwan-personal-profile` row whose `config.record` holds `vers
 | Existing | Humanizer | Skill registered when on, removed when off; presets never invoke it | NOT TESTED |
 | Existing | Update checker | Correct versions; check runs; no install without confirmation | NOT TESTED |
 
-Return the filled matrix (results and versions only) on PR #16.
+Return the filled matrix (results and versions only) on the 0.7.1 PR.

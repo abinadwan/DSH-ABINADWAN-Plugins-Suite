@@ -104,7 +104,7 @@ test('backup text excludes active grants and requires a separate explicit restor
 })
 test('Host schema declares only supported fields and version/lock agree',()=>{
   const pkg=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'))
-  assert.equal(pkg.version,'0.7.0')
+  assert.equal(pkg.version,'0.7.1')
   if(existsSync(new URL('../package-lock.json',import.meta.url))){
     const lock=JSON.parse(readFileSync(new URL('../package-lock.json',import.meta.url),'utf8'))
     assert.equal(lock.version,pkg.version);assert.equal(lock.packages[''].version,pkg.version)
