@@ -106,7 +106,13 @@ Expected: one `abinadwan-personal-profile` row whose `config.record` holds `vers
 | Persistence | Save fictional values | "Save confirmed by Harness" | NOT TESTED |
 | Persistence | Close/reopen page; full restart | Values persist | NOT TESTED |
 | Persistence | Edit existing values; Save | Confirmed; new values persist | NOT TESTED |
-| Persistence | Reset draft / Reload without saving | Unsaved edits discarded; stored values unchanged | NOT TESTED |
+| Persistence | Reset draft without saving | Draft cleared; stored values unchanged until Save | NOT TESTED |
+| Persistence | Edit, then Reload → **Keep editing** | Confirmation shown (Arabic and English); whole draft kept | NOT TESTED |
+| Persistence | Edit, then Reload → **Discard changes and reload** | Stored values shown; edits gone | NOT TESTED |
+| Persistence | After a failed or conflicting save, Reload | Confirmation shown; cancel keeps draft and error | NOT TESTED |
+| Persistence | Edit, then disconnect/reconnect (restart the Host while the window stays open, where possible) | Draft kept; "Connection was reset" message; Save is revision-checked | NOT TESTED |
+| Isolation | More than 64 Workspaces with overrides (fictional) | All saved and restored after restart; no edits dropped | NOT TESTED |
+| Isolation | Set a Workspace back to inherit with all Private | Its row disappears from `cordis.patch.yml` (§4); it inherits global | NOT TESTED |
 | Persistence | Two windows: save in A, then save in B | B shows the conflict message; A's value is kept | NOT TESTED |
 | Permissions | Settings access denied or read-only | Page shows unavailable/disabled; nothing saved | NOT TESTED |
 | Isolation | Different overrides in two real Workspaces | Each Workspace keeps its own; inherit shows global | NOT TESTED |

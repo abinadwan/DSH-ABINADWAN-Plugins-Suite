@@ -25,7 +25,7 @@ export const Config=z.object({
       gender:choice(['','male','female','unspecified'],'')}).default(emptyRecord().information),
     global:preferences(),
     workspaces:z.array(z.object({id:z.string().min(1).max(256).required(),
-      override:z.boolean().default(false),preferences:preferences(),policies:policies()})).max(64).default([]),
+      override:z.boolean().default(false),preferences:preferences(),policies:policies()})).default([]),
     allowPersonalInformation:z.boolean().default(false),allowCloud:z.boolean().default(false),
   }).default(emptyRecord()).volatile(),
 })

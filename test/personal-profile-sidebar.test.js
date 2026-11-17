@@ -82,7 +82,7 @@ test('revision conflicts do not pretend to save; user must reload before retryin
   assert.match(byId('save-status').textContent,/نافذة أخرى/)
   assert.equal(byId('save').disabled,true)
   assert.equal(transport.view().value.record.information.gender,'')
-  await click('reload');assert.equal(byId('gender').value,'')
+  await click('reload');await click('reload-confirm');assert.equal(byId('gender').value,'')
 })
 test('read or write access missing: no settings write',async t=>{
   const transport=mockSettings()

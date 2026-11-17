@@ -27,6 +27,11 @@ All notable changes are documented here.
 - Outdated render test expecting the former "design draft" text.
 - An invalid backup review could clear a conflict/failed state and re-enable Save before reload (the Host revision check still prevented an overwrite).
 
+### Hardening
+
+- Removed the hard-coded 64-Workspace limit from the schema, decoder, editing and backup merge. Edits beyond 64 Workspaces were silently ignored before. Only Workspaces that differ from the inherited/Private defaults are stored. A single 3,000,000-character payload guard for the whole record remains and reports an explicit error.
+- **Reload** now asks for confirmation (Arabic and English) when the draft has unsaved changes or the last save failed or conflicted; cancelling keeps the whole draft. A connection reset no longer silently replaces a dirty draft by re-reading.
+
 ## [0.6.3] — Unreleased
 
 ### Changed

@@ -752,6 +752,11 @@ window.__ModuleLoader__.load({
       information:{preferredName:'',nationality:'',gender:''},global:neutralProfilePreferences(),
       workspaces:[],allowPersonalInformation:false,allowCloud:false})
     const newWorkspaceRecord = id => ({id,override:false,preferences:neutralProfilePreferences(),policies:privatePolicies()})
+    // Payload guard for the whole record (serialized UTF-16 units), not a
+    // workspace count: Harness owns Workspaces. Matches the restore text limit.
+    const PROFILE_MAX_CHARS = 3_000_000
+    const profileTooLarge = value => JSON.stringify(value).length > PROFILE_MAX_CHARS
+    const isDefaultWorkspace = w => JSON.stringify(w)===JSON.stringify(newWorkspaceRecord(w.id))
     const profileKeys = (value,keys) => value && typeof value==='object' && !Array.isArray(value) &&
       Object.keys(value).length===keys.length && keys.every(key=>Object.hasOwn(value,key))
     // Strict wire/backup decoder. Reject unknown fields and invalid versions;
@@ -769,10 +774,11 @@ window.__ModuleLoader__.load({
         return {style:p.style,responseLanguage:p.responseLanguage,traits:{...p.traits},presets:[...p.presets],custom:p.custom}
       }
       check(profileKeys(value,['version','locale','information','global','workspaces','allowPersonalInformation','allowCloud']))
+      check(!profileTooLarge(value))
       check(value.version===1&&['ar','en'].includes(value.locale)&&typeof value.allowPersonalInformation==='boolean'&&typeof value.allowCloud==='boolean')
       const i=value.information
       check(profileKeys(i,PERSONAL_FIELDS)&&validText(i.preferredName,128)&&validText(i.nationality,128)&&['','male','female','unspecified'].includes(i.gender))
-      check(Array.isArray(value.workspaces)&&value.workspaces.length<=64)
+      check(Array.isArray(value.workspaces))
       const seen=new Set()
       const workspaces=value.workspaces.map(w=>{
         check(profileKeys(w,['id','override','preferences','policies'])&&validText(w.id,256)&&w.id.length>0&&
@@ -795,7 +801,6 @@ window.__ModuleLoader__.load({
     function mergeBackup(current,incoming) {
       const known=new Set(current.workspaces.map(w=>w.id))
       const workspaces=[...current.workspaces,...incoming.workspaces.filter(w=>!known.has(w.id))]
-      if(workspaces.length>64) throw new Error('Too many workspaces')
       return withoutAuthority({...current,information:Object.fromEntries(PERSONAL_FIELDS.map(k=>[k,current.information[k]||incoming.information[k]])),workspaces})
     }
     function PersonalProfilePage({settings,workspaceSource,connectionSource,useRemoteAccess}) {
@@ -822,7 +827,7 @@ window.__ModuleLoader__.load({
       const lifetimeValid = g=>connectionSource.getSnapshot()===g&&access.current.canRead
       const load = async () => {
         const id=++request.current,g=connectionSource.getSnapshot()
-        inFlight.current=true;setStatus('loading');setRevision(null);setSaved(null)
+        inFlight.current=true;setConfirmReload(false);setStatus('loading');setRevision(null);setSaved(null)
         setRecord(emptyProfileRecord());setBackupText('');setRestoreText('');setRestoreReview(null);setRestoreAck(false)
         if(!access.current.canRead){inFlight.current=false;setStatus('unavailable');return}
         try {
@@ -835,11 +840,21 @@ window.__ModuleLoader__.load({
         } catch {if(id===request.current&&lifetimeValid(g))setStatus('unavailable')}
         finally {if(id===request.current)inFlight.current=false}
       }
-      React.useEffect(()=>{void load();return()=>{request.current++;inFlight.current=false}},[canRead,generation])
+      const [confirmReload,setConfirmReload]=React.useState(false)
+      const dirtyRef=React.useRef(false)
+      React.useEffect(()=>{
+        // A reconnect or access change re-reads only a clean page. A dirty draft
+        // stays on screen: Save remains revision-checked, Reload asks first.
+        if(dirtyRef.current){
+          request.current++;inFlight.current=false
+          setStatus(access.current.canRead?'reconnected':'unavailable')
+        }else void load()
+        return()=>{request.current++;inFlight.current=false}
+      },[canRead,generation])
       const save = async () => {
         if(inFlight.current||revision===null||!canRead||!canWrite||generation!==connectionSource.getSnapshot())return
         let next
-        try{next=decodeProfile(record)}catch{setStatus('invalid');return}
+        try{if(profileTooLarge(record)){setStatus('tooLarge');return}next=decodeProfile(record)}catch{setStatus('invalid');return}
         const id=++request.current,g=generation
         inFlight.current=true;setStatus('saving')
         try{
@@ -858,6 +873,9 @@ window.__ModuleLoader__.load({
       const busy=status==='loading'||status==='saving'
       const editable=canRead&&canWrite&&revision!==null&&!busy&&generation===connectionSource.getSnapshot()
       const dirty=saved!==null&&JSON.stringify(record)!==JSON.stringify(saved)
+      dirtyRef.current=dirty
+      const unsavedWork=dirty||status==='failed'||status==='conflict'||status==='reconnected'
+      const requestReload=()=>{if(unsavedWork)setConfirmReload(true);else void load()}
       const profiles=workspacesSnapshot?.phase==='ready'&&workspacesSnapshot?.state!=='error'
         ?(workspacesSnapshot.items||[]).filter(w=>typeof w.workspaceId==='string'&&w.workspaceId.length>0&&w.workspaceId.length<=256)
         :[]
@@ -867,8 +885,10 @@ window.__ModuleLoader__.load({
         if(!activeWorkspace)return
         setRecord(old=>{
           const found=old.workspaces.find(w=>w.id===activeWorkspace)
-          if(!found&&old.workspaces.length>=64)return old
           const next=updater(found||newWorkspaceRecord(activeWorkspace))
+          // A row equal to the defaults (inherit, neutral, all Private) is not stored.
+          const others=old.workspaces.filter(w=>w.id!==activeWorkspace)
+          if(isDefaultWorkspace(next))return found?{...old,workspaces:others}:old
           return {...old,workspaces:found?old.workspaces.map(w=>w.id===activeWorkspace?next:w):[...old.workspaces,next]}
         })
       }
@@ -893,6 +913,10 @@ window.__ModuleLoader__.load({
         reset:'إعادة ضبط المسودة',missing:'غير محدد',noInstruction:'لا توجد تعليمات.',save:'حفظ التغييرات',reload:'إعادة التحميل (تجاهل المسودة)',
         loading:'جارٍ قراءة الإعدادات…',unavailable:'الإعدادات المحلية غير متاحة أو غير قابلة للكتابة. لم يتم حفظ شيء.',ready:'الإعدادات محمّلة.',saving:'جارٍ الحفظ…',saved:'تم تأكيد الحفظ من Harness.',
         failed:'تعذر تأكيد الحفظ. أعد التحميل للتحقق قبل المحاولة.',conflict:'تغيرت الإعدادات في نافذة أخرى. أعد التحميل ثم أعد تعديلها.',invalid:'الإعدادات أو النسخة غير صالحة.',dirty:'توجد تغييرات غير محفوظة.',
+        tooLarge:'الإعدادات أكبر من الحد المسموح للحفظ. لم يُحفظ شيء، وبقيت تعديلاتك في المسودة.',
+        reconnected:'أُعيد الاتصال. بقيت مسودتك في الصفحة: يمكنك الحفظ (يتحقق Harness من الإصدار) أو إعادة التحميل.',
+        discardWarning:'لديك تغييرات غير محفوظة ستُفقد عند إعادة التحميل. للاحتفاظ بها انسخ نسخة JSON أولًا من «النسخ والاستعادة».',
+        discardConfirm:'تجاهل التغييرات وإعادة التحميل',discardCancel:'متابعة التعديل',
       }
       const en = {
         information:'My Information',instructions:'Agent Instructions',access:'Access Control',backup:'Backup & Restore',privacy:'Privacy & Security',title:'Personal Profile',
@@ -912,6 +936,10 @@ window.__ModuleLoader__.load({
         reset:'Reset draft',missing:'Unspecified',noInstruction:'No instructions.',save:'Save changes',reload:'Reload (discard draft)',
         loading:'Reading settings…',unavailable:'Local settings unavailable or not writable. Nothing saved.',ready:'Settings loaded.',saving:'Saving…',saved:'Save confirmed by Harness.',
         failed:'Save not confirmed. Reload to verify before retrying.',conflict:'Settings changed in another window. Reload and reapply edits.',invalid:'Invalid settings or backup.',dirty:'Unsaved changes.',
+        tooLarge:'Settings are too large to save. Nothing was saved; your edits remain in the draft.',
+        reconnected:'Connection was reset. Your draft is kept on this page: you can Save (Harness checks the revision) or Reload.',
+        discardWarning:'You have unsaved changes that Reload will discard. To keep them, first copy a JSON backup from Backup & Restore.',
+        discardConfirm:'Discard changes and reload',discardCancel:'Keep editing',
       }
       const t = key => (language === 'ar' ? ar : en)[key] || key
       const rtl = language === 'ar'
@@ -1072,9 +1100,15 @@ window.__ModuleLoader__.load({
           notice,
           h('div',{style:{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center',marginBottom:12}},
             h('button',{id:'pp-save',type:'button',style:btn,disabled:!editable||!dirty||status==='conflict'||status==='failed',onClick:save},t('save')),
-            h('button',{id:'pp-reload',type:'button',style:btn,disabled:busy||!canRead,onClick:load},t('reload')),
+            h('button',{id:'pp-reload',type:'button',style:btn,disabled:busy||!canRead,onClick:requestReload},t('reload')),
             h('button',{type:'button',style:btn,disabled:!editable,onClick:()=>{setRecord({...emptyProfileRecord(),locale:language});setRestoreReview(null);setBackupText('');setRestoreText('')}},t('reset'))),
           h('p',{id:'pp-save-status',role:'status'},t(status)+(dirty?' '+t('dirty'):'')),
+          confirmReload?h('div',{id:'pp-reload-prompt',role:'alert',style:{padding:'12px 15px',marginBottom:12,
+            border:'1px solid rgba(208,58,52,.6)',borderRadius:10,background:'rgba(208,58,52,.08)'}},
+            h('p',{style:{margin:'0 0 10px'}},t('discardWarning')),
+            h('div',{style:{display:'flex',gap:10,flexWrap:'wrap'}},
+              h('button',{id:'pp-reload-confirm',type:'button',style:btn,disabled:busy||!canRead,onClick:()=>{void load()}},t('discardConfirm')),
+              h('button',{id:'pp-reload-cancel',type:'button',style:btn,onClick:()=>setConfirmReload(false)},t('discardCancel')))):null,
           h('fieldset',{disabled:!editable,style:{border:0,margin:0,padding:0,minWidth:0}},
             activeWorkspace?dropdown('profile',t('profile'),activeWorkspace,profiles.map(w=>[w.workspaceId,w.title||w.workspaceId]),v=>{setProfile(v);setRestoreReview(null);setRestoreAck(false)}):null,
           h('nav',{role:'tablist','aria-label':t('title'),
