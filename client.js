@@ -750,17 +750,13 @@ window.__ModuleLoader__.load({
       const [page, setPage] = React.useState('information')
       const [profile, setProfile] = React.useState('Synthetic Studio')
       const [values, setValues] = React.useState({})
-      const [custom, setCustom] = React.useState([])
-      const [newLabel, setNewLabel] = React.useState('')
       const [instructionScope, setInstructionScope] = React.useState('global')
       const [globalPreferences, setGlobalPreferences] = React.useState(neutralProfilePreferences)
       const [overrides, setOverrides] = React.useState({})
       const [policies, setPolicies] = React.useState({})
       const [optIn, setOptIn] = React.useState(false)
+      const [cloud, setCloud] = React.useState({})
       const [approval, setApproval] = React.useState('')
-      const [locked, setLocked] = React.useState(false)
-      const [autoLock, setAutoLock] = React.useState('5')
-      const [sessionVisible, setSessionVisible] = React.useState(true)
       const [backupReview, setBackupReview] = React.useState('')
       const [backupStrategy, setBackupStrategy] = React.useState('merge')
       const [backupAck, setBackupAck] = React.useState(false)
@@ -770,9 +766,11 @@ window.__ModuleLoader__.load({
         subtitle:'صفحة تجريبية داخل التطبيق، ببيانات اصطناعية فقط',
         warning:'معاينة فقط — لا تدخل بيانات حقيقية. لا يوجد حفظ أو تشفير أو اتصال بالوكيل. ستضيع التغييرات عند إعادة تحميل الواجهة.',
         profile:'الملف التجريبي', language:'اللغة', preferredName:'الاسم المفضل',
-        fullName:'الاسم الكامل', dateOfBirth:'تاريخ الميلاد', nationality:'الجنسية',
-        gender:'الجنس', custom:'حقول إضافية', add:'أضف حقلًا تجريبيًا', remove:'حذف',
-        label:'اسم الحقل', global:'تعليمات عامة', override:'تعليمات خاصة بهذا الملف',
+        nationality:'الجنسية', gender:'الجنس',
+        global:'تعليمات عامة', override:'تعليمات خاصة بهذا الملف',
+        cloud:'السماح بإرسال المعلومات الشخصية إلى مزود خارجي (محاكاة)',
+        cloudHint:'مغلق افتراضيًا لكل بيئة. السماح بالوصول لا يعني السماح بالإرسال الخارجي.',
+        plainNotice:'التصميم الجديد يحفظ الإعدادات كنص عادي محليًا. لا تكتب كلمات مرور أو أسرارًا أو معلومات حساسة في التعليمات.',
         scope:'نطاق التعليمات', environment:'إعدادات البيئة الحالية',
         personality:'الشخصية', styleTone:'الأسلوب والنبرة', responseLanguage:'لغة الردود',
         characteristics:'خصائص الردود', presets:'خيارات سلوكية جاهزة', customInstructions:'تعليمات مخصصة',
@@ -791,9 +789,7 @@ window.__ModuleLoader__.load({
         backupHint:'مراجعة الإجراءات فقط. لا يتم استيراد أو تصدير أي ملفات.',
         export:'مراجعة التصدير', import:'مراجعة الاستعادة', merge:'دمج', replace:'استبدال الكل',
         confirm:'أفهم أن هذا مجرد استعراض ولن يُحفظ شيء.', unavailable:'التنفيذ غير متاح',
-        lock:'محاكاة القفل', unlock:'إلغاء القفل التجريبي', lockText:'الحقول مخفية لمحاكاة القفل فقط، دون حماية فعلية.',
-        autoLock:'القفل التلقائي (تصميم فقط)', never:'أبدًا', five:'5 دقائق', fifteen:'15 دقيقة',
-        endSession:'إنهاء جلسة تجريبية', history:'سجل الموافقات', historyText:'لا يوجد سجل حقيقي. بيانات العرض اصطناعية.',
+        history:'سجل الموافقات', historyText:'لا يوجد سجل حقيقي. بيانات العرض اصطناعية.',
         privacyWarning:'هذا العرض ليس مخزنًا آمنًا. لا تستخدم بيانات شخصية أو كلمات مرور.',
         reset:'إعادة ضبط المعاينة', missing:'غير محدد', note:'كل تغيير هنا مؤقت ومحلي في ذاكرة الصفحة.',
         synthetic:'مثال اصطناعي فقط', yes:'نعم', no:'لا', noInstruction:'لا توجد تعليمات.',
@@ -804,9 +800,11 @@ window.__ModuleLoader__.load({
         subtitle:'In-app preview with fictional data only',
         warning:'Preview only — do not enter real information. No saving, encryption or agent connection. Changes disappear on reload.',
         profile:'Synthetic profile', language:'Language', preferredName:'Preferred name',
-        fullName:'Full name', dateOfBirth:'Date of birth', nationality:'Nationality',
-        gender:'Gender', custom:'Custom fields', add:'Add synthetic field', remove:'Remove',
-        label:'Field label', global:'Global instructions', override:'Profile instructions',
+        nationality:'Nationality', gender:'Gender',
+        global:'Global instructions', override:'Profile instructions',
+        cloud:'Allow personal information to be sent to an external provider (simulation)',
+        cloudHint:'Off by default in each environment. Permission to read does not imply permission to send externally.',
+        plainNotice:'The new design stores settings as local plain text. Never enter passwords, secrets or sensitive information in instructions.',
         scope:'Instruction scope', environment:'Current environment',
         personality:'Personality', styleTone:'Style and tone', responseLanguage:'Response language',
         characteristics:'Response characteristics', presets:'Behavior presets', customInstructions:'Custom instructions',
@@ -825,10 +823,7 @@ window.__ModuleLoader__.load({
         backupHint:'Review only. No file is imported or exported.',
         export:'Review export', import:'Review restore', merge:'Merge', replace:'Replace all',
         confirm:'I understand this is a demonstration; no changes will be saved.',
-        unavailable:'Unavailable', lock:'Simulate lock', unlock:'Reset simulated lock',
-        lockText:'Editors are hidden for demonstration only. No real protection.',
-        autoLock:'Automatic lock (design only)', never:'Never', five:'5 minutes', fifteen:'15 minutes',
-        endSession:'End synthetic session', history:'Consent history',
+        unavailable:'Unavailable', history:'Consent history',
         historyText:'No real history is collected. All examples are fictional.',
         privacyWarning:'This preview is not secure storage. Never enter personal data or passwords.',
         reset:'Reset preview', missing:'Unspecified', note:'Changes exist only in this browser view.',
@@ -845,7 +840,7 @@ window.__ModuleLoader__.load({
       const btn = { border:'1px solid rgba(128,128,128,.35)', borderRadius:8,
         padding:'9px 13px', font:'inherit', background:'rgba(128,128,128,.08)',
         color:'inherit', cursor:'pointer' }
-      const fields = ['preferredName','fullName','dateOfBirth','nationality','gender']
+      const fields = ['preferredName','nationality','gender']
       const profiles = ['Synthetic Studio','Synthetic Lab']
       const sections = ['information','instructions','access','backup','privacy']
       function card(title, ...children) {
@@ -871,27 +866,13 @@ window.__ModuleLoader__.load({
         background:'rgba(208,158,52,.1)',fontSize:13,lineHeight:1.7} }, t('warning'))
       const setField = (id,value) => setValues(prev => ({...prev,[id]:value}))
       let contents
-      if (locked) {
-        contents = card(t('privacy'), h('p',{role:'status'},t('lockText')),
-          h('button',{type:'button',style:btn,onClick:()=>setLocked(false)},t('unlock')))
-      } else if (page === 'information') {
-        contents = h(React.Fragment,null,
-          card(t('information'),
-            h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))',gap:'0 18px'}},
-              ...fields.map(id=>id === 'gender'
-                ? dropdown(id,t(id),values.gender || '',[['',t('missing')],['male',rtl?'ذكر':'Male'],['female',rtl?'أنثى':'Female'],['unspecified',t('missing')]],v=>setField(id,v))
-                : input(id,t(id),values[id] || '',v=>setField(id,v),
-                  id==='dateOfBirth'?{placeholder:'YYYY-MM-DD',maxLength:10}:{})))),
-          card(t('custom'),
-            ...custom.map(f=>h('div',{key:f.id,style:{display:'flex',gap:10,alignItems:'end',flexWrap:'wrap'}},
-              h('div',{style:{flex:'1 1 220px'}},input(f.id,f.label,values[f.id] || '',v=>setField(f.id,v))),
-              h('button',{type:'button',style:{...btn,marginBottom:14},
-                onClick:()=>{setCustom(old=>old.filter(x=>x.id!==f.id));setField(f.id,'')}},t('remove')))),
-            input('new-label',t('label'),newLabel,setNewLabel,{maxLength:80}),
-            h('button',{type:'button',style:btn,disabled:!newLabel.trim()||custom.length>=8,
-              onClick:()=>{const next='example'+(custom.length+1)+'-'+Date.now().toString(36);
-                setCustom(old=>[...old,{id:next,label:newLabel.trim()}]);setNewLabel('')}},
-              t('add'))))
+      if (page === 'information') {
+        contents = card(t('information'),
+          h('p',{style:muted},t('plainNotice')),
+          h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))',gap:'0 18px'}},
+            ...fields.map(id=>id === 'gender'
+              ? dropdown(id,t(id),values.gender || '',[['',t('missing')],['male',rtl?'ذكر':'Male'],['female',rtl?'أنثى':'Female'],['unspecified',t('missing')]],value=>setField(id,value))
+              : input(id,t(id),values[id] || '',value=>setField(id,value),{maxLength:120}))))
       } else if (page === 'instructions') {
         const environmentScope = instructionScope === 'environment'
         const override = Object.hasOwn(overrides,profile)
@@ -954,6 +935,7 @@ window.__ModuleLoader__.load({
               h('span',null,h('strong',null,localLabel(item)),
                 h('span',{style:{display:'block',fontSize:12,opacity:.76}},rtl?item[3]:item[4]))))) : null,
           editable ? card(t('customInstructions'),
+            h('p',{style:muted},t('plainNotice')),
             h('label',{htmlFor:environmentScope?'pp-override':'pp-global',style:label},t('customInstructions')),
             h('textarea',{id:environmentScope?'pp-override':'pp-global',rows:6,maxLength:8192,style:control,
               value:effective.custom,onChange:e=>setPreference('custom',e.target.value),dir:'auto'}),
@@ -971,10 +953,14 @@ window.__ModuleLoader__.load({
                 'aria-label':t('optIn')}),t('optIn')),
             h('p',{style:{fontSize:13,opacity:.78}},t('synthetic')),
             h('h3',{style:{fontSize:15}},t('fieldPolicies')),
-            ...[...fields,...custom.map(x=>x.id)].map(id=>dropdown('policy-'+id,
-              custom.find(x=>x.id===id)?.label||t(id),
+            ...fields.map(id=>dropdown('policy-'+id,t(id),
               policy[id]||'private',[['private',t('private')],['ask_first',t('ask')],['allow',t('allow')]],
               v=>setPolicies(old=>({...old,[profile]:{...(old[profile]||{}),[id]:v}}))))),
+          card(t('privacy'),
+            h('label',{style:{display:'flex',gap:10,alignItems:'center'}},
+              h('input',{id:'pp-cloud',type:'checkbox',checked:cloud[profile]===true,
+                onChange:e=>setCloud(old=>({...old,[profile]:e.target.checked}))}),t('cloud')),
+            h('p',{style:muted},t('cloudHint'))),
           card(t('approval'),
             h('div',{style:{display:'flex',gap:8,flexWrap:'wrap'}},
               ...[['once',t('once')],['session',t('session')],['deny',t('deny')]].map(([k,l])=>
@@ -997,13 +983,8 @@ window.__ModuleLoader__.load({
         contents = h(React.Fragment,null,
           card(t('privacy'),
             h('p',null,t('privacyWarning')),
-            h('button',{type:'button',style:btn,onClick:()=>setLocked(true)},t('lock')),
-            dropdown('auto-lock',t('autoLock'),autoLock,
-              [['0',t('never')],['5',t('five')],['15',t('fifteen')]],setAutoLock)),
-          card(t('session'),
-            h('p',null,sessionVisible?t('synthetic'):t('missing')),
-            h('button',{type:'button',style:btn,disabled:!sessionVisible,
-              onClick:()=>setSessionVisible(false)},t('endSession'))),
+            h('p',null,t('plainNotice')),
+            h('p',null,t('cloudHint'))),
           card(t('history'),h('p',null,t('historyText'))))
       }
       return h('div',{'data-personal-profile-panel':'preview-only',lang:language,
@@ -1022,9 +1003,8 @@ window.__ModuleLoader__.load({
             dropdown('profile',t('profile'),profile,profiles.map(x=>[x,x]),
               v=>{setProfile(v);setApproval('')}),
             h('button',{type:'button',style:btn,onClick:()=>{
-              setValues({});setCustom([]);setNewLabel('');setGlobalPreferences(neutralProfilePreferences());setInstructionScope('global');
-              setOverrides({});setPolicies({});setOptIn(false);setApproval('');
-              setLocked(false);setAutoLock('5');setSessionVisible(true);
+              setValues({});setGlobalPreferences(neutralProfilePreferences());setInstructionScope('global');
+              setOverrides({});setPolicies({});setOptIn(false);setCloud({});setApproval('');
               setBackupReview('');setBackupStrategy('merge');setBackupAck(false);
               setPage('information');setProfile(profiles[0])
             }},t('reset'))),
@@ -1041,8 +1021,7 @@ window.__ModuleLoader__.load({
 
     function ProfileDraft() {
       const fields = [
-        ['Name', 'Preferred name. Full name is optional.'],
-        ['Date of birth', 'Optional.'],
+        ['Preferred name', 'Optional nickname; avoid identifying or sensitive information.'],
         ['Nationality', 'Optional.'],
         ['Gender', 'User-selected. May remain unspecified.'],
         ['Custom agent instructions', 'Empty by default. Optional templates below.'],
@@ -1051,7 +1030,7 @@ window.__ModuleLoader__.load({
       return h('section', { 'data-personal-profile-draft': '',
         style: { borderTop: border, padding: '20px 0', lineHeight: 1.65 } },
         h('h3', null, 'Personal Profile — design draft'),
-        h('p', null, 'Read-only preliminary fields. Privacy, storage, access, export and deletion design awaits approval.'),
+        h('p', null, 'Reduced-scope preview. Plain local settings are under test; Host access and agent integration are not active.'),
         h('dl', null, fields.map(([label, description]) => h('div', { key: label, style: { marginBottom: 12 } },
           h('dt', { style: { fontWeight: 650 } }, label),
           h('dd', { style: { margin: '4px 0 0', opacity: .8 } }, description)))),
@@ -1060,7 +1039,7 @@ window.__ModuleLoader__.load({
           h('li', null, 'Use concise, direct answers and explain technical terms when needed.'),
           h('li', null, 'Write in clear Arabic and use examples when they help.'),
           h('li', null, 'Use a professional tone and preserve source links.')),
-        h('p', null, 'Proposed behavior after approval: apply approved style instructions automatically. Access personal or sensitive information only when relevant and explicitly allowed.'),
+        h('p', null, 'Future behavior: apply enabled style preferences and access only the three supported personal fields when relevant and explicitly allowed. Sending personal information to an external provider requires separate permission.'),
         h('p', { role: 'note' }, 'This scaffold collects, saves and transmits zero profile information. Enabling it only shows this draft.'))
     }
     const PROFILE_MODULE = TYPE + '/personal-profile'

@@ -2,6 +2,12 @@
 
 All notable changes are documented here.
 
+## Unreleased — simplified Personal Profile candidate
+
+- Limit optional information to preferred name, nationality and gender; remove full name, birth date, arbitrary personal fields and automatic lock.
+- Keep custom instructions and structured personality settings; add a separate default-off external sharing control in the preview.
+- Add internally tested plain local preferences storage, revision checks, scoped access decisions and backup review; retire custom encryption from the runtime package. Actual Host save/restore and model integration remain inactive.
+
 ## [0.6.3] — Unreleased
 
 ### Changed

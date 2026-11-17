@@ -16,8 +16,18 @@ try {
   const manifest = JSON.parse(readFileSync(join(directory, 'package.json'), 'utf8'))
   if (manifest.version !== packed.version) throw new Error('Packed version mismatch')
   for (const folder of ['test', 'test-support']) cpSync(folder, join(directory, folder), { recursive: true })
+  // Archived prototype tests still run in the source suite. They cannot run
+  // against a package that deliberately excludes the historical implementation.
+  const archived = new Set([
+    'personal-profile-boundaries.test.js','personal-profile-consent.test.js','personal-profile-core.test.js',
+    'personal-profile-host-identity.test.js','personal-profile-instructions.test.js',
+    'personal-profile-integration.test.js','personal-profile-permissions.test.js',
+    'personal-profile-production-readiness.test.js','personal-profile-security-regressions.test.js',
+    'personal-profile-storage.test.js','personal-profile-ui.test.js',
+  ])
+  console.log('Source-only historical prototype tests: '+[...archived].join(', '))
   const tests = readdirSync(join(directory, 'test'))
-    .filter(file => file.endsWith('.test.js')).map(file => join(directory, 'test', file))
+    .filter(file => file.endsWith('.test.js') && !archived.has(file)).map(file => join(directory, 'test', file))
   const result = spawnSync(process.execPath, ['--test', ...tests], { cwd: directory, stdio: 'inherit' })
   if (result.error) throw result.error
   if (result.status !== 0) throw new Error('Packed-artifact tests failed')

@@ -60,7 +60,7 @@ The skill runs when the agent loads it through DSH. Automatic response intercept
 
 This Component exposes a **read-only design draft** on the suite detail page when enabled. It accepts zero profile values. Profile storage, retrieval, transmission, consent enforcement and automatic style application await design approval.
 
-The preliminary fields cover a preferred name with optional full name, optional date of birth and nationality, user-selected gender, custom instructions empty by default with optional templates, and an opt-in for using approved profile information. The proposed behavior applies approved style instructions automatically and accesses personal or sensitive information only when relevant and allowed. See the per-plugin document for decisions still awaiting approval.
+The reduced design supports only optional preferred name, nationality and gender, plus structured style preferences and custom instructions. Full name, date of birth and user-defined personal fields have been removed. Plain local settings are under internal test; no encryption or password/automatic-lock workflow is required. Personal-field access defaults to Private and external sharing defaults to Off per environment. No Host save connection or agent access is active yet. See the [component documentation](plugins/personal-profile/README.md).
 
 ## Installation and updates
 

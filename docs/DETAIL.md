@@ -20,7 +20,7 @@ Enabled by default. Registers the runtime Skill **abinadwan-humanizer**. Ask the
 
 <img src="../plugins/personal-profile/icon.png" width="64" alt="Amber ID and gear"/>
 
-Disabled by default. Enabling displays a read-only field draft below. Privacy and storage design awaits approval. The draft accepts, saves and transmits zero profile values. Automatic approved style instructions and relevant, permitted personal-data access remain proposed future behavior.
+Disabled by default. Enabling shows a synthetic preview of three optional personal fields, structured agent preferences and separate access/external-sharing choices. Local plaintext preferences storage is under internal test, not connected to the Host. No profile values are persisted by the UI or sent to the agent.
 
 ## Versions
 

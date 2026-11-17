@@ -1,4 +1,4 @@
-// Deliberate scaffold. No Config schema, record reads, storage, network,
-// instruction injection or tools are registered before design approval.
+// Deliberately inert: approved reduced preferences design is not yet wired
+// to an authenticated Host management or model/consent transport.
 export const name = 'abinadwan-personal-profile-draft'
 export function apply() {}

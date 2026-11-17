@@ -1,3 +1,7 @@
+# Superseded design — historical QA
+
+The encrypted Personal Profile design below was retired by the owner's scope decision on 2026-11-17. The reduced plaintext preferences design is now authoritative: see [new component scope](../plugins/personal-profile/README.md). The historical code remains source-only, excluded from the runtime package. Prior tests were retained for regression history, not as requirements to activate encryption or DPAPI. The two reproduced regression fixes passed follow-up CI 44052493901 and 44052486431. No real data were migrated or deleted.
+
 # Personal Profile production-readiness QA — independent branch
 
 Base: main at 485c8dd92cff3960442750ca3e2bfcfd65d4b895 (v0.6.3). No release-version bump or activation of runtime features; internal storage and gate corrections are confined to this branch. This is synthetic QA, not deployment approval.

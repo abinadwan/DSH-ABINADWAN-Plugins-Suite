@@ -18,8 +18,10 @@ test('package policy rejects test-support and preview assets', () => {
     'test-support/personal-profile-ui/app.js', 'test-support/personal-profile-ui/index.html',
     'test-support/personal-profile-ui/style.css']) rejected(path)
 })
-test('package policy accepts only the exact approved Windows probe path', () => {
-  assert.doesNotThrow(() => validatePackageFiles(entries('index.js', probe, 'plugins/personal-profile/index.js')))
+test('package policy excludes the retired DPAPI probe and archived encrypted prototype', () => {
+  assert.doesNotThrow(() => validatePackageFiles(entries('index.js', 'plugins/personal-profile/index.js', 'plugins/personal-profile/preferences/store.js')))
+  rejected(probe)
+  for (const path of ['plugins/personal-profile/storage/backup.js','plugins/personal-profile/core/schema.js','plugins/personal-profile/integration/gate.js']) rejected(path)
   for (const path of ['scripts/arbitrary.mjs', `${probe}.bak`, `${probe}/child.mjs`,
     'scripts/nested/personal-profile-windows-probe.mjs',
     'scripts/Personal-profile-windows-probe.mjs',
@@ -35,8 +37,10 @@ test('actual package passes policy and ships the probe only when explicitly conf
   assert.ok(packed.files.length > 0)
   validatePackageFiles(packed.files)
   const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
-  // Phase 4 does not list the probe. Future PR #2 integration may explicitly add it.
-  assert.equal(packed.files.some(file => file.path === probe), manifest.files.includes(probe))
+  assert.equal(manifest.files.includes(probe),false)
+  assert.equal(packed.files.some(file => file.path === probe),false)
+  assert.ok(packed.files.some(file => file.path === 'plugins/personal-profile/preferences/store.js'))
+  assert.ok(packed.files.some(file => file.path === 'plugins/personal-profile/preferences/model.js'))
   assert.equal(packed.files.some(file => file.path.startsWith('test-support/')), false)
   assert.equal(packed.files.some(file => file.path === 'scripts/preview-personal-profile.mjs'), false)
 })

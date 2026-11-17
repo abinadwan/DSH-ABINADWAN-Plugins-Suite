@@ -75,12 +75,23 @@ test('preview navigation changes full-page sections without Host access or persi
   await act(async () => [...d.querySelectorAll('button')].find(b => b.textContent === 'مراجعة التصدير').click())
   assert.ok([...d.querySelectorAll('button')].some(b => b.disabled && b.textContent === 'التنفيذ غير متاح'))
   await act(async () => d.getElementById('pp-tab-privacy').click())
-  await act(async () => [...d.querySelectorAll('button')].find(b => b.textContent === 'محاكاة القفل').click())
-  assert.equal(d.getElementById('pp-preferredName'), null)
-  assert.match(d.getElementById('pp-content').textContent, /دون حماية فعلية/)
-  await act(async () => [...d.querySelectorAll('button')].find(b => b.textContent === 'إلغاء القفل التجريبي').click())
+  assert.equal(d.getElementById('pp-auto-lock'), null)
+  assert.match(d.getElementById('pp-content').textContent, /نص عادي/)
   await act(async () => d.getElementById('pp-tab-information').click())
-  assert.ok(d.getElementById('pp-preferredName'))
+  assert.deepEqual([...d.querySelectorAll('#pp-content input, #pp-content select')].map(x=>x.id),
+    ['pp-preferredName','pp-nationality','pp-gender'])
+  await act(async () => d.getElementById('pp-tab-access').click())
+  assert.deepEqual([...d.querySelectorAll('[id^="pp-policy-"]')].map(x=>x.id),
+    ['pp-policy-preferredName','pp-policy-nationality','pp-policy-gender'])
+  const cloud=d.getElementById('pp-cloud')
+  assert.equal(cloud.checked,false)
+  await act(async()=>cloud.click())
+  assert.equal(cloud.checked,true)
+  const profile=d.getElementById('pp-profile')
+  await act(async()=>{profile.value='Synthetic Lab';profile.dispatchEvent(new dom.window.Event('change',{bubbles:true}))})
+  assert.equal(d.getElementById('pp-cloud').checked,false)
+  await act(async()=>{profile.value='Synthetic Studio';profile.dispatchEvent(new dom.window.Event('change',{bubbles:true}))})
+  assert.equal(d.getElementById('pp-cloud').checked,true)
 })
 
 test('demo is independent of privileged Host imports; suite version and lock agree', () => {

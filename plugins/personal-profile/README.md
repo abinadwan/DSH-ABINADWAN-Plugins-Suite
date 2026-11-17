@@ -1,98 +1,26 @@
-# Personal Profile
+# Personal Profile — simplified design candidate
 
-**v0.6.0: left-sidebar UI preview is available; Host profile storage and agent access remain disabled. This is not a working personal-data feature.**
+**Status:** development branch only; the released UI remains a synthetic preview. Do not enter real data until the trusted Host connection is implemented and verified.
 
-<img src="icon.png" width="96" alt="Amber Personal Profile ID and gear"/>
+## Approved scope
 
-Enabling this Component still shows only a static design draft on the suite's
-Plugins detail page. It accepts zero profile values. Its unchanged Host registers
-no configuration schemas, agent instructions, tools, storage handlers or network
-operations. The on/off switch is ordinary DSH plugin configuration and carries no
-profile values.
+- Optional preferred name (not legal/full name), nationality and gender.
+- No date of birth, full name, arbitrary personal fields, passwords, or identity documents.
+- Personality, response language, characteristics, behavior presets and custom instructions remain editable. Eight styles, seven response languages plus Automatic, six three-level characteristics and eight optional presets. Default settings are neutral. Arabic/English interface labels remain separate from response language.
+- Global preferences and complete per-environment replacement; no dedicated dialect setting.
+- No application-specific encryption, key provider, password vault, automatic lock or encrypted backup requirement. Settings and backups are plain text: do not enter secrets or sensitive details, including in custom instructions.
+- Personal-field access: Private, Ask First or Allow per field/environment. Global opt-in Off. Sending personal fields to an external provider requires separate per-environment permission, also Off. Unknown destination denies. This does not control personal details independently supplied by a user in a chat or custom instructions.
 
-## Left-sidebar preview (v0.6.0)
+## Implementation boundary
 
-Installing/updating the suite to v0.6.0 adds a **Personal Profile** item to the global
-**left sidebar**. It opens a full-height page with five sections:
+The left-sidebar UI is still browser-memory preview only. Its access and backup controls are simulated; toggling the component Off removes its UI. The Host entry is deliberately inert and disabled by default. No actual browser/Host save bridge, remote consent, model injection, or provider transmission has been enabled.
 
-- My Information — fictional, editable sample fields and custom fields.
-- Agent Instructions — simulated global/per-Profile replacement and inheritance, editable personality and response preferences, and an effective preview.
-- Access Control — simulated per-field policy and consent choices; no real permissions.
-- Backup & Restore — review interactions only; no import/export, password, or disk writes.
-- Privacy & Security — simulated lock, auto-lock choices and synthetic session controls.
+The new internal preferences/model.js and preferences/store.js implement allowlisted structured settings, bounded validation, plain local JSON persistence, revision-checked writes, and backup/restore review. A trusted Host must supply the private storage root and authenticate management callers, resolve the active canonical environment and determine actual provider destination. Backup review strips authorization; the future Host UI must enforce explicit confirmation and reject stale reviews when committing. Restore never silently grants access. On Windows, successful rename is reported as committed, but directory durability is not asserted. OS ACL and real Windows integration acceptance remain outstanding. SHA-256 is used for revision comparison, not encryption. There is no runtime dependency on the previous encrypted architecture.
 
-The browser page supports Arabic and English. Sample edits exist **only in React
-memory** and disappear when the page/bundle reloads. It neither reads nor writes
-real Harness Profile values, uses no privileged Host transport, and sends no
-data to an agent or remote service. **Do not enter real personal information.**
+The old core/storage/integration modules, phase 1–6 documents and tests are historical prototypes. They remain in source history and source-only regression tests, are excluded from the packed runtime, and must not be wired into the new implementation. No real user files or old backups are migrated or deleted by this change.
 
-Since v0.6.2 the left-sidebar launcher, its page and the read-only design card
-on the Plugins detail page are registered only while the Host **Personal
-Profile** component is switched On and running; switching it Off unregisters
-all three. Enabling it still activates no storage, Host integration or agent access.
-There is **no Save button or persistent storage** in this release.
+## Verification
 
-## Personality and response preferences (0.6.3)
+Run npm test for source (including archived tests); npm run check:package verifies the actual reduced package and its applicable tests. Next: implement and validate a trusted Host management adapter, real save/reload, local backup review/apply, and independent scoped consent and external-sharing enforcement. Test actual Windows UI separately from synthetic CI.
 
-- Style and tone: Default, Professional, Friendly, Candid, Creative, Efficient, Critical and Technical.
-- Response language: Automatic, Arabic, English, Chinese, Spanish, French, German and Japanese; separate from interface language (Arabic/English). No dedicated dialect selector. Users may write dialect preferences in custom instructions.
-- Six independent three-level traits: warmth, enthusiasm, headers/lists, emoji, detail and critical thinking.
-- Eight optional behavior presets: Critical Thinking, No Fluff, Grill-Me Mode, Evidence First, Step-by-Step, Action Oriented, Code Reviewer and Humanizer. The Humanizer preset is a writing preference, not a Skill invocation.
-- All defaults are neutral; no preset is selected. Global preferences and independent per-environment replacement overrides live only in React state. Choosing Inherit removes the override; a new override starts neutral. An explicit reset clears only the selected scope. The preview orders generated preferences before user text; it is not a conflict resolver or executable instruction composition.
-- Native dropdowns use Field/FieldText system colors and inherit the Harness color scheme; actual Windows Desktop popup contrast requires manual verification.
-
-No persistent saving, model injection, personal storage, permissions, approval changes, network calls or provider activation are included. The preview remains fictional-only, the Host implementation inert, and the component disabled by default.
-
-For implementation and security boundaries see
-[Phase 4 prototype](../../docs/PERSONAL_PROFILE_PHASE4.md) and
-[Phase 6A integration QA](../../docs/PERSONAL_PROFILE_PHASE6A.md).
-
-Phase 1 adds isolated in-memory modules under `core/`, exercised only with
-synthetic fixtures. The optional master fields are Preferred Name, Full Name,
-Date of Birth, Nationality, Gender (including custom and unspecified), and
-user-defined custom fields. Agent Instructions have separate global and
-per-environment structure; they are not executed.
-
-Each environment has its own default-private permission map. `allow` requires the
-master **Allow the agent to use approved profile information** opt-in, initially
-off. `ask_first` returns `approval_required` without a value; `private` denies.
-Safe retrieval handles only one explicitly requested field. The core is not
-connected to the Host, registered as an agent tool, or exposed as a public API.
-
-See [Phase 1 data model, contracts and security limitations](../../docs/PERSONAL_PROFILE_PHASE1.md).
-Harness Profile names now support hyphens and other official basename forms,
-with additional local safety checks. Fixed limits bound text, labels, instructions,
-custom fields and environments; see the Phase 1 document for exact budgets.
-
-Phase 2 adds an isolated in-memory consent facade with Allow Once, Allow for This
-Session and Deny, plus expiry, cancellation, replay protection and lifecycle
-invalidation. Harness native approvals remain one-shot; session grants belong to
-this separate layer. No permanent Allow decision exists.
-See [Phase 2 contracts, trust boundaries and canonical Profile identity requirements](../../docs/PERSONAL_PROFILE_PHASE2.md).
-Actual UI approvals, Host authentication/integration, collection, persistence,
-encryption, transmission and instruction execution remain unimplemented.
-An in-memory check does not provide operating-system isolation.
-
-Tests cover validation, property-name attacks, default denial, environment
-isolation, opt-in, revocation and packaged execution. Existing tests also verify
-the Host has no Config schema or injected service and renders no entry/save
-controls.
-
-[Suite overview](../../README.md)
-
-Phase 3 adds trusted internal instruction editing and preview using the same Master
-Profile and registered Profile handles. Absent overrides inherit global text;
-explicitly empty overrides suppress it. Optional original style suggestions never
-activate automatically. No instruction text reaches readers, Host, UI or models.
-See [Phase 3 model, precedence, identity and future security gates](../../docs/PERSONAL_PROFILE_PHASE3.md).
-
-Phase 4 created the original isolated, synthetic-only development UI. That
-original standalone preview remains test-only; v0.6.0 adds a separate browser
-panel inside Harness without activating Host services. See
-[prototype preview, boundaries and visual evidence](../../docs/PERSONAL_PROFILE_PHASE4.md).
-
-Phase 6A adds internal synthetic integration QA only. See the
-[verified Harness API research and security decision](../../docs/PERSONAL_PROFILE_PHASE6A.md)
-and [manual Windows acceptance plan](../../docs/PERSONAL_PROFILE_WINDOWS_ACCEPTANCE.md).
-Every real-device check remains NOT EXECUTED. The live component is still
-read-only and disabled by default; no storage or access gate is activated.
+[Suite overview](../../README.md) · [Security policy](../../SECURITY.md)
