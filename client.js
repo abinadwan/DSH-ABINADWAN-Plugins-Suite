@@ -715,14 +715,14 @@ window.__ModuleLoader__.load({
       ['critique','التفكير النقدي','Critical thinking','Keep routine answers straightforward without unnecessary critique.','Test assumptions, identify uncertainties and explain tradeoffs.'],
     ]
     const BEHAVIOR_PRESETS = [
-      ['critical-thinking','التفكير النقدي','Critical Thinking','Challenge weak assumptions and consider alternatives; do not agree merely to please.'],
-      ['no-fluff','تجنب الحشو','No Fluff','Avoid filler, repetition and unnecessary compliments.'],
-      ['grill-me','نقاش المتطلبات','Grill-Me Mode','For complex decisions, examine requirements, risks and missing facts; ask only material questions.'],
-      ['evidence-first','الأدلة أولًا','Evidence First','Distinguish evidence from inference; cite available sources and disclose uncertainty.'],
-      ['step-by-step','خطوة بخطوة','Step-by-Step','Break complex tasks into clear, actionable steps.'],
-      ['action-oriented','التركيز على التنفيذ','Action Oriented','Focus on practical recommendations and next actions.'],
-      ['code-review','مراجعة الكود','Code Reviewer','When reviewing code, check correctness, security, maintainability and performance.'],
-      ['natural-writing','الكتابة الطبيعية','Natural Writing','When editing, improve clarity and natural phrasing while preserving facts, citations and meaning.'],
+      ['critical-thinking','التفكير النقدي','Critical Thinking','Challenge weak assumptions and consider alternatives; do not agree merely to please.','اختبر الافتراضات الضعيفة وناقش البدائل دون موافقة تلقائية.'],
+      ['no-fluff','تجنب الحشو','No Fluff','Avoid filler, repetition and unnecessary compliments.','تجنب الحشو والتكرار والمجاملات غير الضرورية.'],
+      ['grill-me','نقاش المتطلبات','Grill-Me Mode','For complex decisions, examine requirements, risks and missing facts; ask only material questions.','ناقش متطلبات القرارات المعقدة ومخاطرها، واسأل فقط عما يؤثر على النتيجة.'],
+      ['evidence-first','الأدلة أولًا','Evidence First','Distinguish evidence from inference; cite available sources and disclose uncertainty.','ميّز الأدلة من الاستنتاجات، واذكر المصادر المتاحة وحدود اليقين.'],
+      ['step-by-step','خطوة بخطوة','Step-by-Step','Break complex tasks into clear, actionable steps.','قسّم المهام المعقدة إلى خطوات واضحة قابلة للتنفيذ.'],
+      ['action-oriented','التركيز على التنفيذ','Action Oriented','Focus on practical recommendations and next actions.','ركّز على التوصيات العملية والخطوات التالية.'],
+      ['code-review','مراجعة الكود','Code Reviewer','When reviewing code, check correctness, security, maintainability and performance.','راجع صحة الكود وأمانه وقابليته للصيانة وأداءه.'],
+      ['natural-writing','الكتابة الطبيعية','Natural Writing','When editing, improve clarity and natural phrasing while preserving facts, citations and meaning.','حسّن وضوح الصياغة وطبيعتها عند التحرير مع حفظ الحقائق والمصادر والمعنى.'],
     ]
     const defaultPersonality = () => ({style:'default', language:'auto', traits:{}, presets:[]})
     function preferencePreview(settings, customText) {
@@ -941,13 +941,13 @@ window.__ModuleLoader__.load({
                     t('less'),t('balanced'),t('more')))
               })),
             card(t('behaviorPresets'),hint(t('presetHint')),
-              ...BEHAVIOR_PRESETS.map(([key,arLabel,enLabel,prompt])=>h('label',
+              ...BEHAVIOR_PRESETS.map(([key,arLabel,enLabel,prompt,arDescription])=>h('label',
                 {key,htmlFor:'pp-preset-'+key,style:{display:'flex',gap:10,alignItems:'start',marginBottom:12}},
                 h('input',{id:'pp-preset-'+key,type:'checkbox',checked:settings.presets.includes(key),
                   onChange:e=>{const checked=e.target.checked;updateSettings(old=>({...old,
                     presets:checked?[...new Set([...old.presets,key])]:old.presets.filter(id=>id!==key)}))}}),
                 h('span',null,h('span',{style:{display:'block',fontWeight:600}},rtl?arLabel:enLabel),
-                  !rtl?h('span',{style:{fontSize:12,opacity:.75}},prompt):null)))),
+                  h('span',{style:{fontSize:12,opacity:.75}},rtl?arDescription:prompt))))),
             card(t('customInstructions'),hint(t('customHint')),
               h('label',{htmlFor:editingGlobal?'pp-global':'pp-override',style:label},t('customInstructions')),
               h('textarea',{id:editingGlobal?'pp-global':'pp-override',rows:5,maxLength:8192,style:control,
@@ -1042,7 +1042,7 @@ window.__ModuleLoader__.load({
         ['Date of birth', 'Optional.'],
         ['Nationality', 'Optional.'],
         ['Gender', 'User-selected. May remain unspecified.'],
-        ['Agent preferences and custom instructions', 'Neutral by default. Personality, response language, characteristics and behavior presets are available in the browser-only preview.'],
+        ['Custom agent instructions', 'Empty by default. Personality, response language, characteristics and behavior presets are available in the browser-only preview; all choices start neutral.'],
         ['Allow the agent to use approved profile information', 'Off by default. Requires explicit opt-in after design approval.'],
       ]
       return h('section', { 'data-personal-profile-draft': '',
