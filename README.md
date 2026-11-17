@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/workflows/test.yml"><img alt="CI" src="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/workflows/test.yml/badge.svg"/></a>
-  <img alt="Suite 0.7.0" src="https://img.shields.io/badge/suite-0.7.0-7b2246"/>
+  <img alt="Suite 0.7.1" src="https://img.shields.io/badge/suite-0.7.1-7b2246"/>
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-22c55e"/></a>
 </p>
 
@@ -22,7 +22,7 @@ One installation supplies three independently toggleable DSH Components. The pac
 | <img src="plugins/humanizer/icon.png" width="32" alt="Purple feather"/> **Humanizer** | Runtime writing Skill | On | [Usage and scope](plugins/humanizer/README.md) |
 | <img src="plugins/personal-profile/icon.png" width="32" alt="Amber ID and gear"/> **Personal Profile** | Local native settings candidate | Host Off | [Local settings and acceptance](plugins/personal-profile/README.md) |
 
-## Personal Profile (0.7.0 candidate)
+## Personal Profile (0.7.1 candidate)
 
 Optional preferred name, nationality and gender; local Agent Instructions with personality, response language, characteristics, presets and custom text. Explicit Save uses the native Harness settings service with a revision check. Global within the active Profile; override by real Workspace. No plugin-specific encryption; avoid sensitive information. Access and cloud switches are saved policy preferences only: agent disclosure is not implemented. See [design and acceptance](docs/PERSONAL_PROFILE_LOCAL_SETTINGS.md).
 

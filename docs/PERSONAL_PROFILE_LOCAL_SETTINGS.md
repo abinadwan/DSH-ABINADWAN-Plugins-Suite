@@ -1,8 +1,8 @@
-# Personal Profile 0.7.0 — native local settings candidate
+# Personal Profile 0.7.1 — native local settings candidate
 
 This replaces the earlier fictional preview and encrypted-storage design. The owner approved removal of full name, exact date of birth, custom personal fields, custom encryption and simulated/automatic lock. Only optional preferred name, nationality and gender remain. Custom **instructions** remain, with the eight personalities, seven response languages plus Automatic, six traits and eight presets.
 
-Status: **Phase 6D (native settings QA) PASS in automated tests. Phase 6E (Windows Desktop acceptance) BLOCKED — needs a real Windows Desktop**; see [Windows acceptance](PERSONAL_PROFILE_WINDOWS_ACCEPTANCE.md).
+Status: **Phase 6D (native settings QA) PASS in automated tests. Phase 6E Windows Desktop run on 0.7.0: install, restart and sidebar registration PASS; page rendering FAIL (blank content area), fixed in 0.7.1. Windows acceptance must be repeated on 0.7.1**; see [Windows acceptance](PERSONAL_PROFILE_WINDOWS_ACCEPTANCE.md).
 
 ## Persistence contract
 

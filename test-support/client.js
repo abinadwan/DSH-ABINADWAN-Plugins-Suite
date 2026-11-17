@@ -138,6 +138,32 @@ export function observable(initial) {
   }
 }
 
+/**
+ * A reduced double of the rc.3 `ClientWorkspaceModel` that
+ * `ctx.workspaces.list` really is (dsh-api-workspace-controller 0.2.2-rc.3,
+ * lib/client.js). Like the Host class, `subscribe` and `getSnapshot` are
+ * prototype methods that read `this`, the snapshot is cached until
+ * invalidated, and listeners are notified on a microtask. Passing
+ * `list.getSnapshot` / `list.subscribe` unbound throws exactly as on Desktop.
+ */
+export class HostWorkspaceModel {
+  listeners = new Set()
+  snapshotDirty = false
+  notificationScheduled = false
+  constructor(initial) { this.value = initial; this.snapshotCache = this.buildSnapshot() }
+  subscribe(listener) { this.listeners.add(listener); return () => { this.listeners.delete(listener) } }
+  getSnapshot() { this.refreshSnapshot(); return this.snapshotCache }
+  buildSnapshot() { return { ...this.value } }
+  refreshSnapshot() { if (!this.snapshotDirty) return; this.snapshotDirty = false; this.snapshotCache = this.buildSnapshot() }
+  /** Test hook standing in for the Host's baseline/increment frames. */
+  set(next) {
+    this.value = next; this.snapshotDirty = true
+    if (this.notificationScheduled) return
+    this.notificationScheduled = true
+    queueMicrotask(() => { this.notificationScheduled = false; this.refreshSnapshot(); for (const fn of [...this.listeners]) fn() })
+  }
+}
+
 export function sessionSnapshot() {
   return {
     ids: ['s1', 's2'],
@@ -191,7 +217,7 @@ export async function clientHarness(options = {}) {
   const settings=options.settings||{describe:()=>Promise.resolve(refused('access/denied','not available')),replace:()=>Promise.resolve(refused('access/denied','not available'))}
   await ctx.plugin({name:'remote.settings',apply:child=>{new SettingsRemote(child,settings)}})
   const sessions = observable(options.sessions || sessionSnapshot())
-  const workspaces = observable({
+  const workspaces = new HostWorkspaceModel({
     items: options.workspaceItems || [{ workspaceId: 'w', title: 'HomeBook', path: 'C:/Work/HomeBook', sessionIds: ['s1'] }],
     archivedSessionIds: [], pinnedSessionIds: [], state: 'idle', phase: 'ready', error: null,
   })

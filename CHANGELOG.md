@@ -2,6 +2,20 @@
 
 All notable changes are documented here.
 
+## [0.7.1] — Unreleased (candidate)
+
+Bug-fix release for Windows Desktop compatibility. No feature, storage, privacy-default or permission change.
+
+### Fixed
+
+- **Personal Profile showed a blank content area on Harness Desktop v0.2.2-rc.3 (Phase 6E).** `ctx.workspaces.list` is the Host's `ClientWorkspaceModel` class instance, and its `subscribe`/`getSnapshot` methods read `this`. The page passed them unbound to `React.useSyncExternalStore`, so the first render threw `TypeError: Cannot read properties of undefined (reading 'refreshSnapshot')`. The Host Slot boundary then retired the `main` entry and left an empty `data-slot-error` anchor. The plugin now binds both methods through wrappers, as Environment & Context already does.
+- A Personal Profile render failure now shows a visible bilingual error with a Retry button instead of a blank page. Nothing is saved or changed. A missing access hook, denied access or an unavailable settings service still show the existing "unavailable" status with Save disabled.
+
+### Tests
+
+- The test harness now models `ctx.workspaces.list` as a class with `this`-bound methods, like the rc.3 Host, instead of a closure-based object that hid the bug.
+- New `test/personal-profile-desktop-render.test.js` renders the page inside a Host-style Slot error boundary. It covers the original failure, workspace updates, missing or denied access, unavailable settings and a broken workspace source.
+
 ## [0.7.0] — Unreleased (candidate)
 
 ### Changed
