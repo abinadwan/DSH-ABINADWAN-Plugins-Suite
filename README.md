@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/workflows/test.yml"><img alt="CI" src="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/workflows/test.yml/badge.svg"/></a>
-  <img alt="Suite 0.6.2" src="https://img.shields.io/badge/suite-0.6.2-7b2246"/>
+  <img alt="Suite 0.6.3" src="https://img.shields.io/badge/suite-0.6.3-7b2246"/>
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-22c55e"/></a>
 </p>
 
@@ -25,6 +25,8 @@ One installation supplies three independently toggleable DSH Components. The pac
 ## Personal Profile (preview)
 
 A dedicated **Personal Profile** entry in the **left sidebar** opens a full-page five-section preview: My Information, Agent Instructions, Access Control, Backup & Restore, and Privacy & Security. The page supports Arabic/English labels and editable **fictional values held only in browser memory**. It does not persist, encrypt, export, load real account data or provide any agent permissions.
+
+Since 0.6.3, Agent Instructions includes eight style/tone choices, seven response languages plus Automatic, six three-level characteristics, eight optional behavior presets, custom text and an effective instruction preview. Defaults are neutral. Response language is independent of the Arabic/English interface locale; any dialect preference belongs in custom text. Per-environment overrides replace rather than merge global settings. These controls are still synthetic, in-memory previews and do not configure an agent. Native select menus use theme-aware System Colors for both select and option elements.
 
 **Do not enter real personal information.** The Host Personal Profile component remains disabled by default and `apply() {}` still registers no backend services. Since 0.6.2 the left-sidebar entry, its page and the detail-page draft exist **only while the Personal Profile component is switched On**; switching it Off removes them as soon as Harness reports the component change (no restart needed when Harness reports it live). It is not a working production profile.
 
