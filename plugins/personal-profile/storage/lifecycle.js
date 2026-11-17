@@ -24,7 +24,7 @@ export function assembleStorage(root, provider, {beforeRename, inactivityMs = nu
   const disk = files(root, beforeRename)
   if (inactivityMs !== null && (!Number.isSafeInteger(inactivityMs) || inactivityMs < 1)) failure()
   let key = null, generation = 0, lastActivity = 0, lastObserved = 0, reviewTimer = null
-  let authorizationReady = false, authorizedRecord = null
+  let authorizationReady = false, authorizedRecord = null, authorizedRevision = null
   const reviews = new Map(), leases = new Set()
   function releaseLease(cell) {
     try { cell.engine?.host.setLocked(true) }
@@ -44,8 +44,11 @@ export function assembleStorage(root, provider, {beforeRename, inactivityMs = nu
     for (const handle of reviews.keys()) removeReview(handle)
     clearReviewTimer(); generation++
   }
+  function dropAuthorization() {
+    authorizationReady = false; authorizedRecord = null; authorizedRevision = null
+  }
   function lock() {
-    authorizationReady = false; authorizedRecord = null
+    dropAuthorization()
     invalidate()
     key?.fill(0); key = null
     guarded(() => provider.release())
@@ -90,37 +93,65 @@ export function assembleStorage(root, provider, {beforeRename, inactivityMs = nu
     const bytes = disk.read(id)
     return bytes ? open(bytes, key, context(id)) : null
   }
-  function save(id, input) {
+  const hashBytes = bytes => bytes ? createHash('sha256').update(bytes).digest('hex') : null
+  // Trusted internal editing only: revision and input come from the SAME read.
+  // This is not an authentication token or a public browser/model endpoint.
+  function readForEdit(id) {
     check(); identity(id)
-    // Reject authority changes before touching disk or invalidating a lease.
-    ordinaryProfile(input, load(id))
-    invalidate(); authorizationReady = false
+    const bytes = disk.read(id)
+    return Object.freeze({revision:hashBytes(bytes), input:bytes ? open(bytes,key,context(id)) : null})
+  }
+  function saveRecord(id, input, expectedRevision) {
+    check(); identity(id)
+    const checkRevision = actual => {
+      if (expectedRevision !== undefined && actual !== expectedRevision) failure()
+    }
+    // Reject stale drafts and authority changes before invalidating a lease.
+    const snapshot = readForEdit(id)
+    checkRevision(snapshot.revision)
+    ordinaryProfile(input, snapshot.input)
+    invalidate(); dropAuthorization()
     const epoch = generation
     return disk.transaction(id, write => {
-      const next = ordinaryProfile(input, load(id))
+      const current = readForEdit(id)
+      // Repeat while holding the cooperative exclusive writer lock.
+      checkRevision(current.revision)
+      const next = ordinaryProfile(input, current.input)
       return write(seal(next, key, context(id)))
-    }, () => { check(); if (generation !== epoch) failure() })
+    }, () => { check(); if (generation !== epoch) failure()
+      if (expectedRevision !== undefined) checkRevision(fingerprint(id))
+    })
+  }
+  // Legacy internal full replacement; never expose to an editor transport.
+  function save(id,input) { return saveRecord(id,input,undefined) }
+  function saveIfRevision(id,expectedRevision,input) {
+    if (expectedRevision !== null &&
+        (typeof expectedRevision !== 'string' || !/^[0-9a-f]{64}$/.test(expectedRevision))) failure()
+    return saveRecord(id,input,expectedRevision)
   }
   function authorizationTransaction(id, work, verify = () => {}, enable = false) {
-    invalidate(); authorizationReady = false
+    invalidate(); dropAuthorization()
     const epoch = generation
     try {
-      let completed = false, started = false
+      let completed = false, started = false, writtenRevision = null
       const outcome = disk.transaction(id, write => {
         const commit = (input, kind = 'record') => {
           // Validation and encryption finish BEFORE a persistent fence exists.
           const bytes = seal(input, key, context(id, kind === 'recovery' ? 'recovery' : 'local'))
           if (!started) { disk.beginAuthorizationChange(); started = true }
-          return write(bytes, kind)
+          const result = write(bytes, kind)
+          if (kind === 'record' && result.committed) writtenRevision = hashBytes(bytes)
+          return result
         }
         const result = work(commit)
         completed = disk.completeAuthorizationChange(result)
         return result
       }, () => { check(); if (generation !== epoch) failure(); verify() })
-      authorizationReady = enable && completed && outcome.cleanupComplete
+      authorizationReady = enable && completed && outcome.cleanupComplete && writtenRevision !== null
       authorizedRecord = authorizationReady ? id : null
+      authorizedRevision = authorizationReady ? writtenRevision : null
       return outcome
-    } catch { authorizationReady = false; failure() }
+    } catch { dropAuthorization(); failure() }
   }
   function setAuthorization(id, patch) {
     return guarded(() => {
@@ -131,13 +162,33 @@ export function assembleStorage(root, provider, {beforeRename, inactivityMs = nu
       return authorizationTransaction(id, commit => commit(managementProfile(load(id), patch)), undefined, true)
     })
   }
-  function fingerprint(id) {
-    const bytes = disk.read(id)
-    return bytes ? createHash('sha256').update(bytes).digest('hex') : null
+  function fingerprint(id) { return hashBytes(disk.read(id)) }
+  // Bind readiness to the exact committed ciphertext, not to decoded text or
+  // whichever record happens to be current AFTER releasing the writer lock.
+  // This detects cooperative revision changes, not hostile filesystem replay.
+  function authorizedBytes(id) {
+    identity(id)
+    if (!key || !authorizationReady || authorizedRecord !== id) return null
+    try {
+      if (!disk.authorizationBlocked()) {
+        const bytes = disk.read(id)
+        if (bytes && hashBytes(bytes) === authorizedRevision && !disk.authorizationBlocked()) return bytes
+      }
+    } catch { /* fail closed without sensitive error content */ }
+    dropAuthorization(); invalidate()
+    return null
+  }
+  function loadAuthorized(id) {
+    check()
+    const bytes = authorizedBytes(id)
+    if (!bytes) return null
+    try { return open(bytes,key,context(id)) }
+    catch { dropAuthorization(); invalidate(); failure() }
   }
   function checkLease(cell, epoch) {
     if (!cell.engine || generation !== epoch) failure()
     check()
+    if (cell.authorizedId !== null && !authorizedBytes(cell.authorizedId)) failure()
   }
   // Wrappers retain only a revocable cell and method path, NEVER raw engine
   // methods/objects. Nulling the cell releases the entire decrypted engine even
@@ -156,7 +207,21 @@ export function assembleStorage(root, provider, {beforeRename, inactivityMs = nu
     ])))
   }
   function disposer(cell, epoch) {
-    return () => { checkLease(cell, epoch); releaseLease(cell) }
+    return () => {
+      // Disposal may reclaim a stale authorized lease without granting access.
+      if (!cell.engine || generation !== epoch) failure()
+      check(); releaseLease(cell)
+    }
+  }
+  function accessRecord(id, authorized) {
+    check()
+    if (leases.size >= STORAGE_LIMITS.accessLeases) failure()
+    const input = authorized ? loadAuthorized(id) : load(id)
+    if (authorized && !input) failure()
+    const cell = {engine:createConsentProfile(profileInput(input || {})), authorizedId:authorized?id:null}
+    const wrapped = wrapShape(cell.engine,cell,generation)
+    leases.add(cell)
+    return Object.freeze({...wrapped,dispose:disposer(cell,generation)})
   }
   return Object.freeze({
     unlock() {
@@ -174,9 +239,9 @@ export function assembleStorage(root, provider, {beforeRename, inactivityMs = nu
     lock,
     get locked() { return key === null },
     checkInactivity() { check() },
-    load, save,
-    get authorizationReady() { return authorizationReady && key !== null && !disk.authorizationBlocked() },
-    authorizationReadyFor(id) { identity(id); return authorizationReady && authorizedRecord === id && key !== null && !disk.authorizationBlocked() },
+    load, save, readForEdit, saveIfRevision, loadAuthorized,
+    get authorizationReady() { return authorizedRecord !== null && authorizedBytes(authorizedRecord) !== null },
+    authorizationReadyFor(id) { return authorizedBytes(id) !== null },
     setAuthorization,
     setOptIn(id, enabled) { return setAuthorization(id, {optIn: enabled}) },
     setPermission(id, canonicalId, field, state) {
@@ -186,15 +251,8 @@ export function assembleStorage(root, provider, {beforeRename, inactivityMs = nu
         return setAuthorization(id, {permissions: {[canonicalId]: {[field]: state}}})
       })
     },
-    access(id) {
-      check()
-      if (leases.size >= STORAGE_LIMITS.accessLeases) failure()
-      const input = load(id)
-      const cell = {engine: createConsentProfile(profileInput(input || {}))}
-      const wrapped = wrapShape(cell.engine, cell, generation)
-      leases.add(cell)
-      return Object.freeze({...wrapped, dispose: disposer(cell, generation)})
-    },
+    access(id) { return accessRecord(id,false) },
+    accessAuthorized(id) { return accessRecord(id,true) },
     review(id, incoming, mode = 'merge') {
       const time = check()
       if (reviews.size >= STORAGE_LIMITS.reviews) failure()
@@ -216,7 +274,7 @@ export function assembleStorage(root, provider, {beforeRename, inactivityMs = nu
     },
     apply(handle, {keepExisting = false, confirmReplace = false} = {}) {
       check()
-      authorizationReady = false
+      dropAuthorization()
       const r = reviews.get(handle)
       if (!r) failure()
       if (r.generation !== generation || r.hash !== fingerprint(r.id)) {

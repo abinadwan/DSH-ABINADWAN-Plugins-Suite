@@ -124,32 +124,102 @@ test('production provider and runtime Host remain unavailable during QA',async()
   assert.equal(apply(new Proxy({}, {get(){throw Error('Host must be inert')}})),undefined)
 })
 
-// Readiness gate: ordinary writes revoke authorization in the writer instance,
-// but a second instance can retain its previous in-memory readiness. This is
-// outside the current single-owner storage guarantee. The normative assertion
-// must become PASS (remove TODO) before supporting multi-instance integration.
-test('RELEASE BLOCKER: another storage instance must not retain stale authorization after data save',
-  {skip:windows?'Windows positive path intentionally unavailable':false,
-    todo:'Single-owner assumption: bind authorization to current persisted revision or prove exclusive owner'},t=>{
+// Regression originally reproduced by the TODO tests in the first QA commit.
+test('another storage instance cannot retain stale authorization after data save', {skip:windows},t=>{
   const {first,create}=setup(t)
   first.setAuthorization('master',{optIn:true,permissions:{profileA:{preferredName:'allow'}}})
-  assert.equal(first.authorizationReadyFor('master'),true)
+  const {gate,issue}=makeGate(t,first)
+  const prior=issue()
+  assert.equal(gate.reader.request(prior,'preferredName').status,'allowed')
   const other=create()
   other.save('master',{...fixture(),fields:{preferredName:'SYNTHETIC_NEW_REVISION'}})
+  assert.equal(first.authorizationReadyFor('master'),false)
   assert.equal(other.authorizationReadyFor('master'),false)
+  assert.deepEqual(gate.reader.request(prior,'preferredName'),{status:'denied'})
+  assert.deepEqual(gate.reader.request(issue(),'preferredName'),{status:'denied'})
+})
+
+test('re-encrypting identical plaintext does not revive an old authorization revision', {skip:windows},t=>{
+  const {first,create}=setup(t)
+  first.setAuthorization('master',{optIn:true,permissions:{profileA:{preferredName:'allow'}}})
+  const other=create(), original=other.readForEdit('master')
+  other.save('master',original.input)
+  assert.deepEqual(other.load('master'),original.input)
+  assert.notEqual(other.readForEdit('master').revision,original.revision)
+  assert.equal(first.authorizationReadyFor('master'),false)
   const {gate,issue}=makeGate(t,first)
   assert.deepEqual(gate.reader.request(issue(),'preferredName'),{status:'denied'})
 })
 
-// Ordinary save is currently full replacement, not compare-and-swap. A future
-// multi-window management bridge must reject stale drafts instead of losing
-// edits; do not expose this storage method directly through browser RPC.
-test('RELEASE BLOCKER: saving a stale management draft must not overwrite a newer edit',
-  {todo:'Management transport needs explicit expected revision and atomic conflict handling'},t=>{
+test('cooperative external writer in progress revokes previously authorized session', {skip:windows},t=>{
   const {first,create}=setup(t)
-  const second=create(), stale=first.load('master')
-  const latest={...second.load('master'),fields:{preferredName:'SYNTHETIC_NEWER_EDIT'}}
-  second.save('master',latest)
-  assert.throws(()=>first.save('master',{...stale,instructions:{...stale.instructions,global:'SYNTHETIC_STALE_DRAFT'}}))
+  first.setAuthorization('master',{optIn:true,permissions:{profileA:{preferredName:'allow'}}})
+  const {gate,issue}=makeGate(t,first)
+  const token=issue()
+  assert.equal(gate.reader.request(token,'preferredName').status,'allowed')
+  const other=create({beforeRename(){
+    assert.deepEqual(gate.reader.request(token,'preferredName'),{status:'denied'})
+  }})
+  other.save('master',fixture())
+  assert.equal(first.authorizationReadyFor('master'),false)
+  assert.deepEqual(gate.reader.request(issue(),'preferredName'),{status:'denied'})
+})
+
+test('pending approval cannot be consumed or approved after another instance replaces its revision',{skip:windows},t=>{
+  const {first,create}=setup(t)
+  first.setAuthorization('master',{optIn:true,permissions:{profileA:{preferredName:'ask_first'}}})
+  const {gate,issue}=makeGate(t,first)
+  const token=issue(),manager=issue('syntheticA','profileA','management')
+  let p=gate.reader.request(token,'preferredName')
+  assert.equal(p.status,'approval_required')
+  assert.equal(gate.management.decide(manager,p.approval,'allow_once'),true)
+  const other=create()
+  other.save('master',fixture())
+  assert.deepEqual(gate.reader.consume(token,p.approval),{status:'denied'})
+  assert.equal(gate.management.decide(manager,p.approval,'allow_once'),false)
+})
+
+test('revision-checked saves reject stale management drafts without modifying newer data',t=>{
+  const {first,create}=setup(t)
+  const second=create(), stale=first.readForEdit('master')
+  const latest=second.readForEdit('master')
+  const edit={...latest.input,fields:{preferredName:'SYNTHETIC_NEWER_EDIT'}}
+  assert.equal(second.saveIfRevision('master',latest.revision,edit).committed,true)
+  const before=second.readForEdit('master')
+  assert.throws(()=>first.saveIfRevision('master',stale.revision,{...stale.input,
+    instructions:{...stale.input.instructions,global:'SYNTHETIC_STALE_DRAFT'}}))
+  assert.deepEqual(second.readForEdit('master'),before)
+  const fresh=first.readForEdit('master')
+  assert.equal(first.saveIfRevision('master',fresh.revision,{...fresh.input,
+    instructions:{...fresh.input.instructions,global:'SYNTHETIC_FRESH_DRAFT'}}).committed,true)
   assert.equal(second.load('master').fields.preferredName,'SYNTHETIC_NEWER_EDIT')
+  assert.equal(second.load('master').instructions.global,'SYNTHETIC_FRESH_DRAFT')
+  assert.throws(()=>first.saveIfRevision('master',fresh.revision,fresh.input))
+})
+
+test('revision-checked create is create-only; malformed or replayed revisions change no data',t=>{
+  const {first,create,root}=setup(t)
+  const absent=first.readForEdit('new')
+  assert.deepEqual(absent,{revision:null,input:null})
+  const other=create()
+  assert.equal(other.saveIfRevision('new',null,fixture()).committed,true)
+  const before=diskBytes(root)
+  for(const revision of [null,undefined,{},'bogus','A'.repeat(64),'f'.repeat(64)]) {
+    assert.throws(()=>first.saveIfRevision('new',revision,fixture()))
+    assert.deepEqual(diskBytes(root),before)
+  }
+})
+
+test('revision-checked writer lock excludes a second cooperative save at precommit',t=>{
+  let trigger=false, second, stale
+  const {first,create}=setup(t,{beforeRename(){
+    if(trigger) assert.throws(()=>second.saveIfRevision('master',stale.revision,stale.input))
+  }})
+  second=create()
+  stale=second.readForEdit('master')
+  trigger=true
+  assert.equal(first.saveIfRevision('master',stale.revision,{...stale.input,
+    fields:{preferredName:'SYNTHETIC_COMMITTED'}}).committed,true)
+  assert.equal(second.load('master').fields.preferredName,'SYNTHETIC_COMMITTED')
+  assert.throws(()=>second.saveIfRevision('master',stale.revision,stale.input))
 })

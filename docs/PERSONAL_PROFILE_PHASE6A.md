@@ -75,6 +75,7 @@ Ordinary `save` preserves current opt-in and permissions when they are omitted.
 It accepts explicitly supplied authorization snapshots only when they equal the
 current record, and rejects changes or replay of stale authorization. New records
 start Private with opt-in false. Saving data never grants readiness or consent.
+On the subsequent production-readiness QA branch, trusted editing uses a same-read encrypted revision snapshot and a revision-checked save (see the branch QA report); legacy ordinary save still performs full replacement. No browser or agent transport is authorized.
 An ordinary schema edit cannot delete a custom field while persisted policies
 still reference it, even if those policies are Private. There is no policy-entry
 deletion API in this correction. Such an edit requires explicit reviewed
@@ -111,7 +112,7 @@ and final record writes share the fence; partial or uncertain failure retains it
 These operations do not enable authorization readiness. Imported authorization is
 never authoritative. Generic `save` cannot change authorization. File ACLs, hostile same-user directory
 races, cross-process cached engines and crash recovery require real Host review;
-this is a single-owner internal component, not an OS security boundary.
+this is a single-owner internal component, not an OS security boundary. The subsequent QA branch additionally binds readiness to the exact committed ciphertext and rechecks it on gated reads and authorized leases; this is not a cross-process linearizability or hostile-filesystem guarantee.
 
 ## Synthetic access boundary
 

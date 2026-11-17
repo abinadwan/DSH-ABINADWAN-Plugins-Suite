@@ -1,6 +1,6 @@
 # Personal Profile production-readiness QA — independent branch
 
-Base: main at 485c8dd92cff3960442750ca3e2bfcfd65d4b895 (v0.6.3). No release-version bump or runtime changes. This is synthetic QA, not deployment approval.
+Base: main at 485c8dd92cff3960442750ca3e2bfcfd65d4b895 (v0.6.3). No release-version bump or activation of runtime features; internal storage and gate corrections are confined to this branch. This is synthetic QA, not deployment approval.
 
 ## Existing layers audited
 
@@ -16,19 +16,24 @@ Relevant sources: plugins/personal-profile/core/model.js, storage/authorization.
 
 test/personal-profile-production-readiness.test.js adds synthetic encrypted reopen, Unicode/empty environment override semantics, backup authority reset, Windows retained fence, Linux authorization control, precommit rollback, and production-inert checks. Tests use temporary roots and synthetic random keys; they do not connect to Harness, read users' data, invoke DPAPI or activate a Host.
 
-Two normative release-blocker tests are deliberately marked TODO pending resolution; TODO failure must not be mistaken for a passing security guarantee:
+### Confirmed defects and correction candidate
 
-1. Cross-instance authorization: storage/lifecycle.js keeps authorization readiness in memory; the disk fence checks the current presence of a lock/fence, not the revision that established readiness. A fresh gate session on an older instance may be authorized against a new ordinary write by another instance. Existing documentation explicitly limits the component to a single owner. Before multiple-instance support, bind readiness to an authenticated durable revision (and address races), or provide and verify an exclusive owner boundary that prevents this scenario. The synthetic reproducer requires a durable positive path and is skipped on Windows.
-2. Stale editor: ordinary save replaces the record, preserving authority but without expected-revision compare-and-swap. Two drafts may overwrite a newer normal edit. The future authenticated management adapter needs an atomic version check, conflict handling and explicit retry rather than a last-writer-wins UI.
+Initial PR CI run [44051473383](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/44051473383) confirmed both TODO failures: Linux returned an allowed synthetic value from a newer revision using old instance readiness; Windows and Linux accepted a stale full replacement rather than rejecting it. These were limited to internal synthetic assemblies; the runtime Host was inert.
 
-These are source-based findings until the CI test results confirm their reproductions. The TODO tests are not release approval, not production exploits, and must not be silently skipped or reclassified as passing.
+This follow-up binds durable authorization readiness to the hash of the exact encrypted bytes committed by the authorization transaction, checks the current fence and revision for authorized reads and lease operations, and drops readiness on mismatch. It does not infer authority from plaintext equality. Gate uses authorized snapshots and leases, and checks readiness before returning results. Legacy trusted storage access remains internal and is not an authorization interface.
+
+Trusted management editing now has readForEdit(id) returning a same-read {revision,input} snapshot, and saveIfRevision(id,expectedRevision,input). The expected revision is checked before invalidation, repeated under the cooperative writer lock, and checked at precommit. Null is creation-only; malformed, stale and replayed revisions fail closed. Legacy save(id,input) remains a full replacement for existing internal callers; a future editor must never expose it as its save endpoint. This is a revision check, not authentication. No UI or model wiring is introduced.
+
+The former TODO regression tests now assert the corrected contracts without TODO; added tests for identical-plaintext re-encryption, in-progress writers, pending approvals, create-only semantics and stale/replayed drafts. Follow-up CI is required before claiming these corrections pass. Windows positive authorization stays blocked and its positive-path tests remain skipped intentionally.
+
+Limits: this is cooperative single-owner-oriented filesystem QA, not a proof of portable cross-process linearizability; last-moment races, hostile directory replacement, ciphertext replay, and OS identity/ACL boundaries require a separately reviewed production design. No authorization fence is manually removed. The encrypted schema is unchanged. Legacy full replacement remains unsafe for stale editor drafts.
 
 ## Production gates — not implemented / not approved
 
 | Gate | Required evidence |
 | --- | --- |
 | Windows OS key provider | Approved in-Host Windows identity and DPAPI CurrentUser behavior; key never in plaintext or exposed to the browser/model; restart and wrong-account denial; reviewed lifecycle and cancellation. |
-| Local persistence | Host-owned root, Windows ACL and reparse-point checks, recoverable atomic writes with durability evidence and truthful failure messages; prove single-owner boundary or revision-based authority. |
+| Local persistence | Host-owned root, Windows ACL and reparse-point checks, recoverable atomic writes with durability evidence and truthful failure messages; prove exclusive-owner boundary or review the remaining cross-process races beyond the candidate revision checks. |
 | Management bridge | Verified rc3 Host-side identity/authentication, origin/replay protection, explicit management permission, trusted canonical profile selection, bounded payloads, version conflict detection, lock/lifecycle checks, no generic model-readable endpoint. |
 | Structured preferences | Versioned validated neutral defaults, explicit migration and absent/empty overrides, separate UI and response languages, no silent instruction injection. |
 | Agent injection | Independent opt-in, scoped current environment, safe composition respecting higher-priority instructions, no arbitrary personal fields sent with style text, no logging of private data. |

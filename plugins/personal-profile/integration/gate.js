@@ -81,9 +81,9 @@ export function assembleGate(storage, recordId, resolve, {now = () => performanc
   function active(token) {
     const b = auth(token,'agent')
     // Lease validates generation on EVERY operation; load checks lock/inactivity.
-    if (!storage.authorizationReadyFor(recordId)) failure()
-    const input = storage.load(recordId)
-    if (!input) failure()
+    if (!storage.authorizationReadyFor(recordId)) { clear(); failure() }
+    const input = storage.loadAuthorized(recordId)
+    if (!input) { clear(); failure() }
     if (b.engine) {
       if (b.revision !== revision(input)) { clear(); failure() }
       // A retained storage lease is only a generation witness.
@@ -91,7 +91,7 @@ export function assembleGate(storage, recordId, resolve, {now = () => performanc
       return b
     }
     b.revision = revision(input)
-    b.lease = storage.access(recordId)
+    b.lease = storage.accessAuthorized(recordId)
     b.engine = b.lease
     const h = b.engine.host
     const profile = h.registerProfile({name:b.environment,canonicalId:b.profile})
@@ -101,7 +101,7 @@ export function assembleGate(storage, recordId, resolve, {now = () => performanc
     b.scope = h.registerScope({operation:'read_field',purpose:'synthetic_integration_qa'})
     return b
   }
-  function read(fn) { try { return fn() } catch { return denied() } }
+  function read(fn) { try { const result=fn(); if(!storage.authorizationReadyFor(recordId)) { clear(); return denied() } return result } catch { return denied() } }
   return Object.freeze({
     reader:Object.freeze({
       request(token,field) { return read(()=> {
@@ -144,9 +144,12 @@ export function assembleGate(storage, recordId, resolve, {now = () => performanc
       decide(token,approval,outcome) {
         try {
           const manager=auth(token,'management'), b=approvals.get(approval)
-          if(!b || b.profile!==manager.profile || !storage.authorizationReadyFor(recordId)) return false
+          if(!b || b.profile!==manager.profile) return false
+          if(!storage.authorizationReadyFor(recordId)) { clear(); return false }
           b.lease.host.setLocked(false)
-          return b.engine.host.decide(approval,outcome)
+          const result=b.engine.host.decide(approval,outcome)
+          if(!storage.authorizationReadyFor(recordId)) { clear(); return false }
+          return result
         } catch {return false}
       },
     }),
