@@ -16,7 +16,7 @@ Installing/updating the suite to v0.6.0 adds a **Personal Profile** item to the 
 **left sidebar**. It opens a full-height page with five sections:
 
 - My Information — fictional, editable sample fields and custom fields.
-- Agent Instructions — simulated global/per-Profile inheritance and override preview.
+- Agent Instructions — simulated global/per-Profile replacement and inheritance, editable personality and response preferences, and an effective preview.
 - Access Control — simulated per-field policy and consent choices; no real permissions.
 - Backup & Restore — review interactions only; no import/export, password, or disk writes.
 - Privacy & Security — simulated lock, auto-lock choices and synthetic session controls.
@@ -31,6 +31,17 @@ on the Plugins detail page are registered only while the Host **Personal
 Profile** component is switched On and running; switching it Off unregisters
 all three. Enabling it still activates no storage, Host integration or agent access.
 There is **no Save button or persistent storage** in this release.
+
+## Personality and response preferences (0.6.3)
+
+- Style and tone: Default, Professional, Friendly, Candid, Creative, Efficient, Critical and Technical.
+- Response language: Automatic, Arabic, English, Chinese, Spanish, French, German and Japanese; separate from interface language (Arabic/English). No dedicated dialect selector. Users may write dialect preferences in custom instructions.
+- Six independent three-level traits: warmth, enthusiasm, headers/lists, emoji, detail and critical thinking.
+- Eight optional behavior presets: Critical Thinking, No Fluff, Grill-Me Mode, Evidence First, Step-by-Step, Action Oriented, Code Reviewer and Humanizer. The Humanizer preset is a writing preference, not a Skill invocation.
+- All defaults are neutral; no preset is selected. Global preferences and independent per-environment replacement overrides live only in React state. Choosing Inherit removes the override; a new override starts neutral. An explicit reset clears only the selected scope. The preview orders generated preferences before user text; it is not a conflict resolver or executable instruction composition.
+- Native dropdowns use Field/FieldText system colors and inherit the Harness color scheme; actual Windows Desktop popup contrast requires manual verification.
+
+No persistent saving, model injection, personal storage, permissions, approval changes, network calls or provider activation are included. The preview remains fictional-only, the Host implementation inert, and the component disabled by default.
 
 For implementation and security boundaries see
 [Phase 4 prototype](../../docs/PERSONAL_PROFILE_PHASE4.md) and

@@ -2,6 +2,14 @@
 
 All notable changes are documented here.
 
+## [0.6.3] — Unreleased
+
+### Changed
+
+- Personal Profile: redesigned the browser-only Agent Instructions preview with eight personalities, Automatic plus seven response languages, six independent three-level traits, eight optional behavior presets, custom instructions and an effective preview. No dedicated dialect selector; localization and response language are independent. Global/environment replacement inheritance remains explicit, defaults neutral, and settings reset per scope.
+- Fixed select/option colors across the Personal Profile preview using theme-aware system colors and inherited color scheme. Added DOM interaction regression tests. Real Windows native menu contrast remains a manual acceptance item.
+- No persistent saving, real personal-data collection, agent instruction injection, permission changes, new dependencies or production storage activation. The Host Personal Profile remains inert and off by default.
+
 ## [0.6.2] — Unreleased
 
 ### Fixed
