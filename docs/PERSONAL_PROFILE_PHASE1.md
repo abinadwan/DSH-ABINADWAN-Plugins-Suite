@@ -1,5 +1,7 @@
 # Personal Profile — Phase 1: Core Data & Permissions
 
+> **Superseded (historical record).** Version 0.7.0 replaced this design with native Harness settings; see [the current design](PERSONAL_PROFILE_LOCAL_SETTINGS.md). Nothing described here is in the runtime or the package.
+
 This phase supplies internal, testable Node.js ESM modules only. The Personal
 Profile Host remains disabled by default and read-only. It does not import the
 core. There is no public core package export, tool registration, instruction

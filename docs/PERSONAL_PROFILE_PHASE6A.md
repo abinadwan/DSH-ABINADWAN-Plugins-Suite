@@ -1,5 +1,7 @@
 # Personal Profile Phase 6A — integration and security QA
 
+> **Superseded (historical record).** Version 0.7.0 replaced this design with native Harness settings; see [the current design](PERSONAL_PROFILE_LOCAL_SETTINGS.md). Nothing described here is in the runtime or the package.
+
 Status: internal synthetic architecture only. Live Personal Profile remains disabled,
 read-only and inert (`apply() {}`). No production provider, Remote, model tool,
 injection, UI write flow, or Desktop hook is registered. This is not a working

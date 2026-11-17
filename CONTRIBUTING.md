@@ -6,7 +6,7 @@ Keep changes scoped to the affected Component and preserve its independently con
 
 Use documented DSH APIs. Preserve the package-root Group carrier, per-subpath metadata and the three Component switches. Follow Host inventory for browser Component activation. Report unavailable data accurately. Keep secrets and personal records out of examples, logs and screenshots.
 
-Personal Profile is a read-only design draft. Collection, storage, transmission, retrieval and agent injection require the owner's approved privacy/storage design. Keep custom instructions empty by default and consent off in future drafts.
+Personal Profile persists its approved fields only through the native Harness Settings service with an expected revision. Do not add custom encryption, separate storage, browser storage, additional personal fields, network transmission, agent instruction injection or data retrieval without the owner's approval. Keep every field optional, policies Private and both sharing switches Off by default, and use fictional data in tests. See [the local settings design](docs/PERSONAL_PROFILE_LOCAL_SETTINGS.md).
 
 Humanizer instructions are original MIT-licensed content. Preserve factual fidelity, source attribution and privacy boundaries. Retain applicable licenses for any future third-party reuse.
 

@@ -1,5 +1,7 @@
 # Phase 6B-1 — synthetic Windows Host identity design
 
+> **Superseded (historical record).** Version 0.7.0 replaced this design with native Harness settings; see [the current design](PERSONAL_PROFILE_LOCAL_SETTINGS.md). Nothing described here is in the runtime or the package.
+
 Status: **live Host UNVERIFIED; Profile access DENIED; device checks NOT EXECUTED**.
 Historical parent: `ed0949a8315bb5a4683c087efdbeaa9691cf8662` (Phase 6A).
 After PR #3–#8 merged in order, PR #9 was retargeted to `main` at

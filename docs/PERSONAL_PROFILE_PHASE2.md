@@ -1,5 +1,7 @@
 # Personal Profile — Phase 2: In-memory consent
 
+> **Superseded (historical record).** Version 0.7.0 replaced this design with native Harness settings; see [the current design](PERSONAL_PROFILE_LOCAL_SETTINGS.md). Nothing described here is in the runtime or the package.
+
 Internal ESM only, based on Phase 1 commit
 `27af1133959c8080a03bdb37fceb0313d1b03aa3`. The Personal Profile component remains
 disabled by default and read-only. No UI, Host integration, actual authentication,

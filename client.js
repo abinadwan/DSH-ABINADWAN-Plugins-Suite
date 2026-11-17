@@ -355,7 +355,7 @@ window.__ModuleLoader__.load({
     const MIGRATION_STEPS = [
       'Harness can update a Git-installed bundle in place only when it was installed from a spec pinned to a full 40-character commit. Nothing was changed.',
       'One-time migration (manual, at your discretion): note which components are switched on, Uninstall this bundle from this page, then use Add plugin with the pinned spec shown below, and switch the components back on.',
-      'The suite stores no personal data, so uninstalling removes no profile information. If the pinned install fails, reinstall from the same spec or from the original source.',
+      'Personal Profile settings are stored in this Harness Profile\'s configuration and uninstalling may remove them. If you use Personal Profile, first copy a JSON backup from Personal Profile → Backup & Restore (access permissions are not included). If the pinned install fails, reinstall from the same spec or from the original source.',
     ]
     // Installed-plugin detail page only; never run an installer in a React effect.
     function VersionUpdates({ installedVersion, pluginManager, useRemoteAccess }) {
@@ -1038,7 +1038,8 @@ window.__ModuleLoader__.load({
             const incoming=withoutAuthority(decodeProfile(JSON.parse(restoreText)))
             const candidate=backupStrategy==='merge'?mergeBackup(record,incoming):incoming
             setRestoreReview(decodeProfile(candidate));setRestoreAck(false)
-          }catch{setRestoreReview(null);setRestoreAck(false);setStatus('invalid')}
+          // Never clear a conflict/failed state: those require a reload before Save.
+          }catch{setRestoreReview(null);setRestoreAck(false);setStatus(s=>s==='conflict'||s==='failed'?s:'invalid')}
         }
         contents=card(t('backup'),h('p',null,t('backupHint')),
           h('button',{type:'button',style:btn,onClick:()=>setBackupText(JSON.stringify(withoutAuthority(decodeProfile(record)),null,2))},t('export')),

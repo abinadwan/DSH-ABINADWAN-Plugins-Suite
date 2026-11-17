@@ -6,7 +6,7 @@ import { PNG } from 'pngjs'
 import { Context } from '@deepseek-ai/cordis'
 import SkillRegistry from '@deepseek-ai/dsh-skill'
 import Loader, { Group } from '@deepseek-ai/cordis-plugin-loader'
-import { readPluginMeta } from '@deepseek-ai/dsh-app-boot'
+import { readPluginMeta, composeEntries } from '@deepseek-ai/dsh-app-boot'
 
 const root = new URL('../package.json', import.meta.url)
 const read = path => readFileSync(new URL('../' + path, import.meta.url))
@@ -112,4 +112,27 @@ test('actual Loader mounts all three subpaths from the bundle and toggles them i
   } finally {
     await ctx.fiber.dispose()
   }
+})
+
+test('upgrade from the v0.6.3 nested layout composes one top-level Profile and keeps user overrides', () => {
+  const [{ insert }] = parse(read('cordis.patch.yml').toString())
+  const bundle = [{ insert }]
+  const flat = rows => rows.flatMap(row => [row, ...(row.group ? flat(row.config) : [])])
+  // Clean install: Profile Off, exactly three unique component identities.
+  const clean = composeEntries([bundle])
+  const ids = flat(clean).map(row => row.id)
+  assert.equal(new Set(ids).size, ids.length)
+  assert.equal(clean.find(row => row.id === 'abinadwan-personal-profile').disabled, true)
+  // A v0.6.3 profile patch addressed the same entry ids; they must apply to the new top-level row.
+  const user = [{ id: 'abinadwan-personal-profile', disabled: false }, { id: 'abinadwan-humanizer', disabled: true },
+    { id: 'abinadwan-personal-profile', config: { record: { locale: 'en' } } }]
+  const upgraded = composeEntries([bundle, user])
+  const profiles = flat(upgraded).filter(row => row.id === 'abinadwan-personal-profile')
+  assert.equal(profiles.length, 1, 'no duplicate Profile identity')
+  assert.ok(upgraded.includes(profiles[0]), 'Profile is a direct Include entry, as ConfigEditor.entries() requires')
+  assert.equal(profiles[0].disabled, false, 'user enablement survives the upgrade')
+  assert.deepEqual(profiles[0].config, { record: { locale: 'en' } })
+  const group = upgraded.find(row => row.id === 'abinadwan-suite')
+  assert.equal(group.config.find(row => row.id === 'abinadwan-humanizer').disabled, true)
+  assert.ok(!group.config.some(row => row.id === 'abinadwan-personal-profile'))
 })
