@@ -684,6 +684,63 @@ window.__ModuleLoader__.load({
       h('circle', { cx: 9, cy: 9, r: 2 }),
       h('path', { d: 'M5.5 16c.6-2.8 6.4-2.8 7 0M14 8h4M14 12h4M14 16h4' }))
     }
+    // Original, neutral-by-default UI preference choices, not system instructions.
+    // The preview composes only user-controlled style settings; it never sends them.
+    const PERSONALITY_STYLES = [
+      ['default','الافتراضي','Default',''],
+      ['professional','احترافي','Professional','Use precise, professional wording and a polished structure.'],
+      ['friendly','ودود','Friendly','Be approachable and conversational while remaining accurate.'],
+      ['candid','صريح ومباشر','Candid','Be direct, constructive and candid without unnecessary praise.'],
+      ['creative','إبداعي','Creative','Offer imaginative, relevant ideas without inventing facts.'],
+      ['efficient','مختصر وعملي','Efficient','Prioritize the answer and practical next steps; avoid filler.'],
+      ['critical','ناقد وتحليلي','Critical','Examine assumptions and tradeoffs without reflexively disagreeing.'],
+      ['technical','تقني ومتخصص','Technical','Use precise technical terminology and explain important implementation details.'],
+    ]
+    const RESPONSE_LANGUAGES = [
+      ['auto','تلقائي — حسب لغة المستخدم','Automatic — match the user',''],
+      ['ar','العربية','العربية — Arabic','Arabic'],
+      ['en','English','English','English'],
+      ['zh','中文 — الصينية','中文 — Chinese','Chinese'],
+      ['es','Español — الإسبانية','Español — Spanish','Spanish'],
+      ['fr','Français — الفرنسية','Français — French','French'],
+      ['de','Deutsch — الألمانية','Deutsch — German','German'],
+      ['ja','日本語 — اليابانية','日本語 — Japanese','Japanese'],
+    ]
+    const PERSONALITY_TRAITS = [
+      ['warmth','الودّ','Warmth','Use a restrained, courteous tone.','Use a warmer, approachable tone.'],
+      ['enthusiasm','الحماس','Enthusiasm','Use calm, measured language.','Show more enthusiasm when appropriate.'],
+      ['structure','العناوين والقوائم','Headers and lists','Prefer continuous prose unless structure is necessary.','Use headings and lists when they improve readability.'],
+      ['emoji','الرموز التعبيرية','Emoji','Avoid emojis unless requested or genuinely useful.','Use appropriate emojis sparingly to support the tone.'],
+      ['detail','مستوى التفصيل','Detail','Prefer brief answers while retaining essential information.','Provide additional explanation and useful detail.'],
+      ['critique','التفكير النقدي','Critical thinking','Keep routine answers straightforward without unnecessary critique.','Test assumptions, identify uncertainties and explain tradeoffs.'],
+    ]
+    const BEHAVIOR_PRESETS = [
+      ['critical-thinking','التفكير النقدي','Critical Thinking','Challenge weak assumptions and consider alternatives; do not agree merely to please.'],
+      ['no-fluff','تجنب الحشو','No Fluff','Avoid filler, repetition and unnecessary compliments.'],
+      ['grill-me','نقاش المتطلبات','Grill-Me Mode','For complex decisions, examine requirements, risks and missing facts; ask only material questions.'],
+      ['evidence-first','الأدلة أولًا','Evidence First','Distinguish evidence from inference; cite available sources and disclose uncertainty.'],
+      ['step-by-step','خطوة بخطوة','Step-by-Step','Break complex tasks into clear, actionable steps.'],
+      ['action-oriented','التركيز على التنفيذ','Action Oriented','Focus on practical recommendations and next actions.'],
+      ['code-review','مراجعة الكود','Code Reviewer','When reviewing code, check correctness, security, maintainability and performance.'],
+      ['natural-writing','الكتابة الطبيعية','Natural Writing','When editing, improve clarity and natural phrasing while preserving facts, citations and meaning.'],
+    ]
+    const defaultPersonality = () => ({style:'default', language:'auto', traits:{}, presets:[]})
+    function preferencePreview(settings, customText) {
+      const lines = []
+      const style = PERSONALITY_STYLES.find(item=>item[0]===settings.style)
+      const language = RESPONSE_LANGUAGES.find(item=>item[0]===settings.language)
+      if (style?.[3]) lines.push(style[3])
+      if (language?.[3]) lines.push('Prefer '+language[3]+' for responses unless the task requests another language.')
+      for (const [key,,,less,more] of PERSONALITY_TRAITS) {
+        if (settings.traits[key]===0) lines.push(less)
+        if (settings.traits[key]===2) lines.push(more)
+      }
+      for (const [key,,,instruction] of BEHAVIOR_PRESETS) {
+        if (settings.presets.includes(key)) lines.push(instruction)
+      }
+      if (customText) lines.push(customText)
+      return lines.join('\n\n')
+    }
     function PersonalProfilePage() {
       const [language, setLanguage] = React.useState('ar')
       const [page, setPage] = React.useState('information')
@@ -693,6 +750,9 @@ window.__ModuleLoader__.load({
       const [newLabel, setNewLabel] = React.useState('')
       const [globalInstruction, setGlobalInstruction] = React.useState('')
       const [overrides, setOverrides] = React.useState({})
+      const [instructionScope, setInstructionScope] = React.useState('global')
+      const [globalPreferences, setGlobalPreferences] = React.useState(defaultPersonality)
+      const [environmentPreferences, setEnvironmentPreferences] = React.useState({})
       const [policies, setPolicies] = React.useState({})
       const [optIn, setOptIn] = React.useState(false)
       const [approval, setApproval] = React.useState('')
@@ -712,6 +772,15 @@ window.__ModuleLoader__.load({
         gender:'الجنس', custom:'حقول إضافية', add:'أضف حقلًا تجريبيًا', remove:'حذف',
         label:'اسم الحقل', global:'تعليمات عامة', override:'تعليمات خاصة بهذا الملف',
         inherit:'استخدام التعليمات العامة', customMode:'تعليمات مخصصة', effective:'المعاينة النهائية',
+        scope:'نطاق التعليمات', scopeGlobal:'عام — جميع البيئات', scopeEnvironment:'خاص بالبيئة المحددة',
+        personality:'الشخصية', styleTone:'الأسلوب والنبرة', responseLanguage:'لغة الردود',
+        characteristics:'خصائص الرد', behaviorPresets:'خيارات سلوكية جاهزة', customInstructions:'تعليمات مخصصة',
+        less:'أقل', balanced:'متوازن', more:'أكثر', usingGlobal:'تستخدم البيئة التعليمات العامة.',
+        usingOverride:'تستخدم البيئة إعداداتها المخصصة بدل العامة.',
+        previewHint:'معاينة نص التعليمات فقط. لا تُحفظ ولا تصل إلى الوكيل. اللغة هنا للردود المفضلة، لا للواجهة.',
+        customHint:'اختياري. اكتب تفضيلات إضافية، مثل لهجة أو أسلوب خاص، دون معلومات شخصية.',
+        presetHint:'اختر ما يناسبك؛ لا يُفعّل أي خيار افتراضيًا. الكتابة الطبيعية لا تستدعي مهارة Humanizer.',
+        scopeHint:'خصص إعدادات عامة، أو استبدلها بالكامل للبيئة الحالية. تغيير العامة لا يعدّل البيئات ذات التخصيص.',
         optIn:'السماح باستخدام المعلومات المعتمدة (محاكاة)', fieldPolicies:'صلاحيات كل حقل',
         private:'خاص', ask:'اسأل أولًا', allow:'سماح', approval:'الموافقة المؤقتة (محاكاة)',
         once:'مرة واحدة', session:'لهذه الجلسة', deny:'رفض',
@@ -735,6 +804,15 @@ window.__ModuleLoader__.load({
         gender:'Gender', custom:'Custom fields', add:'Add synthetic field', remove:'Remove',
         label:'Field label', global:'Global instructions', override:'Profile instructions',
         inherit:'Inherit global', customMode:'Custom instructions', effective:'Effective preview',
+        scope:'Instructions scope', scopeGlobal:'Global — all environments', scopeEnvironment:'Selected environment',
+        personality:'Personality', styleTone:'Style and tone', responseLanguage:'Response language',
+        characteristics:'Response characteristics', behaviorPresets:'Behavior presets', customInstructions:'Custom instructions',
+        less:'Less', balanced:'Default', more:'More', usingGlobal:'This environment inherits global instructions.',
+        usingOverride:'This environment replaces global instructions with its own settings.',
+        previewHint:'Instruction text preview only. It is not saved or sent to the agent. Response language is independent of interface language.',
+        customHint:'Optional. Add preferences, such as a dialect or individual style, without personal information.',
+        presetHint:'Choose any relevant options; none are enabled by default. Natural Writing does not invoke the Humanizer skill.',
+        scopeHint:'Edit global settings, or replace them entirely for the selected environment. Global changes never modify an explicit override.',
         optIn:'Allow approved information (simulation)', fieldPolicies:'Per-field policies',
         private:'Private', ask:'Ask First', allow:'Allow', approval:'Temporary consent (simulation)',
         once:'Allow Once', session:'This Session', deny:'Deny',
@@ -778,8 +856,13 @@ window.__ModuleLoader__.load({
       function dropdown(key, title, value, options, onChange) {
         return h('div', { key, style:{marginBottom:14} },
           h('label', { htmlFor:'pp-'+key, style:label }, title),
-          h('select', { id:'pp-'+key, style:control, value, onChange:e=>onChange(e.target.value) },
-            options.map(([v,txt])=>h('option',{key:v,value:v},txt))))
+          // Harness sets root color-scheme for native chrome; pair system colors
+          // on both the closed field and menu options so Windows never mixes
+          // inherited light text with an unrelated white native menu.
+          h('select', { id:'pp-'+key, style:{...control,background:'Canvas',color:'CanvasText',colorScheme:'inherit'},
+            value, onChange:e=>onChange(e.target.value) },
+            options.map(([v,txt])=>h('option',{key:v,value:v,
+              style:{backgroundColor:'Canvas',color:'CanvasText'}},txt))))
       }
       const notice = h('p', { role:'note', style:{padding:'12px 15px',
         border:'1px solid rgba(208,158,52,.7)', borderRadius:10,
@@ -809,25 +892,71 @@ window.__ModuleLoader__.load({
               t('add'))))
       } else if (page === 'instructions') {
         const override = Object.hasOwn(overrides,profile)
-        const effective = override ? overrides[profile] : globalInstruction
+        const settings = instructionScope==='global'
+          ? globalPreferences : (environmentPreferences[profile] || defaultPersonality())
+        const updateSettings = change => {
+          if(instructionScope==='global') setGlobalPreferences(change)
+          else setEnvironmentPreferences(old=>({...old,[profile]:change(old[profile]||defaultPersonality())}))
+        }
+        const effectiveSettings = override ? (environmentPreferences[profile] || defaultPersonality()) : globalPreferences
+        const effective = preferencePreview(effectiveSettings,override?overrides[profile]:globalInstruction)
+        const editingGlobal = instructionScope==='global'
+        const canEdit = editingGlobal || override
+        const activeText = editingGlobal ? globalInstruction : (overrides[profile]||'')
+        const updateText = editingGlobal ? setGlobalInstruction : text=>setOverrides(old=>({...old,[profile]:text}))
+        const localizedOptions = entries=>entries.map(entry=>[entry[0],entry[rtl?1:2]])
+        const traitText = n=>t(n===0?'less':n===2?'more':'balanced')
+        const hint = text=>h('p',{style:{fontSize:12,opacity:.75,margin:'0 0 14px'}},text)
         contents = h(React.Fragment,null,
-          card(t('global'),
-            h('label',{htmlFor:'pp-global',style:label},t('global')),
-            h('textarea',{id:'pp-global',rows:5,maxLength:8192,style:control,
-              value:globalInstruction,onChange:e=>setGlobalInstruction(e.target.value),dir:'auto'})),
-          card(t('override'),
-            dropdown('mode',t('override'),override?'custom':'inherit',
-              [['inherit',t('inherit')],['custom',t('customMode')]],v=>setOverrides(old=>{
-                const copy={...old}
-                if(v==='inherit')delete copy[profile]
-                else copy[profile]=''
-                return copy
+          card(t('scope'),
+            dropdown('instruction-scope',t('scope'),instructionScope,
+              [['global',t('scopeGlobal')],['environment',t('scopeEnvironment')]],setInstructionScope),
+            hint(t('scopeHint')),
+            !editingGlobal?dropdown('mode',t('override'),override?'custom':'inherit',
+              [['inherit',t('inherit')],['custom',t('customMode')]],v=>{
+                if(v==='inherit') {
+                  setOverrides(old=>{const copy={...old};delete copy[profile];return copy})
+                  setEnvironmentPreferences(old=>{const copy={...old};delete copy[profile];return copy})
+                } else if(!override) {
+                  setOverrides(old=>({...old,[profile]:''}))
+                  setEnvironmentPreferences(old=>({...old,[profile]:defaultPersonality()}))
+                }
+              }):null),
+          canEdit?h(React.Fragment,null,
+            card(t('personality'),
+              dropdown('style-tone',t('styleTone'),settings.style,localizedOptions(PERSONALITY_STYLES),
+                value=>updateSettings(old=>({...old,style:value}))),
+              dropdown('response-language',t('responseLanguage'),settings.language,localizedOptions(RESPONSE_LANGUAGES),
+                value=>updateSettings(old=>({...old,language:value})))),
+            card(t('characteristics'),
+              ...PERSONALITY_TRAITS.map(([key,arLabel,enLabel])=>{
+                const value=settings.traits[key]??1
+                return h('div',{key,style:{marginBottom:14}},
+                  h('label',{htmlFor:'pp-trait-'+key,style:{...label,display:'flex',justifyContent:'space-between',gap:12}},
+                    rtl?arLabel:enLabel,h('span',{style:{opacity:.75,fontWeight:400}},traitText(value))),
+                  h('input',{id:'pp-trait-'+key,type:'range',min:0,max:2,step:1,value,
+                    'aria-valuetext':traitText(value),style:{width:'100%',margin:0},
+                    onChange:e=>updateSettings(old=>({...old,traits:{...old.traits,[key]:Number(e.target.value)}}))}),
+                  h('div',{style:{display:'flex',justifyContent:'space-between',fontSize:11,opacity:.7}},
+                    t('less'),t('balanced'),t('more')))
               })),
-            override?h('textarea',{id:'pp-override',rows:5,maxLength:8192,style:control,
-              'aria-label':t('override'),value:overrides[profile],
-              onChange:e=>setOverrides(old=>({...old,[profile]:e.target.value})),dir:'auto'}):null),
-          card(t('effective'),h('output',{style:{whiteSpace:'pre-wrap',overflowWrap:'anywhere'}},
-            effective || t('noInstruction'))))
+            card(t('behaviorPresets'),hint(t('presetHint')),
+              ...BEHAVIOR_PRESETS.map(([key,arLabel,enLabel,prompt])=>h('label',
+                {key,htmlFor:'pp-preset-'+key,style:{display:'flex',gap:10,alignItems:'start',marginBottom:12}},
+                h('input',{id:'pp-preset-'+key,type:'checkbox',checked:settings.presets.includes(key),
+                  onChange:e=>{const checked=e.target.checked;updateSettings(old=>({...old,
+                    presets:checked?[...new Set([...old.presets,key])]:old.presets.filter(id=>id!==key)}))}}),
+                h('span',null,h('span',{style:{display:'block',fontWeight:600}},rtl?arLabel:enLabel),
+                  !rtl?h('span',{style:{fontSize:12,opacity:.75}},prompt):null)))),
+            card(t('customInstructions'),hint(t('customHint')),
+              h('label',{htmlFor:editingGlobal?'pp-global':'pp-override',style:label},t('customInstructions')),
+              h('textarea',{id:editingGlobal?'pp-global':'pp-override',rows:5,maxLength:8192,style:control,
+                value:activeText,onChange:e=>updateText(e.target.value),dir:'auto'}))
+          ):null,
+          card(t('effective'),hint(override?t('usingOverride'):t('usingGlobal')),
+            h('output',{'data-profile-effective-preview':'',dir:'auto',style:{display:'block',whiteSpace:'pre-wrap',overflowWrap:'anywhere'}},
+              effective || t('noInstruction')),
+            h('p',{role:'note',style:{...muted,marginTop:12}},t('previewHint'))))
       } else if (page === 'access') {
         const policy = policies[profile] || {}
         contents = h(React.Fragment,null,
@@ -889,7 +1018,9 @@ window.__ModuleLoader__.load({
               v=>{setProfile(v);setApproval('')}),
             h('button',{type:'button',style:btn,onClick:()=>{
               setValues({});setCustom([]);setNewLabel('');setGlobalInstruction('');
-              setOverrides({});setPolicies({});setOptIn(false);setApproval('');
+              setOverrides({});setGlobalPreferences(defaultPersonality());
+              setEnvironmentPreferences({});setInstructionScope('global');
+              setPolicies({});setOptIn(false);setApproval('');
               setLocked(false);setAutoLock('5');setSessionVisible(true);
               setBackupReview('');setBackupStrategy('merge');setBackupAck(false);
               setPage('information');setProfile(profiles[0])
@@ -911,7 +1042,7 @@ window.__ModuleLoader__.load({
         ['Date of birth', 'Optional.'],
         ['Nationality', 'Optional.'],
         ['Gender', 'User-selected. May remain unspecified.'],
-        ['Custom agent instructions', 'Empty by default. Optional templates below.'],
+        ['Agent preferences and custom instructions', 'Neutral by default. Personality, response language, characteristics and behavior presets are available in the browser-only preview.'],
         ['Allow the agent to use approved profile information', 'Off by default. Requires explicit opt-in after design approval.'],
       ]
       return h('section', { 'data-personal-profile-draft': '',
@@ -921,11 +1052,11 @@ window.__ModuleLoader__.load({
         h('dl', null, fields.map(([label, description]) => h('div', { key: label, style: { marginBottom: 12 } },
           h('dt', { style: { fontWeight: 650 } }, label),
           h('dd', { style: { margin: '4px 0 0', opacity: .8 } }, description)))),
-        h('h4', null, 'Optional instruction templates'),
+        h('h4', null, 'Optional instruction preferences'),
         h('ul', null,
-          h('li', null, 'Use concise, direct answers and explain technical terms when needed.'),
-          h('li', null, 'Write in clear Arabic and use examples when they help.'),
-          h('li', null, 'Use a professional tone and preserve source links.')),
+          h('li', null, 'Choose an optional personality and response language independently of the interface language.'),
+          h('li', null, 'Adjust response characteristics and select optional behavior presets.'),
+          h('li', null, 'Review the effective global or per-environment replacement instructions before future activation.')),
         h('p', null, 'Proposed behavior after approval: apply approved style instructions automatically. Access personal or sensitive information only when relevant and explicitly allowed.'),
         h('p', { role: 'note' }, 'This scaffold collects, saves and transmits zero profile information. Enabling it only shows this draft.'))
     }

@@ -106,3 +106,97 @@ test('demo is independent of privileged Host imports; suite version and lock agr
   assert.match(host, /export function apply\(\) \{\}/)
   assert.match(patch, /id: abinadwan-personal-profile[\s\S]*?disabled: true/)
 })
+
+test('Personal Profile dropdowns use paired native system colors and inherit the Harness color scheme', async t => {
+  const app = await profileOn(await clientHarness({React}))
+  t.after(()=>app.dispose())
+  const markup = renderToStaticMarkup(React.createElement(panel(app)))
+  const dom = new JSDOM(markup)
+  t.after(()=>dom.window.close())
+  const d = dom.window.document
+  for(const select of d.querySelectorAll('select')) {
+    assert.match(select.getAttribute('style'), /background:Canvas/i)
+    assert.match(select.getAttribute('style'), /color:CanvasText/i)
+    assert.match(select.getAttribute('style'), /color-scheme:inherit/i)
+    for(const option of select.options) {
+      assert.match(option.getAttribute('style'), /background-color:Canvas/i)
+      assert.match(option.getAttribute('style'), /color:CanvasText/i)
+    }
+  }
+})
+
+test('Personality preview has seven languages, neutral defaults, optional presets and isolated full overrides', async t => {
+  const app = await profileOn(await clientHarness({React}))
+  const dom = new JSDOM('<!doctype html><html><body><div id="root"></div></body></html>', {
+    url:'http://localhost/',pretendToBeVisual:true,
+  })
+  const before = [globalThis.document,globalThis.window,globalThis.IS_REACT_ACT_ENVIRONMENT]
+  globalThis.document=dom.window.document
+  globalThis.window=dom.window
+  globalThis.IS_REACT_ACT_ENVIRONMENT=true
+  const root=createRoot(dom.window.document.getElementById('root'))
+  t.after(async ()=>{
+    await act(async()=>root.unmount())
+    ;[globalThis.document,globalThis.window,globalThis.IS_REACT_ACT_ENVIRONMENT]=before
+    dom.window.close()
+    await app.dispose()
+  })
+  await act(async()=>root.render(React.createElement(panel(app))))
+  const d=dom.window.document
+  const get=id=>d.getElementById('pp-'+id)
+  const click=async id=>act(async()=>get(id).click())
+  const select=async(id,value)=>act(async()=>{
+    get(id).value=value
+    get(id).dispatchEvent(new dom.window.Event('change',{bubbles:true}))
+  })
+  const preview=()=>d.querySelector('[data-profile-effective-preview]').textContent
+  await click('tab-instructions')
+  assert.deepEqual([...get('response-language').options].map(o=>o.value),
+    ['auto','ar','en','zh','es','fr','de','ja'])
+  assert.equal(get('response-language').value,'auto')
+  assert.equal(get('style-tone').value,'default')
+  assert.equal(d.querySelectorAll('input[type="range"]').length,6)
+  assert.ok([...d.querySelectorAll('input[type="range"]')].every(x=>x.value==='1'))
+  assert.equal(d.querySelectorAll('input[id^="pp-preset-"]:checked').length,0)
+  assert.equal(d.querySelectorAll('input[id^="pp-preset-"]').length,8)
+  assert.equal(get('global').value,'')
+  assert.match(preview(),/لا توجد تعليمات/)
+  await select('style-tone','technical')
+  await select('response-language','fr')
+  await click('preset-no-fluff')
+  assert.match(preview(),/technical terminology/)
+  assert.match(preview(),/Prefer French/)
+  assert.match(preview(),/Avoid filler/)
+  await select('instruction-scope','environment')
+  assert.equal(get('response-language'),null,'inheriting scope has no separate editor')
+  assert.match(preview(),/Prefer French/)
+  await select('mode','custom')
+  assert.equal(get('response-language').value,'auto')
+  assert.equal(get('style-tone').value,'default')
+  assert.doesNotMatch(preview(),/Prefer French|Avoid filler/)
+  await select('response-language','ja')
+  assert.match(preview(),/Prefer Japanese/)
+  await select('profile','Synthetic Lab')
+  assert.equal(get('mode').value,'inherit')
+  assert.match(preview(),/Prefer French/)
+  await select('profile','Synthetic Studio')
+  assert.equal(get('mode').value,'custom')
+  assert.match(preview(),/Prefer Japanese/)
+  await select('instruction-scope','global')
+  await select('response-language','en')
+  assert.match(preview(),/Prefer Japanese/,'global changes do not alter active override')
+  await select('instruction-scope','environment')
+  await select('mode','inherit')
+  assert.match(preview(),/Prefer English/)
+  await select('language','en')
+  assert.equal(d.querySelector('[data-personal-profile-panel]').dir,'ltr')
+  assert.match(d.getElementById('pp-content').textContent,/not saved or sent to the agent/)
+  assert.equal(get('mode').value,'inherit')
+  assert.doesNotMatch(d.getElementById('pp-content').textContent,/Preferred dialect/)
+  await act(async()=>[...d.querySelectorAll('button')].find(b=>b.textContent==='Reset preview').click())
+  await click('tab-instructions')
+  assert.equal(get('style-tone').value,'default')
+  assert.equal(get('response-language').value,'auto')
+  assert.equal(d.querySelectorAll('input[id^="pp-preset-"]:checked').length,0)
+  assert.equal(preview(),'No instructions.')
+})

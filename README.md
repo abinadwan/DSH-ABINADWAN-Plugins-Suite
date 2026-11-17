@@ -26,6 +26,8 @@ One installation supplies three independently toggleable DSH Components. The pac
 
 A dedicated **Personal Profile** entry in the **left sidebar** opens a full-page five-section preview: My Information, Agent Instructions, Access Control, Backup & Restore, and Privacy & Security. The page supports Arabic/English labels and editable **fictional values held only in browser memory**. It does not persist, encrypt, export, load real account data or provide any agent permissions.
 
+The proposed Personality preview adds eight style choices (including Default), seven response languages plus Automatic, six three-level response characteristics, eight optional behavior presets, custom text and an effective-instructions preview. Interface language (Arabic/English) and response language are independent. Settings default to neutral; explicit per-environment settings fully replace Global settings. Native dropdowns use paired platform system colors and inherit Harness's color scheme. These controls remain fictional and memory-only: no Save, actual model instruction injection, or automatic Humanizer invocation.
+
 **Do not enter real personal information.** The Host Personal Profile component remains disabled by default and `apply() {}` still registers no backend services. Since 0.6.2 the left-sidebar entry, its page and the detail-page draft exist **only while the Personal Profile component is switched On**; switching it Off removes them as soon as Harness reports the component change (no restart needed when Harness reports it live). It is not a working production profile.
 
 ## Environment & Context

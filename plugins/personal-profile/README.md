@@ -16,7 +16,7 @@ Installing/updating the suite to v0.6.0 adds a **Personal Profile** item to the 
 **left sidebar**. It opens a full-height page with five sections:
 
 - My Information — fictional, editable sample fields and custom fields.
-- Agent Instructions — simulated global/per-Profile inheritance and override preview.
+- Agent Instructions — Personality preview: eight styles including Default; Automatic plus Arabic, English, Chinese, Spanish, French, German and Japanese response languages; six three-level response characteristics; eight optional behavior presets; custom text and effective instructions. Global and per-Profile replacement scopes remain separate. No dedicated dialect preference; custom instructions may express a dialect if desired. Interface labels remain Arabic and English. The Natural Writing preset does not invoke the separate Humanizer Skill; no preference is applied or sent to a model.
 - Access Control — simulated per-field policy and consent choices; no real permissions.
 - Backup & Restore — review interactions only; no import/export, password, or disk writes.
 - Privacy & Security — simulated lock, auto-lock choices and synthetic session controls.
@@ -30,7 +30,7 @@ Since v0.6.2 the left-sidebar launcher, its page and the read-only design card
 on the Plugins detail page are registered only while the Host **Personal
 Profile** component is switched On and running; switching it Off unregisters
 all three. Enabling it still activates no storage, Host integration or agent access.
-There is **no Save button or persistent storage** in this release.
+There is **no Save button or persistent storage** in this release. The preview's native select fields and options use paired Canvas/CanvasText colors under the Harness root color scheme; actual Windows popup appearance still requires manual verification.
 
 For implementation and security boundaries see
 [Phase 4 prototype](../../docs/PERSONAL_PROFILE_PHASE4.md) and
