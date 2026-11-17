@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Personal Profile",
-    "description": "Read-only configuration draft. Privacy and storage design awaits approval."
+    "description": "Local preferences and optional basic information; no agent disclosure."
   }
 }

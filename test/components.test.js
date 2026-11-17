@@ -48,11 +48,12 @@ test('Humanizer contributes the packaged skill and releases it on disable', asyn
   assert.equal(registered.length, 1)
 })
 
-test('Personal Profile Host accepts no fields and contributes no data capability', async () => {
-  assert.ok(pkg.exports['./personal-profile'], 'missing profile scaffold')
-  const profile = await import(`${base}/personal-profile`)
-  const forbidden = new Proxy({}, { get(_, key) { assert.fail(`profile requested ${String(key)}`) } })
-  assert.equal(profile.apply(forbidden), undefined)
-  assert.equal(profile.Config, undefined, 'DSH config would persist personal fields')
-  assert.equal(profile.inject, undefined)
+test('Personal Profile Host declares native settings and no agent service', async () => {
+  const profile=await import(`${base}/personal-profile`)
+  assert.ok(profile.Config)
+  assert.equal(profile.inject,undefined)
+  const calls=[]
+  const ctx={fiber:{},inject(keys,callback){calls.push(keys);callback({effect(fn){return fn()},settings:{configure(options,owner){calls.push([options,owner])}}})}}
+  profile.apply(ctx)
+  assert.deepEqual(calls,[['settings'],[{auto:false},ctx.fiber]])
 })

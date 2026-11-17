@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/workflows/test.yml"><img alt="CI" src="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/workflows/test.yml/badge.svg"/></a>
-  <img alt="Suite 0.6.3" src="https://img.shields.io/badge/suite-0.6.3-7b2246"/>
+  <img alt="Suite 0.7.0" src="https://img.shields.io/badge/suite-0.7.0-7b2246"/>
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-22c55e"/></a>
 </p>
 
@@ -20,15 +20,11 @@ One installation supplies three independently toggleable DSH Components. The pac
 | --- | --- | --- | --- |
 | <img src="plugins/environment-context/icon.png" width="32" alt="Teal monitor"/> **Environment & Context** | Read-only session inspector | On | [Plugin details](plugins/environment-context/README.md) |
 | <img src="plugins/humanizer/icon.png" width="32" alt="Purple feather"/> **Humanizer** | Runtime writing Skill | On | [Usage and scope](plugins/humanizer/README.md) |
-| <img src="plugins/personal-profile/icon.png" width="32" alt="Amber ID and gear"/> **Personal Profile** | Synthetic left-sidebar preview (no saving) | Host Off | [Preliminary fields and pending design](plugins/personal-profile/README.md) |
+| <img src="plugins/personal-profile/icon.png" width="32" alt="Amber ID and gear"/> **Personal Profile** | Local native settings candidate | Host Off | [Local settings and acceptance](plugins/personal-profile/README.md) |
 
-## Personal Profile (preview)
+## Personal Profile (0.7.0 candidate)
 
-A dedicated **Personal Profile** entry in the **left sidebar** opens a full-page five-section preview: My Information, Agent Instructions, Access Control, Backup & Restore, and Privacy & Security. The page supports Arabic/English labels and editable **fictional values held only in browser memory**. It does not persist, encrypt, export, load real account data or provide any agent permissions.
-
-Since 0.6.3, Agent Instructions includes eight style/tone choices, seven response languages plus Automatic, six three-level characteristics, eight optional behavior presets, custom text and an effective instruction preview. Defaults are neutral. Response language is independent of the Arabic/English interface locale; any dialect preference belongs in custom text. Per-environment overrides replace rather than merge global settings. These controls are still synthetic, in-memory previews and do not configure an agent. Native select menus use theme-aware System Colors for both select and option elements.
-
-**Do not enter real personal information.** The Host Personal Profile component remains disabled by default and `apply() {}` still registers no backend services. Since 0.6.2 the left-sidebar entry, its page and the detail-page draft exist **only while the Personal Profile component is switched On**; switching it Off removes them as soon as Harness reports the component change (no restart needed when Harness reports it live). It is not a working production profile.
+Optional preferred name, nationality and gender; local Agent Instructions with personality, response language, characteristics, presets and custom text. Explicit Save uses the native Harness settings service with a revision check. Global within the active Profile; override by real Workspace. No plugin-specific encryption; avoid sensitive information. Access and cloud switches are saved policy preferences only: agent disclosure is not implemented. See [design and acceptance](docs/PERSONAL_PROFILE_LOCAL_SETTINGS.md).
 
 ## Environment & Context
 
@@ -56,11 +52,6 @@ Ask the agent to use Humanizer and supply the text, audience and desired tone. F
 
 The skill runs when the agent loads it through DSH. Automatic response interception, persistent tone controls and background rewriting remain future work. Its instructions prohibit optimizing for detector scores, promising detection evasion or falsely claiming human authorship.
 
-## Personal Profile
-
-This Component exposes a **read-only design draft** on the suite detail page when enabled. It accepts zero profile values. Profile storage, retrieval, transmission, consent enforcement and automatic style application await design approval.
-
-The preliminary fields cover a preferred name with optional full name, optional date of birth and nationality, user-selected gender, custom instructions empty by default with optional templates, and an opt-in for using approved profile information. The proposed behavior applies approved style instructions automatically and accesses personal or sensitive information only when relevant and allowed. See the per-plugin document for decisions still awaiting approval.
 
 ## Installation and updates
 
@@ -76,7 +67,7 @@ dsh plugin --profile desktop add github:abinadwan/DSH-ABINADWAN-Plugins-Suite#RE
 dsh --profile desktop --dump-config
 ```
 
-Restart Harness completely, open **Plugins → ABINADWAN Plugins Suite**, enable the suite and inspect its three Components. Toggle each independently. Personal Profile starts off. When enabled, its draft appears on the suite detail page. Open a normal conversation for Environment & Context and ask the agent to use Humanizer for an editing task.
+Restart Harness completely, open **Plugins → ABINADWAN Plugins Suite**, enable the suite and inspect its three Components. Toggle each independently. Personal Profile starts off. When enabled, open its native left-sidebar settings page. Open a normal conversation for Environment & Context and ask the agent to use Humanizer for an editing task.
 
 If your active profile is `web` or another name, substitute that name in every command. Upgrading from 0.4.0 keeps the `abinadwan-suite` group identity and the current inspector behavior. Existing user-layer disable overrides remain applicable. The package ships ready-to-run JavaScript and installs directly from GitHub. No build step is required. An immutable version can be installed by appending `#<full-commit-sha>` to the GitHub reference.
 
@@ -88,7 +79,7 @@ The suite detail page includes a **Suite updates (GitHub Releases)** section bel
 
 ## Architecture and compatibility
 
-The bundle patch declares a package-root Cordis Group containing three Host subpath rows. DSH omits Group containers from the Components list. Subpath locale and icon exports give the rows their own identities. The package-root browser carrier remains available for suite controls and watches access-checked Host inventory to mount the Environment and Profile browser fibers. This follows the current DSH contract, where browser bundle discovery uses package-root entries. [DSH metadata contract](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/docs/cookbook/adding-a-package.md#plugin-display-metadata)
+The bundle patch declares the package-root Cordis Group containing Environment and Humanizer, and an independent settings-owned Personal Profile row directly under the profile Include. DSH omits Group containers from the Components list. Subpath locale and icon exports give the rows their own identities. The package-root browser carrier remains available for suite controls and watches access-checked Host inventory to mount the Environment and Profile browser fibers. This follows the current DSH contract, where browser bundle discovery uses package-root entries. [DSH metadata contract](https://github.com/deepseek-ai/deepseek-harness/blob/39163dd30f703a79079e2d2446545cff3c453738/docs/cookbook/adding-a-package.md#plugin-display-metadata)
 
 Humanizer uses `ctx.skills.register()`. Environment uses the native right-sidebar, conversation-header and session projection APIs. The UI follows `plugin-manager/changed` and `connection/reset`, disposes resources when a Component or access is disabled, and ignores stale inventory responses. An inventory read failure pauses Component UI until a successful refresh. The suite requires a DSH profile with Skills, Plugin Manager, Remote access and the standard web conversation/sidebar services.
 
@@ -104,7 +95,7 @@ Tests use the actual Cordis Loader, DSH metadata reader and Skill registry, plus
 
 ## Privacy and security
 
-Environment reads UI-facing session/workspace summaries and projected token usage. The runtime Humanizer instructions operate within DSH's existing model context. Text supplied to the agent follows the user's existing model/provider configuration. The suite adds no external rewriting endpoint. The read-only automatic/manual release checks contact public GitHub without credentials, referrers or conversation data. Installations require an explicit user confirmation and are delegated to the official DSH Host. Personal Profile accepts, persists and transmits zero personal information in this version. [Security policy](SECURITY.md)
+Environment reads UI-facing session/workspace summaries and projected token usage. The runtime Humanizer instructions operate within DSH's existing model context. Text supplied to the agent follows the user's existing model/provider configuration. The suite adds no external rewriting endpoint. The read-only automatic/manual release checks contact public GitHub without credentials, referrers or conversation data. Installations require an explicit user confirmation and are delegated to the official DSH Host. Personal Profile stores the reduced optional profile fields and preferences in the active Harness Profile without plugin-level encryption; it does not transmit them to a model. [Security policy](SECURITY.md)
 
 ## License and attribution
 

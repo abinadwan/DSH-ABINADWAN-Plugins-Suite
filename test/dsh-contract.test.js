@@ -12,18 +12,20 @@ const root = new URL('../package.json', import.meta.url)
 const read = path => readFileSync(new URL('../' + path, import.meta.url))
 const base = '@abinadwan/dsh-plugins-suite'
 
-test('DSH bundle uses a Group carrier with exactly three switchable subpaths', async () => {
-  const [{ insert: [group] }] = parse(read('cordis.patch.yml').toString())
+test('DSH bundle has a Group carrier and top-level settings-owned Personal Profile', async () => {
+  const [{ insert: [group, profile] }] = parse(read('cordis.patch.yml').toString())
   assert.equal(group.id, 'abinadwan-suite', 'keep existing suite override identity')
   assert.equal(group.name, base)
   assert.equal(group.group, true)
   assert.equal((await import('../index.js')).default, Group)
   assert.deepEqual(group.config.map(row => row.name), [
-    `${base}/environment-context`, `${base}/humanizer`, `${base}/personal-profile`,
+    `${base}/environment-context`, `${base}/humanizer`,
   ])
-  assert.equal(new Set(group.config.map(row => row.id)).size, 3)
-  assert.equal(group.config[2].disabled, true)
-  assert.ok(group.config.slice(0, 2).every(row => !row.disabled))
+  assert.equal(profile.id,'abinadwan-personal-profile')
+  assert.equal(profile.name,`${base}/personal-profile`)
+  assert.equal(profile.disabled,true)
+  assert.equal(new Set([...group.config,profile].map(row=>row.id)).size,3)
+  assert.ok(group.config.every(row => !row.disabled))
 })
 
 test('actual DSH metadata reader gives each component its title and transparent PNG', () => {
@@ -101,9 +103,12 @@ test('actual Loader mounts all three subpaths from the bundle and toggles them i
     await ctx.loader.await()
     assert.equal(await ctx.skills.get('abinadwan-humanizer'), undefined)
     assert.equal(environment.disabled, true)
-    assert.equal(profile.disabled, true)
+    assert.equal(profile.disabled, false, 'top-level Profile independent of group; bundle selection governs all rows')
     assert.equal(environment.fiber.uid, null, 'disabled group releases the Environment fiber')
-    assert.equal(profile.fiber.uid, null, 'disabled group releases the Profile fiber')
+    await ctx.loader.update('abinadwan-personal-profile',{disabled:true})
+    await ctx.loader.await()
+    assert.equal(profile.disabled,true)
+    assert.equal(profile.fiber.uid,null)
   } finally {
     await ctx.fiber.dispose()
   }
