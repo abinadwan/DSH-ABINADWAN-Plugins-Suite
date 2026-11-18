@@ -31,13 +31,15 @@ class Capture extends LlmAdapter {
 const systemTexts=request=>request.messages.filter(m=>m.role==='system').map(m=>m.content.map(b=>b.text??'').join(''))
 const latest=adapter=>systemTexts(adapter.requests.at(-1)).at(-1)??''
 const marker='FICTIONAL_PRIVATE_FIELD_7C'
+const nationalityMarker='FICTIONAL_NATIONALITY_7C'
 const custom='FICTIONAL_CUSTOM {{literal}}'
 async function send(agent,adapter,label){
   const count=adapter.requests.length
   agent.followup(createUserMessage({content:[{type:'text',text:label}],source:{kind:'user'}}))
   await agent.whenIdle()
   assert.equal(adapter.requests.length,count+1,'one adapter attempt expected')
-  assert.doesNotMatch(JSON.stringify(adapter.requests.at(-1)),new RegExp(marker))
+  const payload=JSON.stringify(adapter.requests.at(-1))
+  assert.doesNotMatch(payload,new RegExp(marker+'|'+nationalityMarker+'|female'))
 }
 test('rc.3 real loop: committed config, new and existing sessions, disable and complete prompts',async()=>{
   const ctx=new Context()
@@ -56,9 +58,9 @@ test('rc.3 real loop: committed config, new and existing sessions, disable and c
     const a=await ctx.agentLoop.create(SessionId('profile-a'),{provider:'plain',model:'test'})
     installModelSelection(a.ctx)
     const r=profile.emptyRecord()
-    r.information.preferredName=marker
+    r.information={preferredName:marker,nationality:nationalityMarker,gender:'female'}
     r.allowCloud=r.allowPersonalInformation=true
-    r.policies.preferredName='allow'
+    r.policies={preferredName:'allow',nationality:'allow',gender:'allow'}
     r.preferences.style='friendly'
     r.preferences.custom=custom
     await send(a,plain,'before enabling')
@@ -99,5 +101,21 @@ test('rc.3 real loop: committed config, new and existing sessions, disable and c
     await send(a,plain,'complete preset')
     assert.equal(latest(plain),'Complete test prompt.')
     await remove()
+    // Real request boundary: prohibit all fields regardless of changes in grant or route.
+    for(const policy of ['private','ask_first','allow']){
+      for(const master of [false,true])for(const cloud of [false,true]){
+        const record=structuredClone(next)
+        record.allowPersonalInformation=master;record.allowCloud=cloud
+        record.policies={preferredName:policy,nationality:policy,gender:policy}
+        await fiber.update({record})
+        a.model.select({provider:'history',model:'test'})
+        await send(a,history,'permission matrix history')
+        a.model.select({provider:'plain',model:'test'})
+        await send(a,plain,'permission matrix plain')
+      }
+    }
+    assert.doesNotMatch(JSON.stringify(a.session.snapshotEvents()),new RegExp(marker+'|'+nationalityMarker+'|female'))
+    await fiber.dispose()
+    await send(a,plain,'disabled after policy changes')
   }finally{await ctx.fiber.dispose()}
 })
