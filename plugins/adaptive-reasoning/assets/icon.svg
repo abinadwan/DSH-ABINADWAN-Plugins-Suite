@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" role="img" aria-labelledby="title">
+  <title id="title">Adaptive Reasoning</title>
+  <rect x="1" y="1" width="22" height="22" rx="6" fill="#C43D70"/>
+  <rect x="2.5" y="2.5" width="19" height="19" rx="4.5" fill="#772342"/>
+  <path d="M9 2.5h6" fill="none" stroke="#F4A6C4" stroke-width="1" stroke-linecap="round"/>
+  <g id="glyph" fill="none" stroke="#F8FAFC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M6.5 15v3m5.5-6v6m5.5-9v9M6.5 11.5c3.6 0 5-4.5 8.8-4.5"/>
+    <circle cx="17.5" cy="7" r="2"/>
+  </g>
+</svg>

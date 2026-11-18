@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" role="img" aria-labelledby="title">
+  <title id="title">Conversation Lifecycle</title>
+  <rect x="1" y="1" width="22" height="22" rx="6" fill="#15856F"/>
+  <rect x="2.5" y="2.5" width="19" height="19" rx="4.5" fill="#0D5147"/>
+  <path d="M9 2.5h6" fill="none" stroke="#8EE0C5" stroke-width="1" stroke-linecap="round"/>
+  <g id="glyph" fill="none" stroke="#F8FAFC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M10 13H6V7a1 1 0 0 1 1-1h8m-9 7-1 2m3.5-3.5v-2H15"/>
+    <path d="M18.25 11.25a4.5 4.5 0 1 1-6.5 1.25m3.75.75v2.25h2"/>
+  </g>
+</svg>
