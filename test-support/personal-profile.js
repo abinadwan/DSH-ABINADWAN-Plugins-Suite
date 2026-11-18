@@ -5,7 +5,8 @@ import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { JSDOM } from 'jsdom'
 import { clientHarness, base, withProfile, tick, ok, refused } from './client.js'
-import { emptyRecord } from '../plugins/personal-profile/index.js'
+import { emptyRecord, emptyLegacyRecord } from '../plugins/personal-profile/index.js'
+export { emptyRecord, emptyLegacyRecord }
 
 export const namespace = 'abinadwan-personal-profile'
 export const panelId = base + '/personal-profile-page'
@@ -46,7 +47,8 @@ export function deferred() {
 
 export const workspaceItems = [{ workspaceId: 'w1', title: 'Workspace A' }, { workspaceId: 'w2', title: 'Workspace B' }]
 
-export async function mountProfile(t, { transport = mockSettings(), access = () => true, items = workspaceItems, console: logger, fetch } = {}) {
+export async function mountProfile(t, { transport = mockSettings(), access = () => true, items = workspaceItems, console: logger, fetch,
+  download = true, clipboard = true } = {}) {
   const app = await clientHarness({ React, settings: transport, workspaceItems: items, console: logger, fetch })
   assert.equal(app.slots.records.has(panelId), false)
   app.setRows(withProfile(app.rows(), true))
@@ -59,6 +61,26 @@ export async function mountProfile(t, { transport = mockSettings(), access = () 
   globalThis.document = dom.window.document; globalThis.window = dom.window; globalThis.IS_REACT_ACT_ENVIRONMENT = true
   const root = createRoot(dom.window.document.getElementById('root'))
   const d = dom.window.document
+  // Browser-native export doubles: object URLs, <a download> clicks and the
+  // async Clipboard API. Nothing touches the real filesystem or clipboard.
+  const downloads = []
+  if (download) {
+    const blobs = new Map()
+    dom.window.URL.createObjectURL = blob => { const url = 'blob:http://localhost/' + (blobs.size + 1); blobs.set(url, blob); return url }
+    dom.window.URL.revokeObjectURL = () => {}
+    d.addEventListener('click', event => {
+      const a = event.target
+      if (a?.tagName === 'A' && a.download) { event.preventDefault(); downloads.push({ name: a.download, blob: blobs.get(a.href) }) }
+    }, true)
+  }
+  const copied = []
+  if (clipboard) Object.defineProperty(dom.window.navigator, 'clipboard', { configurable: true,
+    value: { writeText: async text => { copied.push(text) } } })
+  const blobText = blob => new Promise((resolve, reject) => {
+    const reader = new dom.window.FileReader()
+    reader.onload = () => resolve(String(reader.result)); reader.onerror = reject
+    reader.readAsText(blob)
+  })
   let component = panel.component
   const render = async () => {
     await act(async () => root.render(React.createElement(component, { useRemoteAccess: access })))
@@ -83,6 +105,16 @@ export async function mountProfile(t, { transport = mockSettings(), access = () 
     x.dispatchEvent(new dom.window.Event('input', { bubbles: true })); await tick()
   })
   const status = () => byId('save-status').textContent
+  const backupStatus = () => byId('backup-status')?.textContent || ''
+  /** Choose a file in an <input type=file>; FileReader settles asynchronously. */
+  const upload = async (id, text, { name = 'backup.json', size } = {}) => act(async () => {
+    const input = byId(id); assert.ok(input, id)
+    const file = new dom.window.File([text], name, { type: 'application/json' })
+    if (size !== undefined) Object.defineProperty(file, 'size', { value: size })
+    Object.defineProperty(input, 'files', { configurable: true, value: [file] })
+    input.dispatchEvent(new dom.window.Event('change', { bubbles: true }))
+    for (let i = 0; i < 20; i++) await new Promise(resolve => setTimeout(resolve, 1))
+  })
   t.after(async () => {
     await act(async () => root.unmount())
     globalThis.document = previous.document; globalThis.window = previous.window; globalThis.IS_REACT_ACT_ENVIRONMENT = previous.act
@@ -90,7 +122,8 @@ export async function mountProfile(t, { transport = mockSettings(), access = () 
   })
   await render()
   return {
-    app, dom, d, root, render, byId, click, button, select, type, settle, status, transport,
+    app, dom, d, root, render, byId, click, button, select, type, settle, status, backupStatus, transport,
+    upload, downloads, copied, blobText,
     unmount: () => act(async () => root.unmount()),
     setAccess(next) { access = next },
   }

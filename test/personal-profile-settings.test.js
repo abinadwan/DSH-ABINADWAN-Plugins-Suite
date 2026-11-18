@@ -1,22 +1,34 @@
-// Phase 6D regression coverage for the native-settings Personal Profile page.
-// Replaces still-relevant coverage from the removed encrypted-storage suites
-// (see docs/PERSONAL_PROFILE_LOCAL_SETTINGS.md, "Removed-test audit").
-// Fictional data only.
+// Regression coverage for the native-settings Personal Profile page.
+// 0.7.2: unified profile (record v2), v0.7.1 migration, complete backup and
+// two-strategy restore. Coverage changes are audited in
+// docs/PERSONAL_PROFILE_V072_CHANGE_RECORD.md (section 13). Fictional data only.
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { isVolatile } from '@deepseek-ai/cosmokit'
 import { ok, refused } from '../test-support/client.js'
 import { mountProfile, mockSettings, deferred, namespace, copy } from '../test-support/personal-profile.js'
-import { Config, emptyRecord } from '../plugins/personal-profile/index.js'
+import { Config, emptyRecord, emptyLegacyRecord, emptyPreferences } from '../plugins/personal-profile/index.js'
 
 const SAVED = /تم تأكيد الحفظ/, FAILED = /تعذر تأكيد الحفظ/, CONFLICT = /نافذة أخرى/
-const UNAVAILABLE = /غير متاحة/, INVALID = /غير صالحة/
+const UNAVAILABLE = /غير متاحة/, INVALID = /غير صالحة/, MIGRATION = /بانتظار الترحيل/
+const REVIEW = 'مراجعة النسخة'
+const policies = (v = 'private') => ({ preferredName: v, nationality: v, gender: v })
 const fictional = () => {
   const record = emptyRecord()
   record.information = { preferredName: 'Fictional Tester', nationality: 'Testland', gender: 'unspecified' }
   return record
 }
+const recordWith = mutate => { const r = fictional(); mutate?.(r); return r }
+const legacyWith = mutate => {
+  const r = emptyLegacyRecord()
+  r.information = { preferredName: 'Legacy Tester', nationality: 'Oldland', gender: 'female' }
+  r.locale = 'en'
+  r.global = { ...emptyPreferences(), style: 'candid', responseLanguage: 'fr', presets: ['evidence'], custom: 'Legacy global instruction' }
+  mutate?.(r)
+  return r
+}
+const resolved = config => { const v = Config(config).record; return JSON.parse(JSON.stringify(isVolatile(v) ? v.get() : v)) }
 
 // ---------- Native settings read contract ----------
 
@@ -32,11 +44,14 @@ test('describe failures, missing namespace and malformed views fail closed witho
     ['negative revision', async () => ok({ writable: true, namespaces: [{ ...view(emptyRecord()), revision: -1 }] })],
     ['fractional revision', async () => ok({ writable: true, namespaces: [{ ...view(emptyRecord()), revision: 1.5 }] })],
     ['unknown record field', async () => ok({ writable: true, namespaces: [view({ ...emptyRecord(), fullName: 'x' })] })],
-    ['unsupported version', async () => ok({ writable: true, namespaces: [view({ ...emptyRecord(), version: 2 })] })],
-    ['unknown workspace key', async () => ok({ writable: true, namespaces: [view({ ...emptyRecord(),
-      workspaces: [{ id: 'w1', override: false, preferences: emptyRecord().global, policies: { preferredName: 'private', nationality: 'private', gender: 'private' }, secret: 1 }] })] })],
-    ['invalid policy value', async () => ok({ writable: true, namespaces: [view({ ...emptyRecord(),
-      workspaces: [{ id: 'w1', override: false, preferences: emptyRecord().global, policies: { preferredName: 'always', nationality: 'private', gender: 'private' } }] })] })],
+    ['unsupported version', async () => ok({ writable: true, namespaces: [view({ ...emptyRecord(), version: 3 })] })],
+    ['v2 record carrying Workspace rows', async () => ok({ writable: true, namespaces: [view({ ...emptyRecord(), workspaces: [] })] })],
+    ['invalid policy value', async () => ok({ writable: true, namespaces: [view({ ...emptyRecord(), policies: { ...policies(), preferredName: 'always' } })] })],
+    ['unknown preferences key', async () => ok({ writable: true, namespaces: [view({ ...emptyRecord(), preferences: { ...emptyPreferences(), secret: 1 } })] })],
+    ['malformed legacy Workspace row', async () => ok({ writable: true, namespaces: [view({ ...emptyLegacyRecord(),
+      workspaces: [{ id: 'w1', override: false, preferences: emptyPreferences(), policies: policies(), secret: 1 }] })] })],
+    ['legacy invalid policy value', async () => ok({ writable: true, namespaces: [view({ ...emptyLegacyRecord(),
+      workspaces: [{ id: 'w1', override: false, preferences: emptyPreferences(), policies: { ...policies(), gender: 'always' } }] })] })],
   ]
   for (const [label, describe] of cases) {
     await t.test(label, async t => {
@@ -74,12 +89,14 @@ test('every write carries the revision last read; sequential saves advance it', 
   await type('preferredName', 'Fictional B'); await click('save')
   assert.deepEqual(transport.calls.map(c => [c.ns, c.expected]), [[namespace, 0], [namespace, 1]])
   assert.deepEqual(Object.keys(transport.calls[0].value), ['record'])
+  assert.equal(transport.calls[0].value.record.version, 2)
   assert.match(status(), SAVED)
   assert.equal(transport.record.information.preferredName, 'Fictional B')
 })
 
 test('refused, thrown and unconfirmed writes never claim success and keep the draft', async t => {
   const mismatch = async (_ns, value) => ok({ ns: namespace, revision: 1, value: { record: { ...copy(value.record), information: { preferredName: 'Other', nationality: '', gender: '' } } } })
+  const legacyAnswer = async () => ok({ ns: namespace, revision: 1, value: { record: emptyLegacyRecord() } })
   for (const [label, replace, expected] of [
     ['settings/rejected', async () => refused('settings/rejected', 'schema'), FAILED],
     ['settings/conflict', async () => refused('settings/conflict', 'stale'), CONFLICT],
@@ -87,6 +104,7 @@ test('refused, thrown and unconfirmed writes never claim success and keep the dr
     ['bare success value', async () => ({ ns: namespace, revision: 1 }), FAILED],
     ['wrong namespace view', async (_ns, value) => ok({ ns: 'other', revision: 1, value }), FAILED],
     ['view not matching the write', mismatch, FAILED],
+    ['view answering a legacy record', legacyAnswer, FAILED],
   ]) {
     await t.test(label, async t => {
       const transport = mockSettings()
@@ -106,7 +124,7 @@ test('an invalid backup review cannot re-enable Save after a conflict', async t 
   const { type, click, status, byId, button, transport } = await mountProfile(t)
   await type('preferredName', 'Fictional Draft'); transport.conflict(); await click('save')
   assert.match(status(), CONFLICT)
-  await click('tab-backup'); await type('restore-json', '{not json'); await button('مراجعة النسخة')
+  await click('tab-backup'); await type('restore-json', '{not json'); await button(REVIEW)
   assert.match(status(), CONFLICT)
   assert.equal(byId('save').disabled, true)
 })
@@ -183,76 +201,186 @@ test('withdrawn write access disables Save without issuing a write', async t => 
   assert.equal(transport.calls.length, 0)
 })
 
-// ---------- Workspace and Profile isolation ----------
+// ---------- Unified profile (no Workspace dependency) ----------
 
-test('only trusted Host workspace IDs are offered; malformed or pending lists offer none', async t => {
-  const long = 'x'.repeat(257)
-  const view = await mountProfile(t, { items: [{ workspaceId: 'w1', title: 'A' }, { workspaceId: '' }, { workspaceId: 7 }, { workspaceId: long }, { title: 'no id' }] })
-  assert.deepEqual(Array.from(view.byId('profile').options, o => o.value), ['w1'])
-  for (const snapshot of [{ items: [{ workspaceId: 'w1' }], phase: 'pending', state: 'loading' }, { items: [{ workspaceId: 'w1' }], phase: 'ready', state: 'error' }]) {
+test('unified schema: version 2, one preference set and one policy set; no Workspace fields', () => {
+  const value = resolved({})
+  assert.deepEqual(value, emptyRecord())
+  assert.equal(value.version, 2)
+  assert.deepEqual(Object.keys(value), ['version', 'locale', 'information', 'preferences', 'policies', 'allowPersonalInformation', 'allowCloud'])
+  assert.deepEqual(value.policies, policies())
+  assert.equal(value.allowPersonalInformation, false)
+  assert.equal(value.allowCloud, false)
+  const schema = JSON.stringify(Config.toJSON())
+  assert.doesNotMatch(schema, /fullName|dateOfBirth|customFields|password|apiKey/)
+  assert.doesNotMatch(schema, /"max":64/, 'no Workspace count limit anywhere')
+  assert.throws(() => Config({ record: { ...emptyRecord(), version: 3 } }), 'unsupported versions are rejected by the Host schema')
+})
+
+test('the Host schema keeps a stored v0.7.1 record intact (never stripped or rejected)', () => {
+  const legacy = legacyWith(r => {
+    r.workspaces = Array.from({ length: 150 }, (_, i) => ({ id: 'w' + i, override: true,
+      preferences: { ...emptyPreferences(), style: 'technical' }, policies: policies(i % 2 ? 'allow' : 'ask_first') }))
+    r.allowCloud = true
+  })
+  assert.deepEqual(resolved({ record: legacy }), legacy)
+  assert.deepEqual(resolved({ record: emptyRecord() }), emptyRecord())
+})
+
+test('the page offers no Workspace selector, scope selector or override control', async t => {
+  const { d, byId, click } = await mountProfile(t)
+  for (const page of ['information', 'instructions', 'access', 'backup', 'privacy']) {
+    await click('tab-' + page)
+    for (const id of ['profile', 'instructions-scope', 'mode', 'override', 'global'])
+      assert.equal(byId(id), null, `${page}: #pp-${id} removed`)
+  }
+  assert.doesNotMatch(d.body.textContent, /مساحة العمل الحالية|تخصيص مساحة العمل|نطاق التعليمات/)
+  await click('tab-instructions')
+  assert.match(d.body.textContent, /كل المحادثات الحالية والمستقبلية/)
+})
+
+test('the page never reads the Workspace service; any Workspace list state leaves it unchanged', async t => {
+  const view = await mountProfile(t, { transport: mockSettings(fictional()) })
+  const before = view.d.querySelector('[data-personal-profile-panel]').innerHTML
+  for (const snapshot of [{ items: [], phase: 'pending', state: 'loading' }, { items: [{ workspaceId: 'w9' }], phase: 'ready', state: 'error' },
+    { items: Array.from({ length: 300 }, (_, i) => ({ workspaceId: 'x' + i })), phase: 'ready', state: 'idle' }]) {
     view.app.workspaces.set({ archivedSessionIds: [], pinnedSessionIds: [], error: null, ...snapshot })
     await view.settle()
-    assert.equal(view.byId('profile') === null, true, 'no fabricated workspace')
-    await view.click('tab-access')
-    assert.equal(view.byId('policy-gender') === null, true)
-    await view.click('tab-information')
+    assert.equal(view.d.querySelector('[data-personal-profile-panel]').innerHTML, before)
   }
+  const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
+  const plugin = client.slice(client.indexOf('const profilePlugin'), client.indexOf('return {', client.indexOf('const profilePlugin')))
+  assert.doesNotMatch(plugin, /'workspaces'|ctx\.workspaces/, 'Workspace service is not injected or read')
+  const page = client.slice(client.indexOf('function PersonalProfilePage'), client.indexOf('// Contains a Personal Profile render'))
+  assert.doesNotMatch(page, /workspaceSource|workspacesSnapshot|activeWorkspace/)
 })
 
-test('workspace overrides replace global only when enabled; reset restores inheritance; other workspaces untouched', async t => {
+test('one set of preferences and policies is edited and saved for the whole profile', async t => {
   const { byId, click, select, type, transport } = await mountProfile(t)
   await click('tab-instructions')
-  await select('style', 'friendly')
-  await select('instructions-scope', 'environment')
-  assert.equal(byId('mode').value, 'inherit')
-  assert.equal(byId('style') === null, true, 'inherited scope is not editable')
-  assert.match(byId('effective-instructions').textContent, /friendly/)
-  await select('mode', 'custom'); await select('style', 'technical'); await type('override', 'Fictional override text')
-  assert.match(byId('effective-instructions').textContent, /technical/)
-  assert.doesNotMatch(byId('effective-instructions').textContent, /friendly/, 'override replaces, never merges')
-  await select('profile', 'w2')
-  assert.equal(byId('mode').value, 'inherit')
-  assert.match(byId('effective-instructions').textContent, /friendly/)
-  await select('profile', 'w1'); await click('save')
-  let saved = transport.record
-  assert.deepEqual(saved.workspaces.map(w => w.id), ['w1'], 'w2 never written')
-  assert.equal(saved.workspaces[0].preferences.custom, 'Fictional override text')
-  assert.equal(saved.global.style, 'friendly')
-  await select('mode', 'inherit')
-  assert.match(byId('effective-instructions').textContent, /friendly/)
+  await select('style', 'technical'); await select('response-language', 'ja'); await click('preset-evidence')
+  await type('custom', 'Fictional unified instruction')
+  assert.match(byId('effective-instructions').textContent, /Japanese/)
+  assert.match(byId('effective-instructions').textContent, /Fictional unified instruction/)
+  assert.match(byId('custom-count').textContent, /^29 \/ 8192/)
+  await click('tab-access'); await select('policy-nationality', 'ask_first'); await select('policy-gender', 'allow')
   await click('save')
-  assert.deepEqual(transport.record.workspaces, [], 'back to inherit + Private: nothing workspace-specific is stored')
+  const saved = transport.record
+  assert.equal(saved.version, 2)
+  assert.equal(saved.workspaces, undefined)
+  assert.deepEqual([saved.preferences.style, saved.preferences.responseLanguage, saved.preferences.presets], ['technical', 'ja', ['evidence']])
+  assert.deepEqual(saved.policies, { preferredName: 'private', nationality: 'ask_first', gender: 'allow' })
+  await click('tab-instructions'); await click('reset-preferences')
+  assert.equal(byId('style').value, 'default')
+  assert.equal(byId('custom').value, '')
 })
 
-test('records for workspaces the Host no longer lists are preserved but never shown', async t => {
-  const stored = emptyRecord()
-  stored.workspaces = [{ id: 'deleted', override: true, preferences: { ...emptyRecord().global, custom: 'old' }, policies: { preferredName: 'private', nationality: 'private', gender: 'private' } }]
-  const transport = mockSettings(stored)
-  const { byId, click, type } = await mountProfile(t, { transport })
-  assert.deepEqual(Array.from(byId('profile').options, o => o.value), ['w1', 'w2'])
-  await type('preferredName', 'Fictional'); await click('save')
-  assert.deepEqual(transport.record.workspaces.map(w => w.id), ['deleted'])
+// ---------- Migration from v0.7.1 ----------
+
+test('migration without Workspace data keeps information, locale, preferences and instructions; Save converts', async t => {
+  const legacy = legacyWith()
+  const transport = mockSettings(legacy)
+  const view = await mountProfile(t, { transport })
+  assert.ok(view.byId('migration'))
+  assert.match(view.status(), /await migration/)
+  assert.match(view.byId('migration').textContent, /nothing will be removed/)
+  assert.equal(view.byId('migration-ack'), null, 'no discard confirmation when nothing is discarded')
+  assert.equal(view.byId('preferredName').value, 'Legacy Tester')
+  await view.click('tab-instructions')
+  assert.equal(view.byId('style').value, 'candid'); assert.equal(view.byId('response-language').value, 'fr')
+  assert.equal(view.byId('custom').value, 'Legacy global instruction')
+  assert.equal(transport.calls.length, 0, 'loading never writes')
+  assert.deepEqual(transport.record, legacy, 'stored record untouched until Save')
+  assert.equal(view.byId('save').disabled, false)
+  await view.click('save')
+  assert.match(view.status(), /Save confirmed/)
+  assert.deepEqual(transport.record, { version: 2, locale: 'en', information: legacy.information, preferences: legacy.global,
+    policies: policies(), allowPersonalInformation: false, allowCloud: false })
+  assert.equal(view.byId('migration'), null)
+})
+
+test('migration with Workspace overrides: review, export, explicit confirmation; no permission promotion', async t => {
+  const legacy = legacyWith(r => {
+    r.locale = 'ar'
+    r.workspaces = [
+      { id: 'ws-alpha', override: true, preferences: { ...emptyPreferences(), style: 'technical', custom: 'Alpha only' }, policies: policies('allow') },
+      { id: 'ws-beta', override: false, preferences: emptyPreferences(), policies: { ...policies(), gender: 'ask_first' } },
+    ]
+    r.allowPersonalInformation = true; r.allowCloud = true
+  })
+  const transport = mockSettings(legacy)
+  const view = await mountProfile(t, { transport })
+  assert.match(view.status(), MIGRATION)
+  const rows = [...view.byId('migration-workspaces').querySelectorAll('tbody tr')].map(r => r.textContent)
+  assert.equal(rows.length, 2)
+  assert.match(rows[0], /ws-alpha/); assert.match(rows[0], /سماح/)
+  assert.match(rows[1], /ws-beta/); assert.match(rows[1], /اسأل أولًا/)
+  assert.match(view.byId('migration').textContent, /مفاتيح المشاركة العامة كانت مفعّلة/)
+  assert.equal(view.byId('save').disabled, true, 'Save waits for explicit discard confirmation')
+  await view.click('save'); assert.equal(transport.calls.length, 0)
+  // Export before migration: complete, unaltered v0.7.1 data (including Workspace policies).
+  await view.click('legacy-download')
+  assert.equal(view.downloads.length, 1)
+  assert.equal(view.downloads[0].name, 'personal-profile-v0.7.1-settings.json')
+  assert.deepEqual(JSON.parse(await view.blobText(view.downloads[0].blob)), legacy)
+  await view.click('legacy-copy'); await view.settle()
+  assert.deepEqual(JSON.parse(view.copied[0]), legacy)
+  await view.click('legacy-view')
+  assert.deepEqual(JSON.parse(view.byId('legacy-json').value), legacy)
+  assert.equal(view.byId('legacy-json').getAttribute('dir'), 'ltr')
+  // Reload before confirming re-reads the untouched v1 record.
+  await view.click('reload'); await view.click('reload-confirm')
+  assert.ok(view.byId('migration')); assert.deepEqual(transport.record, legacy)
+  await view.click('migration-ack')
+  assert.equal(view.byId('save').disabled, false)
+  await view.click('save')
+  assert.match(view.status(), SAVED)
+  const saved = transport.record
+  assert.deepEqual(saved.policies, policies(), 'Workspace Allow/Ask First never become unified permissions')
+  assert.equal(saved.allowPersonalInformation, false); assert.equal(saved.allowCloud, false)
+  assert.deepEqual(saved.preferences, legacy.global, 'global preferences kept, Workspace override not merged')
+  assert.equal(saved.workspaces, undefined)
+  assert.equal(view.byId('migration'), null)
+})
+
+test('a migration Save is revision-checked: a change from another window is not overwritten', async t => {
+  const legacy = legacyWith()
+  const transport = mockSettings(legacy)
+  const view = await mountProfile(t, { transport })
+  const other = fictional(); other.information.preferredName = 'Other Window'
+  transport.external(other)
+  await view.click('save')
+  assert.match(view.status(), /changed in another window/)
+  assert.equal(transport.record.information.preferredName, 'Other Window')
+})
+
+test('a v0.7.1 record with more than 64 Workspace rows loads and lists every row for review', async t => {
+  const legacy = legacyWith(r => { r.workspaces = Array.from({ length: 90 }, (_, i) => ({ id: 'w' + i, override: true, preferences: emptyPreferences(), policies: policies() })) })
+  const view = await mountProfile(t, { transport: mockSettings(legacy) })
+  assert.equal(view.byId('migration-workspaces').querySelectorAll('tbody tr').length, 90)
+})
+
+test('Reload during migration with unsaved edits still asks first', async t => {
+  const transport = mockSettings(legacyWith())
+  const view = await mountProfile(t, { transport })
+  await view.click('reload')
+  assert.ok(view.byId('reload-prompt'), 'an unsaved migration counts as unsaved work')
+  await view.click('reload-cancel')
+  assert.ok(view.byId('migration'))
 })
 
 // ---------- Privacy boundaries ----------
 
-test('schema defaults: every field optional, every policy Private, both opt-ins Off', () => {
-  const value = Config({}).record
-  const resolved = JSON.parse(JSON.stringify(isVolatile(value) ? value.get() : value))
-  assert.deepEqual(resolved, emptyRecord())
-  assert.deepEqual(resolved.information, { preferredName: '', nationality: '', gender: '' })
-  assert.equal(resolved.allowPersonalInformation, false)
-  assert.equal(resolved.allowCloud, false)
-  const schema = JSON.stringify(Config.toJSON())
-  assert.doesNotMatch(schema, /fullName|dateOfBirth|customFields|password|apiKey/)
-})
-
-test('access settings are disclosed as saved, non-enforced preferences; no encryption is claimed', async t => {
-  const { d, click } = await mountProfile(t)
+test('access settings are disclosed as saved, non-enforced preferences until Phase 7; no encryption is claimed', async t => {
+  const { d, click, byId } = await mountProfile(t)
   await click('tab-access')
   const text = d.body.textContent
   assert.match(text, /غير مفعّل/)
   assert.match(text, /لا يتم الوصول للمعلومات أو إرسالها حاليًا/)
+  assert.match(text, /المرحلة السابعة/)
+  assert.equal(byId('opt-in').checked, false); assert.equal(byId('cloud').checked, false)
+  for (const field of ['preferredName', 'nationality', 'gender']) assert.equal(byId('policy-' + field).value, 'private')
+  assert.deepEqual(Array.from(byId('policy-gender').options, o => o.value), ['private', 'ask_first', 'allow'])
   await click('tab-privacy')
   assert.match(d.body.textContent, /دون تشفير خاص بالإضافة/)
   assert.doesNotMatch(d.body.textContent, /مشفّر بالكامل|محمي بالتشفير|DPAPI|Argon/)
@@ -264,9 +392,10 @@ test('profile values never reach network, logs or the Host plugin APIs', async t
   const requests = []
   const view = await mountProfile(t, { console: logger, fetch: async url => { requests.push(String(url)); return { ok: false, status: 404, json: async () => ({}) } } })
   await view.type('preferredName', 'Fictional Secret Name')
-  await view.click('tab-instructions'); await view.type('global', 'Fictional instruction marker')
+  await view.click('tab-instructions'); await view.type('custom', 'Fictional instruction marker')
   await view.click('save')
-  await view.click('tab-backup'); await view.button('عرض نسخة JSON')
+  await view.click('tab-backup'); await view.click('export-view'); await view.click('export-download'); await view.click('export-copy')
+  await view.settle()
   const leaked = [...logs, ...requests].filter(x => /Fictional (Secret|instruction)/.test(x))
   assert.deepEqual(leaked, [])
   assert.ok(requests.every(url => url.startsWith('https://api.github.com/') || url.startsWith('https://raw.githubusercontent.com/')), 'only release checks')
@@ -275,222 +404,315 @@ test('profile values never reach network, logs or the Host plugin APIs', async t
   const section = client.slice(client.indexOf('// Native settings editor.'), client.indexOf('const profilePlugin'))
   assert.doesNotMatch(section, /\b(fetch|localStorage|sessionStorage|indexedDB|XMLHttpRequest|WebSocket|sendBeacon|console\.)\b/)
   assert.doesNotMatch(section, /\b(skills|composer|prompt|sessionController|session\/send|tool)\b\s*[.(]/, 'no agent, skill or tool path')
+  assert.doesNotMatch(section, /\b(require\(['"](fs|node:fs)|showSaveFilePicker|showOpenFilePicker|crypto\.subtle|dpapi)\b/i, 'no custom filesystem or encryption')
 })
 
-// ---------- Backup and restore ----------
+// ---------- Backup export ----------
 
-const recordWith = mutate => { const r = fictional(); mutate?.(r); return r }
-const policies = (v = 'private') => ({ preferredName: v, nationality: v, gender: v })
+const savedWithPermissions = () => recordWith(r => {
+  r.locale = 'en'
+  r.preferences = { ...emptyPreferences(), style: 'creative', responseLanguage: 'de', presets: ['steps', 'code'],
+    traits: { ...emptyPreferences().traits, emoji: 0, detail: 2 }, custom: 'Line one\n  indented line\n\nSecond paragraph' }
+  r.policies = { preferredName: 'allow', nationality: 'ask_first', gender: 'private' }
+  r.allowPersonalInformation = true; r.allowCloud = true
+})
 
-test('export is local JSON without grants; import stages a reviewed draft and needs explicit Save', async t => {
-  const { byId, click, select, type, button, transport } = await mountProfile(t, { transport: mockSettings(fictional()) })
-  await click('tab-access'); await click('opt-in'); await click('cloud'); await select('policy-gender', 'allow')
-  await click('save')
-  assert.equal(transport.record.allowCloud, true)
-  await click('tab-backup'); await button('عرض نسخة JSON')
-  const exported = JSON.parse(byId('export-json').value)
-  assert.equal(exported.allowCloud, false); assert.equal(exported.allowPersonalInformation, false)
-  assert.ok(exported.workspaces.every(w => Object.values(w.policies).every(p => p === 'private')))
-  assert.equal(exported.information.preferredName, 'Fictional Tester')
-  const writes = transport.calls.length
-  const incoming = recordWith(r => {
-    r.information.preferredName = 'Imported Name'; r.allowCloud = true; r.allowPersonalInformation = true
-    r.workspaces = [{ id: 'w1', override: false, preferences: emptyRecord().global, policies: policies('allow') },
-      { id: 'unknown-imported', override: true, preferences: emptyRecord().global, policies: policies('allow') }]
+test('export contains every setting with the saved permissions unchanged, via download, copy and view', async t => {
+  const stored = savedWithPermissions()
+  const view = await mountProfile(t, { transport: mockSettings(stored) })
+  await view.click('tab-backup')
+  assert.match(view.d.body.textContent, /not encrypted/)
+  assert.match(view.d.body.textContent, /saved access permissions/)
+  await view.click('export-download')
+  assert.equal(view.downloads.length, 1)
+  assert.equal(view.downloads[0].name, 'personal-profile-backup.json')
+  assert.equal(view.downloads[0].blob.type, 'application/json')
+  const fileJson = JSON.parse(await view.blobText(view.downloads[0].blob))
+  assert.deepEqual(fileJson, stored, 'complete export, permissions not replaced with Private/Off')
+  assert.match(view.backupStatus(), /Download started/)
+  await view.click('export-copy'); await view.settle()
+  assert.deepEqual(JSON.parse(view.copied[0]), stored)
+  assert.match(view.backupStatus(), /copied/)
+  assert.equal(view.byId('export-json'), null)
+  await view.click('export-view')
+  const area = view.byId('export-json')
+  assert.deepEqual(JSON.parse(area.value), stored)
+  assert.equal(area.getAttribute('dir'), 'ltr', 'JSON is LTR in every interface language')
+  assert.equal(area.readOnly, true)
+  assert.match(area.style.fontFamily, /monospace/)
+  assert.equal(view.byId('export-view').getAttribute('aria-expanded'), 'true')
+  assert.equal(view.transport.calls.length, 0, 'export never writes')
+})
+
+test('export reports honestly when download or clipboard are unavailable', async t => {
+  const view = await mountProfile(t, { download: false, clipboard: false })
+  await view.select('language', 'en'); await view.click('tab-backup')
+  await view.click('export-download')
+  assert.match(view.backupStatus(), /Download is not available/)
+  await view.click('export-copy'); await view.settle()
+  assert.match(view.backupStatus(), /Could not copy/)
+  await view.click('export-view')
+  assert.ok(view.byId('export-json').value.includes('"version": 2'))
+})
+
+test('the JSON areas stay LTR and monospace in the Arabic RTL interface', async t => {
+  const view = await mountProfile(t)
+  await view.click('tab-backup'); await view.click('export-view')
+  assert.equal(view.d.querySelector('[data-personal-profile-panel]').getAttribute('dir'), 'rtl')
+  for (const id of ['export-json', 'restore-json']) {
+    assert.equal(view.byId(id).getAttribute('dir'), 'ltr', id)
+    assert.match(view.byId(id).style.fontFamily, /monospace/, id)
+  }
+})
+
+// ---------- Backup import and restore ----------
+
+async function review(view, backup, { strategy, file = false } = {}) {
+  await view.click('tab-backup')
+  if (strategy) await view.click('strategy-' + strategy)
+  if (file) await view.upload('import-file', typeof backup === 'string' ? backup : JSON.stringify(backup))
+  else { await view.type('restore-json', typeof backup === 'string' ? backup : JSON.stringify(backup)); await view.button(REVIEW) }
+}
+
+test('Replace All from a JSON file: preview, explicit confirmation, draft only, then explicit Save', async t => {
+  const transport = mockSettings(fictional())
+  const view = await mountProfile(t, { transport })
+  const backup = savedWithPermissions()
+  await review(view, backup, { file: true })
+  assert.match(view.backupStatus(), /النسخة صالحة/)
+  assert.equal(view.byId('restore-json').value, JSON.stringify(backup), 'file content shown for review')
+  const preview = view.byId('restore-preview')
+  const row = key => preview.querySelector(`[data-restore-row="${key}"]`).textContent
+  assert.match(row('preferredName'), /Fictional Tester.*Fictional Tester/)
+  assert.match(row('style'), /الافتراضي.*إبداعي/)
+  assert.match(row('policy-preferredName'), /خاص.*خاص/, 'permissions default to Private in the preview')
+  assert.match(row('allowCloud'), /متوقف.*متوقف/)
+  assert.equal(view.byId('restore-permissions').checked, false, 'permission restore is an unchecked option')
+  assert.equal(view.byId('restore-apply').disabled, true, 'explicit confirmation required')
+  await view.click('restore-confirm'); await view.click('restore-apply')
+  assert.match(view.backupStatus(), /Nothing is saved yet/, 'the restored interface language (en) applies immediately')
+  assert.equal(transport.calls.length, 0, 'restore never writes by itself')
+  await view.click('save')
+  assert.deepEqual(transport.record, { ...backup, policies: policies(), allowPersonalInformation: false, allowCloud: false })
+})
+
+test('optional permission restoration shows the exact permissions and needs its own acknowledgment', async t => {
+  const transport = mockSettings(fictional())
+  const view = await mountProfile(t, { transport })
+  const backup = savedWithPermissions()
+  await review(view, backup)
+  await view.click('restore-confirm')
+  await view.click('restore-permissions')
+  const list = view.byId('restore-permission-list').textContent
+  assert.match(list, /الاسم المفضل: سماح/); assert.match(list, /الجنسية: اسأل أولًا/); assert.match(list, /الجنس: خاص/)
+  assert.match(list, /مزود سحابي.*: مفعّل/)
+  assert.equal(view.byId('restore-apply').disabled, true, 'permission acknowledgment required')
+  assert.equal(view.byId('restore-confirm').checked, false, 'changing the permission choice resets the confirmation')
+  await view.click('restore-permissions-ack'); await view.click('restore-confirm')
+  assert.match(view.byId('restore-preview').querySelector('[data-restore-row="policy-preferredName"]').textContent, /سماح/)
+  await view.click('restore-apply'); await view.click('save')
+  assert.deepEqual(transport.record, backup, 'exact permissions restored only after both acknowledgments')
+  // Restored permissions remain saved preferences: the Access page still says nothing is enforced or sent.
+  await view.click('tab-access')
+  assert.match(view.d.body.textContent, /No information is disclosed or sent today/)
+})
+
+test('Replace All and Merge Custom Instructions keeps existing text, appends new paragraphs, skips duplicates', async t => {
+  const current = recordWith(r => { r.preferences = { ...emptyPreferences(), style: 'candid', custom: 'Keep this.\n\n  - Shared rule\n  - second line' } })
+  const transport = mockSettings(current)
+  const view = await mountProfile(t, { transport })
+  const backup = recordWith(r => {
+    r.information.preferredName = 'Imported Name'
+    r.preferences = { ...emptyPreferences(), style: 'technical', custom: '  - Shared rule\n  - second line\n\nImported paragraph\n    with indentation\r\n\r\nKeep this.' }
   })
-  await select('backup-strategy', 'replace'); await type('restore-json', JSON.stringify(incoming)); await button('مراجعة النسخة')
-  assert.ok(byId('restore-apply'))
-  assert.equal(byId('restore-apply').disabled, true, 'explicit confirmation required')
-  await click('restore-confirm'); await click('restore-apply')
-  assert.equal(transport.calls.length, writes, 'restore never writes by itself')
-  await click('save')
+  await review(view, backup, { strategy: 'replace-merge' })
+  const merged = view.byId('restore-merged')
+  assert.equal(merged.value, 'Keep this.\n\n  - Shared rule\n  - second line\n\nImported paragraph\n    with indentation')
+  await view.type('restore-merged', merged.value + '\n\nEdited during review')
+  await view.click('restore-confirm'); await view.click('restore-apply'); await view.click('save')
   const saved = transport.record
   assert.equal(saved.information.preferredName, 'Imported Name')
-  assert.equal(saved.allowCloud, false); assert.equal(saved.allowPersonalInformation, false)
-  assert.deepEqual(saved.workspaces.map(w => [w.id, w.policies]), [['w1', policies()], ['unknown-imported', policies()]],
-    'imported unknown workspace IDs acquire no access')
+  assert.equal(saved.preferences.style, 'technical', 'everything except custom instructions is replaced')
+  assert.equal(saved.preferences.custom, 'Keep this.\n\n  - Shared rule\n  - second line\n\nImported paragraph\n    with indentation\n\nEdited during review')
 })
 
-test('merge keeps existing values, fills empty ones, appends absent workspaces and resets grants', async t => {
-  const current = recordWith(r => {
-    r.information = { preferredName: 'Kept', nationality: '', gender: '' }
-    r.global.style = 'candid'
-    r.workspaces = [{ id: 'w1', override: true, preferences: { ...emptyRecord().global, style: 'technical' }, policies: policies('allow') }]
-  })
-  const { click, type, button, transport } = await mountProfile(t, { transport: mockSettings(current) })
-  const incoming = recordWith(r => {
-    r.information = { preferredName: 'Ignored', nationality: 'Filled', gender: 'female' }
-    r.global.style = 'creative'
-    r.workspaces = [{ id: 'w1', override: false, preferences: emptyRecord().global, policies: policies('allow') },
-      { id: 'w9', override: true, preferences: { ...emptyRecord().global, style: 'friendly' }, policies: policies('ask_first') }]
-  })
-  await click('tab-backup'); await type('restore-json', JSON.stringify(incoming)); await button('مراجعة النسخة')
-  await click('restore-confirm'); await click('restore-apply'); await click('save')
-  const saved = transport.record
-  assert.deepEqual(saved.information, { preferredName: 'Kept', nationality: 'Filled', gender: 'female' })
-  assert.equal(saved.global.style, 'candid')
-  assert.deepEqual(saved.workspaces.map(w => [w.id, w.preferences.style, w.policies]), [['w1', 'technical', policies()], ['w9', 'friendly', policies()]])
+test('merge handles empty and identical instructions without duplicating text', async t => {
+  for (const [label, existing, imported, expected] of [
+    ['identical', 'Same text', 'Same text', 'Same text'],
+    ['imported empty', 'Existing', '', 'Existing'],
+    ['existing empty', '', 'Imported only', 'Imported only'],
+    ['whitespace-only difference', 'Para A\n\nPara B', '  Para B  \n\n\n\nPara A', 'Para A\n\nPara B'],
+  ]) {
+    await t.test(label, async t => {
+      const view = await mountProfile(t, { transport: mockSettings(recordWith(r => { r.preferences.custom = existing })) })
+      await review(view, recordWith(r => { r.preferences.custom = imported }), { strategy: 'replace-merge' })
+      assert.equal(view.byId('restore-merged').value, expected)
+    })
+  }
 })
 
-test('invalid, unsupported, oversized and malformed backups are rejected without changing the draft', async t => {
+test('merged instructions over the limit are never truncated; Apply waits until they are shortened', async t => {
+  const transport = mockSettings(recordWith(r => { r.preferences.custom = 'a'.repeat(5000) }))
+  const view = await mountProfile(t, { transport })
+  await review(view, recordWith(r => { r.preferences.custom = 'b'.repeat(5000) }), { strategy: 'replace-merge' })
+  const merged = view.byId('restore-merged')
+  assert.equal(merged.value.length, 10002, 'full merged text, nothing cut')
+  assert.equal(merged.getAttribute('aria-invalid'), 'true')
+  assert.match(view.byId('restore-merged-count').textContent, /10002 \/ 8192.*لن يُقتطع/)
+  assert.equal(view.byId('restore-confirm').disabled, true)
+  assert.equal(view.byId('restore-apply').disabled, true)
+  await view.type('restore-merged', 'a'.repeat(5000) + '\n\n' + 'b'.repeat(3000))
+  await view.click('restore-confirm'); await view.click('restore-apply'); await view.click('save')
+  assert.equal(transport.record.preferences.custom.length, 8002)
+})
+
+test('a v0.7.1 backup restores its global settings; Workspace entries are listed and not restored', async t => {
+  const transport = mockSettings(fictional())
+  const view = await mountProfile(t, { transport })
+  const legacy = legacyWith(r => {
+    r.workspaces = [{ id: 'old-ws', override: true, preferences: { ...emptyPreferences(), style: 'friendly' }, policies: policies('allow') }]
+    r.allowCloud = true
+  })
+  await review(view, legacy)
+  assert.deepEqual([...view.byId('restore-legacy').querySelectorAll('li')].map(li => li.textContent), ['old-ws'])
+  assert.equal(view.byId('restore-permissions'), null, 'no unified permissions to restore from a v1 backup')
+  assert.match(view.byId('restore-preview').textContent, /0\.7\.1|متوقف/)
+  await view.click('restore-confirm'); await view.click('restore-apply'); await view.click('save')
+  assert.deepEqual(transport.record, { version: 2, locale: 'en', information: legacy.information, preferences: legacy.global,
+    policies: policies(), allowPersonalInformation: false, allowCloud: false })
+})
+
+test('invalid, unsupported, oversized and malformed backups are rejected with a reason and no draft change', async t => {
   const base = fictional()
   const bad = [
-    ['invalid JSON', '{"version":1,'],
-    ['empty', ''],
-    ['unsupported version', JSON.stringify({ ...base, version: 2 })],
-    ['oversized', JSON.stringify({ ...base, information: { ...base.information, preferredName: 'x'.repeat(3_000_001) } })],
-    ['unknown field', JSON.stringify({ ...base, dateOfBirth: '2000-01-01' })],
-    ['too-long name', JSON.stringify({ ...base, information: { ...base.information, preferredName: 'x'.repeat(129) } })],
-    ['duplicate workspace IDs', JSON.stringify({ ...base, workspaces: [1, 2].map(() => ({ id: 'w1', override: false, preferences: emptyRecord().global, policies: policies() })) })],
-    ['malformed preferences', JSON.stringify({ ...base, global: { ...base.global, traits: { warmth: 5 } } })],
-    ['unknown preset', JSON.stringify({ ...base, global: { ...base.global, presets: ['run-skill'] } })],
-    ['empty workspace ID', JSON.stringify({ ...base, workspaces: [{ id: '', override: false, preferences: emptyRecord().global, policies: policies() }] })],
-    ['overlong workspace ID', JSON.stringify({ ...base, workspaces: [{ id: 'w'.repeat(257), override: false, preferences: emptyRecord().global, policies: policies() }] })],
-    ['record over the payload limit', JSON.stringify({ ...base, workspaces: Array.from({ length: 400 }, (_, i) => ({ id: 'w' + i, override: true, preferences: { ...emptyRecord().global, custom: 'x'.repeat(8000) }, policies: policies() })) })],
-    ['array root', '[]'],
-    ['prototype key', '{"__proto__":{"allowCloud":true}}'],
+    ['invalid JSON', '{"version":2,', /ليس JSON صالحًا/],
+    ['empty', '', /غير صالح/],
+    ['unsupported version', JSON.stringify({ ...base, version: 3 }), /إصدار النسخة غير مدعوم/],
+    ['missing version', JSON.stringify({ ...base, version: undefined }), /إصدار النسخة غير مدعوم/],
+    ['oversized', JSON.stringify({ ...base, information: { ...base.information, preferredName: 'x'.repeat(3_000_001) } }), /أكبر من الحد/],
+    ['unknown field', JSON.stringify({ ...base, dateOfBirth: '2000-01-01' }), /حقولًا غير معروفة/],
+    ['Workspace rows in a v2 backup', JSON.stringify({ ...base, workspaces: [] }), /حقولًا غير معروفة/],
+    ['too-long name', JSON.stringify({ ...base, information: { ...base.information, preferredName: 'x'.repeat(129) } }), /غير صالح/],
+    ['instructions over 8192', JSON.stringify({ ...base, preferences: { ...base.preferences, custom: 'x'.repeat(8193) } }), /لم يُقتطع شيء/],
+    ['invalid policy', JSON.stringify({ ...base, policies: { ...base.policies, gender: 'always' } }), /صلاحية غير صالحة/],
+    ['missing policy', JSON.stringify({ ...base, policies: { preferredName: 'allow' } }), /صلاحية غير صالحة/],
+    ['non-boolean switch', JSON.stringify({ ...base, allowCloud: 'yes' }), /غير صالح/],
+    ['malformed preferences', JSON.stringify({ ...base, preferences: { ...base.preferences, traits: { warmth: 5 } } }), /غير صالح/],
+    ['unknown preset', JSON.stringify({ ...base, preferences: { ...base.preferences, presets: ['run-skill'] } }), /غير صالح/],
+    ['legacy duplicate workspace IDs', JSON.stringify({ ...emptyLegacyRecord(), workspaces: [1, 2].map(() => ({ id: 'w1', override: false, preferences: emptyPreferences(), policies: policies() })) }), /غير صالح/],
+    ['legacy invalid policy', JSON.stringify({ ...emptyLegacyRecord(), workspaces: [{ id: 'w1', override: false, preferences: emptyPreferences(), policies: policies('always') }] }), /صلاحية غير صالحة/],
+    ['array root', '[]', /غير صالح/],
+    ['null root', 'null', /غير صالح/],
+    ['prototype key', '{"__proto__":{"allowCloud":true}}', /غير مدعوم|غير صالح/],
   ]
   const view = await mountProfile(t, { transport: mockSettings(base) })
   await view.click('tab-backup')
-  for (const [label, text] of bad) {
+  for (const [label, text, reason] of bad) {
     // The textarea limits typing to 3,000,000; set it programmatically to exercise the review guard.
     await view.type('restore-json', text)
-    await view.button('مراجعة النسخة')
-    assert.equal(view.byId('restore-apply') === null, true, label)
+    await view.button(REVIEW)
+    assert.equal(view.byId('restore-apply'), null, label)
     assert.match(view.status(), INVALID, label)
+    assert.match(view.backupStatus(), reason, label)
   }
   await view.click('tab-information')
   assert.equal(view.byId('preferredName').value, 'Fictional Tester')
   assert.equal(view.transport.calls.length, 0)
 })
 
-test('cancelling a reviewed restore leaves the draft unchanged', async t => {
+test('oversized or unreadable files are rejected before review', async t => {
   const view = await mountProfile(t, { transport: mockSettings(fictional()) })
   await view.click('tab-backup')
-  await view.type('restore-json', JSON.stringify(recordWith(r => { r.information.preferredName = 'Should Not Apply' })))
-  await view.button('مراجعة النسخة')
+  await view.upload('import-file', '{}', { size: 3_000_001 })
+  assert.match(view.backupStatus(), /أكبر من الحد/)
+  assert.equal(view.byId('restore-apply'), null)
+  await view.upload('import-file', 'not json at all')
+  assert.match(view.backupStatus(), /ليس JSON صالحًا/)
+  assert.equal(view.byId('restore-apply'), null)
+  assert.equal(view.transport.calls.length, 0)
+})
+
+test('cancelling a reviewed restore, or editing its text, leaves the draft unchanged', async t => {
+  const view = await mountProfile(t, { transport: mockSettings(fictional()) })
+  const other = recordWith(r => { r.information.preferredName = 'Should Not Apply' })
+  await review(view, other)
   assert.ok(view.byId('restore-apply'))
+  await view.click('restore-cancel')
+  assert.equal(view.byId('restore-apply'), null, 'Cancel discards the review')
+  await view.button(REVIEW); assert.ok(view.byId('restore-apply'))
   await view.type('restore-json', '')
-  assert.equal(view.byId('restore-apply') === null, true, 'editing the text discards the review')
+  assert.equal(view.byId('restore-apply'), null, 'editing the text discards the review')
+  await view.button(REVIEW); await view.type('restore-json', JSON.stringify(other)); await view.button(REVIEW)
+  await view.click('strategy-replace-merge')
+  assert.equal(view.byId('restore-confirm').checked, false, 'changing strategy needs a new confirmation')
   await view.click('tab-information')
   assert.equal(view.byId('preferredName').value, 'Fictional Tester')
   assert.equal(view.byId('save').disabled, true, 'nothing dirty')
 })
 
-// ---------- Accessibility (restored from the removed prototype suite, now on the real page) ----------
+test('the general-purpose merge strategy is gone; exactly two restore strategies exist', async t => {
+  const view = await mountProfile(t)
+  await view.click('tab-backup')
+  const radios = [...view.d.querySelectorAll('input[name="pp-strategy"]')].map(x => x.value)
+  assert.deepEqual(radios, ['replace', 'replace-merge'])
+  assert.equal(view.byId('strategy-replace').checked, true, 'Replace All is the default')
+  assert.equal(view.byId('backup-strategy'), null)
+  assert.doesNotMatch(view.d.body.textContent, /دمج دون استبدال موجود|Merge without replacing/)
+  await view.select('language', 'en')
+  assert.match(view.d.body.textContent, /Replace All and Merge Custom Instructions/)
+  assert.match(view.d.body.textContent, /including custom instructions/)
+})
+
+// ---------- Accessibility ----------
 
 test('Arabic and English pages: labels, unique IDs, direction and axe DOM checks on every section', async t => {
   const { default: axe } = await import('axe-core')
-  const view = await mountProfile(t)
+  const legacy = legacyWith(r => { r.workspaces = [{ id: 'w1', override: true, preferences: emptyPreferences(), policies: policies('allow') }] })
+  const view = await mountProfile(t, { transport: mockSettings(legacy) })
   view.dom.window.eval(axe.source)
+  const audit = async label => {
+    const ids = [...view.d.querySelectorAll('[id]')].map(x => x.id)
+    assert.equal(new Set(ids).size, ids.length, `${label} duplicate id`)
+    for (const control of view.d.querySelectorAll('input,textarea,select')) {
+      const labelled = view.d.querySelector(`label[for="${control.id}"]`) || control.closest('label') || control.getAttribute('aria-label')
+      assert.ok(labelled, `${label} unlabelled #${control.id}`)
+    }
+    const result = await view.dom.window.axe.run(view.d, { rules: { 'color-contrast': { enabled: false } } })
+    assert.equal(result.violations.length, 0, `${label}: ` + result.violations.map(x => `${x.id}: ${x.nodes.map(n => n.target).join(',')}`).join('\n'))
+  }
   for (const locale of ['ar', 'en']) {
     await view.select('language', locale)
     const panel = view.d.querySelector('[data-personal-profile-panel]')
     assert.equal(panel.getAttribute('dir'), locale === 'ar' ? 'rtl' : 'ltr')
     assert.equal(panel.getAttribute('lang'), locale)
+    await view.click('legacy-view')
     for (const page of ['information', 'instructions', 'access', 'backup', 'privacy']) {
       await view.click('tab-' + page)
-      if (page === 'instructions') { await view.select('instructions-scope', 'environment'); await view.select('mode', 'custom') }
-      if (page === 'backup') await view.button(locale === 'ar' ? 'عرض نسخة JSON' : 'Show JSON backup')
-      const ids = [...view.d.querySelectorAll('[id]')].map(x => x.id)
-      assert.equal(new Set(ids).size, ids.length, `${locale}/${page} duplicate id`)
-      for (const control of view.d.querySelectorAll('input,textarea,select')) {
-        const labelled = view.d.querySelector(`label[for="${control.id}"]`) || control.closest('label') || control.getAttribute('aria-label')
-        assert.ok(labelled, `${locale}/${page} unlabelled #${control.id}`)
+      if (page === 'backup') {
+        await view.click('export-view')
+        await view.type('restore-json', JSON.stringify(savedWithPermissions()))
+        await view.button(locale === 'ar' ? REVIEW : 'Review backup')
+        await view.click('restore-permissions')
+        await audit(`${locale}/backup replace`)
+        await view.click('strategy-replace-merge')
       }
-      const result = await view.dom.window.axe.run(view.d, { rules: { 'color-contrast': { enabled: false } } })
-      assert.equal(result.violations.length, 0, `${locale}/${page}: ` + result.violations.map(x => `${x.id}: ${x.nodes.map(n => n.target).join(',')}`).join('\n'))
+      await audit(`${locale}/${page}`)
+      if (page === 'backup') { await view.click('restore-cancel'); await view.click('export-view') }
     }
+    await view.click('legacy-view')
   }
 })
 
-// ---------- Hardening: no artificial workspace count ----------
-
-const wsRecord = (id, extra = {}) => ({ id, override: true, preferences: { ...emptyRecord().global, style: 'technical' }, policies: policies(), ...extra })
-const manyItems = n => Array.from({ length: n }, (_, i) => ({ workspaceId: 'w' + i, title: 'Workspace ' + i }))
-
-test('schema and decoder accept more than 64 workspace overrides', () => {
-  const record = emptyRecord()
-  record.workspaces = Array.from({ length: 150 }, (_, i) => wsRecord('w' + i))
-  const value = Config({ record }).record
-  assert.equal((isVolatile(value) ? value.get() : value).workspaces.length, 150)
-  assert.doesNotMatch(JSON.stringify(Config.toJSON()), /"max":64/)
-})
-
-test('with 70 stored overrides, editing further Workspaces is saved, never silently dropped', async t => {
-  const stored = emptyRecord()
-  stored.workspaces = Array.from({ length: 70 }, (_, i) => wsRecord('w' + i))
-  const transport = mockSettings(stored)
-  const { byId, click, select, status } = await mountProfile(t, { transport, items: manyItems(80) })
-  await click('tab-instructions'); await select('instructions-scope', 'environment')
-  for (const id of ['w75', 'w76', 'w77']) {
-    await select('profile', id)
-    assert.equal(byId('mode').value, 'inherit', 'a new Workspace inherits global')
-    await select('mode', 'custom'); await select('style', 'candid')
-  }
-  await click('tab-access'); await select('profile', 'w79'); await select('policy-gender', 'ask_first')
-  await click('save')
-  assert.match(status(), SAVED)
-  const saved = transport.record.workspaces
-  assert.equal(saved.length, 74)
-  assert.deepEqual(['w75', 'w76', 'w77'].map(id => saved.find(w => w.id === id).preferences.style), ['candid', 'candid', 'candid'])
-  const w79 = saved.find(w => w.id === 'w79')
-  assert.deepEqual([w79.override, w79.policies], [false, { ...policies(), gender: 'ask_first' }], 'policy-only row; preferences still inherited')
-  assert.ok(saved.slice(0, 70).every((w, i) => w.id === 'w' + i && w.preferences.style === 'technical'), 'existing rows untouched')
-})
-
-test('a backup with more than 64 workspaces restores completely with every grant reset', async t => {
-  const transport = mockSettings(fictional())
-  const { click, type, button, status } = await mountProfile(t, { transport })
-  const incoming = fictional()
-  incoming.allowCloud = true
-  incoming.workspaces = Array.from({ length: 120 }, (_, i) => wsRecord('ws-' + i, { policies: policies('allow') }))
-  await click('tab-backup'); await type('restore-json', JSON.stringify(incoming)); await button('مراجعة النسخة')
-  await click('restore-confirm'); await click('restore-apply'); await click('save')
-  assert.match(status(), SAVED)
-  assert.equal(transport.record.workspaces.length, 120)
-  assert.ok(transport.record.workspaces.every(w => JSON.stringify(w.policies) === JSON.stringify(policies())))
-  assert.equal(transport.record.allowCloud, false)
-})
-
-test('a merge exceeding the payload guard is rejected and leaves the draft unchanged', async t => {
-  const big = n => Array.from({ length: n }, (_, i) => wsRecord('big-' + n + '-' + i, { preferences: { ...emptyRecord().global, custom: 'x'.repeat(8000) } }))
-  const stored = fictional(); stored.workspaces = big(200)
-  const transport = mockSettings(stored)
-  const view = await mountProfile(t, { transport })
-  const incoming = fictional(); incoming.workspaces = big(190)
-  await view.click('tab-backup'); await view.type('restore-json', JSON.stringify(incoming)); await view.button('مراجعة النسخة')
-  assert.equal(view.byId('restore-apply') === null, true)
-  assert.match(view.status(), INVALID)
-  assert.equal(view.byId('save').disabled, true, 'draft unchanged, nothing dirty')
-  assert.equal(transport.calls.length, 0)
-})
-
-test('returning a Workspace to inherit with Private policies stores no row; other rows stay', async t => {
-  const stored = emptyRecord(); stored.workspaces = [wsRecord('w1'), wsRecord('w2')]
-  const transport = mockSettings(stored)
-  const { click, select } = await mountProfile(t, { transport })
-  await click('tab-instructions'); await select('instructions-scope', 'environment'); await select('profile', 'w1')
-  await select('mode', 'inherit'); await click('save')
-  assert.deepEqual(transport.record.workspaces.map(w => w.id), ['w2'])
-  await click('tab-access'); await select('profile', 'w1'); await select('policy-nationality', 'ask_first'); await click('save')
-  assert.deepEqual(transport.record.workspaces.map(w => [w.id, w.override]), [['w2', true], ['w1', false]])
-  await select('policy-nationality', 'private'); await click('save')
-  assert.deepEqual(transport.record.workspaces.map(w => w.id), ['w2'])
-})
-
-// ---------- Hardening: protect unsaved changes ----------
+// ---------- Protect unsaved changes ----------
 
 async function dirtyDraft(view) {
   await view.type('preferredName', 'Unsaved Name')
-  await view.click('tab-instructions'); await view.select('style', 'creative')
-  await view.select('instructions-scope', 'environment'); await view.select('mode', 'custom'); await view.select('style', 'efficient')
+  await view.click('tab-instructions'); await view.select('style', 'creative'); await view.type('custom', 'Unsaved instruction')
   await view.click('tab-access'); await view.select('policy-gender', 'ask_first')
 }
 async function expectDraft(view) {
   await view.click('tab-information'); assert.equal(view.byId('preferredName').value, 'Unsaved Name')
-  await view.click('tab-instructions'); await view.select('instructions-scope', 'global'); assert.equal(view.byId('style').value, 'creative')
-  await view.select('instructions-scope', 'environment'); assert.equal(view.byId('mode').value, 'custom'); assert.equal(view.byId('style').value, 'efficient')
+  await view.click('tab-instructions'); assert.equal(view.byId('style').value, 'creative'); assert.equal(view.byId('custom').value, 'Unsaved instruction')
   await view.click('tab-access'); assert.equal(view.byId('policy-gender').value, 'ask_first')
 }
 
@@ -504,14 +726,25 @@ test('Reload with unsaved changes asks first; cancel keeps the entire draft; con
   assert.match(view.byId('reload-prompt').textContent, /ستُفقد/)
   assert.equal(transport.describes.length, reads, 'nothing re-read before confirmation')
   await view.click('reload-cancel')
-  assert.equal(view.byId('reload-prompt') === null, true)
+  assert.equal(view.byId('reload-prompt'), null)
   await expectDraft(view)
   assert.match(view.status(), /غير محفوظة/)
   await view.click('reload'); await view.click('reload-confirm')
   assert.equal(transport.describes.length, reads + 1)
-  assert.equal(view.byId('reload-prompt') === null, true)
+  assert.equal(view.byId('reload-prompt'), null)
   await view.click('tab-information'); assert.equal(view.byId('preferredName').value, 'Fictional Tester')
   assert.equal(transport.calls.length, 0, 'confirmation never writes')
+})
+
+test('a restore applied to the draft is unsaved work protected by the Reload confirmation', async t => {
+  const transport = mockSettings(fictional())
+  const view = await mountProfile(t, { transport })
+  await review(view, recordWith(r => { r.information.preferredName = 'Restored Draft' }))
+  await view.click('restore-confirm'); await view.click('restore-apply')
+  await view.click('reload')
+  assert.ok(view.byId('reload-prompt'))
+  await view.click('reload-cancel')
+  await view.click('tab-information'); assert.equal(view.byId('preferredName').value, 'Restored Draft')
 })
 
 test('Reload without changes needs no confirmation', async t => {
@@ -519,7 +752,7 @@ test('Reload without changes needs no confirmation', async t => {
   const view = await mountProfile(t, { transport })
   const reads = transport.describes.length
   await view.click('reload')
-  assert.equal(view.byId('reload-prompt') === null, true)
+  assert.equal(view.byId('reload-prompt'), null)
   assert.equal(transport.describes.length, reads + 1)
 })
 
@@ -570,7 +803,7 @@ test('a clean page re-reads automatically after reconnect', async t => {
   const reads = transport.describes.length
   view.app.ctx.emit('connection/reset'); await view.settle()
   assert.equal(transport.describes.length, reads + 1)
-  assert.equal(view.byId('reload-prompt') === null, true)
+  assert.equal(view.byId('reload-prompt'), null)
 })
 
 test('the discard confirmation is localized in English', async t => {
