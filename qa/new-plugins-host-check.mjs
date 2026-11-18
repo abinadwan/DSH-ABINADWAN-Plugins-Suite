@@ -1,6 +1,6 @@
 // Windows Desktop contract characterization. All state belongs to this synthetic fixture.
 import assert from 'node:assert/strict'
-import { mkdir, mkdtemp, readFile, realpath, rm, symlink, unlink, writeFile } from 'node:fs/promises'
+import { lstat, mkdir, mkdtemp, readFile, realpath, rm, symlink, unlink, writeFile } from 'node:fs/promises'
 import { createRequire } from 'node:module'
 import { dirname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 import { performance } from 'node:perf_hooks'
@@ -28,7 +28,10 @@ const { z } = require('zod')
 const repository = fileURLToPath(new URL('../', import.meta.url))
 
 async function scratch(t) {
-  const parent = await realpath(join(repository, 'node_modules'))
+  const parent = join(await realpath(repository), 'node_modules')
+  const stat = await lstat(parent)
+  assert.ok(stat.isDirectory() && !stat.isSymbolicLink())
+  assert.equal(await realpath(parent), parent)
   const directory = await mkdtemp(join(parent, '.new-plugins-synthetic-'))
   const name = relative(parent, directory)
   assert.match(name, /^\.new-plugins-synthetic-[A-Za-z0-9]+$/)
@@ -39,6 +42,13 @@ async function scratch(t) {
     await rm(target, { recursive: true, force: true })
   })
   return directory
+}
+
+function checkFixtureLogPath(root, target) {
+  const local = relative(root, target)
+  assert.ok(!isAbsolute(local) && local !== '..' && !local.startsWith(`..${sep}`),
+    'the canonical log must be strictly inside the synthetic sessions root')
+  assert.match(local, /^[^\\/]+[\\/]synthetic-offline-log[\\/]session\.v4\.jsonl$/)
 }
 
 async function mount(ctx, plugin, config) {
@@ -301,9 +311,12 @@ test('offline removal of one synthetic log reconciles search but leaves the nati
 
     // Negative control in a fixture with every owner stopped. This is not a deletion algorithm.
     const target = await realpath(selected.location.path)
-    const local = relative(await realpath(root), target)
     assert.equal(target, selected.location.path)
-    assert.match(local, /^[^\\/]+[\\/]synthetic-offline-log[\\/]session\.v4\.jsonl$/)
+    const canonicalRoot = await realpath(root)
+    assert.equal(canonicalRoot, root)
+    assert.throws(() => checkFixtureLogPath(canonicalRoot,
+      join(dirname(canonicalRoot), 'synthetic-offline-log', 'session.v4.jsonl')), /strictly inside/)
+    checkFixtureLogPath(canonicalRoot, target)
     await unlink(target)
 
     ctx = await host()

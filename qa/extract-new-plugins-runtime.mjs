@@ -1,5 +1,5 @@
 // Prepare isolated QA dependencies from a local Desktop archive. Never launch Desktop.
-import { closeSync, copyFileSync, mkdirSync, openSync, readFileSync, readSync, writeFileSync } from 'node:fs'
+import { closeSync, copyFileSync, lstatSync, mkdirSync, mkdtempSync, openSync, readFileSync, readSync, realpathSync, writeFileSync } from 'node:fs'
 import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -26,7 +26,21 @@ try {
   }
 
   const root = tree.files.dsh.files.node_modules.files
-  const scratch = fileURLToPath(new URL(`../node_modules/.new-plugins-qa/${desktop.dshBuildCommit}/`, import.meta.url))
+  const repository = realpathSync(fileURLToPath(new URL('../', import.meta.url)))
+  const cache = join(repository, 'node_modules')
+  const parent = join(cache, '.new-plugins-qa')
+  for (const directory of [cache, parent]) {
+    try {
+      mkdirSync(directory)
+    } catch (error) {
+      if (error.code !== 'EEXIST') throw error
+    }
+    const stat = lstatSync(directory)
+    if (!stat.isDirectory() || stat.isSymbolicLink() || realpathSync(directory) !== directory) {
+      throw new Error(`Unsafe QA directory: ${directory}`)
+    }
+  }
+  const scratch = mkdtempSync(join(parent, `${desktop.dshBuildCommit}-`))
   const roots = [
     'sharp', 'zod', '@deepseek-ai/cordis', '@deepseek-ai/dsh-agent-loop',
     '@deepseek-ai/dsh-api-session-controller', '@deepseek-ai/dsh-session-persistence-jsonl',
