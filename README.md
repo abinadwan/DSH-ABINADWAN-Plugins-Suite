@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/workflows/test.yml"><img alt="CI" src="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/workflows/test.yml/badge.svg"/></a>
-  <img alt="Suite 0.7.2" src="https://img.shields.io/badge/suite-0.7.2-7b2246"/>
+  <img alt="Suite 0.8.0-rc.1" src="https://img.shields.io/badge/suite-0.8.0--rc.1-7b2246"/>
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-22c55e"/></a>
 </p>
 
@@ -20,13 +20,13 @@ One installation supplies three independently toggleable DSH Components. The pac
 | --- | --- | --- | --- |
 | <img src="plugins/environment-context/icon.png" width="32" alt="Teal monitor"/> **Environment & Context** | Read-only session inspector | On | [Plugin details](plugins/environment-context/README.md) |
 | <img src="plugins/humanizer/icon.png" width="32" alt="Purple feather"/> **Humanizer** | Runtime writing Skill | On | [Usage and scope](plugins/humanizer/README.md) |
-| <img src="plugins/personal-profile/icon.png" width="32" alt="Amber ID and gear"/> **Personal Profile** | Local native settings candidate | Host Off | [Local settings and acceptance](plugins/personal-profile/README.md) |
+| <img src="plugins/personal-profile/icon.png" width="32" alt="Amber ID and gear"/> **Personal Profile** | Native response preferences (RC) | Host Off | [Local settings and acceptance](plugins/personal-profile/README.md) |
 
-## Personal Profile (0.7.2 candidate)
+## Personal Profile (0.8.0-rc.1 candidate)
 
 One unified profile per active Harness Profile: optional preferred name, nationality and gender; Agent Instructions with personality, response language, characteristics, presets and custom text; one Private / Ask First / Allow policy per field plus personal-information and cloud-sharing switches (all Private / Off by default). No Workspace selector or per-Workspace overrides. Explicit Save uses the native Harness settings service with a revision check. Settings saved by 0.7.1 are migrated only after review, export and explicit confirmation.
 
-**Backup & Restore** exports the complete profile, including saved permissions, as a JSON file (download, copy or view) and imports a file or pasted JSON with **Replace All** or **Replace All and Merge Custom Instructions**. Permissions are restored only if you opt in. The JSON file is **not encrypted**. No plugin-specific encryption; avoid sensitive information. Policies and switches are saved preferences only until Phase 7: agent disclosure is not implemented. See [design](docs/PERSONAL_PROFILE_LOCAL_SETTINGS.md), [0.7.2 change record](docs/PERSONAL_PROFILE_V072_CHANGE_RECORD.md) and [Windows acceptance](docs/PERSONAL_PROFILE_WINDOWS_ACCEPTANCE.md).
+**Backup & Restore** exports the complete profile, including saved permissions, as a JSON file (download, copy or view) and imports a file or pasted JSON with **Replace All** or **Replace All and Merge Custom Instructions**. Permissions are restored only if you opt in. The JSON file is **not encrypted**. No plugin-specific encryption; avoid sensitive information. Saved response preferences enter supported native agent steps; custom instructions require separate saved consent, including cloud use. Editing or restoring custom text clears consent. History can retain and replay previously supplied instructions. Structured personal fields are never disclosed by the suite, even with Allow or cloud sharing enabled; their policies remain saved preferences only. See [runtime and privacy gate](docs/PERSONAL_PROFILE_PHASE7C_PRIVACY_GATE.md), [design](docs/PERSONAL_PROFILE_LOCAL_SETTINGS.md), [0.7.2 change record](docs/PERSONAL_PROFILE_V072_CHANGE_RECORD.md) and [Windows acceptance](docs/PERSONAL_PROFILE_WINDOWS_ACCEPTANCE.md).
 
 ## Environment & Context
 
@@ -97,7 +97,7 @@ Tests use the actual Cordis Loader, DSH metadata reader and Skill registry, plus
 
 ## Privacy and security
 
-Environment reads UI-facing session/workspace summaries and projected token usage. The runtime Humanizer instructions operate within DSH's existing model context. Text supplied to the agent follows the user's existing model/provider configuration. The suite adds no external rewriting endpoint. The read-only automatic/manual release checks contact public GitHub without credentials, referrers or conversation data. Installations require an explicit user confirmation and are delegated to the official DSH Host. Personal Profile stores the reduced optional profile fields and preferences in the active Harness Profile without plugin-level encryption; it does not transmit them to a model. [Security policy](SECURITY.md)
+Environment reads UI-facing session/workspace summaries and projected token usage. The runtime Humanizer instructions operate within DSH's existing model context. Text supplied to the agent follows the user's existing model/provider configuration. The suite adds no external rewriting endpoint. The read-only automatic/manual release checks contact public GitHub without credentials, referrers or conversation data. Installations require an explicit user confirmation and are delegated to the official DSH Host. Personal Profile stores the reduced optional profile fields and preferences in the active Harness Profile without plugin-level encryption; structured fields remain local; saved response preferences and explicitly authorized custom text follow the configured model route, and may persist in conversation history. [Security policy](SECURITY.md)
 
 ## License and attribution
 

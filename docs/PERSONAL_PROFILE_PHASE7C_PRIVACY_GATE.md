@@ -1,6 +1,6 @@
 # Phase 7C — privacy enforcement: fail-closed subset
 
-Status: implementation candidate, **structured disclosure blocked**, not full Phase 7C acceptance. Based on Phase 7A research (merged PR #19) and Phase 7B candidate (PR #20). Target Host 0.2.2-rc.3 pinned at 38a6a5c965aa99ab525161efb7cc5cf1fe62fced.
+Status: merged fail-closed implementation; **structured disclosure blocked**, not full Phase 7C acceptance. Based on Phase 7A research (merged PR #19) and Phase 7B candidate (PR #20). Target Host 0.2.2-rc.3 pinned at 38a6a5c965aa99ab525161efb7cc5cf1fe62fced.
 
 ## Contract
 
@@ -23,7 +23,7 @@ No structured field (preferred name, nationality, gender) is rendered, sent thro
 
 ## Verification
 
-Added unit matrix covering all 108 combinations (two master switches, three policies for each of three fields), checking exact equality to baseline preferences. Extended real pinned Agent Loop offline-adapter fixture with all three synthetic field markers, 12 combinations of uniform field policy/master/cloud state, two routes per combination, session log assertion and disable check. These are negative tests only; no positive disclosure or proof of privacy for manually typed custom text. CI must pass before integration. Windows Desktop acceptance remains separate.
+Added unit matrix covering all 108 combinations (two master switches, three policies for each of three fields), checking exact equality to baseline preferences. Extended real pinned Agent Loop offline-adapter fixture with all three synthetic field markers, 12 combinations of uniform field policy/master/cloud state, two routes per combination, session log assertion and disable check. These are negative tests only; no positive disclosure or proof of privacy for manually typed custom text. PR #21 CI passed on Windows/Linux Node 22/24 before integration. Windows Desktop acceptance remains separate.
 
 ## Required upstream capability before positive disclosure
 
