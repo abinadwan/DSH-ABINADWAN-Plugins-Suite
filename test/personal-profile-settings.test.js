@@ -236,7 +236,7 @@ test('the page offers no Workspace selector, scope selector or override control'
   }
   assert.doesNotMatch(d.body.textContent, /مساحة العمل الحالية|تخصيص مساحة العمل|نطاق التعليمات/)
   await click('tab-instructions')
-  assert.match(d.body.textContent, /كل المحادثات الحالية والمستقبلية/)
+  assert.match(d.body.textContent, /المحادثات الأصلية المدعومة/)
 })
 
 test('the page never reads the Workspace service; any Workspace list state leaves it unchanged', async t => {
@@ -261,7 +261,13 @@ test('one set of preferences and policies is edited and saved for the whole prof
   await select('style', 'technical'); await select('response-language', 'ja'); await click('preset-evidence')
   await type('custom', 'Fictional unified instruction')
   assert.match(byId('effective-instructions').textContent, /Japanese/)
+  assert.doesNotMatch(byId('effective-instructions').textContent, /Fictional unified instruction/)
+  await click('send-custom')
   assert.match(byId('effective-instructions').textContent, /Fictional unified instruction/)
+  await type('custom', 'Fictional unified instruction changed')
+  assert.equal(byId('send-custom').checked,false)
+  assert.doesNotMatch(byId('effective-instructions').textContent, /Fictional unified instruction/)
+  await type('custom', 'Fictional unified instruction')
   assert.match(byId('custom-count').textContent, /^29 \/ 8192/)
   await click('tab-access'); await select('policy-nationality', 'ask_first'); await select('policy-gender', 'allow')
   await click('save')

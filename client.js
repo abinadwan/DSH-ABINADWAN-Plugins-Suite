@@ -684,7 +684,7 @@ window.__ModuleLoader__.load({
       h('circle', { cx: 9, cy: 9, r: 2 }),
       h('path', { d: 'M5.5 16c.6-2.8 6.4-2.8 7 0M14 8h4M14 12h4M14 16h4' }))
     }
-    // Original preference catalog; browser-only preview, not model instructions.
+    // Preference catalog and renderer mirrored in preferences.js; parity is tested.
     // Neutral values generate no extra preference text.
     const PROFILE_STYLES = [
       ['default','الافتراضي','Default',''],
@@ -742,8 +742,8 @@ window.__ModuleLoader__.load({
       for(const [key,,,,instruction] of PROFILE_PRESETS) {
         if(pref.presets.includes(key)) lines.push(instruction)
       }
-      if(pref.custom) lines.push(pref.custom)
-      return [...new Set(lines)].join('\n')
+      if(pref.sendCustom===true && pref.custom.trim()) lines.push(pref.custom)
+      return lines.length ? ['Response preferences (follow the current request and higher-priority host/safety/tool requirements; custom guidance takes precedence over other style preferences where compatible).',...new Set(lines)].join('\n') : ''
     }
     const PROFILE_NS = 'abinadwan-personal-profile'
     const PERSONAL_FIELDS = ['preferredName','nationality','gender']
@@ -751,9 +751,7 @@ window.__ModuleLoader__.load({
     const GENDER_VALUES = ['','male','female','unspecified']
     // Record v2 (0.7.2): one unified profile in the active Harness Profile.
     // No Workspace dependency: the same information, preferences and policies
-    // are meant for every existing and future conversation once a separately
-    // approved consumer (e.g. a future Direct Chat component) reads them. This
-    // page only edits and previews them; nothing is injected or disclosed.
+    // apply to eligible native agent steps. Structured personal fields remain local.
     const PROFILE_VERSION = 2
     const PROFILE_CUSTOM_MAX = 8192
     const privatePolicies = () => Object.fromEntries(PERSONAL_FIELDS.map(key=>[key,'private']))
@@ -774,7 +772,9 @@ window.__ModuleLoader__.load({
     // Decoders rebuild every object in canonical key order, so comparisons of
     // what was sent and what the Host committed never depend on key order.
     function decodePreferences(p) {
-      profileCheck(profileKeys(p,['style','responseLanguage','traits','presets','custom']))
+      const keys=['style','responseLanguage','traits','presets','custom']
+      if(p&&Object.hasOwn(p,'sendCustom'))keys.push('sendCustom')
+      profileCheck(profileKeys(p,keys)&&(!Object.hasOwn(p,'sendCustom')||typeof p.sendCustom==='boolean'))
       profileCheck(PROFILE_STYLES.some(i=>i[0]===p.style)&&PROFILE_LANGUAGES.some(i=>i[0]===p.responseLanguage))
       profileCheck(profileKeys(p.traits,PROFILE_TRAITS.map(i=>i[0])) &&
         Object.values(p.traits).every(n=>[0,1,2].includes(n)))
@@ -782,8 +782,9 @@ window.__ModuleLoader__.load({
         p.presets.every(id=>PROFILE_PRESETS.some(i=>i[0]===id)))
       profileCheck(validText(p.custom,PROFILE_CUSTOM_MAX),typeof p.custom==='string'?'instructionsTooLong':'invalidContent')
       return {style:p.style,responseLanguage:p.responseLanguage,
-        traits:Object.fromEntries(PROFILE_TRAITS.map(([key])=>[key,p.traits[key]])),presets:[...p.presets],custom:p.custom}
+        traits:Object.fromEntries(PROFILE_TRAITS.map(([key])=>[key,p.traits[key]])),presets:[...p.presets],custom:p.custom,...(p.sendCustom===true?{sendCustom:true}:{})}
     }
+    function withoutCustomConsent(p) { const {sendCustom,...rest}=p; return rest }
     function decodeInformation(i) {
       profileCheck(profileKeys(i,PERSONAL_FIELDS)&&validText(i.preferredName,128)&&validText(i.nationality,128)&&GENDER_VALUES.includes(i.gender))
       return {preferredName:i.preferredName,nationality:i.nationality,gender:i.gender}
@@ -834,7 +835,7 @@ window.__ModuleLoader__.load({
     // given under the per-Workspace model does not carry over.
     function migrateLegacyProfile(legacy) {
       return {version:PROFILE_VERSION,locale:legacy.locale,information:{...legacy.information},
-        preferences:decodePreferences(legacy.global),policies:privatePolicies(),allowPersonalInformation:false,allowCloud:false}
+        preferences:withoutCustomConsent(decodePreferences(legacy.global)),policies:privatePolicies(),allowPersonalInformation:false,allowCloud:false}
     }
     /** Workspace-specific data or permissions that a migration would discard. */
     const legacyDiscards = legacy => legacy.workspaces.length>0||legacy.allowPersonalInformation||legacy.allowCloud
@@ -979,22 +980,23 @@ window.__ModuleLoader__.load({
       const setField=(id,value)=>setRecord(old=>({...old,information:{...old.information,[id]:value}}))
       const ar = {
         information:'معلوماتي', instructions:'تعليمات الوكيل', access:'التحكم في الوصول', backup:'النسخ والاستعادة', privacy:'الخصوصية والأمان',title:'الملف الشخصي',
-        subtitle:'ملف شخصي موحّد ضمن ملف Harness الحالي',warning:'يُحفظ هذا المحتوى محليًا دون تشفير خاص بالإضافة. لا تكتب كلمات مرور أو مفاتيح أو معلومات حساسة. لا تُرسل هذه الإضافة أيًا من هذه الإعدادات إلى نموذج حاليًا.',
+        subtitle:'ملف شخصي موحّد ضمن ملف Harness الحالي',warning:'يُحفظ هذا المحتوى محليًا دون تشفير خاص بالإضافة. لا تكتب كلمات مرور أو مفاتيح أو معلومات حساسة. تُرسل تفضيلات الرد المحفوظة إلى النموذج المختار وقد تبقى في سجل المحادثة. حقول المعلومات الشخصية لا تُرسل.',
         language:'لغة الواجهة',preferredName:'الاسم المفضل',nationality:'الجنسية',gender:'الجنس',male:'ذكر',female:'أنثى',unspecified:'أفضّل عدم الذكر',
-        unified:'إعدادات موحّدة',unifiedHint:'مجموعة واحدة من التفضيلات لهذا الملف، مصممة لتنطبق على كل المحادثات الحالية والمستقبلية بغض النظر عن مساحة العمل. لا تُحقن في الوكيل حاليًا.',
+        unified:'إعدادات موحّدة',unifiedHint:'تُطبّق التفضيلات المحفوظة عند تجهيز الخطوة التالية في المحادثات الأصلية المدعومة، دون اختيار مساحة عمل. قد تتجاوزها بعض إعدادات الوكيل الخاصة.',
         personality:'الشخصية',styleTone:'الأسلوب والنبرة',responseLanguage:'لغة الردود',characteristics:'خصائص الردود',presets:'خيارات سلوكية جاهزة',customInstructions:'تعليمات مخصصة',
+        sendCustom:'أوافق على إرسال النص المخصص للنموذج المختار (بما فيه السحابي)',customConsentHint:'النص قد يبقى في سجل المحادثة ويعاد إرساله لاحقًا. لا تضع بيانات حساسة. تعديل النص أو استعادته يلغي الإذن؛ احفظ بعد المراجعة.',
         less:'أقل',neutral:'متوازن',more:'أكثر',characters:'حرف',
-        preferenceHint:'كل الاختيارات اختيارية. لا تُحقن التعليمات في الوكيل حاليًا.',languageHint:'لغة الردود مستقلة عن لغة الواجهة. اللهجة تُكتب ضمن التعليمات.',
-        previewHint:'تُعرض التعليمات الناتجة هنا فقط؛ الربط بالوكيل غير متاح بعد.',presetHint:'لا اختيار افتراضيًا.',resetPreferences:'إعادة ضبط التفضيلات',
+        preferenceHint:'كل الاختيارات اختيارية وتُطبّق بعد الحفظ.',languageHint:'لغة الردود مستقلة عن لغة الواجهة. اللهجة تُكتب ضمن التعليمات.',
+        previewHint:'معاينة المسودة التي ستُرسل بعد الحفظ في المحادثات المدعومة؛ لا تُحذف التعليمات السابقة من السجل.',presetHint:'لا اختيار افتراضيًا.',resetPreferences:'إعادة ضبط التفضيلات',
         effective:'المعاينة النهائية',optIn:'السماح باستخدام المعلومات الشخصية (إعداد محفوظ، غير مفعّل في الوكيل)',
         fieldPolicies:'صلاحيات الحقول',policiesHint:'صلاحية واحدة لكل حقل تنطبق على الملف كله، لا على مساحة عمل بعينها.',private:'خاص',ask:'اسأل أولًا',allow:'سماح',on:'مفعّل',off:'متوقف',
-        cloud:'السماح بإرسال المعلومات الشخصية إلى مزود سحابي (إعداد محفوظ، غير مفعّل)',accessHint:'لا يتم الوصول للمعلومات أو إرسالها حاليًا. هذه تفضيلات سياسات محفوظة فقط، ولن تُطبَّق فعليًا قبل المرحلة السابعة.',
+        cloud:'السماح بإرسال المعلومات الشخصية إلى مزود سحابي (إعداد محفوظ، غير مفعّل)',accessHint:'لا يتم الوصول للمعلومات أو إرسالها حاليًا. حقول المعلومات الشخصية وصلاحياتها غير مفعّلة حتى المرحلة السابعة C.',
         exportTitle:'تصدير نسخة احتياطية',exportHint:'ملف JSON غير مشفّر. يحتوي معلوماتك الشخصية وتعليماتك وصلاحيات الوصول المحفوظة كما هي. احفظه في مكان آمن ولا تشاركه.',
         download:'تنزيل ملف JSON',copy:'نسخ JSON',view:'عرض JSON',hideView:'إخفاء JSON',exportJson:'نسخة JSON',
         importTitle:'استيراد واستعادة',importHint:'اختر ملف JSON أو الصقه، ثم راجعه. لا يُحفظ شيء قبل الضغط على «حفظ التغييرات».',
         importFile:'استيراد ملف JSON',pasteJson:'لصق JSON يدويًا',import:'مراجعة النسخة',cancelRestore:'إلغاء الاستعادة',
-        strategy:'طريقة الاستعادة',replaceAll:'استبدال الكل',replaceAllHint:'تحل كل الإعدادات المستوردة محل الحالية، ومنها التعليمات المخصصة.',
-        replaceMerge:'استبدال الكل مع دمج التعليمات المخصصة',replaceMergeHint:'تُستبدل كل الإعدادات عدا التعليمات المخصصة: يبقى نصك الحالي وتُضاف إليه الفقرات المستوردة غير المكررة.',
+        strategy:'طريقة الاستعادة',replaceAll:'استبدال الكل',replaceAllHint:'تحل الإعدادات المستوردة محل الحالية، ويُلغى إذن إرسال النص المخصص.',
+        replaceMerge:'استبدال الكل مع دمج التعليمات المخصصة',replaceMergeHint:'يُلغى إذن إرسال النص المخصص عند الاستعادة. تُستبدل كل الإعدادات عدا التعليمات المخصصة: يبقى نصك الحالي وتُضاف إليه الفقرات المستوردة غير المكررة.',
         previewTitle:'معاينة الاستعادة',setting:'الإعداد',current:'المسودة الحالية',proposed:'بعد الاستعادة',interfaceLanguage:'لغة الواجهة',
         mergedLabel:'التعليمات بعد الدمج (قابلة للتعديل)',importedInstructions:'التعليمات المستوردة',none:'لا شيء',empty:'—',
         permissionsTitle:'الصلاحيات المحفوظة في النسخة',restorePermissions:'استعادة الصلاحيات المحفوظة في هذه النسخة',
@@ -1027,22 +1029,23 @@ window.__ModuleLoader__.load({
       }
       const en = {
         information:'My Information',instructions:'Agent Instructions',access:'Access Control',backup:'Backup & Restore',privacy:'Privacy & Security',title:'Personal Profile',
-        subtitle:'One unified profile in the active Harness Profile',warning:'Stored locally without plugin-level encryption. Do not enter passwords, keys or sensitive information. This plugin does not currently send these settings to a model.',
+        subtitle:'One unified profile in the active Harness Profile',warning:'Stored locally without plugin-level encryption. Do not enter passwords, keys or sensitive information. Saved response preferences are sent to the selected model and may remain in conversation history. Structured personal fields are not sent.',
         language:'Interface language',preferredName:'Preferred name',nationality:'Nationality',gender:'Gender',male:'Male',female:'Female',unspecified:'Prefer not to say',
-        unified:'Unified preferences',unifiedHint:'One set of preferences for this profile, designed to apply to all existing and future conversations regardless of Workspace. Nothing is injected into the agent yet.',
+        unified:'Unified preferences',unifiedHint:'Saved preferences apply at the next assembled step in supported native conversations, independent of Workspace. Some agent presets may override them.',
         personality:'Personality',styleTone:'Style and tone',responseLanguage:'Response language',characteristics:'Response characteristics',presets:'Behavior presets',customInstructions:'Custom instructions',
+        sendCustom:'Allow sending custom text to selected models (including cloud)',customConsentHint:'Text can remain in conversation history and be replayed. Do not include sensitive data. Editing or restoring text clears consent; review and Save.',
         less:'Less',neutral:'Balanced',more:'More',characters:'characters',
-        preferenceHint:'Optional choices. Nothing is injected into the agent yet.',languageHint:'Response language is separate from interface language. Put dialect preferences in custom instructions.',
-        previewHint:'Effective text preview only; agent integration is not yet available.',presetHint:'None selected by default.',resetPreferences:'Reset preferences',
+        preferenceHint:'Optional choices apply after Save.',languageHint:'Response language is separate from interface language. Put dialect preferences in custom instructions.',
+        previewHint:'Draft preview of what is contributed after Save in supported conversations. Earlier instructions are not erased from history.',presetHint:'None selected by default.',resetPreferences:'Reset preferences',
         effective:'Effective preview',optIn:'Allow use of personal information (saved preference, not active in agent)',
         fieldPolicies:'Field policies',policiesHint:'One policy per field for the whole profile, not per Workspace.',private:'Private',ask:'Ask First',allow:'Allow',on:'On',off:'Off',
-        cloud:'Allow personal information to be sent to a cloud provider (saved preference, not active)',accessHint:'No information is disclosed or sent today. These are saved policy preferences only; runtime enforcement arrives with Phase 7.',
+        cloud:'Allow personal information to be sent to a cloud provider (saved preference, not active)',accessHint:'No information is disclosed or sent today from structured personal fields. Their access policies remain inactive pending Phase 7C.',
         exportTitle:'Export backup',exportHint:'The JSON file is not encrypted. It contains your personal information, instructions and saved access permissions exactly as set. Keep it somewhere safe and do not share it.',
         download:'Download JSON file',copy:'Copy JSON',view:'View JSON',hideView:'Hide JSON',exportJson:'JSON backup',
         importTitle:'Import and restore',importHint:'Choose a JSON file or paste JSON, then review it. Nothing is saved until you press Save changes.',
         importFile:'Import JSON file',pasteJson:'Paste JSON manually',import:'Review backup',cancelRestore:'Cancel restore',
-        strategy:'Restore strategy',replaceAll:'Replace All',replaceAllHint:'Imported settings replace all current settings, including custom instructions.',
-        replaceMerge:'Replace All and Merge Custom Instructions',replaceMergeHint:'Replaces everything except custom instructions: your current text is kept and imported paragraphs that are not duplicates are appended.',
+        strategy:'Restore strategy',replaceAll:'Replace All',replaceAllHint:'Imported settings replace current settings, including custom instructions; custom-text sending consent is cleared.',
+        replaceMerge:'Replace All and Merge Custom Instructions',replaceMergeHint:'Custom-text sending consent is cleared on restore. Replaces everything except custom instructions: your current text is kept and imported paragraphs that are not duplicates are appended.',
         previewTitle:'Restore preview',setting:'Setting',current:'Current draft',proposed:'After restore',interfaceLanguage:'Interface language',
         mergedLabel:'Merged instructions (editable)',importedInstructions:'Imported instructions',none:'None',empty:'—',
         permissionsTitle:'Permissions saved in this backup',restorePermissions:'Restore the permissions saved in this backup',
@@ -1153,6 +1156,7 @@ window.__ModuleLoader__.load({
           ['traits',t('characteristics'),traits.length?traits.join(rtl?'، ':', '):t('neutral')],
           ['presets',t('presets'),presets.length?presets.join(rtl?'، ':', '):t('none')],
           ['custom',t('customInstructions'),p.custom.length+' '+t('characters')],
+          ['sendCustom',t('sendCustom'),p.sendCustom===true?t('on'):t('off')],
           ...PERSONAL_FIELDS.map(key=>['policy-'+key,t('fieldPolicies')+' — '+t(key),policyLabel(r.policies[key])]),
           ['allowPersonalInformation',t('optIn'),r.allowPersonalInformation?t('on'):t('off')],
           ['allowCloud',t('cloud'),r.allowCloud?t('on'):t('off')],
@@ -1163,9 +1167,9 @@ window.__ModuleLoader__.load({
         const incoming=restoreReview.incoming
         const permissions=restorePermissions&&restoreReview.permissions
           ? restoreReview.permissions : {policies:privatePolicies(),allowPersonalInformation:false,allowCloud:false}
-        const proposal={...incoming,policies:{...permissions.policies},
+        const proposal={...incoming,preferences:withoutCustomConsent(incoming.preferences),policies:{...permissions.policies},
           allowPersonalInformation:permissions.allowPersonalInformation,allowCloud:permissions.allowCloud}
-        if(restoreStrategy==='replace-merge')proposal.preferences={...incoming.preferences,custom:mergedText}
+        if(restoreStrategy==='replace-merge')proposal.preferences={...withoutCustomConsent(incoming.preferences),custom:mergedText}
         return proposal
       }
       const startReview = text => {
@@ -1208,7 +1212,7 @@ window.__ModuleLoader__.load({
               ? dropdown(id,t(id),values.gender,GENDER_VALUES.map(v=>[v,genderLabel(v)]),v=>setField(id,v))
               : input(id,t(id),values[id],v=>setField(id,v)))))
       } else if (page === 'instructions') {
-        const setPreference = (key,value) => setPreferences(old=>({...old,[key]:value}))
+        const setPreference = (key,value) => setPreferences(old=>key==='custom'?{...withoutCustomConsent(old),custom:value}:({...old,[key]:value}))
         const activePreview = previewProfilePreferences(preferences)
         contents = h(React.Fragment,null,
           card(t('unified'),h('p',{style:muted},t('unifiedHint'))),
@@ -1253,6 +1257,8 @@ window.__ModuleLoader__.load({
             h('textarea',{id:'pp-custom',rows:6,maxLength:PROFILE_CUSTOM_MAX,style:control,'aria-describedby':'pp-custom-count',
               value:preferences.custom,onChange:e=>setPreference('custom',e.target.value),dir:'auto'}),
             h('p',{id:'pp-custom-count',style:{...muted,marginTop:6}},preferences.custom.length+' / '+PROFILE_CUSTOM_MAX+' '+t('characters')),
+            checkbox('send-custom',preferences.sendCustom===true,v=>setPreferences(old=>v?{...old,sendCustom:true}:withoutCustomConsent(old)),t('sendCustom'),{disabled:!preferences.custom.trim()}),
+            h('p',{style:muted},t('customConsentHint')),
             h('button',{type:'button',id:'pp-reset-preferences',style:{...btn,marginTop:12},
               onClick:()=>setPreferences(()=>neutralProfilePreferences())},t('resetPreferences'))),
           card(t('effective'),h('p',{style:muted},t('previewHint')),
@@ -1418,7 +1424,7 @@ window.__ModuleLoader__.load({
       return h('section',{'data-personal-profile-draft':'',style:{borderTop:border,padding:'20px 0'}},
         h('h3',null,'Personal Profile — local settings'),
         h('p',null,'One unified profile: Preferred name, Nationality, Gender, response preferences and optional Custom Instructions. All access is Private by default.'),
-        h('p',null,'Saved in the active Harness Profile without plugin-level encryption. Open Personal Profile to edit. Agent and cloud disclosure are not implemented.'))
+        h('p',null,'Saved in the active Harness Profile without plugin-level encryption. Open Personal Profile to edit. Saved response preferences are contributed to supported native agent steps; structured personal information disclosure is not implemented.'))
     }
     const PROFILE_MODULE = TYPE + '/personal-profile'
     /** The Host's own enablement of the Profile row on the subject page; false when it says Off. */

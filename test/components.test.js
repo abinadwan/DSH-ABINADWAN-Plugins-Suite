@@ -48,12 +48,12 @@ test('Humanizer contributes the packaged skill and releases it on disable', asyn
   assert.equal(registered.length, 1)
 })
 
-test('Personal Profile Host declares native settings and no agent service', async () => {
+test('Personal Profile Host attaches settings and prompt services independently', async () => {
   const profile=await import(`${base}/personal-profile`)
   assert.ok(profile.Config)
   assert.equal(profile.inject,undefined)
   const calls=[]
-  const ctx={fiber:{},inject(keys,callback){calls.push(keys);callback({effect(fn){return fn()},settings:{configure(options,owner){calls.push([options,owner])}}})}}
+  const ctx={fiber:{},inject(keys,callback){calls.push(keys);callback({effect(fn){return fn()},settings:{configure(options,owner){calls.push([options,owner])}},systemPrompt:{section(options){calls.push(options.name)}}})}}
   profile.apply(ctx)
-  assert.deepEqual(calls,[['settings'],[{auto:false},ctx.fiber]])
+  assert.deepEqual(calls,[['settings'],[{auto:false},ctx.fiber],['systemPrompt'],'abinadwan:personal-profile-preferences'])
 })

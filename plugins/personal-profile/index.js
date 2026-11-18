@@ -1,16 +1,16 @@
 // Native Harness settings schema. No separate storage, cryptography, agent
-// capabilities or network transport. The active Harness Profile owns the file.
+// transport or structured personal disclosure. The active Harness Profile owns the file.
 //
 // Record version 2 (0.7.2) is one unified profile: personal information, one
 // preference set and one set of field policies. It does not depend on any
 // Workspace and is designed to apply to every existing and future
-// conversation once a separately approved consumer (e.g. a future Direct Chat
-// component) exists. Nothing here reads, injects or discloses it.
+// supported native agent step. Only response preferences are contributed.
 //
 // Record version 1 (0.7.0/0.7.1, per-Workspace overrides and policies) is still
 // accepted by the schema so a stored v1 record is never rejected or stripped
 // by the Host. The browser page migrates it only after explicit review + Save.
 import z from '@deepseek-ai/schemastery'
+import { SECTION_NAME, responsePreferences, eligibleAssembly } from './preferences.js'
 
 const choice = (values,initial) => z.union(values).default(initial)
 const styles=['default','professional','friendly','candid','creative','efficient','critical','technical']
@@ -27,17 +27,18 @@ export const emptyRecord=()=>({version:RECORD_VERSION,locale:'ar',information:em
 /** v0.7.0/0.7.1 record shape. Used only to read and migrate stored data. */
 export const emptyLegacyRecord=()=>({version:1,locale:'ar',information:emptyInformation(),
   global:emptyPreferences(),workspaces:[],allowPersonalInformation:false,allowCloud:false})
-const preferences=()=>z.object({
+const preferences=(unified=false)=>z.object({
   style:choice(styles,'default'),responseLanguage:choice(languages,'auto'),
   traits:z.object(Object.fromEntries(traits.map(k=>[k,choice([0,1,2],1)]))).default(emptyPreferences().traits),
   presets:z.array(z.union(presets)).max(8).default([]),custom:z.string().max(8192).default(''),
+  ...(unified?{sendCustom:z.boolean()}:{}),
 }).default(emptyPreferences())
 const policies=()=>z.object(Object.fromEntries(fields.map(k=>[k,choice(['private','ask_first','allow'],'private')]))).default(emptyPolicies())
 const information=()=>z.object({preferredName:z.string().max(128).default(''),nationality:z.string().max(128).default(''),
   gender:choice(['','male','female','unspecified'],'')}).default(emptyInformation())
 const unified=z.object({
   version:z.const(RECORD_VERSION).required(),locale:choice(['ar','en'],'ar'),
-  information:information(),preferences:preferences(),policies:policies(),
+  information:information(),preferences:preferences(true),policies:policies(),
   allowPersonalInformation:z.boolean().default(false),allowCloud:z.boolean().default(false),
 })
 const legacy=z.object({
@@ -54,9 +55,16 @@ export const Config=z.object({
 })
 export const name='abinadwan-personal-profile'
 // Use the official Settings Controller's auto-generated namespace. No
-// custom RPC or agent registration. Hide the redundant generic form.
-export function apply(ctx) {
+// custom RPC. Hide the redundant generic form; independently attach the native prompt registry.
+export function apply(ctx,config) {
   ctx.inject(['settings'], child => {
     child.effect(()=>child.settings.configure({auto:false},ctx.fiber))
+  })
+  ctx.inject(['systemPrompt'], child => {
+    // The registry registration itself is a lifecycle-owned Cordis effect.
+    child.systemPrompt.section({name:SECTION_NAME,order:50,interpolate:false,text:context=>{
+      if(!eligibleAssembly(context))return ''
+      try { return responsePreferences(config.record.get()) } catch { return '' }
+    }})
   })
 }
