@@ -94,3 +94,20 @@ test('Cordis mount/update/dispose reads only volatile persisted config; optional
     assert.equal(ctx.systemPrompt.sections.size,1)
   }finally{await ctx.fiber.dispose()}
 })
+
+test('7C: all structured permission combinations have no effect on outgoing preferences',()=>{
+  const fields=['preferredName','nationality','gender'],policies=['private','ask_first','allow']
+  const r=profile.emptyRecord()
+  r.information={preferredName:'PII_CANARY_NAME_7C',nationality:'PII_CANARY_NATIONALITY_7C',gender:'female'}
+  r.preferences.style='technical'
+  const baseline=responsePreferences(r)
+  let cases=0
+  for(const master of [false,true])for(const cloud of [false,true])
+    for(const a of policies)for(const b of policies)for(const c of policies){
+      r.allowPersonalInformation=master;r.allowCloud=cloud
+      r.policies=Object.fromEntries(fields.map((k,i)=>[k,[a,b,c][i]]))
+      assert.equal(responsePreferences(r),baseline)
+      cases++
+    }
+  assert.equal(cases,108)
+})
