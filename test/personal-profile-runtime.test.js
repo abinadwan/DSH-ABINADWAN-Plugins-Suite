@@ -11,8 +11,8 @@ function selection() {
   return {agent,scope:agent,signal:new AbortController().signal,modelSelection:{provider:'test',model:'test'}}
 }
 test('response renderer matches entire browser catalog and renderer',()=>{
-  const client=readFileSync(new URL('../client.js',import.meta.url),'utf8')
-  const helper=readFileSync(new URL('../plugins/personal-profile/preferences.js',import.meta.url),'utf8')
+  const client=readFileSync(new URL('../client.js',import.meta.url).replace(/\r\n/g,'\n'),'utf8')
+  const helper=readFileSync(new URL('../plugins/personal-profile/preferences.js',import.meta.url).replace(/\r\n/g,'\n'),'utf8')
   const browser=client.slice(client.indexOf('    const PROFILE_STYLES'),client.indexOf('    const PROFILE_NS'))
     .split('\n').map(l=>l.startsWith('    ')?l.slice(4):l).join('\n')
   assert.equal(browser,helper.slice(helper.indexOf('const PROFILE_STYLES'),helper.indexOf('const keys=')).replace('export function previewProfilePreferences','function previewProfilePreferences').trimEnd()+'\n')
