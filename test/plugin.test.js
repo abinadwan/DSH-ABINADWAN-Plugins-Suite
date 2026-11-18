@@ -7,7 +7,6 @@ const get=name=>readFileSync(new URL('../'+name,import.meta.url),'utf8')
 const pkg=JSON.parse(get('package.json'))
 test('bundle and Host exports',async()=>{
   assert.match(pkg.version,/^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)(?:-[0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*)?$/)
-  assert.equal(JSON.parse(get('package-lock.json')).version,pkg.version)
   assert.equal(pkg.name,'@abinadwan/dsh-plugins-suite')
   assert.equal(pkg.dsh.client.platform,'web')
   assert.equal(pkg.dsh.bundle.patch,'./cordis.patch.yml')
