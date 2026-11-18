@@ -2,6 +2,8 @@
 
 2026-11-19. The owner approved gated execution on `feature/new-plugins`. The verified Windows Desktop build is `0.2.2-rc.3`, commit `6b729fedde0c8fd03af7afdf5a711aa64fe87c3b`. Only synthetic fixture data was used. The [Phase A audit](NEW_PLUGINS_PHASE_A.md) retains the static matrix and the 18 pinned reference comparisons.
 
+See the [continuation matrix](NEW_PLUGINS_PHASE_C_CONTINUATION.md) for the implemented Settings, lifecycle previews and reasoning controls, plus the later Direct Chat and offline-deletion findings.
+
 | Slice | Evidence | Product status |
 |---|---|---|
 | Original SVG and PNG artwork | Three SVG masters, 15 transparent PNGs and two visually inspected theme sheets. Re-render check verifies byte identity, alpha, dimensions and the 256 KiB metadata ceiling | Assets ready. Plugin Hub, Settings, sidebar and toolbar registration await shared-file coordination and live Desktop checks |

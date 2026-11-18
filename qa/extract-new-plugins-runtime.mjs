@@ -46,6 +46,8 @@ try {
     '@deepseek-ai/dsh-api-session-controller', '@deepseek-ai/dsh-session-persistence-jsonl',
     '@deepseek-ai/dsh-storage-json', '@deepseek-ai/dsh-storage-domain',
     '@deepseek-ai/dsh-tool-executor-native', '@deepseek-ai/dsh-session-query-sqlite',
+    '@deepseek-ai/dsh-client-connection', '@deepseek-ai/dsh-agent-preset-registry', '@deepseek-ai/cordis-plugin-loader',
+    '@deepseek-ai/dsh-settings',
   ]
   const seen = new Set()
 
