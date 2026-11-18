@@ -40,8 +40,8 @@ class Slots extends Service {
   register(options, component) {
     // Real Slots partition cells by slot name. Keep the historic lookup keys,
     // but refuse a duplicate cell exactly as SlotCore.register does.
-    const key = options.name === 'sidebar.panellist'
-      ? 'sidebar.panellist:' + options.id : options.id || options.key || options.name
+    const key = ['sidebar.panellist', 'settings.section.icon'].includes(options.name)
+      ? options.name + ':' + options.id : options.id || options.key || options.name
     if (options.name === 'sidebar.panellist' || options.name === 'plugins.detail.section') {
       if (options.id === undefined) throw new Error(`list slot "${options.name}" requires options.id`)
     }
@@ -219,10 +219,11 @@ export async function clientHarness(options = {}) {
   const sessions = observable(options.sessions || sessionSnapshot())
   const workspaces = new HostWorkspaceModel({
     items: options.workspaceItems || [{ workspaceId: 'w', title: 'HomeBook', path: 'C:/Work/HomeBook', sessionIds: ['s1'] }],
-    archivedSessionIds: [], pinnedSessionIds: [], state: 'idle', phase: 'ready', error: null,
+    archivedSessionIds: options.archivedSessionIds ?? [], pinnedSessionIds: [], state: 'idle', phase: 'ready', error: null,
   })
-  ctx.provide('sessions', { list: sessions })
+  ctx.provide('sessions', { list: sessions, subagentAddress: () => undefined })
   ctx.provide('workspaces', { list: workspaces })
+  if (options.modelDirectories) ctx.provide('modelDirectories', options.modelDirectories)
   ctx.provide('sidebarRight', {
     mounted: { getSnapshot: () => 's1', subscribe: listener => {
       mountedListeners.add(listener)
@@ -238,7 +239,8 @@ export async function clientHarness(options = {}) {
     clearInterval: id => intervals.delete(id), console: options.console || console,
     fetch: options.fetch || (() => { throw new Error('unexpected network request') }),
     navigator: options.navigator,
-    AbortSignal,
+    document: options.document,
+    AbortSignal, URL,
   })
   const plugin = loaded.factory(name => {
     if (name !== 'react') throw new Error(`unexpected browser import ${name}`)

@@ -1466,6 +1466,362 @@ window.__ModuleLoader__.load({
           ? h(ProfileDraft) : null))
       },
     }
+    const newSuiteTabs = [
+      { id: 'conversation-lifecycle', en: 'Conversation Lifecycle', ar: 'دورة حياة المحادثات', paths: [
+        'M10 13H6V7a1 1 0 0 1 1-1h8m-9 7-1 2m3.5-3.5v-2H15', 'M18.25 11.25a4.5 4.5 0 1 1-6.5 1.25m3.75.75v2.25h2'] },
+      { id: 'adaptive-reasoning', en: 'Adaptive Reasoning', ar: 'الاستدلال التكيفي', paths: [
+        'M6.5 15v3m5.5-6v6m5.5-9v9M6.5 11.5c3.6 0 5-4.5 8.8-4.5', 'M19.5 7a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z'] },
+    ]
+    const suiteLanguage = () => globalThis.document?.documentElement?.lang?.toLowerCase().startsWith('ar') ? 'ar' : 'en'
+    const suiteTitle = () => suiteLanguage() === 'ar' ? 'حزمة ABINADWAN' : 'ABINADWAN Suite'
+    const suiteGlyph = (paths, size = 18) => h('svg', { width: size, height: size, viewBox: '0 0 24 24',
+      fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
+    ...paths.map(path => h('path', { key: path, d: path })))
+    const suiteText = (en, ar) => suiteLanguage() === 'ar' ? ar : en
+    const suiteButton = { color: 'inherit', background: 'transparent', border, borderRadius: 7, padding: '6px 10px', font: 'inherit' }
+    const suiteWatch = source => React.useSyncExternalStore(
+      notify => source.subscribe(notify), () => source.getSnapshot(), () => source.getSnapshot())
+    const suiteSettingsView = view => view?.value && Number.isSafeInteger(view.revision) && view.revision >= 0 ? view : null
+
+    function useSuiteRecord(settings, id, useRemoteAccess, connection) {
+      const mayRead = useRemoteAccess?.('settings/describe') === true
+      const mayWrite = useRemoteAccess?.('settings/replace') === true
+      const [state, setState] = React.useState({ status: 'loading' })
+      const [reload, setReload] = React.useState(0)
+      const epoch = React.useRef(0)
+      const busy = React.useRef(false)
+      const access = React.useRef({ mayRead, mayWrite })
+      const generationAtRender = suiteWatch(connection)
+      access.current = { mayRead, mayWrite }
+      const ns = `abinadwan-${id}`
+      React.useEffect(() => {
+        const generation = ++epoch.current
+        const live = () => epoch.current === generation && connection.getSnapshot() === generationAtRender
+        busy.current = false
+        if (!mayRead) setState({ status: 'unavailable' })
+        else {
+          setState({ status: 'loading' })
+          Promise.resolve().then(() => settings.describe()).then(result => {
+            if (!live()) return
+            const view = result?.ok && suiteSettingsView(result.value?.namespaces?.find(item => item.ns === ns))
+            setState(view ? { status: 'ready', view, writable: result.value.writable === true,
+              connectionGeneration: generationAtRender } : { status: 'unavailable' })
+          }).catch(() => { if (live()) setState({ status: 'unavailable' }) })
+        }
+        return () => { epoch.current++ }
+      }, [settings, ns, mayRead, reload, generationAtRender])
+
+      const currentView = state.connectionGeneration === generationAtRender
+      const writable = mayRead && mayWrite && currentView && state.writable === true &&
+        ['ready', 'saved', 'failed'].includes(state.status)
+      async function save(record) {
+        if (!writable || busy.current || connection.getSnapshot() !== generationAtRender ||
+            !access.current.mayRead || !access.current.mayWrite) return false
+        const generation = epoch.current
+        busy.current = true
+        setState({ ...state, status: 'saving' })
+        try {
+          const result = await settings.replace(ns, { record }, state.view.revision)
+          if (generation !== epoch.current || connection.getSnapshot() !== generationAtRender || !access.current.mayRead) return false
+          const view = result?.ok && suiteSettingsView(result.value)
+          if (view && view.ns === ns) {
+            setState({ ...state, status: 'saved', view })
+            return true
+          }
+          setState({ ...state, status: result?.error?.code === 'settings/conflict' ? 'conflict' : 'failed' })
+        } catch {
+          if (generation === epoch.current && connection.getSnapshot() === generationAtRender && access.current.mayRead) {
+            setState({ ...state, status: 'failed' })
+          }
+        } finally { if (generation === epoch.current) busy.current = false }
+        return false
+      }
+      const source = mayRead && currentView ? state.view : undefined
+      return { record: source?.value.record, source, writable,
+        status: mayRead && state.view && !currentView ? 'loading' : state.status, save,
+        reload: () => { if (!busy.current) setReload(value => value + 1) } }
+    }
+
+    function suiteConnection(ctx) {
+      let generation = 0
+      const listeners = new Set()
+      const invalidate = () => { generation++; for (const notify of listeners) notify() }
+      ctx.on('connection/reset', invalidate)
+      ctx.effect(() => ctx.remote.$on('settings/document-updated', invalidate))
+      return { getSnapshot: () => generation,
+        subscribe: notify => { listeners.add(notify); return () => listeners.delete(notify) } }
+    }
+
+    function SuiteRecordStatus({ settings }) {
+      const labels = {
+        loading: ['Loading settings…', 'جارٍ تحميل الإعدادات…'], unavailable: ['Settings unavailable.', 'الإعدادات غير متاحة.'],
+        saving: ['Saving…', 'جارٍ الحفظ…'], saved: ['Saved.', 'تم الحفظ.'], failed: ['Save failed.', 'تعذر الحفظ.'],
+        conflict: ['Settings changed in another window. Reload before saving again.', 'تغيرت الإعدادات في نافذة أخرى. أعد التحميل قبل الحفظ.'],
+      }
+      const label = labels[settings.status]
+      return h('div', { role: 'status' }, label ? suiteText(...label) : null,
+        ['conflict', 'unavailable'].includes(settings.status) ? h('button', { type: 'button', style: suiteButton,
+          onClick: settings.reload }, suiteText('Reload settings', 'إعادة تحميل الإعدادات')) : null)
+    }
+
+    function WorkspaceLifecycle({ services, useRemoteAccess }) {
+      const settings = useSuiteRecord(services.settings, 'conversation-lifecycle', useRemoteAccess, services.connection)
+      const workspace = suiteWatch(services.workspaces)
+      const sessions = suiteWatch(services.sessions)
+      const [scope, setScope] = React.useState('')
+      const [proposal, setChange] = React.useState(null)
+      const [previewAt, setPreviewAt] = React.useState(null)
+      const change = proposal?.source === settings.source ? proposal : null
+      React.useEffect(() => {
+        if (proposal && !change) { setChange(null); setPreviewAt(null) }
+      }, [proposal, change])
+      const record = settings.record
+      const ready = workspace?.phase === 'ready' && sessions?.phase === 'ready'
+      const workspaces = ready ? workspace.items : []
+      const chosen = workspaces.find(item => item.workspaceId === scope)
+      const retention = chosen ? record?.overrides?.find(item => item.workspace === scope)?.retention || 'inherit' : record?.retention
+      const memberships = new Map()
+      for (const item of workspaces) for (const id of item.sessionIds ?? []) {
+        if (memberships.has(id)) memberships.set(id, null)
+        else memberships.set(id, item.workspaceId)
+      }
+      const archived = new Set(workspace?.archivedSessionIds ?? [])
+      const protectedIds = new Set(record?.protectedIds ?? [])
+      const rows = []
+      let unknown = 0
+      for (const [id, member] of memberships) {
+        if (member === null) { unknown++; continue }
+        if (chosen && member !== scope) continue
+        const row = sessions.byId?.[id]
+        if (!row) { unknown++; continue }
+        const projection = sessions.projectionsBySession?.[id]?.values
+        if (projection?.agentPreset === 'abinadwan-direct-chat' || row.agentPreset === 'abinadwan-direct-chat') continue
+        const isActive = row.running !== false || row.agentAvailable === true ||
+          Object.values(row.retainedBy ?? {}).some(count => count > 0)
+        const examined = change?.next ?? record
+        const days = examined?.overrides?.find(item => item.workspace === member)?.retention ?? examined?.retention
+        // The installed Session Controller reports max(createdAt, lastPromptAt).
+        // Count only known prompt-derived dates, never an unstarted Session's creation date.
+        const summaryPrompt = Number.isFinite(row.createdAt) && row.updatedAt > row.createdAt ? row.updatedAt : undefined
+        const lastPrompt = projection?.sessionListMetadata?.lastPromptAt ?? summaryPrompt
+        const isProtected = protectedIds.has(id)
+        const candidate = previewAt !== null && !isActive && !isProtected && ['365', '180', '90', '30', '7'].includes(days) &&
+          Number.isFinite(lastPrompt) && lastPrompt > 0 && lastPrompt <= previewAt - Number(days) * 86400000
+        rows.push({ id, row, isActive, isProtected, candidate })
+      }
+      const update = next => {
+        setChange(null)
+        setPreviewAt(null)
+        void settings.save(next)
+      }
+      function propose(value) {
+        if (!record) return
+        const next = chosen ? { ...record, overrides: [...record.overrides.filter(row => row.workspace !== scope),
+          ...(value === 'inherit' ? [] : [{ workspace: scope, retention: value }])] } : { ...record, retention: value }
+        setChange({ value, next, source: settings.source })
+        setPreviewAt(Date.now())
+      }
+
+      return h('div', { style: { marginBlockStart: 14, display: 'grid', gap: 12 } },
+        h('p', { role: 'note', style: { margin: 0 } }, suiteText(
+          'Preview only. Permanent deletion and automatic cleanup are unavailable. Last prompt dates are used for estimates. Exact last activity and storage size are unavailable.',
+          'معاينة فقط. الحذف النهائي والتنظيف التلقائي غير متاحين. تعتمد التقديرات على آخر رسالة، ولا يتوفر وقت النشاط الدقيق أو حجم التخزين.')),
+        h(SuiteRecordStatus, { settings }),
+        h('label', null, suiteText('Workspace ', 'مساحة العمل '),
+          h('select', { value: chosen ? scope : '', disabled: !ready, onChange: event => {
+            setScope(event.target.value); setChange(null); setPreviewAt(null)
+          } }, h('option', { value: '' }, suiteText('All Workspaces', 'كل مساحات العمل')),
+          ...workspaces.map(item => h('option', { value: item.workspaceId, key: item.workspaceId }, item.title)))),
+        h('label', null, suiteText('Retention ', 'مدة الاحتفاظ '),
+          h('select', { value: change?.value ?? retention ?? 'forever', disabled: !settings.writable || !record,
+            onChange: event => propose(event.target.value) },
+          chosen ? h('option', { value: 'inherit' }, suiteText('Inherit', 'وراثة الإعداد العام')) : null,
+          h('option', { value: 'forever' }, suiteText('Keep forever', 'احتفاظ دائم')),
+          ...['365', '180', '90', '30', '7'].map(days => h('option', { key: days, value: days }, suiteText(`${days} days`, `${days} يومًا`))))),
+        change ? h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' } },
+          h('span', null, suiteText('Save this policy for previews?', 'حفظ هذه السياسة للمعاينات؟')),
+          h('button', { type: 'button', style: suiteButton, disabled: !settings.writable, onClick: () => update(change.next) },
+            suiteText('Confirm and save', 'تأكيد وحفظ')),
+          h('button', { type: 'button', style: suiteButton, onClick: () => setChange(null) }, suiteText('Cancel', 'إلغاء'))) : null,
+        ready ? h('div', null,
+          h('p', null, suiteText(`${rows.length} conversations · ${rows.filter(row => archived.has(row.id)).length} archived · ${unknown} unavailable or ambiguous`,
+            `${rows.length} محادثة · ${rows.filter(row => archived.has(row.id)).length} مؤرشفة · ${unknown} غير متاحة أو غامضة`)),
+          h('button', { type: 'button', style: suiteButton, disabled: !record, onClick: () => setPreviewAt(Date.now()) },
+            suiteText('Preview cleanup', 'معاينة التنظيف')),
+          previewAt !== null ? h('p', { role: 'status' }, suiteText(`${rows.filter(row => row.candidate).length} estimated candidates`,
+            `${rows.filter(row => row.candidate).length} مرشح تقديري`)) : null,
+          h('ul', null, ...rows.map(({ id, row, isProtected, candidate }) => h('li', { key: id, style: { marginBlock: 6 } },
+            h('label', { dir: 'auto' }, h('input', { type: 'checkbox', checked: isProtected, disabled: !settings.writable,
+              onChange: event => update({ ...record, protectedIds: event.target.checked ? [...protectedIds, id] : [...protectedIds].filter(value => value !== id) }) }),
+            ` ${suiteText('Protect', 'حماية')} ${row.displayTitle || id}`),
+            archived.has(id) ? suiteText(' · Archived', ' · مؤرشفة') : null,
+            candidate ? suiteText(' · Estimated candidate', ' · مرشح تقديري') : null)))) :
+          h('p', { role: 'status' }, suiteText('Workspace inventory is unavailable.', 'قائمة مساحات العمل غير متاحة.')))
+    }
+
+    function ReasoningPreferences({ services, useRemoteAccess }) {
+      const settings = useSuiteRecord(services.settings, 'adaptive-reasoning', useRemoteAccess, services.connection)
+      const preferences = settings.record?.preferences ?? []
+      return h('div', { style: { marginBlockStart: 14 } },
+        h('p', null, suiteText('Choose an effort in the native model picker. Save a preferred effort from the composer and apply it explicitly to a conversation. Adaptive and next-message overrides are unavailable.',
+          'اختر مستوى الاستدلال من محدد النموذج الأصلي. احفظ مستوى مفضلًا من محرر المحادثة وطبّقه صراحةً على محادثة. الاستدلال التكيفي وتجاوز إعداد الرسالة التالية غير متاحين.')),
+        h(SuiteRecordStatus, { settings }),
+        preferences.length ? h('ul', null, ...preferences.map((preference, index) => h('li', {
+          key: JSON.stringify([preference.provider, preference.model]), style: { marginBlock: 8 } },
+        h('bdi', null, `${preference.provider} / ${preference.model} · ${preference.effort}`), ' ',
+        h('button', { type: 'button', style: suiteButton, disabled: !settings.writable,
+          onClick: () => void settings.save({ preferences: preferences.filter((_, position) => position !== index) }) },
+        suiteText('Remove preference', 'إزالة التفضيل'))))) :
+          h('p', null, suiteText('No model preferences saved.', 'لا توجد تفضيلات محفوظة للنماذج.')))
+    }
+
+    function ReasoningComposer({ directory, sessionId, sessionList, settingsService, connection, useRemoteAccess, useAccess }) {
+      const settings = useSuiteRecord(settingsService, 'adaptive-reasoning', useRemoteAccess, connection)
+      const directoryState = suiteWatch(directory.store)
+      const resident = suiteWatch(sessionList).byId?.[sessionId]?.agentAvailable === true
+      const canSelect = useAccess?.('session/selectModel') === true
+      const [outcome, setOutcome] = React.useState(null)
+      const [applying, setApplying] = React.useState(false)
+      const inFlight = React.useRef(false)
+      const selection = directoryState.current
+      React.useEffect(() => { void directory.load().catch(() => {}) }, [directory])
+      const supported = current => {
+        if (!current) return null
+        const snapshot = directory.store.getSnapshot()
+        if (snapshot.status !== 'ready' || snapshot.routable !== true) return null
+        const model = snapshot.groups.find(group => group.id === current.provider)?.models.find(model => model.id === current.model)
+        return model?.reasoning
+      }
+      const reasoning = supported(selection)
+      if (!selection || !reasoning?.efforts?.length) return null
+      const effort = selection.reasoningEffort ?? reasoning.defaultEffort
+      const preferences = settings.record?.preferences ?? []
+      const isCurrentRoute = row => row.provider === selection.provider && row.model === selection.model
+      const saved = preferences.find(isCurrentRoute)
+      const savedSupported = reasoning.efforts.some(level => level.id === saved?.effort)
+      function savePreference() {
+        const current = directory.store.getSnapshot().current
+        if (!current || !isCurrentRoute(current) || !canSelect || !settings.writable) return
+        const live = supported(current)
+        const choice = current.reasoningEffort ?? live?.defaultEffort
+        if (!live?.efforts?.some(level => level.id === choice)) return
+        void settings.save({ preferences: [...preferences.filter(row => !isCurrentRoute(row)),
+          { provider: current.provider, model: current.model, effort: choice }] })
+      }
+      async function applyPreference() {
+        const current = directory.store.getSnapshot().current
+        if (inFlight.current || !canSelect || sessionList.getSnapshot().byId?.[sessionId]?.agentAvailable !== true ||
+            !current || !isCurrentRoute(current) ||
+            !supported(current)?.efforts?.some(choice => choice.id === saved?.effort)) return
+        inFlight.current = true
+        setApplying(true)
+        setOutcome(null)
+        try {
+          const endpoint = new URL('api/abinadwan-reasoning/effort', document.baseURI)
+          if (endpoint.origin !== document.location.origin) throw new Error('Cross-origin reasoning endpoint')
+          const selection = { provider: current.provider, model: current.model, reasoningEffort: saved.effort }
+          const result = await fetch(endpoint, { method: 'POST', credentials: 'same-origin', redirect: 'error',
+            headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sessionId, ...selection }) })
+          if (result.status === 409) settings.reload()
+          const confirmed = result.ok ? (await result.json()).selected : null
+          setOutcome(confirmed?.provider === selection.provider && confirmed?.model === selection.model &&
+            confirmed?.reasoningEffort === selection.reasoningEffort)
+        } catch { setOutcome(false) }
+        finally { inFlight.current = false; setApplying(false) }
+      }
+      if (!canSelect) return null
+      return h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' } },
+        h('button', { type: 'button', style: suiteButton, disabled: !settings.writable || applying ||
+          !reasoning.efforts.some(level => level.id === effort) || effort === saved?.effort, onClick: savePreference },
+        suiteGlyph(newSuiteTabs.find(tab => tab.id === 'adaptive-reasoning').paths, 14), ' ',
+        suiteText('Save model effort', 'حفظ مستوى النموذج')),
+        saved ? h('button', { type: 'button', style: suiteButton, disabled: applying || !resident || !savedSupported ||
+          saved.effort === effort || directoryState.pending != null, onClick: () => void applyPreference(),
+          title: suiteText('Applies to this live conversation only.', 'يُطبّق على هذه المحادثة النشطة فقط.') },
+        suiteText('Apply saved effort', 'تطبيق المستوى المحفوظ')) : null,
+        saved && !savedSupported ? h('span', { role: 'status' }, suiteText('Saved effort unavailable for this model.', 'المستوى المحفوظ غير متاح لهذا النموذج.')) : null,
+        savedSupported && !resident ? h('small', null, suiteText('Start or resume this chat before applying the saved effort.',
+          'ابدأ هذه المحادثة أو استأنفها قبل تطبيق المستوى المحفوظ.')) : null,
+        outcome !== null ? h('span', { role: 'status' }, outcome ? suiteText('Effort applied.', 'تم تطبيق المستوى.') :
+          suiteText('Harness could not apply the effort.', 'تعذر تطبيق مستوى الاستدلال.')) : null,
+        h(SuiteRecordStatus, { settings }))
+    }
+
+    const reasoningComposerPlugin = {
+      inject: ['slots', 'remote', 'remote.settings', 'sessions', 'modelDirectories'],
+      apply(ctx) {
+        const settingsService = ctx.remote.settings
+        const connection = suiteConnection(ctx)
+        const modelDirectories = ctx.modelDirectories
+        const sessions = ctx.sessions
+        const sessionList = sessions.list
+        ctx.slots.inject('conversation.composer.dock', () => ctx.slots.register({ name: 'conversation.composer.dock',
+          id: 'abinadwan-reasoning-preference', order: 25, inject: sessionId => ({
+            directory: sessionId && !sessions.subagentAddress(sessionId) ? modelDirectories.directoryFor(sessionId) : null,
+            sessionId,
+          }) }, props => props.directory ? h(ReasoningComposer, { ...props, settingsService, connection, sessionList }) : null))
+      },
+    }
+
+    function createSuiteSection() {
+      let visible = []
+      const listeners = new Set()
+      const subscribe = listener => { listeners.add(listener); return () => listeners.delete(listener) }
+      const snapshot = () => visible
+      function Pane({ services, useRemoteAccess }) {
+        const tabs = React.useSyncExternalStore(subscribe, snapshot, snapshot)
+        const [selection, select] = React.useState(null)
+        const refs = React.useRef(new Map())
+        const language = suiteLanguage()
+        const active = tabs.find(tab => tab.id === selection) || tabs[0]
+        if (!active) return null
+        function navigate(event, index) {
+          const forward = language === 'ar' ? 'ArrowLeft' : 'ArrowRight'
+          const backward = language === 'ar' ? 'ArrowRight' : 'ArrowLeft'
+          const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 :
+            event.key === forward ? (index + 1) % tabs.length :
+              event.key === backward ? (index + tabs.length - 1) % tabs.length : undefined
+          if (next === undefined) return
+          event.preventDefault()
+          select(tabs[next].id)
+          refs.current.get(tabs[next].id)?.focus()
+        }
+        return h('section', { dir: language === 'ar' ? 'rtl' : 'ltr', lang: language, style: { padding: 20 } },
+          h('h1', { style: { marginBlockStart: 0 } }, suiteTitle()),
+          h('div', { role: 'tablist', 'aria-label': suiteTitle(), style: { display: 'flex', flexWrap: 'wrap', gap: 8 } },
+            ...tabs.map((tab, index) => h('button', { type: 'button', key: tab.id, role: 'tab', id: `suite-tab-${tab.id}`,
+              ref: node => { if (node) refs.current.set(tab.id, node); else refs.current.delete(tab.id) },
+              'aria-selected': tab === active, 'aria-controls': 'abinadwan-suite-panel', tabIndex: tab === active ? 0 : -1,
+              onClick: () => select(tab.id), onKeyDown: event => navigate(event, index),
+              style: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 9px', color: 'inherit',
+                background: tab === active ? 'rgba(128,128,128,.2)' : 'transparent', border, borderRadius: 7, font: 'inherit' } },
+            suiteGlyph(tab.paths), tab[language]))),
+          h('div', { key: active.id, id: 'abinadwan-suite-panel', role: 'tabpanel', 'aria-labelledby': `suite-tab-${active.id}`, tabIndex: 0 },
+            active.id === 'conversation-lifecycle' ? h(WorkspaceLifecycle, { services, useRemoteAccess }) :
+              h(ReasoningPreferences, { services, useRemoteAccess })))
+      }
+      return {
+        update(rows) {
+          const next = newSuiteTabs.filter(tab => rows.some(row => row.moduleName === `${TYPE}/${tab.id}` &&
+            row.enabled === true && row.fiberPhase === 'active'))
+          if (next.length !== visible.length || next.some((tab, index) => tab !== visible[index])) {
+            visible = next
+            for (const notify of listeners) notify()
+          }
+          return visible.length > 0
+        },
+        plugin: { inject: ['slots', 'remote', 'remote.settings', 'sessions', 'workspaces'], apply(ctx) {
+          const services = { settings: ctx.remote.settings, sessions: ctx.sessions.list, workspaces: ctx.workspaces.list,
+            connection: suiteConnection(ctx) }
+          const PaneSlot = props => h(Pane, { ...props, services })
+          ctx.slots.inject('settings.section', () => ctx.slots.register({ name: 'settings.section',
+            id: 'abinadwan-suite', label: suiteTitle, order: 45 }, PaneSlot))
+          ctx.slots.inject('settings.section.icon', () => ctx.slots.register({ name: 'settings.section.icon',
+            id: 'abinadwan-suite' }, ({ size }) => suiteGlyph(['M5 5h14v14H5z', 'M9 9h6m-6 3h6m-6 3h6'], size)))
+        } },
+      }
+    }
+
     return {
       // `remote.pluginManager` is its own Cordis service (one per Remote
       // namespace). It must be injected here: Cordis 4 throws "cannot get
@@ -1506,12 +1862,15 @@ window.__ModuleLoader__.load({
         // govern these child fibers through the public, access-checked inventory.
         ctx.remoteAccess.whenAccess('pluginManager/listPlugins', () => {
           const fibers = new Map()
+          const suiteSection = createSuiteSection()
+          let suiteFiber
           let stopped = false
           let generation = 0
           let pending = Promise.resolve()
           const components = [
             [TYPE + '/environment-context', environmentPlugin],
             [TYPE + '/personal-profile', profilePlugin],
+            [TYPE + '/adaptive-reasoning', reasoningComposerPlugin],
           ]
           async function refresh() {
             const request = ++generation
@@ -1528,6 +1887,13 @@ window.__ModuleLoader__.load({
             }
             pending = pending.then(async () => {
               if (stopped || request !== generation) return
+              const hasNewTabs = suiteSection.update(rows)
+              if (hasNewTabs && !suiteFiber) suiteFiber = ctx.plugin(suiteSection.plugin)
+              if (!hasNewTabs && suiteFiber) {
+                const inactive = suiteFiber
+                suiteFiber = undefined
+                await inactive.dispose()
+              }
               for (const [moduleName, plugin] of components) {
                 const active = rows.some(row => row.moduleName === moduleName &&
                   row.enabled === true && row.fiberPhase === 'active')
@@ -1553,6 +1919,7 @@ window.__ModuleLoader__.load({
             unsubscribe()
             disconnectReset()
             const disposals = [...fibers.values()].map(fiber => fiber.dispose())
+            if (suiteFiber) disposals.push(suiteFiber.dispose())
             fibers.clear()
             return Promise.all(disposals).then(() => {})
           }

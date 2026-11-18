@@ -21,6 +21,18 @@
     "./personal-profile": "./plugins/personal-profile/index.js",
     "./personal-profile/locale/*.json": "./plugins/personal-profile/locale/*.json",
     "./personal-profile/icon": "./plugins/personal-profile/icon.png",
+    "./direct-chat": "./plugins/direct-chat/index.js",
+    "./direct-chat/locale/*.json": "./plugins/direct-chat/locale/*.json",
+    "./direct-chat/icon": "./plugins/direct-chat/assets/png/icon-256.png",
+    "./direct-chat/icon.svg": "./plugins/direct-chat/assets/icon.svg",
+    "./conversation-lifecycle": "./plugins/conversation-lifecycle/index.js",
+    "./conversation-lifecycle/locale/*.json": "./plugins/conversation-lifecycle/locale/*.json",
+    "./conversation-lifecycle/icon": "./plugins/conversation-lifecycle/assets/png/icon-256.png",
+    "./conversation-lifecycle/icon.svg": "./plugins/conversation-lifecycle/assets/icon.svg",
+    "./adaptive-reasoning": "./plugins/adaptive-reasoning/index.js",
+    "./adaptive-reasoning/locale/*.json": "./plugins/adaptive-reasoning/locale/*.json",
+    "./adaptive-reasoning/icon": "./plugins/adaptive-reasoning/assets/png/icon-256.png",
+    "./adaptive-reasoning/icon.svg": "./plugins/adaptive-reasoning/assets/icon.svg",
     "./cordis.patch.yml": "./cordis.patch.yml"
   },
   "files": [
