@@ -23,10 +23,10 @@ No structured field (preferred name, nationality, gender) is rendered, sent thro
 
 ## Verification
 
-Added unit matrix covering all 108 combinations (two master switches, three policies for each of three fields), checking exact equality to baseline preferences. Extended real pinned Agent Loop offline-adapter fixture with all three synthetic field markers, 12 combinations of uniform field policy/master/cloud state, two routes per combination, session log assertion and disable check. These are negative tests only; no positive disclosure or proof of privacy for manually typed custom text. PR #21 CI passed on Windows/Linux Node 22/24 before integration. Windows Desktop acceptance remains separate.
+Added unit matrix covering all 108 combinations (two master switches, three policies for each of three fields), checking exact equality to baseline preferences. Extended real pinned Agent Loop offline-adapter fixture with all three synthetic field markers, 12 combinations of uniform field policy/master/cloud state, two routes per combination, session log assertion and disable check. These are negative tests only; no positive disclosure or proof of privacy for manually typed custom text. PR #21 CI passed on Windows/Linux Node 22/24 before integration. Windows Desktop functional review is now recorded in the [Phase 7 acceptance record](PERSONAL_PROFILE_PHASE7_WINDOWS_ACCEPTANCE.md). Actual Desktop request inspection and route-change evidence remain open; no inference of request privacy from model replies.
 
 ## Required upstream capability before positive disclosure
 
 A destination-bound, non-durable admission contract or supported host-managed isolation mechanism that prevents replay of restricted information and derivatives across permission changes, retries, compaction and provider switching, including when the plugin is disabled; a trustworthy route classification; and a native one-use approval contract with the same bound destination. Alternatively the product owner may explicitly approve a weaker prospective-only disclosure contract after reviewing consequences, but that is not the original privacy guarantee and is not implemented here.
 
-No host modification, third-party transport, version bump, merge or release. Phase 7C positive disclosure remains NO-GO.
+The candidate baseline may be merged independently of positive disclosure; no stable release approval is implied. No host modification or third-party transport is introduced. Phase 7C positive disclosure remains NO-GO; see [Phase 8 plan](PERSONAL_PROFILE_PHASE8_PLAN.md).
