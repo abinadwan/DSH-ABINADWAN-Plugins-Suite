@@ -1,6 +1,6 @@
 {
   "name": "@abinadwan/dsh-plugins-suite",
-  "version": "0.7.1",
+  "version": "0.7.2",
   "description": "DeepSeek Harness suite with Environment & Context, Humanizer and local Personal Profile settings.",
   "private": true,
   "type": "module",
@@ -34,6 +34,7 @@
     "docs/BRANDING.md",
     "docs/PERSONAL_PROFILE_LOCAL_SETTINGS.md",
     "docs/PERSONAL_PROFILE_WINDOWS_ACCEPTANCE.md",
+    "docs/PERSONAL_PROFILE_V072_CHANGE_RECORD.md",
     "docs/assets/environment-*.webp",
     "plugins",
     "README.md",

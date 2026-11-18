@@ -20,7 +20,7 @@ test('package ships only active documentation, no superseded designs, prototype 
   for (const path of paths) {
     assert.doesNotMatch(path, /PERSONAL_PROFILE_PHASE|docs\/superpowers\/|personal-profile-phase4|probe|dpapi|\.env|\.pem$|\.key$/i, path)
   }
-  for (const required of ['docs/DETAIL.md', 'docs/PERSONAL_PROFILE_LOCAL_SETTINGS.md', 'docs/BRANDING.md',
+  for (const required of ['docs/DETAIL.md', 'docs/PERSONAL_PROFILE_LOCAL_SETTINGS.md', 'docs/PERSONAL_PROFILE_V072_CHANGE_RECORD.md', 'docs/BRANDING.md',
     'docs/assets/environment-project.webp', 'docs/assets/environment-session.webp']) assert.ok(paths.includes(required), required)
   const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
   assert.deepEqual(manifest.dependencies, { '@deepseek-ai/schemastery': '3.19.0' }, 'only the Harness rc.3 schema library at runtime')

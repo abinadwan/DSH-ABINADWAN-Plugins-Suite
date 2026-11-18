@@ -2,6 +2,34 @@
 
 All notable changes are documented here.
 
+## [0.7.2] — Unreleased (candidate)
+
+Personal Profile redesign approved by the owner after Windows Desktop review of 0.7.1. Native Harness persistence and revision-checked writes are unchanged. Details: [0.7.2 change record](docs/PERSONAL_PROFILE_V072_CHANGE_RECORD.md).
+
+### Changed
+
+- **Unified Personal Profile (record version 2).** One preference set and one field-policy set per active Harness Profile, designed to apply to all existing and future conversations. Removed the Workspace selector, instruction scope selector, per-Workspace overrides, inheritance controls and per-Workspace policies. The profile no longer injects or reads the Workspace service. No Workspace count restriction.
+- **Unified access control.** One Private / Ask First / Allow policy each for preferred name, nationality and gender, plus the personal-information and cloud-sharing switches; defaults Private / Off. Disclosed as saved preferences until Phase 7 runtime enforcement.
+- **Complete backup export.** Download JSON file, Copy JSON and View JSON. Exports include the saved policies and switches unchanged (0.7.0/0.7.1 exports dropped them) and warn that the file is not encrypted.
+- **Import and restore.** Import a JSON file or paste JSON, review a current → proposed preview, confirm, apply to the draft, then Save. Exactly two strategies: **Replace All** and **Replace All and Merge Custom Instructions** (existing text kept, non-duplicate imported paragraphs appended, formatting kept, editable preview, never truncated). The general-purpose merge strategy was removed.
+- **Optional permission restoration.** Unchecked by default; shows the exact permissions and needs a separate acknowledgment. Invalid or unsupported policies reject the backup. Restoring activates no disclosure.
+- Update-migration text now says the backup includes saved access permissions and is not encrypted.
+
+### Migration
+
+- Settings saved by 0.7.0/0.7.1 (record version 1) remain readable: the Host schema accepts both versions, so stored data is never stripped. The page shows a migration review that keeps personal information, locale, global preferences and custom instructions, lists every Workspace-specific row, and offers download/copy/view of the complete 0.7.1 JSON. Discarding Workspace rows or resetting a sharing switch that was On requires explicit confirmation; nothing changes until a revision-checked Save. Workspace permissions are never promoted; unified policies start Private and both switches Off. 0.7.0/0.7.1 backups import their global settings.
+- Limitation: 0.7.1 cannot read a version 2 record; rolling back after a Save requires restoring the configuration backup.
+
+### Fixed
+
+- The gender option "unspecified" is labelled **Prefer not to say**; it was indistinguishable from "not set".
+- JSON is displayed left-to-right in a monospace font in both interface languages.
+- Validation messages now state the reason (invalid JSON, unsupported version, invalid policy, instructions too long, unknown fields, file too large or unreadable).
+
+### Tests
+
+- Rewritten Personal Profile coverage for the unified schema, migration, complete export, file/paste import, both strategies, duplicate prevention, length limits, optional permission restore, malformed backups, cancellation, Workspace independence and accessibility. Desktop render regression retained. Coverage audit: change record §13. 150 tests (130 in 0.7.1).
+
 ## [0.7.1] — Unreleased (candidate)
 
 Bug-fix release for Windows Desktop compatibility. No feature, storage, privacy-default or permission change.

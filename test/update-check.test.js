@@ -89,8 +89,8 @@ test('startup check with no published release: labelled section, Check again, ne
   assert.ok(view.q('[data-environment-update-section]'))
   assert.match(view.text(), /Suite updates \(GitHub Releases\)/)
   assert.match(view.text(), /No published stable release yet/)
-  assert.match(view.text(), /Installed \(Host\)v0\.7\.1/)
-  assert.match(view.text(), /Browser modulev0\.7\.1/)
+  assert.match(view.text(), /Installed \(Host\)v0\.7\.2/)
+  assert.match(view.text(), /Browser modulev0\.7\.2/)
   assert.match(view.text(), /Last checked\d/)
   assert.match(view.text(), /Git, pinned to bbbbbbbbbbbb/)
   assert.equal(view.q('[data-update-now]'), null)
@@ -232,7 +232,7 @@ test('a Host/browser version mismatch is explained instead of silently trusted',
   const view = await mount(t, { fetch: async () => reply({}, 404), listBundles: () => [bundle(PINNED_SOURCE)] },
     { subject: subject('0.6.1') })
   assert.ok(view.q('[data-version-mismatch]'))
-  assert.match(view.text(), /Host reports v0\.6\.1 but this window runs browser module v0\.7\.1/)
+  assert.match(view.text(), /Host reports v0\.6\.1 but this window runs browser module v0\.7\.2/)
 })
 
 test('unmounting during an update and disposing the suite leave no timers or late updates', async t => {

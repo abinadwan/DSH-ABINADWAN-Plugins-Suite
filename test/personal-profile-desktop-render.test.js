@@ -3,7 +3,9 @@
 // is a `ClientWorkspaceModel` class instance whose `subscribe`/`getSnapshot`
 // read `this`; passing them unbound to useSyncExternalStore threw during
 // render, and the Host Slot boundary retired the `main` entry, leaving an empty
-// `<div data-slot-error="main">`. Fictional data only.
+// `<div data-slot-error="main">`. 0.7.2 removed the Workspace dependency
+// entirely; these tests keep the Host-style Slot boundary and prove the page
+// renders whatever the Workspace store does. Fictional data only.
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import '../test-support/dom-global.js'
@@ -57,23 +59,25 @@ test('the Host workspace list is a class instance whose methods need their recei
   assert.throws(() => subscribe(() => {}), TypeError)
 })
 
-test('Personal Profile renders inside a Host-style main Slot with the real workspace contract', async t => {
+test('Personal Profile renders inside a Host-style main Slot with the real Host Workspace class present', async t => {
   const { d, crashes } = await mountInHostSlot(t)
   assert.deepEqual(crashes.map(String), [], 'no Slot entry crash')
   assert.equal(d.querySelector('[data-slot-error]'), null, 'content area is not blank')
   assert.ok(d.querySelector('[data-personal-profile-panel]'))
   assert.match(d.querySelector('h1').textContent, /الملف الشخصي/)
-  assert.deepEqual(Array.from(d.getElementById('pp-profile').options, o => o.value), ['w1', 'w2'])
+  assert.equal(d.getElementById('pp-profile'), null, 'no Workspace selector (unified profile)')
   assert.match(d.getElementById('pp-save-status').textContent, /الإعدادات محمّلة/)
 })
 
-test('workspace updates from the Host class store reach the page (bound subscribe)', async t => {
-  const { app, d } = await mountInHostSlot(t)
+test('Workspace store updates neither crash nor change the page', async t => {
+  const { app, d, crashes } = await mountInHostSlot(t)
+  const before = d.querySelector('[data-personal-profile-panel]').innerHTML
   await act(async () => {
     app.workspaces.set({ items: [{ workspaceId: 'w9', title: 'Workspace Z' }], archivedSessionIds: [], pinnedSessionIds: [], state: 'idle', phase: 'ready', error: null })
     await tick(); await tick()
   })
-  assert.deepEqual(Array.from(d.getElementById('pp-profile').options, o => o.value), ['w9'])
+  assert.equal(crashes.length, 0)
+  assert.equal(d.querySelector('[data-personal-profile-panel]').innerHTML, before)
 })
 
 test('missing access hook, denied access or an unavailable settings service show a visible message', async t => {
@@ -94,13 +98,21 @@ test('missing access hook, denied access or an unavailable settings service show
   }
 })
 
-test('a broken workspace source shows a visible error instead of a blank page', async t => {
-  const broken = { subscribe() { return () => {} }, getSnapshot() { throw new Error('workspace store unavailable') } }
+test('a broken Workspace store cannot affect the page (no Workspace dependency)', async t => {
+  const broken = { subscribe() { throw new Error('workspace store unavailable') }, getSnapshot() { throw new Error('workspace store unavailable') } }
   const { d, crashes } = await mountInHostSlot(t, { workspaces: broken })
+  assert.equal(crashes.length, 0)
+  assert.equal(d.querySelector('[data-personal-profile-error]'), null)
+  assert.match(d.getElementById('pp-save-status').textContent, /الإعدادات محمّلة/)
+})
+
+test('a render failure inside the page shows a visible error instead of a blank page', async t => {
+  const { d, crashes } = await mountInHostSlot(t, { access: () => { throw new Error('access hook failed') } })
   assert.equal(crashes.length, 0, 'the page contains its own failure')
   assert.equal(d.querySelector('[data-slot-error]'), null)
   const alert = d.querySelector('[data-personal-profile-error]')
   assert.ok(alert, 'visible error panel')
   assert.equal(alert.getAttribute('role'), 'alert')
   assert.match(alert.textContent, /Personal Profile/)
+  assert.match(alert.textContent, /No settings were saved or changed/)
 })
