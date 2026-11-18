@@ -1,8 +1,8 @@
-# Personal Profile 0.7.2 — unified native local settings candidate
+# Personal Profile 0.8.0-rc.1 — unified native settings and response preferences
 
 This is the active design. It supersedes the 0.7.0/0.7.1 Workspace-based design (record v1, per-Workspace overrides and policies, grant-less export, general merge restore), which is kept in Git history and summarized in the [0.7.2 change record](PERSONAL_PROFILE_V072_CHANGE_RECORD.md). The earlier encrypted-storage phase documents (`PERSONAL_PROFILE_PHASE*.md`) are historical and not in the runtime or package.
 
-Status: **automated tests PASS; Windows Desktop acceptance for 0.7.2 NOT TESTED**; see [Windows acceptance](PERSONAL_PROFILE_WINDOWS_ACCEPTANCE.md).
+Status: **Phase 7 candidate; Windows Desktop acceptance pending**. See the [Phase 7 acceptance matrix](PERSONAL_PROFILE_PHASE7_WINDOWS_ACCEPTANCE.md).
 
 Approved fields: optional preferred name, nationality and gender. Preferences: eight personalities, Automatic plus seven response languages, six three-level characteristics, eight behavior presets, custom instructions (≤ 8192 characters) and an effective-instructions preview. No full name, date of birth, custom personal fields, custom encryption or lock.
 
@@ -32,7 +32,7 @@ A stored v1 record opens a **Migrate settings from 0.7.1** review. Information, 
 
 ## Privacy boundary
 
-Plaintext local settings and backup files are readable by anyone with access to them. OS account, file permissions and any existing whole-disk encryption are the storage boundary. This plugin has no model tool, instruction injection, approval service or external profile transfer. Policies and switches are **saved preferences, not enforced controls, until Phase 7**; the UI says so. Any later integration must enforce them at the real send boundary (change record §15). Do not enter passwords, keys, health/financial details or other sensitive information.
+Plaintext local settings and backup files are readable by anyone with access to them. OS account, file permissions and any existing whole-disk encryption are the storage boundary. The native system-prompt section contributes saved response preferences to supported agent steps. Custom instructions require separate saved consent, including cloud use, cleared by editing or restoration. Previous instructions may persist in history. Structured personal fields remain excluded regardless of policies and switches, which are saved only. See the [Phase 7C gate](PERSONAL_PROFILE_PHASE7C_PRIVACY_GATE.md). Do not enter passwords, keys, health/financial details or other sensitive information.
 
 ## Verified Host contracts (pinned source review)
 

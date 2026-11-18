@@ -2,7 +2,17 @@
 
 All notable changes are documented here.
 
-## [0.7.2] — Unreleased (candidate)
+## [0.8.0-rc.1] — Candidate baseline, Windows functional review recorded (2026-11-18)
+
+- Native response preferences in supported Harness Agent Loop steps; style, language, traits and behavioral presets read committed settings.
+- Separate custom-text sending consent including cloud and history retention; edits, reset, migration and restore clear consent.
+- Fail-closed structured personal-information exclusion across every policy combination and route. Positive disclosure remains blocked; no claim that old model history can be erased.
+- Offline real Harness rc.3 integration tests, Windows/Linux Node 22/24 matrix and packaging checks.
+- Version-dependent tests now derive expected UI versions from the manifest; source lockfile checks run before packaging and extracted-artifact checks remain independent of source-only files.
+- Owner-reported Windows functional results and actual rollback to 0.7.2 recorded in [Phase 7 Desktop acceptance](docs/PERSONAL_PROFILE_PHASE7_WINDOWS_ACCEPTANCE.md). Remaining checks, including actual outgoing-request evidence, are explicitly open.
+- No stable update offer until remaining acceptance gates are resolved and a stable release is explicitly approved. Structured disclosure remains deferred to [Phase 8](docs/PERSONAL_PROFILE_PHASE8_PLAN.md).
+
+## [0.7.2] — Released
 
 Personal Profile redesign approved by the owner after Windows Desktop review of 0.7.1. Native Harness persistence and revision-checked writes are unchanged. Details: [0.7.2 change record](docs/PERSONAL_PROFILE_V072_CHANGE_RECORD.md).
 

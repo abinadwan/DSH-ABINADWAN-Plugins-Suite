@@ -8,7 +8,7 @@
 
 <p align="center">
   <a href="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/workflows/test.yml"><img alt="CI" src="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/workflows/test.yml/badge.svg"/></a>
-  <img alt="Suite 0.7.2" src="https://img.shields.io/badge/suite-0.7.2-7b2246"/>
+  <img alt="Suite 0.8.0-rc.1" src="https://img.shields.io/badge/suite-0.8.0--rc.1-7b2246"/>
   <a href="LICENSE"><img alt="MIT" src="https://img.shields.io/badge/license-MIT-22c55e"/></a>
 </p>
 
@@ -20,13 +20,17 @@ One installation supplies three independently toggleable DSH Components. The pac
 | --- | --- | --- | --- |
 | <img src="plugins/environment-context/icon.png" width="32" alt="Teal monitor"/> **Environment & Context** | Read-only session inspector | On | [Plugin details](plugins/environment-context/README.md) |
 | <img src="plugins/humanizer/icon.png" width="32" alt="Purple feather"/> **Humanizer** | Runtime writing Skill | On | [Usage and scope](plugins/humanizer/README.md) |
-| <img src="plugins/personal-profile/icon.png" width="32" alt="Amber ID and gear"/> **Personal Profile** | Local native settings candidate | Host Off | [Local settings and acceptance](plugins/personal-profile/README.md) |
+| <img src="plugins/personal-profile/icon.png" width="32" alt="Amber ID and gear"/> **Personal Profile** | Native response preferences (RC) | Host Off | [Local settings and acceptance](plugins/personal-profile/README.md) |
 
-## Personal Profile (0.7.2 candidate)
+## Personal Profile (0.8.0-rc.1 candidate)
 
 One unified profile per active Harness Profile: optional preferred name, nationality and gender; Agent Instructions with personality, response language, characteristics, presets and custom text; one Private / Ask First / Allow policy per field plus personal-information and cloud-sharing switches (all Private / Off by default). No Workspace selector or per-Workspace overrides. Explicit Save uses the native Harness settings service with a revision check. Settings saved by 0.7.1 are migrated only after review, export and explicit confirmation.
 
-**Backup & Restore** exports the complete profile, including saved permissions, as a JSON file (download, copy or view) and imports a file or pasted JSON with **Replace All** or **Replace All and Merge Custom Instructions**. Permissions are restored only if you opt in. The JSON file is **not encrypted**. No plugin-specific encryption; avoid sensitive information. Policies and switches are saved preferences only until Phase 7: agent disclosure is not implemented. See [design](docs/PERSONAL_PROFILE_LOCAL_SETTINGS.md), [0.7.2 change record](docs/PERSONAL_PROFILE_V072_CHANGE_RECORD.md) and [Windows acceptance](docs/PERSONAL_PROFILE_WINDOWS_ACCEPTANCE.md).
+**Backup & Restore** exports the complete profile, including saved permissions, as a JSON file (download, copy or view) and imports a file or pasted JSON with **Replace All** or **Replace All and Merge Custom Instructions**. Permissions are restored only if you opt in. The JSON file is **not encrypted**. No plugin-specific encryption; avoid sensitive information. Saved response preferences enter supported native agent steps; custom instructions require separate saved consent, including cloud use. Editing or restoring custom text clears consent. History can retain and replay previously supplied instructions. Structured personal fields are never disclosed by the suite, even with Allow or cloud sharing enabled; their policies remain saved preferences only. See [runtime and privacy gate](docs/PERSONAL_PROFILE_PHASE7C_PRIVACY_GATE.md), [design](docs/PERSONAL_PROFILE_LOCAL_SETTINGS.md), [0.7.2 change record](docs/PERSONAL_PROFILE_V072_CHANGE_RECORD.md) and [0.7.2 Windows acceptance](docs/PERSONAL_PROFILE_WINDOWS_ACCEPTANCE.md) and [Phase 7 RC Desktop acceptance record](docs/PERSONAL_PROFILE_PHASE7_WINDOWS_ACCEPTANCE.md).
+
+### Release status and next phase
+
+The 0.8.0-rc.1 candidate is the tested development baseline; **0.7.2 remains the published stable release**. On 2026-11-18 the owner exercised the RC on Windows Desktop, including persistence, custom-text consent, backup/restore, component disable/re-enable, Humanizer, Environment & Context, and actual rollback to 0.7.2. [CI run 195](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/44293922599) passed. Desktop request-level privacy evidence and remaining matrix checks are still open; behavioral non-disclosure is not proof of request exclusion. Positive structured disclosure is deliberately blocked and belongs to [Phase 8](docs/PERSONAL_PROFILE_PHASE8_PLAN.md). No stable release is implied by merging the RC branch.
 
 ## Environment & Context
 
@@ -57,21 +61,15 @@ The skill runs when the agent loads it through DSH. Automatic response intercept
 
 ## Installation and updates
 
-Use the profile actually run by Harness Desktop. For the `desktop` profile, run in PowerShell.
+For Harness Desktop, use the native Plugins UI and the active Desktop Profile; do not assume a separate CLI profile controls Desktop. Install from the verified full SHA of a **published stable release** using the supported native Git install flow. Back up the active configuration and Personal Profile JSON before any replacement or migration. See the [Desktop acceptance and recovery instructions](docs/PERSONAL_PROFILE_PHASE7_WINDOWS_ACCEPTANCE.md).
 
-```powershell
-# If the legacy package is still installed
-dsh plugin --profile desktop remove @abinadwan/environment-sidebar
-
-# Install from the verified SHA of a published stable release.
-# Replace RELEASE_COMMIT_SHA with the full 40-character SHA before running.
-dsh plugin --profile desktop add github:abinadwan/DSH-ABINADWAN-Plugins-Suite#RELEASE_COMMIT_SHA
-dsh --profile desktop --dump-config
+```text
+github:abinadwan/DSH-ABINADWAN-Plugins-Suite#RELEASE_COMMIT_SHA
 ```
 
 Restart Harness completely, open **Plugins → ABINADWAN Plugins Suite**, enable the suite and inspect its three Components. Toggle each independently. Personal Profile starts off. When enabled, open its native left-sidebar settings page. Open a normal conversation for Environment & Context and ask the agent to use Humanizer for an editing task.
 
-If your active profile is `web` or another name, substitute that name in every command. Upgrading from 0.4.0 keeps the `abinadwan-suite` group identity and the current inspector behavior. Existing user-layer disable overrides remain applicable. The package ships ready-to-run JavaScript and installs directly from GitHub. No build step is required. An immutable version can be installed by appending `#<full-commit-sha>` to the GitHub reference.
+For non-Desktop installations, use the documented CLI workflow for the actual active profile. Upgrading from 0.4.0 keeps the `abinadwan-suite` group identity and the current inspector behavior. Existing user-layer disable overrides remain applicable. The package ships ready-to-run JavaScript and installs directly from GitHub. No build step is required. An immutable version can be installed by appending `#<full-commit-sha>` to the GitHub reference.
 
 The suite detail page includes a **Suite updates (GitHub Releases)** section below the source information. It shows the version the Host reports, the version of the browser module running in the window, the latest stable release, the last check time and the update method the Host reports for this installation. The suite's browser module automatically checks the newest **stable, published GitHub Release** at startup and every 24 hours while active; **Check again** is also available. A published Release is required: merely changing `main/package.json` or opening a PR does **not** make an update available. The read-only GitHub request sends no conversation data, credentials or referrer. If no stable Release exists, the status is **No published stable release yet**.
 
@@ -93,11 +91,11 @@ npm test
 npm run check:package
 ```
 
-Tests use the actual Cordis Loader, DSH metadata reader and Skill registry, plus controlled browser-service fixtures and real React rendering. The package check extracts an npm tarball and runs the same tests against its contents. CI runs these checks on Windows and Linux with Node 22 and 24. DSH test libraries are locked at 0.2.2-rc.3. A separate local installation/configuration smoke check used DSH CLI 0.2.1-rc.5. Visual Desktop interaction and model-produced rewrites still require validation on the user's running Harness/model combination.
+Tests use the actual Cordis Loader, DSH metadata reader and Skill registry, plus controlled browser-service fixtures and real React rendering. The package check extracts an npm tarball and runs the same tests against its contents. CI runs these checks on Windows and Linux with Node 22 and 24. DSH test libraries are locked at 0.2.2-rc.3. A separate local installation/configuration smoke check used DSH CLI 0.2.1-rc.5. Owner-reported Desktop functional validation and its remaining limitations are recorded in the Phase 7 RC acceptance record linked above.
 
 ## Privacy and security
 
-Environment reads UI-facing session/workspace summaries and projected token usage. The runtime Humanizer instructions operate within DSH's existing model context. Text supplied to the agent follows the user's existing model/provider configuration. The suite adds no external rewriting endpoint. The read-only automatic/manual release checks contact public GitHub without credentials, referrers or conversation data. Installations require an explicit user confirmation and are delegated to the official DSH Host. Personal Profile stores the reduced optional profile fields and preferences in the active Harness Profile without plugin-level encryption; it does not transmit them to a model. [Security policy](SECURITY.md)
+Environment reads UI-facing session/workspace summaries and projected token usage. The runtime Humanizer instructions operate within DSH's existing model context. Text supplied to the agent follows the user's existing model/provider configuration. The suite adds no external rewriting endpoint. The read-only automatic/manual release checks contact public GitHub without credentials, referrers or conversation data. Installations require an explicit user confirmation and are delegated to the official DSH Host. Personal Profile stores the reduced optional profile fields and preferences in the active Harness Profile without plugin-level encryption; structured fields remain local; saved response preferences and explicitly authorized custom text follow the configured model route, and may persist in conversation history. [Security policy](SECURITY.md)
 
 ## License and attribution
 

@@ -1,6 +1,6 @@
 # ABINADWAN Plugins Suite
 
-Experimental community package · v0.7.2
+Experimental community package · v0.8.0-rc.1
 
 Three independently toggleable Components share one suite installation. The package card uses the Saudi developer avatar, and the rows have individual transparent artwork.
 
