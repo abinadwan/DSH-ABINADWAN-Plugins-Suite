@@ -236,7 +236,7 @@ test('the page offers no Workspace selector, scope selector or override control'
   }
   assert.doesNotMatch(d.body.textContent, /مساحة العمل الحالية|تخصيص مساحة العمل|نطاق التعليمات/)
   await click('tab-instructions')
-  assert.match(d.body.textContent, /كل المحادثات الحالية والمستقبلية/)
+  assert.match(d.body.textContent, /المحادثات الأصلية المدعومة/)
 })
 
 test('the page never reads the Workspace service; any Workspace list state leaves it unchanged', async t => {

@@ -30,7 +30,7 @@ test('real React renders the Environment and the native-settings Personal Profil
   // Default-private access policies.
   assert.match(html, /All access is Private by default/)
   // No active agent injection or cloud disclosure.
-  assert.match(html, /Agent and cloud disclosure are not implemented/)
+  assert.match(html, /structured personal information disclosure is not implemented/)
   assert.doesNotMatch(html, /design draft|preview only|synthetic/i)
   assert.doesNotMatch(html, /<(?:form|input|textarea|select)\b/)
   // The summary follows the Host row state and never renders for unrelated subjects.
