@@ -7,6 +7,7 @@ import { performance } from 'node:perf_hooks'
 import test from 'node:test'
 import { fileURLToPath, pathToFileURL } from 'node:url'
 import * as Reasoning from '../plugins/adaptive-reasoning/index.js'
+import * as Lifecycle from '../plugins/conversation-lifecycle/index.js'
 
 const runtimeDirectory = process.env.ABINADWAN_TEST_RUNTIME
 if (!runtimeDirectory) throw new Error('Set ABINADWAN_TEST_RUNTIME to the extractor output directory')
@@ -20,7 +21,7 @@ const dependencies = await Promise.all([
   load('dsh-session-query-sqlite'),
   load('dsh-client-connection'),
   load('dsh-agent-preset-registry'), load('cordis-plugin-loader'),
-  load('dsh-settings'),
+  load('dsh-settings'), load('dsh-app-boot'), load('dsh-config-editor'),
 ])
 const [
   { Context }, { default: Llm, LlmAdapter, createUserMessage }, { default: Sessions, SessionId, SESSION_FORMAT_VERSION },
@@ -29,7 +30,7 @@ const [
   { default: Workspace }, { default: SessionQuery },
   { HostConnectionService },
   { default: AgentPresets }, { default: Loader },
-  { default: Settings },
+  { default: Settings }, Boot, { default: ConfigEditor },
 ] = dependencies
 const { z } = require('zod')
 const repository = fileURLToPath(new URL('../', import.meta.url))
@@ -110,10 +111,13 @@ async function send(agent) {
 const route = { provider: 'offline', model: 'synthetic-reasoning' }
 
 test('native selections reach the offline adapter and stay local to each session', async t => {
-  const { ctx, adapter } = await loopHost()
+  const root = join(await scratch(t), 'reasoning-sessions')
+  const { ctx, adapter } = await loopHost(root)
+  const firstId = SessionId('synthetic-reasoning-a')
+  const secondId = SessionId('synthetic-reasoning-b')
   try {
-    const a = await ctx.agentLoop.create(SessionId('synthetic-reasoning-a'), route)
-    const b = await ctx.agentLoop.create(SessionId('synthetic-reasoning-b'), route)
+    const a = await ctx.agentLoop.create(firstId, route)
+    const b = await ctx.agentLoop.create(secondId, route)
     const capability = await ctx.llm.resolveModelInfo(route.provider, route.model)
     assert.deepEqual(capability.reasoning.efforts.map(effort => effort.id), ['fast-v2', 'deliberate-v2'])
     await mount(ctx, { name: 'fixture-connection', apply(child) { new HostConnectionService(child, [], {}) } })
@@ -149,9 +153,22 @@ test('native selections reach the offline adapter and stay local to each session
       'a stale composer cannot apply a removed preference')
     await feature.dispose()
     assert.equal((await transport.fetch(request(), connection.browserPeer)).status, 404)
+    await ctx.sessions.flush(a.session)
+    await ctx.sessions.flush(b.session)
     t.diagnostic(`Offline smoke timings in ms: explicit ${selectedMs}, adapter default ${defaultMs}. No provider timing inference.`)
   } finally {
     await ctx.fiber.dispose()
+  }
+
+  const restarted = await loopHost(root)
+  try {
+    for (const resumeSessionId of [firstId, secondId]) {
+      const { agent } = await restarted.ctx.agents.resume({ resumeSessionId, agentOptions: route })
+      await send(agent)
+    }
+    assert.deepEqual(restarted.adapter.requests.map(request => request.reasoningEffort), ['deliberate-v2', 'fast-v2'])
+  } finally {
+    await restarted.ctx.fiber.dispose()
   }
 })
 
@@ -298,81 +315,119 @@ test('native metadata domain requires one opener and retains committed ownership
   }
 })
 
-test('native Settings projects the new schemas and rejects a stale numeric revision', async t => {
+test('native Settings persists new feature preferences and rejects a stale numeric revision', async t => {
   const home = await scratch(t)
-  const ctx = new Context()
-  const ids = ['conversation-lifecycle', 'adaptive-reasoning']
-  try {
-    await mount(ctx, Loader, { baseUrl: new URL('../package.json', import.meta.url).href })
-    ctx.provide('profileContext', { home, name: 'synthetic-settings' })
-    const entries = () => ids.map(id => ctx.loader.resolve(`abinadwan-${id}`)).filter(Boolean)
-    // Keep this test at the Settings/Loader service boundary. The profile file
-    // editor is substituted by an in-memory fixture with no live Profile access.
-    ctx.provide('configEditor', {
-      entries,
-      configuration: () => entries().map(entry => ({ entry, inherited: {}, override: entry.options.config ?? {} })),
-      async edit(entry, change) {
-        const config = change(entry.options.config ?? {}, {})
-        await ctx.loader.update(entry.options.id, { config })
-        await ctx.loader.await()
-      },
+  const dir = join(home, 'profiles', 'synthetic-settings')
+  const installAnchor = join(home, 'package.json')
+  const patchPath = join(dir, 'cordis.patch.yml')
+  const rootConfig = join(dir, 'cordis.yml')
+  const bundleId = 'synthetic-settings-bundle'
+  const bundleDir = join(dir, 'node_modules', bundleId)
+  Boot.initProfile(dir, [bundleId])
+  await mkdir(bundleDir, { recursive: true })
+  await Promise.all([
+    writeFile(installAnchor, JSON.stringify({ name: 'synthetic-settings-installation' })),
+    writeFile(rootConfig, '[]\n'),
+    writeFile(join(bundleDir, 'package.json'), JSON.stringify({
+      name: bundleId, version: '1.0.0', dsh: { bundle: { patch: 'cordis.patch.yml' } },
+    })),
+    writeFile(join(bundleDir, 'cordis.patch.yml'), JSON.stringify([{ insert: [
+      { id: 'config-editor', name: 'cordis:config-editor' },
+      { id: 'settings', name: 'cordis:settings' },
+      { id: 'abinadwan-conversation-lifecycle', name: 'cordis:lifecycle' },
+      { id: 'abinadwan-adaptive-reasoning', name: 'cordis:reasoning' },
+    ] }])),
+  ])
+  const profile = { name: 'synthetic-settings', home, cwd: home, dir, patchPath, installAnchor,
+    startedBundles: [bundleId], overlays: [] }
+  const start = () => Boot.boot('fixture', rootConfig, Boot.readProfilePatches('fixture', profile), root => {
+    root.provide('profileContext', profile)
+    Object.assign(root.loader.builtins, {
+      'config-editor': ConfigEditor, settings: Settings, reasoning: Reasoning,
+      lifecycle: Lifecycle,
     })
-    await mount(ctx, Settings)
-    await ctx.loader.root.update(ids.map(id => ({ id: `abinadwan-${id}`,
-      name: new URL(`../plugins/${id}/index.js`, import.meta.url).href })))
-    await ctx.loader.await()
-    const [lifecycle, reasoning] = ctx.settings.describe()
+  })
+  const describe = (ctx, id) => ctx.settings.describe().find(view => view.ns === id)
+  const lifecycleId = 'abinadwan-conversation-lifecycle'
+  const reasoningId = 'abinadwan-adaptive-reasoning'
+  const retention = { retention: '30', overrides: [], protectedIds: ['fixture'] }
+  const preferences = [{ ...route, effort: 'deliberate-v2' }]
+  let ctx = await start()
+  try {
+    const lifecycle = describe(ctx, lifecycleId)
+    const reasoning = describe(ctx, reasoningId)
     assert.equal(lifecycle.autoGenerate, false)
     assert.equal(lifecycle.value.record.retention, 'forever')
     assert.equal(reasoning.autoGenerate, false)
     assert.deepEqual(reasoning.value.record.preferences, [])
     assert.ok(Number.isSafeInteger(lifecycle.revision))
-    await ctx.settings.replace(lifecycle.ns, { record: { retention: '30', overrides: [], protectedIds: ['fixture'] } }, lifecycle.revision)
-    const changed = ctx.settings.describe().find(view => view.ns === lifecycle.ns)
-    assert.equal(changed.value.record.retention, '30')
-    assert.deepEqual(changed.value.record.protectedIds, ['fixture'])
+    await ctx.settings.replace(lifecycle.ns, { record: retention }, lifecycle.revision)
+    const changed = describe(ctx, lifecycleId)
+    assert.deepEqual(changed.value.record, retention)
     assert.ok(changed.revision > lifecycle.revision)
     await assert.rejects(ctx.settings.replace(lifecycle.ns, { record: { retention: '7' } }, lifecycle.revision),
       { name: 'SettingsConflictError' })
+    await ctx.settings.replace(reasoning.ns, { record: { preferences } }, describe(ctx, reasoningId).revision)
+    const persisted = await readFile(patchPath, 'utf8')
+    assert.match(persisted, /deliberate-v2/)
+    assert.match(persisted, /protectedIds/)
+    await ctx.fiber.dispose()
+
+    ctx = await start()
+    assert.deepEqual(describe(ctx, lifecycleId).value.record, retention)
+    assert.deepEqual(describe(ctx, reasoningId).value.record.preferences, preferences)
   } finally {
     await ctx.fiber.dispose()
   }
 })
 
-test('a native Direct Chat candidate keeps explicit ownership and request restrictions through Host restart', async t => {
-  const directory = await scratch(t)
+const directPreset = 'fixture-direct'
+const standardPreset = 'fixture-standard'
+
+async function directChatHost(directory) {
   const root = join(directory, 'direct-fixture-sessions')
-  const id = SessionId('synthetic-direct-owned')
-  const pendingId = SessionId('synthetic-direct-pending')
-  const preset = 'fixture-direct'
   const spec = Domain.defineDomain({ name: 'synthetic_direct_ownership', version: 1,
     tables: { sessions: Domain.domainTable(z.object({ phase: z.enum(['pending', 'ready']), preset: z.string() })) } })
-  async function start() {
-    const host = await loopHost(root)
+  const host = await loopHost(root)
+  try {
     await mount(host.ctx, Loader, { baseUrl: new URL('../package.json', import.meta.url).href })
-    await mount(host.ctx, AgentPresets, { default: preset })
+    await mount(host.ctx, AgentPresets, { default: standardPreset })
     await mount(host.ctx, Storage)
     await mount(host.ctx, Json, { root: join(directory, 'direct-fixture-metadata') })
     await mount(host.ctx, Domain, { backend: 'json' })
     const access = await host.ctx.storageDomain.open(spec)
-    host.ctx.tools.register(defineTool({
-      name: 'fixture_terminal', description: 'Fictional terminal that must not reach Direct Chat', parameters: {},
-      output: { schema: { type: 'string' }, render: (_, value) => [{ type: 'text', text: value }] },
-      async execute() { throw new Error('Unexpected fixture dispatch') },
-    }))
-    const registration = await host.ctx.agentPresets.register({ id: preset,
+    const executions = []
+    function registerTerminal(ctx) {
+      return ctx.tools.register(defineTool({
+        name: 'fixture_terminal', description: 'Fictional terminal that executes no system commands', parameters: {},
+        output: { schema: { type: 'string' }, render: (_, value) => [{ type: 'text', text: value }] },
+        async execute(_args, execution) { executions.push(execution.agent.id); return 'synthetic result' },
+      }))
+    }
+    registerTerminal(host.ctx)
+    const registration = await host.ctx.agentPresets.register({ id: directPreset,
       plugins: [{ id: 'fixture-direct-restrictions', name: new URL('./direct-chat-restricted-preset.mjs', import.meta.url).href }] })
     host.ctx.effect(() => registration)
-    const ordinary = await host.ctx.agentPresets.register({ id: 'fixture-standard', plugins: [] })
+    const ordinary = await host.ctx.agentPresets.register({ id: standardPreset, plugins: [] })
     host.ctx.effect(() => ordinary)
-    return { ...host, access }
+    return { ...host, access, executions, registerTerminal,
+      setup(preset) { return async agentCtx => { await host.ctx.agentPresets.mount(agentCtx, preset) } } }
+  } catch (error) {
+    await host.ctx.fiber.dispose()
+    throw error
   }
-  const setup = host => async agentCtx => { await host.ctx.agentPresets.mount(agentCtx, preset) }
-  let host = await start()
+}
+
+test('a native Direct Chat candidate keeps explicit ownership and request restrictions through Host restart', async t => {
+  const directory = await scratch(t)
+  const id = SessionId('synthetic-direct-owned')
+  const pendingId = SessionId('synthetic-direct-pending')
+  const preset = directPreset
+  let host = await directChatHost(directory)
   try {
     const ownership = host.access.table('sessions')
     await ownership.put(id, { phase: 'pending', preset })
-    const { agent } = await host.ctx.agents.create({ sessionId: id, agentOptions: route, meta: { agentPreset: preset }, setup: setup(host) })
+    const { agent } = await host.ctx.agents.create({ sessionId: id, agentOptions: route, meta: { agentPreset: preset }, setup: host.setup(preset) })
     assert.equal(agent.session.header.id, id)
     assert.equal(agent.session.header.agentPreset, preset)
     await host.ctx.sessions.flush(agent.session)
@@ -382,8 +437,8 @@ test('a native Direct Chat candidate keeps explicit ownership and request restri
     assert.deepEqual(host.adapter.requests.map(request => request.tools ?? []), [[]])
     // A separate blank candidate exercises the stock preset switch. It is never exposed to a browser.
     const { agent: blank } = await host.ctx.agents.create({ sessionId: SessionId('synthetic-direct-switch'),
-      agentOptions: route, meta: { agentPreset: preset }, setup: setup(host) })
-    await host.ctx.agentPresets.select(blank, 'fixture-standard')
+      agentOptions: route, meta: { agentPreset: preset }, setup: host.setup(preset) })
+    await host.ctx.agentPresets.select(blank, standardPreset)
     await send(blank)
     assert.deepEqual(host.adapter.requests.at(-1).tools.map(tool => tool.name), ['fixture_terminal'],
       'blank native preset switching can restore inherited tools despite the original header')
@@ -391,7 +446,7 @@ test('a native Direct Chat candidate keeps explicit ownership and request restri
     await host.access.close()
     await host.ctx.fiber.dispose()
 
-    host = await start()
+    host = await directChatHost(directory)
     const ready = host.access.table('sessions').get(id)
     const pending = host.access.table('sessions').get(pendingId)
     assert.deepEqual(ready, { phase: 'ready', preset })
@@ -399,9 +454,119 @@ test('a native Direct Chat candidate keeps explicit ownership and request restri
     assert.equal(await host.ctx.sessionPersistence.stat(pendingId), undefined)
     const stored = await host.ctx.sessionPersistence.stat(id)
     assert.equal(stored.header.agentPreset, ready.preset)
-    const resumed = await host.ctx.agents.resume({ resumeSessionId: id, agentOptions: route, setup: setup(host) })
+    const resumed = await host.ctx.agents.resume({ resumeSessionId: id, agentOptions: route, setup: host.setup(preset) })
     await send(resumed.agent)
     assert.deepEqual(host.adapter.requests.map(request => request.tools ?? []), [[]])
+    await host.access.close()
+  } finally {
+    await host.ctx.fiber.dispose()
+  }
+})
+
+// Probe only. The Host does not treat a plugin listener as mandatory admission.
+async function bindFixtureOwnership(host) {
+  const owners = host.access.table('sessions')
+  await mount(host.ctx, {
+    name: 'synthetic-direct-ownership-policy',
+    apply(ctx) {
+      ctx.on('agent/created', ({ agent }) => {
+        const original = agent.session.header.agentPreset
+        if (original !== directPreset && owners.get(agent.id) === undefined) return
+        agent.ctx.tools.restrict({ allow: [] })
+        agent.ctx.tools.guard(() => 'Synthetic ownership denies tool dispatch')
+        agent.ctx.on('agent/pre-step', (_event, next) => {
+          const owner = owners.get(agent.id)
+          return original === directPreset && owner?.preset === original && owner.phase === 'ready'
+            ? next()
+            : { kind: 'reject' }
+        })
+      })
+    },
+  })
+}
+
+test('an Agent-scoped ownership policy survives preset and model changes but depends on Host activation', async t => {
+  const directory = await scratch(t)
+  const id = SessionId('synthetic-direct-policy-ready')
+  const metadata = { preset: directPreset }
+  const create = (host, sessionId, preset = directPreset) => host.ctx.agents.create({
+    sessionId, agentOptions: route, meta: { agentPreset: preset }, setup: host.setup(preset),
+  })
+  const resume = host => host.ctx.agents.resume({
+    resumeSessionId: id, agentOptions: route, setup: host.setup(standardPreset),
+  })
+  const dispatch = (host, agent) => host.ctx.tools.execute({
+    agent, calls: [{ id: 'synthetic-owner-call', name: 'fixture_terminal', arguments: '{}' }],
+    signal: new AbortController().signal,
+  })
+
+  let host = await directChatHost(directory)
+  try {
+    await bindFixtureOwnership(host)
+    const owners = host.access.table('sessions')
+    await owners.put(id, { ...metadata, phase: 'pending' })
+    const { agent } = await create(host, id)
+    await host.ctx.sessions.flush(agent.session)
+    await owners.put(id, { ...metadata, phase: 'ready' })
+    assert.equal(await host.ctx.agentPresets.select(agent, standardPreset), standardPreset,
+      'the stock API still accepts blank-session preset replacement')
+    assert.equal(agent.session.header.agentPreset, directPreset)
+    await send(agent)
+    assert.deepEqual(host.adapter.requests.at(-1).tools ?? [], [])
+    await dispatch(host, agent)
+    const model = 'synthetic-plain'
+    agent.model.select({ ...route, model })
+    await send(agent)
+    assert.equal(host.adapter.requests.at(-1).model, model)
+    assert.deepEqual(host.adapter.requests.at(-1).tools ?? [], [])
+    await dispatch(host, agent)
+    const releaseTerminal = host.registerTerminal(agent.ctx)
+    try {
+      assert.ok(agent.ctx.tools.get('fixture_terminal', agent), 'the inherited-tool mask leaves scoped registrations visible')
+      await dispatch(host, agent)
+    } finally {
+      await releaseTerminal()
+    }
+    assert.deepEqual(host.executions, [])
+    await assert.rejects(host.ctx.agentPresets.select(agent, directPreset), { code: 'agent-preset/locked' })
+
+    const pendingId = SessionId('synthetic-direct-policy-pending')
+    const mismatchId = SessionId('synthetic-direct-policy-conflicting')
+    await owners.put(pendingId, { ...metadata, phase: 'pending' })
+    await owners.put(mismatchId, { ...metadata, phase: 'ready' })
+    for (const [blockedId, preset] of [[pendingId, directPreset],
+      [SessionId('synthetic-direct-policy-missing'), directPreset], [mismatchId, standardPreset]]) {
+      const { agent: blocked } = await create(host, blockedId, preset)
+      await send(blocked)
+    }
+    assert.equal(host.adapter.requests.length, 2, 'pending, missing and conflicting ownership do not reach the adapter')
+
+    const { agent: workspace } = await create(host, SessionId('synthetic-workspace-policy-control'), standardPreset)
+    await send(workspace)
+    assert.deepEqual(host.adapter.requests.at(-1).tools.map(tool => tool.name), ['fixture_terminal'])
+    await dispatch(host, workspace)
+    assert.deepEqual(host.executions, [workspace.id])
+    await host.access.close()
+    await host.ctx.fiber.dispose()
+
+    host = await directChatHost(directory)
+    await bindFixtureOwnership(host)
+    const { agent: restricted } = await resume(host)
+    assert.equal(host.ctx.agentPresets.presetForSession(restricted.session), standardPreset)
+    assert.equal(restricted.session.header.agentPreset, directPreset)
+    await send(restricted)
+    assert.deepEqual(host.adapter.requests.at(-1).tools ?? [], [])
+    await dispatch(host, restricted)
+    assert.deepEqual(host.executions, [])
+    await host.access.close()
+    await host.ctx.fiber.dispose()
+
+    // A Host without the optional listener can still activate the same native Session.
+    host = await directChatHost(directory)
+    assert.deepEqual(host.access.table('sessions').get(id), { ...metadata, phase: 'ready' })
+    const { agent: unbound } = await resume(host)
+    await send(unbound)
+    assert.deepEqual(host.adapter.requests.at(-1).tools.map(tool => tool.name), ['fixture_terminal'])
     await host.access.close()
   } finally {
     await host.ctx.fiber.dispose()
