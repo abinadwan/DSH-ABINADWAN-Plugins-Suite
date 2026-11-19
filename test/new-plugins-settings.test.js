@@ -8,31 +8,41 @@ import React, { act } from 'react'
 import { createRoot } from 'react-dom/client'
 import { base, clientHarness, observable, ok, refused } from '../test-support/client.js'
 
-const ids = ['direct-chat', 'conversation-lifecycle', 'adaptive-reasoning']
+const names = {
+  'direct-chat': 'Direct Chat',
+  'conversation-lifecycle': 'Conversation Lifecycle',
+  'adaptive-reasoning': 'Adaptive Reasoning',
+}
 
-test('independent Host rows default off and resolve original metadata', () => {
+test('independent Host rows default off and resolve English product metadata and original icons', () => {
   const root = new URL('../package.json', import.meta.url)
   const [{ insert }] = parse(readFileSync(new URL('../cordis.patch.yml', import.meta.url), 'utf8'))
-  for (const id of ids) {
+  for (const [id, title] of Object.entries(names)) {
     const row = insert.find(entry => entry.id === `abinadwan-${id}`)
     assert.equal(row?.name, `${base}/${id}`)
     assert.equal(row.disabled, true)
     const meta = readPluginMeta(row.name, root.href)
     assert.equal(meta.error, undefined)
     assert.match(meta.icon, /^data:image\/png;base64,/)
+    assert.deepEqual(meta.title, { en: title })
+    assert.deepEqual(Object.keys(meta.description), ['en'])
+    assert.match(meta.description.en, /Part of the ABINADWAN Plugins Suite\./)
   }
 })
 
-test('the native suite section tracks active rows and withdraws when components are disabled', async () => {
+test('only Conversation Lifecycle owns a native Settings section and disposes it independently', async () => {
   const fixture = await clientHarness()
   try {
     assert.equal(fixture.entries('settings.section').length, 0)
-    const rows = [...fixture.rows(), { moduleName: `${base}/conversation-lifecycle`, enabled: true, fiberPhase: 'active' }]
+    const rows = [...fixture.rows(), ...Object.keys(names).map(id => ({
+      moduleName: `${base}/${id}`, enabled: true, fiberPhase: 'active',
+    }))]
     fixture.setRows(rows)
     await fixture.changed()
-    assert.equal(fixture.entries('settings.section').length, 1)
-    assert.equal(fixture.entries('settings.section.icon').length, 1)
-    fixture.setRows(rows.map(row => ({ ...row, enabled: false })))
+    const [section] = fixture.entries('settings.section')
+    assert.deepEqual(fixture.entries('settings.section').map(entry => entry.options.id), ['abinadwan-conversation-lifecycle'])
+    assert.deepEqual(fixture.entries('settings.section.icon').map(entry => entry.options.id), [section.options.id])
+    fixture.setRows(rows.map(row => row.moduleName === `${base}/conversation-lifecycle` ? { ...row, enabled: false } : row))
     await fixture.changed()
     assert.equal(fixture.entries('settings.section').length, 0)
     assert.equal(fixture.entries('settings.section.icon').length, 0)
@@ -44,6 +54,8 @@ async function mount(t, options, active, slot) {
   const window = document.defaultView
   const div = document.createElement('main')
   document.body.append(div)
+  const previousLanguage = document.documentElement.lang
+  document.documentElement.lang = options.language ?? previousLanguage
   const fixture = await clientHarness({ React, document, ...options })
   fixture.setRows([...fixture.rows(), { moduleName: `${base}/${active}`, enabled: true, fiberPhase: 'active' }])
   await fixture.changed()
@@ -53,6 +65,7 @@ async function mount(t, options, active, slot) {
   t.after(async () => {
     await act(async () => root.unmount())
     div.remove()
+    document.documentElement.lang = previousLanguage
     await fixture.dispose()
     delete globalThis.IS_REACT_ACT_ENVIRONMENT
   })
@@ -81,20 +94,25 @@ test('retention previews archived Workspace chats, excludes active and Direct ch
   const old = Date.now() - 40 * 86400000
   const rows = [ ['cold', 'A cold chat', false], ['busy', 'A running chat', true], ['direct', 'A Direct chat', false] ]
   const { div, window } = await mount(t, {
-    settings: settings.service, archivedSessionIds: ['cold'],
+    settings: settings.service, archivedSessionIds: ['cold'], language: 'ar',
     workspaceItems: [{ workspaceId: 'workspace-a', title: 'Fictional Workspace', sessionIds: rows.map(([id]) => id) }],
     sessions: { phase: 'ready', byId: Object.fromEntries(rows.map(([id, displayTitle, running]) => [id,
       { id, displayTitle, running, createdAt: old - 1000, updatedAt: old }])),
     projectionsBySession: { direct: { values: { agentPreset: 'abinadwan-direct-chat' } } } },
   }, 'conversation-lifecycle', 'settings.section')
-  assert.match(div.textContent, /2 conversations · 1 archived/)
+  assert.equal(div.querySelector('section').lang, 'en')
+  assert.equal(div.querySelector('section').dir, 'ltr')
+  assert.deepEqual([...div.querySelectorAll('h2')].map(heading => heading.textContent),
+    ['Overview', 'Retention Policy', 'Protected Conversations', 'Cleanup Management'])
+  assert.deepEqual([...div.querySelectorAll('dd')].map(value => value.textContent), ['2', '1', 'Unavailable'])
+  assert.doesNotMatch(div.textContent, /\p{Script=Arabic}/u)
   assert.doesNotMatch(div.textContent, /A Direct chat/)
   const retention = div.querySelectorAll('select')[1]
   await act(async () => {
     retention.value = '30'
     retention.dispatchEvent(new window.Event('change', { bubbles: true }))
   })
-  assert.match(div.textContent, /1 estimated candidates/)
+  assert.ok([...div.querySelectorAll('[role=status]')].some(status => status.textContent === '1 estimated candidate'))
   assert.deepEqual(settings.writes, [])
   await act(async () => [...div.querySelectorAll('button')].find(button => button.textContent === 'Confirm and save').click())
   assert.equal(settings.writes[0].revision, 1)
@@ -121,6 +139,28 @@ test('retention confirmation expires when the underlying settings revision is re
   assert.equal(Boolean(confirm()), false, 'a preview cannot overwrite protection saved by another window')
   assert.equal(div.querySelector('input[type=checkbox]').checked, true)
   assert.equal(settings.writes.length, 1)
+})
+
+test('a Workspace override leaves the global policy intact and can return to inheritance', async t => {
+  const settings = settingsFixture('conversation-lifecycle', { retention: 'forever', overrides: [], protectedIds: [] })
+  const { div, window } = await mount(t, { settings: settings.service }, 'conversation-lifecycle', 'settings.section')
+  const change = async (field, value) => act(async () => {
+    field.value = value
+    field.dispatchEvent(new window.Event('change', { bubbles: true }))
+  })
+  const confirm = () => act(async () => [...div.querySelectorAll('button')]
+    .find(button => button.textContent === 'Confirm and save').click())
+  await change(div.querySelector('select'), 'w')
+  const [, globalPolicy, override] = div.querySelectorAll('select')
+  assert.equal(globalPolicy.value, 'forever')
+  assert.equal(override.value, 'inherit')
+  await change(override, '90')
+  await confirm()
+  assert.deepEqual(JSON.parse(JSON.stringify(settings.writes[0].value.record)),
+    { retention: 'forever', overrides: [{ workspace: 'w', retention: '90' }], protectedIds: [] })
+  await change(override, 'inherit')
+  await confirm()
+  assert.equal(settings.writes[1].value.record.overrides.length, 0)
 })
 
 test('composer defers Agent residency to the owner route and applies an advertised saved effort', async t => {

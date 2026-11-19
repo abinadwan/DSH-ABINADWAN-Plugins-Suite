@@ -1,3 +1,6 @@
 {
-  "meta": { "title": "Conversation Lifecycle" }
+  "meta": {
+    "title": "Conversation Lifecycle",
+    "description": "Review Workspace conversations, protect them from cleanup, and preview retention policies. Part of the ABINADWAN Plugins Suite."
+  }
 }

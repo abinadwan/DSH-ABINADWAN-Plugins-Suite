@@ -7,6 +7,7 @@ window.__ModuleLoader__.load({
   id: '@abinadwan/dsh-plugins-suite',
   factory(require) {
     const React = require('react')
+    const { Button, Checkbox, Menu } = require('@deepseek-ai/dsh-client-ui-primitives')
     const h = React.createElement
     const PANEL_ID = 'environment-sidebar'
     const border = '1px solid rgba(128,128,128,.27)'
@@ -1466,14 +1467,11 @@ window.__ModuleLoader__.load({
           ? h(ProfileDraft) : null))
       },
     }
-    const newSuiteTabs = [
-      { id: 'conversation-lifecycle', en: 'Conversation Lifecycle', ar: 'دورة حياة المحادثات', paths: [
-        'M10 13H6V7a1 1 0 0 1 1-1h8m-9 7-1 2m3.5-3.5v-2H15', 'M18.25 11.25a4.5 4.5 0 1 1-6.5 1.25m3.75.75v2.25h2'] },
-      { id: 'adaptive-reasoning', en: 'Adaptive Reasoning', ar: 'الاستدلال التكيفي', paths: [
-        'M6.5 15v3m5.5-6v6m5.5-9v9M6.5 11.5c3.6 0 5-4.5 8.8-4.5', 'M19.5 7a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z'] },
-    ]
+    const lifecycleIcon = ['M10 13H6V7a1 1 0 0 1 1-1h8m-9 7-1 2m3.5-3.5v-2H15',
+      'M18.25 11.25a4.5 4.5 0 1 1-6.5 1.25m3.75.75v2.25h2']
+    const reasoningIcon = ['M6.5 15v3m5.5-6v6m5.5-9v9M6.5 11.5c3.6 0 5-4.5 8.8-4.5',
+      'M19.5 7a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z']
     const suiteLanguage = () => globalThis.document?.documentElement?.lang?.toLowerCase().startsWith('ar') ? 'ar' : 'en'
-    const suiteTitle = () => suiteLanguage() === 'ar' ? 'حزمة ABINADWAN' : 'ABINADWAN Suite'
     const suiteGlyph = (paths, size = 18) => h('svg', { width: size, height: size, viewBox: '0 0 24 24',
       fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
     ...paths.map(path => h('path', { key: path, d: path })))
@@ -1554,14 +1552,39 @@ window.__ModuleLoader__.load({
 
     function SuiteRecordStatus({ settings }) {
       const labels = {
-        loading: ['Loading settings…', 'جارٍ تحميل الإعدادات…'], unavailable: ['Settings unavailable.', 'الإعدادات غير متاحة.'],
-        saving: ['Saving…', 'جارٍ الحفظ…'], saved: ['Saved.', 'تم الحفظ.'], failed: ['Save failed.', 'تعذر الحفظ.'],
-        conflict: ['Settings changed in another window. Reload before saving again.', 'تغيرت الإعدادات في نافذة أخرى. أعد التحميل قبل الحفظ.'],
+        loading: 'Loading settings…', unavailable: 'Settings unavailable.',
+        saving: 'Saving…', saved: 'Saved.', failed: 'Save failed.',
+        conflict: 'Settings changed in another window. Reload before saving again.',
       }
       const label = labels[settings.status]
-      return h('div', { role: 'status' }, label ? suiteText(...label) : null,
-        ['conflict', 'unavailable'].includes(settings.status) ? h('button', { type: 'button', style: suiteButton,
-          onClick: settings.reload }, suiteText('Reload settings', 'إعادة تحميل الإعدادات')) : null)
+      return label ? h('div', { role: 'status', style: lifecycleMuted }, label, ' ',
+        ['conflict', 'unavailable'].includes(settings.status) ? h(Button, { size: 'sm',
+          onClick: settings.reload }, 'Reload settings') : null) : null
+    }
+
+    const lifecycleDurations = ['365', '180', '90', '30', '7']
+    const lifecycleMuted = { color: 'var(--dsw-alias-label-secondary, inherit)', fontSize: 12, lineHeight: 1.45 }
+    const lifecycleRule = '1px solid var(--dsw-alias-border-l3, CanvasText)'
+    const lifecycleLabel = { display: 'grid', gap: 6, fontSize: 13, fontWeight: 500, minWidth: 0 }
+    const lifecycleSelect = {
+      display: 'block', width: '100%', minWidth: 0, height: 32, paddingInline: 8,
+      borderRadius: 8, border: lifecycleRule, color: 'inherit', font: 'inherit',
+      background: 'var(--dsw-alias-settings-card-fill, Canvas)',
+    }
+    const lifecycleActions = { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }
+
+    function LifecycleGroup({ title, children }) {
+      return h('section', { style: { display: 'grid', gap: 10, minWidth: 0, paddingBlockStart: 14,
+        borderBlockStart: lifecycleRule } },
+      h('h2', { style: { margin: 0, fontSize: 14, fontWeight: 600 } }, title), children)
+    }
+
+    function RetentionField({ label, value, inherit, disabled, onChange }) {
+      return h('label', { style: lifecycleLabel }, label,
+        h('select', { style: lifecycleSelect, value, disabled, onChange: event => onChange(event.target.value) },
+          inherit ? h('option', { value: 'inherit' }, 'Use global policy') : null,
+          h('option', { value: 'forever' }, 'Keep forever'),
+          ...lifecycleDurations.map(days => h('option', { key: days, value: days }, `${days} days`))))
     }
 
     function WorkspaceLifecycle({ services, useRemoteAccess }) {
@@ -1571,15 +1594,16 @@ window.__ModuleLoader__.load({
       const [scope, setScope] = React.useState('')
       const [proposal, setChange] = React.useState(null)
       const [previewAt, setPreviewAt] = React.useState(null)
-      const change = proposal?.source === settings.source ? proposal : null
-      React.useEffect(() => {
-        if (proposal && !change) { setChange(null); setPreviewAt(null) }
-      }, [proposal, change])
       const record = settings.record
       const ready = workspace?.phase === 'ready' && sessions?.phase === 'ready'
       const workspaces = ready ? workspace.items : []
       const chosen = workspaces.find(item => item.workspaceId === scope)
-      const retention = chosen ? record?.overrides?.find(item => item.workspace === scope)?.retention || 'inherit' : record?.retention
+      const change = proposal && proposal.source === settings.source &&
+        (!proposal.workspaceId || chosen?.workspaceId === proposal.workspaceId) ? proposal : null
+      React.useEffect(() => {
+        if (proposal && !change) { setChange(null); setPreviewAt(null) }
+      }, [proposal, change])
+      const override = record?.overrides?.find(item => item.workspace === chosen?.workspaceId)?.retention ?? 'inherit'
       const memberships = new Map()
       for (const item of workspaces) for (const id of item.sessionIds ?? []) {
         if (memberships.has(id)) memberships.set(id, null)
@@ -1589,9 +1613,10 @@ window.__ModuleLoader__.load({
       const protectedIds = new Set(record?.protectedIds ?? [])
       const rows = []
       let unknown = 0
+      const selectedIds = chosen ? new Set(chosen.sessionIds ?? []) : null
       for (const [id, member] of memberships) {
+        if (selectedIds && !selectedIds.has(id)) continue
         if (member === null) { unknown++; continue }
-        if (chosen && member !== scope) continue
         const row = sessions.byId?.[id]
         if (!row) { unknown++; continue }
         const projection = sessions.projectionsBySession?.[id]?.values
@@ -1605,7 +1630,7 @@ window.__ModuleLoader__.load({
         const summaryPrompt = Number.isFinite(row.createdAt) && row.updatedAt > row.createdAt ? row.updatedAt : undefined
         const lastPrompt = projection?.sessionListMetadata?.lastPromptAt ?? summaryPrompt
         const isProtected = protectedIds.has(id)
-        const candidate = previewAt !== null && !isActive && !isProtected && ['365', '180', '90', '30', '7'].includes(days) &&
+        const candidate = previewAt !== null && !isActive && !isProtected && lifecycleDurations.includes(days) &&
           Number.isFinite(lastPrompt) && lastPrompt > 0 && lastPrompt <= previewAt - Number(days) * 86400000
         rows.push({ id, row, isActive, isProtected, candidate })
       }
@@ -1614,65 +1639,72 @@ window.__ModuleLoader__.load({
         setPreviewAt(null)
         void settings.save(next)
       }
-      function propose(value) {
+      function propose(value, workspaceId) {
         if (!record) return
-        const next = chosen ? { ...record, overrides: [...record.overrides.filter(row => row.workspace !== scope),
-          ...(value === 'inherit' ? [] : [{ workspace: scope, retention: value }])] } : { ...record, retention: value }
-        setChange({ value, next, source: settings.source })
+        const next = workspaceId ? { ...record, overrides: [...record.overrides.filter(row => row.workspace !== workspaceId),
+          ...(value === 'inherit' ? [] : [{ workspace: workspaceId, retention: value }])] } : { ...record, retention: value }
+        setChange({ value, workspaceId, next, source: settings.source })
         setPreviewAt(Date.now())
       }
 
-      return h('div', { style: { marginBlockStart: 14, display: 'grid', gap: 12 } },
-        h('p', { role: 'note', style: { margin: 0 } }, suiteText(
-          'Preview only. Permanent deletion and automatic cleanup are unavailable. Last prompt dates are used for estimates. Exact last activity and storage size are unavailable.',
-          'معاينة فقط. الحذف النهائي والتنظيف التلقائي غير متاحين. تعتمد التقديرات على آخر رسالة، ولا يتوفر وقت النشاط الدقيق أو حجم التخزين.')),
+      const candidates = rows.filter(row => row.candidate)
+      const stats = [
+        ['Known conversations', ready ? rows.length : 'Unavailable'],
+        ['Archived', ready ? rows.filter(row => archived.has(row.id)).length : 'Unavailable'],
+        ['Storage usage', 'Unavailable'],
+      ]
+      return h('section', { lang: 'en', dir: 'ltr', style: { padding: '8px 16px 20px', display: 'grid', gap: 16, minWidth: 0 } },
+        h('header', null, h('h1', { style: { margin: '0 0 4px', fontSize: 18, lineHeight: 1.3 } }, 'Conversation Lifecycle'),
+          h('p', { style: { ...lifecycleMuted, margin: 0 } }, 'Part of the ABINADWAN Plugins Suite.')),
         h(SuiteRecordStatus, { settings }),
-        h('label', null, suiteText('Workspace ', 'مساحة العمل '),
-          h('select', { value: chosen ? scope : '', disabled: !ready, onChange: event => {
-            setScope(event.target.value); setChange(null); setPreviewAt(null)
-          } }, h('option', { value: '' }, suiteText('All Workspaces', 'كل مساحات العمل')),
-          ...workspaces.map(item => h('option', { value: item.workspaceId, key: item.workspaceId }, item.title)))),
-        h('label', null, suiteText('Retention ', 'مدة الاحتفاظ '),
-          h('select', { value: change?.value ?? retention ?? 'forever', disabled: !settings.writable || !record,
-            onChange: event => propose(event.target.value) },
-          chosen ? h('option', { value: 'inherit' }, suiteText('Inherit', 'وراثة الإعداد العام')) : null,
-          h('option', { value: 'forever' }, suiteText('Keep forever', 'احتفاظ دائم')),
-          ...['365', '180', '90', '30', '7'].map(days => h('option', { key: days, value: days }, suiteText(`${days} days`, `${days} يومًا`))))),
-        change ? h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' } },
-          h('span', null, suiteText('Save this policy for previews?', 'حفظ هذه السياسة للمعاينات؟')),
-          h('button', { type: 'button', style: suiteButton, disabled: !settings.writable, onClick: () => update(change.next) },
-            suiteText('Confirm and save', 'تأكيد وحفظ')),
-          h('button', { type: 'button', style: suiteButton, onClick: () => setChange(null) }, suiteText('Cancel', 'إلغاء'))) : null,
-        ready ? h('div', null,
-          h('p', null, suiteText(`${rows.length} conversations · ${rows.filter(row => archived.has(row.id)).length} archived · ${unknown} unavailable or ambiguous`,
-            `${rows.length} محادثة · ${rows.filter(row => archived.has(row.id)).length} مؤرشفة · ${unknown} غير متاحة أو غامضة`)),
-          h('button', { type: 'button', style: suiteButton, disabled: !record, onClick: () => setPreviewAt(Date.now()) },
-            suiteText('Preview cleanup', 'معاينة التنظيف')),
-          previewAt !== null ? h('p', { role: 'status' }, suiteText(`${rows.filter(row => row.candidate).length} estimated candidates`,
-            `${rows.filter(row => row.candidate).length} مرشح تقديري`)) : null,
-          h('ul', null, ...rows.map(({ id, row, isProtected, candidate }) => h('li', { key: id, style: { marginBlock: 6 } },
-            h('label', { dir: 'auto' }, h('input', { type: 'checkbox', checked: isProtected, disabled: !settings.writable,
-              onChange: event => update({ ...record, protectedIds: event.target.checked ? [...protectedIds, id] : [...protectedIds].filter(value => value !== id) }) }),
-            ` ${suiteText('Protect', 'حماية')} ${row.displayTitle || id}`),
-            archived.has(id) ? suiteText(' · Archived', ' · مؤرشفة') : null,
-            candidate ? suiteText(' · Estimated candidate', ' · مرشح تقديري') : null)))) :
-          h('p', { role: 'status' }, suiteText('Workspace inventory is unavailable.', 'قائمة مساحات العمل غير متاحة.')))
-    }
-
-    function ReasoningPreferences({ services, useRemoteAccess }) {
-      const settings = useSuiteRecord(services.settings, 'adaptive-reasoning', useRemoteAccess, services.connection)
-      const preferences = settings.record?.preferences ?? []
-      return h('div', { style: { marginBlockStart: 14 } },
-        h('p', null, suiteText('Choose an effort in the native model picker. Save a preferred effort from the composer and apply it explicitly to a conversation. Adaptive and next-message overrides are unavailable.',
-          'اختر مستوى الاستدلال من محدد النموذج الأصلي. احفظ مستوى مفضلًا من محرر المحادثة وطبّقه صراحةً على محادثة. الاستدلال التكيفي وتجاوز إعداد الرسالة التالية غير متاحين.')),
-        h(SuiteRecordStatus, { settings }),
-        preferences.length ? h('ul', null, ...preferences.map((preference, index) => h('li', {
-          key: JSON.stringify([preference.provider, preference.model]), style: { marginBlock: 8 } },
-        h('bdi', null, `${preference.provider} / ${preference.model} · ${preference.effort}`), ' ',
-        h('button', { type: 'button', style: suiteButton, disabled: !settings.writable,
-          onClick: () => void settings.save({ preferences: preferences.filter((_, position) => position !== index) }) },
-        suiteText('Remove preference', 'إزالة التفضيل'))))) :
-          h('p', null, suiteText('No model preferences saved.', 'لا توجد تفضيلات محفوظة للنماذج.')))
+        h(LifecycleGroup, { title: 'Overview' },
+          h('label', { style: lifecycleLabel }, 'Workspace',
+            h('select', { style: lifecycleSelect, value: chosen ? scope : '', disabled: !ready, onChange: event => {
+              setScope(event.target.value)
+              setChange(null)
+              setPreviewAt(null)
+            } }, h('option', { value: '' }, 'All Workspaces'),
+            ...workspaces.map(item => h('option', { value: item.workspaceId, key: item.workspaceId, dir: 'auto' }, item.title)))),
+          h('dl', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(112px, 1fr))', gap: 8, margin: 0 } },
+            ...stats.map(([label, value]) => h('div', { key: label, style: { border: lifecycleRule, borderRadius: 8,
+              padding: '8px 10px', background: 'var(--dsw-alias-settings-card-fill, Canvas)' } },
+            h('dt', { style: lifecycleMuted }, label),
+            h('dd', { style: { margin: '3px 0 0', fontSize: 14, fontWeight: 600 } }, value)))),
+          unknown > 0 ? h('small', { style: lifecycleMuted }, `${unknown} unavailable or ambiguous`) : null),
+        h(LifecycleGroup, { title: 'Retention Policy' },
+          h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 } },
+            h(RetentionField, { label: 'Global retention', value: change && !change.workspaceId ? change.value : record?.retention ?? '',
+              disabled: !settings.writable, onChange: value => propose(value) }),
+            chosen ? h(RetentionField, { label: 'Workspace override', inherit: true,
+              value: change?.workspaceId === chosen.workspaceId ? change.value : override,
+              disabled: !settings.writable, onChange: value => propose(value, chosen.workspaceId) }) : null),
+          !chosen ? h('small', { style: lifecycleMuted }, 'Select a Workspace to set its own retention policy.') : null,
+          change ? h('div', { style: lifecycleActions },
+            h('span', { style: lifecycleMuted }, 'Save this policy for previews?'),
+            h(Button, { size: 'sm', variant: 'primary', disabled: !settings.writable, onClick: () => update(change.next) },
+              'Confirm and save'),
+            h(Button, { size: 'sm', onClick: () => { setChange(null); setPreviewAt(null) } }, 'Cancel')) : null),
+        h(LifecycleGroup, { title: 'Protected Conversations' },
+          ready && rows.length ? h('ul', { style: { listStyle: 'none', padding: 0, margin: 0,
+            maxBlockSize: 185, overflow: 'auto', overflowWrap: 'anywhere' } },
+          ...rows.map(({ id, row, isProtected }) => h('li', { key: id, style: { ...lifecycleActions, minHeight: 32 } },
+            h(Checkbox, { label: h(React.Fragment, null, 'Protect ', h('bdi', null, row.displayTitle || id)),
+              checked: isProtected, disabled: !settings.writable,
+              onChange: checked => update({ ...record, protectedIds: checked ? [...protectedIds, id] : [...protectedIds].filter(value => value !== id) }) }),
+            archived.has(id) ? h('small', { style: lifecycleMuted }, 'Archived') : null))) :
+            h('p', { style: { ...lifecycleMuted, margin: 0 } }, ready ? 'No known conversations in this view.' : 'Workspace inventory is unavailable.')),
+        h(LifecycleGroup, { title: 'Cleanup Management' },
+          h('strong', { style: { fontSize: 13 } }, 'Preview only'),
+          h('p', { style: { ...lifecycleMuted, margin: 0 } },
+            'Estimates use known last prompt dates. Active, protected, Direct Chat, and unverified conversations are excluded.'),
+          h('p', { style: { ...lifecycleMuted, margin: 0 } },
+            'Permanent deletion and automatic cleanup are unavailable.'),
+          h('div', { style: lifecycleActions },
+            h(Button, { size: 'sm', variant: 'outline', disabled: !record || !ready, onClick: () => setPreviewAt(Date.now()) }, 'Preview cleanup'),
+            previewAt !== null ? h('span', { role: 'status', style: { fontSize: 13 } },
+              `${candidates.length} estimated candidate${candidates.length === 1 ? '' : 's'}`) : null),
+          candidates.length ? h('ul', { style: { margin: 0, paddingInlineStart: 20, fontSize: 13 } },
+            ...candidates.map(({ id, row }) => h('li', { key: id }, h('bdi', null, row.displayTitle || id)))) : null))
     }
 
     function ReasoningComposer({ directory, sessionId, settingsService, connection, useRemoteAccess, useAccess }) {
@@ -1737,7 +1769,7 @@ window.__ModuleLoader__.load({
       return h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' } },
         h('button', { type: 'button', style: suiteButton, disabled: !settings.writable || applying ||
           !reasoning.efforts.some(level => level.id === effort) || effort === saved?.effort, onClick: savePreference },
-        suiteGlyph(newSuiteTabs.find(tab => tab.id === 'adaptive-reasoning').paths, 14), ' ',
+        suiteGlyph(reasoningIcon, 14), ' ',
         suiteText('Save model effort', 'حفظ مستوى النموذج')),
         saved ? h('button', { type: 'button', style: suiteButton, disabled: applying || !savedSupported ||
           saved.effort === effort || directoryState.pending != null, onClick: () => void applyPreference(),
@@ -1766,63 +1798,17 @@ window.__ModuleLoader__.load({
       },
     }
 
-    function createSuiteSection() {
-      let visible = []
-      const listeners = new Set()
-      const subscribe = listener => { listeners.add(listener); return () => listeners.delete(listener) }
-      const snapshot = () => visible
-      function Pane({ services, useRemoteAccess }) {
-        const tabs = React.useSyncExternalStore(subscribe, snapshot, snapshot)
-        const [selection, select] = React.useState(null)
-        const refs = React.useRef(new Map())
-        const language = suiteLanguage()
-        const active = tabs.find(tab => tab.id === selection) || tabs[0]
-        if (!active) return null
-        function navigate(event, index) {
-          const forward = language === 'ar' ? 'ArrowLeft' : 'ArrowRight'
-          const backward = language === 'ar' ? 'ArrowRight' : 'ArrowLeft'
-          const next = event.key === 'Home' ? 0 : event.key === 'End' ? tabs.length - 1 :
-            event.key === forward ? (index + 1) % tabs.length :
-              event.key === backward ? (index + tabs.length - 1) % tabs.length : undefined
-          if (next === undefined) return
-          event.preventDefault()
-          select(tabs[next].id)
-          refs.current.get(tabs[next].id)?.focus()
-        }
-        return h('section', { dir: language === 'ar' ? 'rtl' : 'ltr', lang: language, style: { padding: 20 } },
-          h('h1', { style: { marginBlockStart: 0 } }, suiteTitle()),
-          h('div', { role: 'tablist', 'aria-label': suiteTitle(), style: { display: 'flex', flexWrap: 'wrap', gap: 8 } },
-            ...tabs.map((tab, index) => h('button', { type: 'button', key: tab.id, role: 'tab', id: `suite-tab-${tab.id}`,
-              ref: node => { if (node) refs.current.set(tab.id, node); else refs.current.delete(tab.id) },
-              'aria-selected': tab === active, 'aria-controls': 'abinadwan-suite-panel', tabIndex: tab === active ? 0 : -1,
-              onClick: () => select(tab.id), onKeyDown: event => navigate(event, index),
-              style: { display: 'inline-flex', alignItems: 'center', gap: 6, padding: '7px 9px', color: 'inherit',
-                background: tab === active ? 'rgba(128,128,128,.2)' : 'transparent', border, borderRadius: 7, font: 'inherit' } },
-            suiteGlyph(tab.paths), tab[language]))),
-          h('div', { key: active.id, id: 'abinadwan-suite-panel', role: 'tabpanel', 'aria-labelledby': `suite-tab-${active.id}`, tabIndex: 0 },
-            active.id === 'conversation-lifecycle' ? h(WorkspaceLifecycle, { services, useRemoteAccess }) :
-              h(ReasoningPreferences, { services, useRemoteAccess })))
-      }
-      return {
-        update(rows) {
-          const next = newSuiteTabs.filter(tab => rows.some(row => row.moduleName === `${TYPE}/${tab.id}` &&
-            row.enabled === true && row.fiberPhase === 'active'))
-          if (next.length !== visible.length || next.some((tab, index) => tab !== visible[index])) {
-            visible = next
-            for (const notify of listeners) notify()
-          }
-          return visible.length > 0
-        },
-        plugin: { inject: ['slots', 'remote', 'remote.settings', 'sessions', 'workspaces'], apply(ctx) {
-          const services = { settings: ctx.remote.settings, sessions: ctx.sessions.list, workspaces: ctx.workspaces.list,
-            connection: suiteConnection(ctx) }
-          const PaneSlot = props => h(Pane, { ...props, services })
-          ctx.slots.inject('settings.section', () => ctx.slots.register({ name: 'settings.section',
-            id: 'abinadwan-suite', label: suiteTitle, order: 45 }, PaneSlot))
-          ctx.slots.inject('settings.section.icon', () => ctx.slots.register({ name: 'settings.section.icon',
-            id: 'abinadwan-suite' }, ({ size }) => suiteGlyph(['M5 5h14v14H5z', 'M9 9h6m-6 3h6m-6 3h6'], size)))
-        } },
-      }
+    const lifecycleSettingsPlugin = {
+      inject: ['slots', 'remote', 'remote.settings', 'sessions', 'workspaces'],
+      apply(ctx) {
+        const services = { settings: ctx.remote.settings, sessions: ctx.sessions.list, workspaces: ctx.workspaces.list,
+          connection: suiteConnection(ctx) }
+        const id = 'abinadwan-conversation-lifecycle'
+        ctx.slots.inject('settings.section', () => ctx.slots.register({ name: 'settings.section',
+          id, label: 'Conversation Lifecycle', order: 45 }, props => h(WorkspaceLifecycle, { ...props, services })))
+        ctx.slots.inject('settings.section.icon', () => ctx.slots.register({ name: 'settings.section.icon', id },
+          ({ size }) => suiteGlyph(lifecycleIcon, size)))
+      },
     }
 
     return {
@@ -1865,14 +1851,13 @@ window.__ModuleLoader__.load({
         // govern these child fibers through the public, access-checked inventory.
         ctx.remoteAccess.whenAccess('pluginManager/listPlugins', () => {
           const fibers = new Map()
-          const suiteSection = createSuiteSection()
-          let suiteFiber
           let stopped = false
           let generation = 0
           let pending = Promise.resolve()
           const components = [
             [TYPE + '/environment-context', environmentPlugin],
             [TYPE + '/personal-profile', profilePlugin],
+            [TYPE + '/conversation-lifecycle', lifecycleSettingsPlugin],
             [TYPE + '/adaptive-reasoning', reasoningComposerPlugin],
           ]
           async function refresh() {
@@ -1890,13 +1875,6 @@ window.__ModuleLoader__.load({
             }
             pending = pending.then(async () => {
               if (stopped || request !== generation) return
-              const hasNewTabs = suiteSection.update(rows)
-              if (hasNewTabs && !suiteFiber) suiteFiber = ctx.plugin(suiteSection.plugin)
-              if (!hasNewTabs && suiteFiber) {
-                const inactive = suiteFiber
-                suiteFiber = undefined
-                await inactive.dispose()
-              }
               for (const [moduleName, plugin] of components) {
                 const active = rows.some(row => row.moduleName === moduleName &&
                   row.enabled === true && row.fiberPhase === 'active')
@@ -1922,7 +1900,6 @@ window.__ModuleLoader__.load({
             unsubscribe()
             disconnectReset()
             const disposals = [...fibers.values()].map(fiber => fiber.dispose())
-            if (suiteFiber) disposals.push(suiteFiber.dispose())
             fibers.clear()
             return Promise.all(disposals).then(() => {})
           }

@@ -243,8 +243,21 @@ export async function clientHarness(options = {}) {
     AbortSignal, URL,
   })
   const plugin = loaded.factory(name => {
+    const react = options.React || ReactStub
+    if (name === '@deepseek-ai/dsh-client-ui-primitives') {
+      const h = react.createElement
+      return {
+        Button: ({ size, variant, icon, children, ...props }) => h('button', { type: 'button', ...props }, icon, children),
+        Checkbox: ({ label, onChange, ...props }) => h('label', null,
+          h('input', { type: 'checkbox', ...props, onChange: event => onChange(event.target.checked) }), label),
+        Menu: ({ open, anchor, items, onSelect }) => h('span', null, anchor, open && h('div', { role: 'menu' },
+          ...items.map(item => item.type === 'label' ? h('span', { key: item.id }, item.text) :
+            item.type === 'separator' ? h('hr', { key: item.id }) : h('button', { key: item.id, role: 'menuitem',
+              disabled: item.disabled, onClick: () => onSelect(item.id) }, item.label)))),
+      }
+    }
     if (name !== 'react') throw new Error(`unexpected browser import ${name}`)
-    return options.React || ReactStub
+    return react
   })
   const fiber = ctx.plugin(plugin)
   await fiber.await()
