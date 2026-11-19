@@ -396,6 +396,57 @@ test('native Settings persists new feature preferences and rejects a stale numer
 const directPreset = 'fixture-direct'
 const standardPreset = 'fixture-standard'
 
+test('a separate native chat composition streams and resumes with no tool or preset providers', async t => {
+  const directory = await scratch(t)
+  const chatRoot = join(directory, 'chat-sessions')
+  const ordinaryRoot = join(directory, 'ordinary-sessions')
+  const chatId = SessionId('synthetic-composition-chat')
+  const ordinaryId = SessionId('synthetic-composition-ordinary')
+  const ordinary = await loopHost(ordinaryRoot)
+  let chat
+  try {
+    chat = await loopHost(chatRoot)
+    const frames = []
+    chat.ctx.on('agent/assistant-stream', ({ agent, frame }) => {
+      if (agent.id === chatId) frames.push(frame)
+    }, { global: true })
+    await ordinary.ctx.agentLoop.create(ordinaryId, route, { cwd: directory })
+    const agent = await chat.ctx.agentLoop.create(chatId, route, { cwd: directory })
+    await send(agent)
+    assert.deepEqual(frames.filter(frame => frame.type === 'chunk' && frame.chunk.type === 'text-delta')
+      .map(frame => frame.chunk.text), ['Synthetic response'])
+    assert.equal(frames.at(-1)?.outcome?.eventType, 'assistant/message')
+
+    const otherModel = { ...route, model: 'synthetic-plain' }
+    agent.model.select(otherModel)
+    await send(agent)
+    assert.deepEqual(chat.adapter.requests.map(({ model, tools }) => [model, tools?.length ?? 0]),
+      [[route.model, 0], [otherModel.model, 0]])
+    await chat.ctx.sessions.flush(agent.session)
+    assert.deepEqual((await chat.ctx.sessionPersistence.list()).map(({ header }) => header.id), [chatId])
+    assert.deepEqual((await ordinary.ctx.sessionPersistence.list()).map(({ header }) => header.id), [ordinaryId])
+    await assert.rejects(ordinary.ctx.agents.resume({ resumeSessionId: chatId, agentOptions: route }),
+      { name: 'SessionPersistenceNotFoundError' })
+
+    await chat.ctx.fiber.dispose()
+    chat = await loopHost(chatRoot)
+    assert.equal(chat.ctx.get('agentPresets'), undefined)
+    assert.equal(chat.ctx.get('fs'), undefined)
+    assert.equal(chat.ctx.get('subprocess'), undefined)
+    const { agent: resumed } = await chat.ctx.agents.resume({ resumeSessionId: chatId, agentOptions: route })
+    await send(resumed)
+    const [request] = chat.adapter.requests
+    assert.equal(request.model, otherModel.model)
+    assert.equal(request.tools?.length ?? 0, 0)
+    const priorResponses = request.messages.filter(message => message.role === 'assistant')
+    assert.equal(priorResponses.length, 2)
+    assert.ok(priorResponses.every(message => message.content.some(block =>
+      block.type === 'text' && block.text === 'Synthetic response')))
+  } finally {
+    await Promise.all([chat?.ctx.fiber.dispose(), ordinary.ctx.fiber.dispose()])
+  }
+})
+
 async function directChatHost(directory) {
   const root = join(directory, 'direct-fixture-sessions')
   const spec = Domain.defineDomain({ name: 'synthetic_direct_ownership', version: 1,
