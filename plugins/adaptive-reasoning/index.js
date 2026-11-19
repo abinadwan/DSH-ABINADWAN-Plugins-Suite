@@ -35,6 +35,7 @@ async function readSelection(request) {
     }
     const data = JSON.parse(input + decoder.decode())
     const keys = ['sessionId', 'provider', 'model', 'reasoningEffort']
+    if (data?.mode === 'manual') keys.push('mode')
     if (data && Object.keys(data).length === keys.length && keys.every(key =>
       Object.hasOwn(data, key) && typeof data[key] === 'string' && data[key].length > 0 && data[key].length <= 256)) return data
     return null
@@ -48,19 +49,23 @@ const sameRoute = (current, selection) => current?.provider === selection.provid
 async function applySessionEffort(request, agents, llm, readPreferences) {
   const input = await readSelection(request)
   if (!input) return Response.json({ error: 'invalid-selection' }, { status: 400 })
-  const { sessionId, ...selection } = input
+  const { sessionId, mode, ...selection } = input
   const agent = agents.get(sessionId)
   if (!agent || agent.session.header.origin === 'subagent') return Response.json({ error: 'session-unavailable' }, { status: 409 })
-  if (!sameRoute(agent.model.current(), selection)) return Response.json({ error: 'route-changed' }, { status: 409 })
+  const current = agent.model.current()
+  if (!sameRoute(current, selection)) return Response.json({ error: 'route-changed' }, { status: 409 })
   try {
     await llm.resolveCallConfig(selection, request.signal)
     request.signal.throwIfAborted()
-    if (agents.get(sessionId) !== agent || !sameRoute(agent.model.current(), selection)) {
+    const latest = agent.model.current()
+    if (agents.get(sessionId) !== agent || !sameRoute(latest, selection) || latest.reasoningEffort !== current.reasoningEffort) {
       return Response.json({ error: 'route-changed' }, { status: 409 })
     }
-    const saved = readPreferences().filter(row => sameRoute(row, selection))
-    if (saved.length !== 1 || saved[0].effort !== selection.reasoningEffort) {
-      return Response.json({ error: 'preference-changed' }, { status: 409 })
+    if (mode !== 'manual') {
+      const saved = readPreferences().filter(row => sameRoute(row, selection))
+      if (saved.length !== 1 || saved[0].effort !== selection.reasoningEffort) {
+        return Response.json({ error: 'preference-changed' }, { status: 409 })
+      }
     }
     agent.model.select(selection)
     return Response.json({ selected: selection })

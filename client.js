@@ -7,7 +7,7 @@ window.__ModuleLoader__.load({
   id: '@abinadwan/dsh-plugins-suite',
   factory(require) {
     const React = require('react')
-    const { Button, Checkbox, Menu } = require('@deepseek-ai/dsh-client-ui-primitives')
+    const { Button, Checkbox, Menu, Toast } = require('@deepseek-ai/dsh-client-ui-primitives')
     const h = React.createElement
     const PANEL_ID = 'environment-sidebar'
     const border = '1px solid rgba(128,128,128,.27)'
@@ -1471,12 +1471,9 @@ window.__ModuleLoader__.load({
       'M18.25 11.25a4.5 4.5 0 1 1-6.5 1.25m3.75.75v2.25h2']
     const reasoningIcon = ['M6.5 15v3m5.5-6v6m5.5-9v9M6.5 11.5c3.6 0 5-4.5 8.8-4.5',
       'M19.5 7a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z']
-    const suiteLanguage = () => globalThis.document?.documentElement?.lang?.toLowerCase().startsWith('ar') ? 'ar' : 'en'
     const suiteGlyph = (paths, size = 18) => h('svg', { width: size, height: size, viewBox: '0 0 24 24',
       fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
     ...paths.map(path => h('path', { key: path, d: path })))
-    const suiteText = (en, ar) => suiteLanguage() === 'ar' ? ar : en
-    const suiteButton = { color: 'inherit', background: 'transparent', border, borderRadius: 7, padding: '6px 10px', font: 'inherit' }
     const suiteWatch = source => React.useSyncExternalStore(
       notify => source.subscribe(notify), () => source.getSnapshot(), () => source.getSnapshot())
     const suiteSettingsView = view => view?.value && Number.isSafeInteger(view.revision) && view.revision >= 0 ? view : null
@@ -1711,76 +1708,116 @@ window.__ModuleLoader__.load({
       const settings = useSuiteRecord(settingsService, 'adaptive-reasoning', useRemoteAccess, connection)
       const directoryState = suiteWatch(directory.store)
       const canSelect = useAccess?.('session/selectModel') === true
-      const [outcome, setOutcome] = React.useState(null)
-      const [applying, setApplying] = React.useState(false)
-      const inFlight = React.useRef(false)
+      const [open, setOpen] = React.useState(false)
+      const [working, setWorking] = React.useState(false)
+      const [notice, setNotice] = React.useState(null)
+      const busy = React.useRef(false)
+      const noticeId = React.useRef(0)
       const selection = directoryState.current
       React.useEffect(() => { void directory.load().catch(() => {}) }, [directory])
-      const supported = current => {
-        if (!current) return null
-        const snapshot = directory.store.getSnapshot()
-        if (snapshot.status !== 'ready' || snapshot.routable !== true) return null
-        const model = snapshot.groups.find(group => group.id === current.provider)?.models.find(model => model.id === current.model)
-        return model?.reasoning
+
+      function capability(snapshot) {
+        const current = snapshot.current
+        if (!current || snapshot.routable !== true) return null
+        return snapshot.groups.find(group => group.id === current.provider)?.models
+          .find(model => model.id === current.model)?.reasoning
       }
-      const reasoning = supported(selection)
-      if (!selection || !reasoning?.efforts?.length) return null
+
+      const reasoning = capability(directoryState)
+      if (!canSelect || !selection || !reasoning?.efforts?.length) return null
       const effort = selection.reasoningEffort ?? reasoning.defaultEffort
       const preferences = settings.record?.preferences ?? []
       const isCurrentRoute = row => row.provider === selection.provider && row.model === selection.model
       const saved = preferences.find(isCurrentRoute)
-      const savedSupported = reasoning.efforts.some(level => level.id === saved?.effort)
-      function savePreference() {
-        const current = directory.store.getSnapshot().current
-        if (!current || !isCurrentRoute(current) || !canSelect || !settings.writable) return
-        const live = supported(current)
-        const choice = current.reasoningEffort ?? live?.defaultEffort
-        if (!live?.efforts?.some(level => level.id === choice)) return
-        void settings.save({ preferences: [...preferences.filter(row => !isCurrentRoute(row)),
-          { provider: current.provider, model: current.model, effort: choice }] })
+      const level = id => reasoning.efforts.find(row => row.id === id)
+      const currentLabel = level(effort)?.name || effort || 'Provider default'
+      const savedLabel = saved
+        ? `Saved preference: ${level(saved.effort)?.name || saved.effort}${level(saved.effort) ? '' : ' (unavailable)'}`
+        : settings.record ? 'No saved preference' : 'Saved preferences unavailable'
+
+      function show(text, success = false) {
+        setNotice({ id: ++noticeId.current, text, success })
       }
-      async function applyPreference() {
-        const current = directory.store.getSnapshot().current
-        if (inFlight.current || !canSelect || !current || !isCurrentRoute(current) ||
-            !supported(current)?.efforts?.some(choice => choice.id === saved?.effort)) return
-        inFlight.current = true
-        setApplying(true)
-        setOutcome(null)
+
+      async function changeEffort(current, value, manual) {
+        const expected = { provider: current.provider, model: current.model, reasoningEffort: value }
+        const endpoint = new URL('api/abinadwan-reasoning/effort', document.baseURI)
+        if (endpoint.origin !== document.location.origin) throw new Error('Cross-origin reasoning endpoint')
+        const result = await fetch(endpoint, { method: 'POST', credentials: 'same-origin', redirect: 'error',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ sessionId, ...expected, ...(manual ? { mode: 'manual' } : {}) }) })
+        const response = await result.json()
+        if (result.status === 409 && response?.error === 'session-unavailable') {
+          show(manual ? 'Start or resume this chat before changing its effort.' :
+            'Start or resume this chat before applying the saved effort.')
+          return
+        }
+        if (result.status === 409 && response?.error === 'preference-changed') settings.reload()
+        const confirmed = response?.selected
+        if (!result.ok || confirmed?.provider !== expected.provider || confirmed?.model !== expected.model ||
+            confirmed?.reasoningEffort !== value) throw new Error('Effort selection was not accepted')
+        show(manual ? 'Effort changed.' : 'Effort applied.', true)
+      }
+
+      async function selectItem(id) {
+        if (busy.current) return
+        setOpen(false)
+        if (id === 'reload') { settings.reload(); return }
+        const latest = directory.store.getSnapshot()
+        const current = latest.current
+        const available = capability(latest)
+        if (!current || !isCurrentRoute(current) || !available || latest.pending != null) return
+        const currentEffort = current.reasoningEffort ?? available.defaultEffort
+        busy.current = true
+        setWorking(true)
         try {
-          const endpoint = new URL('api/abinadwan-reasoning/effort', document.baseURI)
-          if (endpoint.origin !== document.location.origin) throw new Error('Cross-origin reasoning endpoint')
-          const selection = { provider: current.provider, model: current.model, reasoningEffort: saved.effort }
-          const result = await fetch(endpoint, { method: 'POST', credentials: 'same-origin', redirect: 'error',
-            headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sessionId, ...selection }) })
-          const response = await result.json()
-          if (result.status === 409 && response?.error === 'session-unavailable') {
-            setOutcome('unavailable')
-            return
+          if (id === 'save' || id === 'remove') {
+            if (!settings.writable || (id === 'remove' && !saved) ||
+                (id === 'save' && !available.efforts.some(option => option.id === currentEffort))) return
+            const remaining = preferences.filter(row => !isCurrentRoute(row))
+            const next = id === 'save' ? [...remaining, { provider: current.provider,
+              model: current.model, effort: currentEffort }] : remaining
+            const savedOk = await settings.save({ preferences: next })
+            show(savedOk ? (id === 'save' ? 'Preference saved.' : 'Preference removed.') :
+              'Preference could not be updated.', savedOk)
+          } else {
+            const manual = id !== 'apply'
+            const value = manual ? available.efforts.find(option => `effort:${option.id}` === id)?.id : saved?.effort
+            if (value && value !== currentEffort && available.efforts.some(option => option.id === value)) {
+              await changeEffort(current, value, manual)
+            }
           }
-          if (result.status === 409) settings.reload()
-          const confirmed = response?.selected
-          const applied = result.ok && confirmed?.provider === selection.provider && confirmed?.model === selection.model &&
-            confirmed?.reasoningEffort === selection.reasoningEffort
-          setOutcome(applied ? 'applied' : 'failed')
-        } catch { setOutcome('failed') }
-        finally { inFlight.current = false; setApplying(false) }
+        } catch {
+          show('Harness could not change the effort.')
+        } finally {
+          busy.current = false
+          setWorking(false)
+        }
       }
-      if (!canSelect) return null
-      return h('div', { style: { display: 'flex', flexWrap: 'wrap', gap: 6, alignItems: 'center' } },
-        h('button', { type: 'button', style: suiteButton, disabled: !settings.writable || applying ||
-          !reasoning.efforts.some(level => level.id === effort) || effort === saved?.effort, onClick: savePreference },
-        suiteGlyph(reasoningIcon, 14), ' ',
-        suiteText('Save model effort', 'حفظ مستوى النموذج')),
-        saved ? h('button', { type: 'button', style: suiteButton, disabled: applying || !savedSupported ||
-          saved.effort === effort || directoryState.pending != null, onClick: () => void applyPreference(),
-          title: suiteText('Applies to this live conversation only.', 'يُطبّق على هذه المحادثة النشطة فقط.') },
-        suiteText('Apply saved effort', 'تطبيق المستوى المحفوظ')) : null,
-        saved && !savedSupported ? h('span', { role: 'status' }, suiteText('Saved effort unavailable for this model.', 'المستوى المحفوظ غير متاح لهذا النموذج.')) : null,
-        outcome === 'unavailable' ? h('span', { role: 'status' }, suiteText(
-          'Start or resume this chat before applying the saved effort.', 'ابدأ هذه المحادثة أو استأنفها قبل تطبيق المستوى المحفوظ.')) : null,
-        outcome === 'applied' ? h('span', { role: 'status' }, suiteText('Effort applied.', 'تم تطبيق المستوى.')) : null,
-        outcome === 'failed' ? h('span', { role: 'status' }, suiteText('Harness could not apply the effort.', 'تعذر تطبيق مستوى الاستدلال.')) : null,
-        h(SuiteRecordStatus, { settings }))
+
+      const items = [
+        { type: 'label', id: 'session-label', text: 'Current session' },
+        ...reasoning.efforts.map(option => ({ id: `effort:${option.id}`, label: option.name || option.id })),
+        { type: 'separator', id: 'preference-divider' },
+        { type: 'label', id: 'preference-label', text: savedLabel },
+        { id: 'save', label: 'Save current effort', disabled: !settings.writable || !level(effort) || saved?.effort === effort },
+        ...(saved ? [
+          { id: 'apply', label: 'Apply saved effort', disabled: !level(saved.effort) || saved.effort === effort },
+          { id: 'remove', label: 'Remove saved preference', disabled: !settings.writable },
+        ] : []),
+        ...(['conflict', 'unavailable'].includes(settings.status)
+          ? [{ id: 'reload', label: 'Reload preferences' }] : []),
+      ]
+      const trigger = h(Button, { variant: 'toolbar', size: 'sm', icon: suiteGlyph(reasoningIcon, 14),
+        lang: 'en', dir: 'ltr', title: 'Adaptive Reasoning', 'aria-label': `Adaptive Reasoning: ${currentLabel}`,
+        'aria-haspopup': 'menu', 'aria-expanded': open, disabled: working || directoryState.pending != null,
+        onClick: () => setOpen(value => !value) }, currentLabel)
+      return h('span', { lang: 'en', dir: 'ltr' },
+        h(Menu, { open, anchor: trigger, items, selectedId: level(effort) ? `effort:${effort}` : undefined,
+          portal: true, side: 'top', align: 'end', compact: true, autoFocus: true,
+          onClose: () => setOpen(false), onSelect: id => void selectItem(id) }),
+        notice ? h(Toast, { key: notice.id, text: notice.text, tone: notice.success ? 'success' : undefined,
+          holdMs: 1800, onDone: () => setNotice(null) }) : null)
     }
 
     const reasoningComposerPlugin = {
@@ -1790,7 +1827,7 @@ window.__ModuleLoader__.load({
         const connection = suiteConnection(ctx)
         const modelDirectories = ctx.modelDirectories
         const sessions = ctx.sessions
-        ctx.slots.inject('conversation.composer.dock', () => ctx.slots.register({ name: 'conversation.composer.dock',
+        ctx.slots.inject('conversation.input.right', () => ctx.slots.register({ name: 'conversation.input.right',
           id: 'abinadwan-reasoning-preference', order: 25, inject: sessionId => ({
             directory: sessionId && !sessions.subagentAddress(sessionId) ? modelDirectories.directoryFor(sessionId) : null,
             sessionId,

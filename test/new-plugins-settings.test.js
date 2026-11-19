@@ -31,7 +31,7 @@ test('independent Host rows default off and resolve English product metadata and
 })
 
 test('only Conversation Lifecycle owns a native Settings section and disposes it independently', async () => {
-  const fixture = await clientHarness()
+  const fixture = await clientHarness({ modelDirectories: {} })
   try {
     assert.equal(fixture.entries('settings.section').length, 0)
     const rows = [...fixture.rows(), ...Object.keys(names).map(id => ({
@@ -42,10 +42,16 @@ test('only Conversation Lifecycle owns a native Settings section and disposes it
     const [section] = fixture.entries('settings.section')
     assert.deepEqual(fixture.entries('settings.section').map(entry => entry.options.id), ['abinadwan-conversation-lifecycle'])
     assert.deepEqual(fixture.entries('settings.section.icon').map(entry => entry.options.id), [section.options.id])
+    assert.equal(fixture.entries('conversation.input.right').length, 1)
+    assert.equal(fixture.entries('conversation.composer.dock').length, 0)
     fixture.setRows(rows.map(row => row.moduleName === `${base}/conversation-lifecycle` ? { ...row, enabled: false } : row))
     await fixture.changed()
     assert.equal(fixture.entries('settings.section').length, 0)
     assert.equal(fixture.entries('settings.section.icon').length, 0)
+    assert.equal(fixture.entries('conversation.input.right').length, 1)
+    fixture.setRows(rows.map(row => ({ ...row, enabled: false })))
+    await fixture.changed()
+    assert.equal(fixture.entries('conversation.input.right').length, 0)
   } finally { await fixture.dispose() }
 })
 
@@ -163,13 +169,15 @@ test('a Workspace override leaves the global policy intact and can return to inh
   assert.equal(settings.writes[1].value.record.overrides.length, 0)
 })
 
-test('composer defers Agent residency to the owner route and applies an advertised saved effort', async t => {
+test('one English composer menu selects, saves, applies and removes supported effort', async t => {
   const route = { provider: 'provider', model: 'model', reasoningEffort: 'balanced-v2' }
-  const groups = [{ id: 'provider', models: [{ id: 'model', reasoning: { efforts: [{ id: 'balanced-v2' }, { id: 'wide-v2' }] } }] }]
+  const groups = [{ id: 'provider', models: [{ id: 'model', reasoning: {
+    efforts: [{ id: 'balanced-v2', name: 'Balanced' }, { id: 'wide-v2', name: 'Wide' }], defaultEffort: 'balanced-v2',
+  } }] }]
   const directory = { store: observable({ current: route, groups, status: 'ready', routable: true }), async load() {} }
   const requests = []
   const settings = settingsFixture('adaptive-reasoning', { preferences: [{ ...route, effort: 'wide-v2' }] })
-  const { div } = await mount(t, { modelDirectories: { directoryFor: () => directory }, settings: settings.service,
+  const { div } = await mount(t, { language: 'ar', modelDirectories: { directoryFor: () => directory }, settings: settings.service,
     sessions: { phase: 'ready', byId: { 'test-session': { running: false } } },
     async fetch(url, options) {
       assert.equal(url.pathname, '/api/abinadwan-reasoning/effort')
@@ -177,23 +185,42 @@ test('composer defers Agent residency to the owner route and applies an advertis
       const selection = JSON.parse(options.body)
       requests.push(selection)
       if (requests.length === 1) return Response.json({ error: 'session-unavailable' }, { status: 409 })
-      return new Response(JSON.stringify({ selected: selection }))
+      const { mode: _mode, sessionId: _sessionId, ...selected } = selection
+      directory.store.set({ ...directory.store.getSnapshot(), current: selected })
+      return Response.json({ selected })
     } },
-    'adaptive-reasoning', 'conversation.composer.dock')
-  const apply = [...div.querySelectorAll('button')].find(button => button.textContent === 'Apply saved effort')
-  assert.equal(apply.disabled, false)
-  await act(async () => apply.click())
+    'adaptive-reasoning', 'conversation.input.right')
+  const trigger = div.querySelector('button[aria-haspopup=menu]')
+  const open = () => act(async () => trigger.click())
+  const item = label => [...div.querySelectorAll('[role=menuitem]')].find(button => button.textContent === label)
+  const choose = label => act(async () => item(label).click())
+  assert.match(trigger.textContent, /Balanced/)
+  assert.equal(div.querySelector('[role=menu]'), null)
+  await open()
+  assert.match(div.textContent, /Saved preference: Wide/)
+  assert.deepEqual([...div.querySelectorAll('[role=menuitem]')].slice(0, 2).map(button => button.textContent), ['Balanced', 'Wide'])
+  assert.doesNotMatch(div.textContent, /\p{Script=Arabic}/u)
+  await choose('Apply saved effort')
   assert.match(div.textContent, /Start or resume this chat before applying the saved effort/)
-  assert.equal(apply.disabled, false)
-  await act(async () => apply.click())
+  await open()
+  await choose('Apply saved effort')
   assert.match(div.textContent, /Effort applied/)
   assert.equal(requests[0].sessionId, 'test-session')
   assert.equal(requests[0].provider, 'provider')
   assert.equal(requests[0].reasoningEffort, 'wide-v2')
   assert.deepEqual(requests[1], requests[0])
-  await act(async () => directory.store.set({ current: route, status: 'ready', routable: true, groups: [{ id: 'provider', models: [
-    { id: 'model', reasoning: { efforts: [{ id: 'balanced-v2' }] } },
-  ] }] }))
-  assert.equal(apply.disabled, true)
-  assert.match(div.textContent, /Saved effort unavailable/)
+  await open()
+  await choose('Balanced')
+  assert.deepEqual(requests[2], { sessionId: 'test-session', ...route, mode: 'manual' })
+  await open()
+  await choose('Save current effort')
+  assert.equal(settings.writes[0].value.record.preferences[0].effort, 'balanced-v2')
+  await open()
+  assert.match(div.textContent, /Saved preference: Balanced/)
+  await choose('Remove saved preference')
+  assert.equal(settings.writes[1].value.record.preferences.length, 0)
+  await open()
+  assert.match(div.textContent, /No saved preference/)
+  await act(async () => directory.store.set({ ...directory.store.getSnapshot(), groups: [{ id: 'provider', models: [{ id: 'model' }] }] }))
+  assert.equal(div.querySelector('button[aria-haspopup=menu]'), null)
 })

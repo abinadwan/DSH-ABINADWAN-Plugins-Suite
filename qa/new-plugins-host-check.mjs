@@ -129,6 +129,10 @@ test('native selections reach the offline adapter and stay local to each session
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ sessionId: a.id, ...route, model, reasoningEffort }),
     })
+    const manual = (reasoningEffort = 'deliberate-v2', model = route.model) => new Request(endpoint, {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionId: b.id, ...route, model, reasoningEffort, mode: 'manual' }),
+    })
     const transport = connection.createSharedFetchHandler('/api')
     assert.equal((await transport.fetch(request(), { principal: { kind: 'viewer' } })).status, 403)
     assert.equal((await transport.fetch(request('invented'), connection.browserPeer)).status, 422)
@@ -151,6 +155,14 @@ test('native selections reach the offline adapter and stay local to each session
     await feature.update({ record: { preferences: [] } })
     assert.equal((await transport.fetch(request(), connection.browserPeer)).status, 409,
       'a stale composer cannot apply a removed preference')
+    assert.equal((await transport.fetch(manual(), { principal: { kind: 'viewer' } })).status, 403)
+    assert.equal((await transport.fetch(manual('invented'), connection.browserPeer)).status, 422)
+    assert.equal((await transport.fetch(manual('deliberate-v2', 'different-model'), connection.browserPeer)).status, 409)
+    assert.equal((await transport.fetch(manual(), connection.browserPeer)).status, 200,
+      'manual choice does not require a saved preference')
+    await send(b)
+    assert.equal(adapter.requests.at(-1).reasoningEffort, 'deliberate-v2')
+    assert.equal((await transport.fetch(manual('fast-v2'), connection.browserPeer)).status, 200)
     await feature.dispose()
     assert.equal((await transport.fetch(request(), connection.browserPeer)).status, 404)
     await ctx.sessions.flush(a.session)
