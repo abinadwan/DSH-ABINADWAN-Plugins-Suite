@@ -53,7 +53,8 @@ A scoped renderer Context in the existing Harness window has its own Session Con
 | `npm run check:package` (run from PowerShell) | 168/168, 60 published files |
 | `qa/direct-chat-desktop/carrier-check.mjs` | 2/2 |
 | `qa/direct-chat-companion-check.mjs` | rc.3 3/3 · rc.5 3/3 |
-| `qa/new-plugins-host-check.mjs` | rc.3 12/12 · rc.5 12/12 |
+| `qa/new-plugins-host-check.mjs` | rc.3 13/13 · rc.5 13/13 (includes message-bound effort) |
+| `qa/direct-chat-appcontainer-check.mjs` | rc.3 3/3 · rc.5 3/3 |
 | `qa/profile-host-check.mjs` | rc.3 1/1 · rc.5 1/1 |
 
 These checks ran on isolated Windows Desktop `0.2.2-rc.3` (synthetic profile and loopback provider) with the packed integration build:
@@ -73,22 +74,23 @@ After the run the synthetic profile still has Personal Profile **enabled** and `
 
 | Blocker | Why it blocks | Needs |
 |---|---|---|
-| Direct Chat process confinement | The companion runs with the user's token and native addons. The JSONL writer needs `koffi`, which fails under Node's addon-disabled permission model. | Owner decision on a Windows confinement design (AppContainer, restricted token or Job object with ACL-scoped root), proven on matching Desktop |
+| Direct Chat process confinement | **Resolved for the QA fixture (Phase D3).** LPAC AppContainer with only `registryRead`, dedicated storage, no network, no child processes and a kill-on-close Job. Verified on rc.3 and rc.5 natively and on rc.3 Desktop. | Owner approval to carry the design into the product |
 | Direct Chat production carrier | The fixture routes, lease and scoped renderer are QA-only | Product plugin behind a capability gate, after confinement |
 | Matching rc.5 Desktop | No Windows Desktop rc.5 artifact is published | Rerun the Desktop acceptance once one exists |
 | Permanent deletion and retention execution | Harness persistence has no retirement or delete contract, no authoritative artifact manifest, and no restart-safe metadata reconciliation | An upstream native contract. No safe local path exists. |
-| Adaptive and next-message effort | No message-bound pre-capture admission. Another window's send can consume a one-shot override. | An upstream native admission contract |
+| Adaptive and next-message effort | **Native contract found (Phase D3).** `agent/inbox/claimed` runs before step capture and carries the prompt `rpcId`. Proven on rc.3 and rc.5. UI binding is not built. Automatic classification must run synchronously inside that event. | Composer binding by `requestId`, then the product feature |
 
 ## Next implementation tasks
 
-1. **Direct Chat confinement spike.** Run the companion under a Windows restricted token or AppContainer with ACLs granted only on the runtime and its root. Prove the `koffi` JSONL writer lease still works, and that reads and writes outside the root fail, on rc.3 Desktop. Stop for owner approval of the mechanism.
+1. **Approve the confinement design** in [Phase D3](docs/research/NEW_PLUGINS_PHASE_D3.md). It is done and verified for the fixture. Optional follow-up: drop the 42 MiB resident launcher by waiting on the process handle from the Host.
 2. **Direct Chat productization**, gated on step 1. Move the carrier, lease, scoped renderer and denials from `qa/direct-chat-desktop` into `plugins/direct-chat`. Add the Direct Chat Settings page with the actual storage root and preview-only retention. Keep `createWebSocket` denied and compaction nodes suppressed.
 3. **Direct Chat storage management.** Choose a root at first configuration only, with canonical-path and reparse checks at every start. Migrating existing history needs separate migration and rollback contracts.
 4. **Direct Chat attachments.** Images and files need restricted admission, an upload carrier bound to the companion (never the page-global upload client) and a size and type policy.
 5. **Safe deletion.** Individual, bulk and per-Workspace deletion, plus Delete All Direct Chats, wait on a native retirement contract. The exclusive companion root narrows Direct Chat deletion but still needs artifact coverage and reparse containment.
 6. **Automatic retention execution.** Depends on step 5 plus policy-revision and eligibility rechecks at admission.
-7. **Adaptive Reasoning and next-message overrides.** Depend on message-bound admission. Recheck each new Harness release for it.
-8. **Soak.** Measure long idle, lease expiry across sleep and resume, and repeated reconnects for the companion.
+7. **Next-message override.** Add a Host route that records `{sessionId, requestId, effort}` and applies it in `agent/inbox/claimed` with restore-on-next-claim or idle, as in the native test. Bind from the composer using the `requestId` that `beginSubmission()` creates, and report a late binding as "not applied". **Adaptive Reasoning** can classify the claimed message synchronously in the same event, with real provider effort values only.
+8. **Finish the reference review:** `lsz-asd`, `Geralt4` and `qwased` deletion plugins, `zhuifengqug` and `HaoyueQin` reasoning plugins, `cycl0n3` launcher, and discussion #3339.
+9. **Soak.** Measure long idle, lease expiry across sleep and resume, and repeated reconnects for the companion.
 
 **Do not repeat** these approaches without new evidence:
 
@@ -98,8 +100,10 @@ After the run the synthetic profile still has Personal Profile **enabled** and `
 - SQLite-provider retirement
 - continuable subagents or LiveShare as Direct Chat
 - Node's permission model with addons disabled
+- Node `fork` or IPC inside an AppContainer with libuv 1.52.1 (`nodejs/node#66374`; it spins forever)
+- `CREATE_NO_WINDOW` for the confined Node (its `conhost` child is blocked; use `DETACHED_PROCESS`)
 
-See [Phase C continuation](docs/research/NEW_PLUGINS_PHASE_C_CONTINUATION.md) and [Phase D](docs/research/NEW_PLUGINS_PHASE_D.md).
+See [Phase C continuation](docs/research/NEW_PLUGINS_PHASE_C_CONTINUATION.md), [Phase D](docs/research/NEW_PLUGINS_PHASE_D.md) and [Phase D3](docs/research/NEW_PLUGINS_PHASE_D3.md). The D3 upstream review found no deletion, retirement, confinement or per-message effort contract on rc.4, rc.5 or `master` (`2e39e70`).
 
 ## Running the checks
 
@@ -111,5 +115,7 @@ node --test qa/direct-chat-desktop/carrier-check.mjs
 ```
 
 Run `check:package` from PowerShell, because Git Bash's GNU `tar` reads `C:` as a remote host.
+
+`qa/direct-chat-appcontainer-check.mjs` also needs `ABINADWAN_TEST_NODE`, which points to a copy of the bundled `node.exe`. Keep the runtime and Node copies under `node_modules/.direct-chat-confined/` so that ACL grants land only there. `qa/direct-chat-desktop/cleanup-appcontainer.mjs` removes the grants and the per-user profile. The Desktop fixture also needs `ABINADWAN_D2_NODE`.
 
 Native checks need bundled Node 24.21.0 and `ABINADWAN_TEST_RUNTIME`, which points to an extracted rc.3 Host runtime (`qa/extract-new-plugins-runtime.mjs`) or an rc.5 registry install. The companion check also needs `ABINADWAN_TEST_CLIENT_STORE`. `qa/profile-host-check.mjs` imports bare `@deepseek-ai/*` specifiers, so give it an ESM resolve hook that resolves them from the runtime directory. The Desktop fixture rerun is described in the Phase D2 report.

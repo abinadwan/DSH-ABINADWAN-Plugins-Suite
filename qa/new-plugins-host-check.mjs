@@ -200,6 +200,51 @@ test('a pre-step effort change applies only after the loop has captured its curr
   }
 })
 
+test('an effort selected while its own message is claimed reaches only that message', async () => {
+  const { ctx, adapter } = await loopHost()
+  try {
+    const agent = await ctx.agentLoop.create(SessionId('synthetic-message-bound'), route)
+    agent.model.select({ ...route, reasoningEffort: 'fast-v2' })
+    const pending = new Map([['request-override', 'deliberate-v2']])
+    let active
+    const restore = () => {
+      if (!active) return
+      const current = agent.model.current()
+      if (current?.reasoningEffort === active.applied) agent.model.select(active.saved)
+      active = undefined
+    }
+    agent.ctx.on('agent/inbox/claimed', ({ message }) => {
+      const effort = message.source.kind === 'user' ? pending.get(message.source.rpcId) : undefined
+      if (effort === undefined) { restore(); return }
+      pending.delete(message.source.rpcId)
+      restore()
+      active = { saved: agent.model.current(), applied: effort }
+      agent.model.select({ ...active.saved, reasoningEffort: effort })
+    })
+    agent.ctx.on('agent/status', ({ status }) => { if (status === 'idle') restore() })
+    const message = rpcId => createUserMessage({ content: [{ type: 'text', text: 'Fictional fixture prompt' }],
+      source: { kind: 'user', rpcId } })
+    // Another window's prompt is queued first and must not consume the override.
+    agent.followup(message('request-other-window'))
+    agent.followup(message('request-override'))
+    agent.followup(message('request-after'))
+    await agent.whenIdle()
+    assert.deepEqual(adapter.requests.map(request => request.reasoningEffort), ['fast-v2', 'deliberate-v2', 'fast-v2'])
+    assert.equal(agent.model.current().reasoningEffort, 'fast-v2')
+    assert.equal(pending.size, 0)
+
+    // A one-use override followed by idle restores the saved effort before any later prompt.
+    pending.set('request-single', 'deliberate-v2')
+    agent.followup(message('request-single'))
+    await agent.whenIdle()
+    assert.equal(agent.model.current().reasoningEffort, 'fast-v2')
+    await send(agent)
+    assert.deepEqual(adapter.requests.slice(3).map(request => request.reasoningEffort), ['deliberate-v2', 'fast-v2'])
+  } finally {
+    await ctx.fiber.dispose()
+  }
+})
+
 test('the native scoped allowlist excludes inherited shell tools without altering Workspace agents', async () => {
   const { ctx, adapter } = await loopHost()
   try {
