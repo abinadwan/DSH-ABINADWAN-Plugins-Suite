@@ -111,3 +111,64 @@ test('7C: all structured permission combinations have no effect on outgoing pref
     }
   assert.equal(cases,108)
 })
+// Phase 7D: wording adopted from the benchmark (L2, S2, G3, B1w). C2/U1 were not adopted.
+const P7D={
+  creative:'Go beyond the obvious: include at least one fresh, unconventional idea suited to the task.',
+  warmthLess:'Keep the tone neutral and reserved, without reassurance or pep talk.',
+  grill:'Before recommending a decision or plan, ask the user 2-3 specific questions about missing requirements and name the key risks.',
+}
+const P7D_HEADER='Response preferences (follow the current request and higher-priority host/safety/tool requirements; custom guidance takes precedence over other style preferences where compatible).'
+const languageLine=name=>'Write your response in '+name+' even when the user writes in another language, unless the user explicitly asks for a different language.'
+const count=(s,line)=>s.split('\n').filter(l=>l===line).length
+test('7D: adopted lines render exactly once when selected and never otherwise',()=>{
+  const r=profile.emptyRecord()
+  r.preferences.style='creative'
+  assert.equal(responsePreferences(r),P7D_HEADER+'\n'+P7D.creative)
+  r.preferences.style='default';r.preferences.traits.warmth=0
+  assert.equal(responsePreferences(r),P7D_HEADER+'\n'+P7D.warmthLess)
+  r.preferences.traits.warmth=1;r.preferences.presets=['grill-me']
+  assert.equal(responsePreferences(r),P7D_HEADER+'\n'+P7D.grill)
+  r.preferences.presets=['critical','no-fluff','evidence','steps','action','code','humanizer']
+  r.preferences.style='technical';r.preferences.traits.warmth=2
+  const other=responsePreferences(r)
+  for(const line of Object.values(P7D))assert.equal(count(other,line),0)
+  r.preferences.style='creative';r.preferences.traits.warmth=0;r.preferences.presets.push('grill-me')
+  const all=responsePreferences(r)
+  for(const line of Object.values(P7D))assert.equal(count(all,line),1)
+  // Not adopted: Code Reviewer and Humanizer keep their previous wording.
+  assert.equal(count(all,'Assess code quality, security, performance, and test coverage when reviewing code.'),1)
+  assert.equal(count(all,'Prefer natural writing and preserve facts, citations, and uncertainty when editing.'),1)
+})
+test('7D: explicit languages render the native name once; English and automatic are unchanged in shape',()=>{
+  const expected={ar:'Arabic (\u0627\u0644\u0639\u0631\u0628\u064a\u0629)',en:'English',zh:'Chinese (\u4e2d\u6587)',es:'Spanish (Espa\u00f1ol)',
+    fr:'French (Fran\u00e7ais)',de:'German (Deutsch)',ja:'Japanese (\u65e5\u672c\u8a9e)'}
+  const r=profile.emptyRecord()
+  for(const [lang,name] of Object.entries(expected)){
+    r.preferences.responseLanguage=lang
+    assert.equal(responsePreferences(r),P7D_HEADER+'\n'+languageLine(name))
+  }
+  r.preferences.responseLanguage='auto'
+  assert.equal(responsePreferences(r),'')
+  r.preferences.style='friendly'
+  assert.doesNotMatch(responsePreferences(r),/Write your response in|Prefer \w+ for responses/)
+})
+test('7D: explicit request and custom-text consent are unchanged by the new wording',()=>{
+  const r=profile.emptyRecord()
+  Object.assign(r.preferences,{style:'creative',responseLanguage:'zh',presets:['grill-me'],custom:'Fictional 7D custom note'})
+  r.preferences.traits.warmth=0
+  const withheld=responsePreferences(r)
+  assert.doesNotMatch(withheld,/Fictional 7D custom note/)
+  assert.match(withheld,/unless the user explicitly asks for a different language\./)
+  r.preferences.sendCustom=true
+  const sent=responsePreferences(r).split('\n')
+  assert.equal(sent.at(-1),'Fictional 7D custom note')
+  assert.equal(sent[0],P7D_HEADER)
+})
+test('7D: worst-case section stays within the measured size budget',()=>{
+  const r=profile.emptyRecord()
+  Object.assign(r.preferences,{style:'creative',responseLanguage:'zh',traits:{warmth:0,enthusiasm:2,structure:2,emoji:2,detail:0,critical:2},
+    presets:['critical','no-fluff','grill-me','evidence','steps','action','code','humanizer']})
+  const s=responsePreferences(r)
+  assert.equal(s.length,1330)
+  assert.equal(s.split('\n').length,17)
+})
