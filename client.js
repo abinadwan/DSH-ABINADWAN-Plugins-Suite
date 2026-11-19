@@ -1675,10 +1675,9 @@ window.__ModuleLoader__.load({
           h('p', null, suiteText('No model preferences saved.', 'لا توجد تفضيلات محفوظة للنماذج.')))
     }
 
-    function ReasoningComposer({ directory, sessionId, sessionList, settingsService, connection, useRemoteAccess, useAccess }) {
+    function ReasoningComposer({ directory, sessionId, settingsService, connection, useRemoteAccess, useAccess }) {
       const settings = useSuiteRecord(settingsService, 'adaptive-reasoning', useRemoteAccess, connection)
       const directoryState = suiteWatch(directory.store)
-      const resident = suiteWatch(sessionList).byId?.[sessionId]?.agentAvailable === true
       const canSelect = useAccess?.('session/selectModel') === true
       const [outcome, setOutcome] = React.useState(null)
       const [applying, setApplying] = React.useState(false)
@@ -1710,8 +1709,7 @@ window.__ModuleLoader__.load({
       }
       async function applyPreference() {
         const current = directory.store.getSnapshot().current
-        if (inFlight.current || !canSelect || sessionList.getSnapshot().byId?.[sessionId]?.agentAvailable !== true ||
-            !current || !isCurrentRoute(current) ||
+        if (inFlight.current || !canSelect || !current || !isCurrentRoute(current) ||
             !supported(current)?.efforts?.some(choice => choice.id === saved?.effort)) return
         inFlight.current = true
         setApplying(true)
@@ -1722,11 +1720,17 @@ window.__ModuleLoader__.load({
           const selection = { provider: current.provider, model: current.model, reasoningEffort: saved.effort }
           const result = await fetch(endpoint, { method: 'POST', credentials: 'same-origin', redirect: 'error',
             headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sessionId, ...selection }) })
+          const response = await result.json()
+          if (result.status === 409 && response?.error === 'session-unavailable') {
+            setOutcome('unavailable')
+            return
+          }
           if (result.status === 409) settings.reload()
-          const confirmed = result.ok ? (await result.json()).selected : null
-          setOutcome(confirmed?.provider === selection.provider && confirmed?.model === selection.model &&
-            confirmed?.reasoningEffort === selection.reasoningEffort)
-        } catch { setOutcome(false) }
+          const confirmed = response?.selected
+          const applied = result.ok && confirmed?.provider === selection.provider && confirmed?.model === selection.model &&
+            confirmed?.reasoningEffort === selection.reasoningEffort
+          setOutcome(applied ? 'applied' : 'failed')
+        } catch { setOutcome('failed') }
         finally { inFlight.current = false; setApplying(false) }
       }
       if (!canSelect) return null
@@ -1735,15 +1739,15 @@ window.__ModuleLoader__.load({
           !reasoning.efforts.some(level => level.id === effort) || effort === saved?.effort, onClick: savePreference },
         suiteGlyph(newSuiteTabs.find(tab => tab.id === 'adaptive-reasoning').paths, 14), ' ',
         suiteText('Save model effort', 'حفظ مستوى النموذج')),
-        saved ? h('button', { type: 'button', style: suiteButton, disabled: applying || !resident || !savedSupported ||
+        saved ? h('button', { type: 'button', style: suiteButton, disabled: applying || !savedSupported ||
           saved.effort === effort || directoryState.pending != null, onClick: () => void applyPreference(),
           title: suiteText('Applies to this live conversation only.', 'يُطبّق على هذه المحادثة النشطة فقط.') },
         suiteText('Apply saved effort', 'تطبيق المستوى المحفوظ')) : null,
         saved && !savedSupported ? h('span', { role: 'status' }, suiteText('Saved effort unavailable for this model.', 'المستوى المحفوظ غير متاح لهذا النموذج.')) : null,
-        savedSupported && !resident ? h('small', null, suiteText('Start or resume this chat before applying the saved effort.',
-          'ابدأ هذه المحادثة أو استأنفها قبل تطبيق المستوى المحفوظ.')) : null,
-        outcome !== null ? h('span', { role: 'status' }, outcome ? suiteText('Effort applied.', 'تم تطبيق المستوى.') :
-          suiteText('Harness could not apply the effort.', 'تعذر تطبيق مستوى الاستدلال.')) : null,
+        outcome === 'unavailable' ? h('span', { role: 'status' }, suiteText(
+          'Start or resume this chat before applying the saved effort.', 'ابدأ هذه المحادثة أو استأنفها قبل تطبيق المستوى المحفوظ.')) : null,
+        outcome === 'applied' ? h('span', { role: 'status' }, suiteText('Effort applied.', 'تم تطبيق المستوى.')) : null,
+        outcome === 'failed' ? h('span', { role: 'status' }, suiteText('Harness could not apply the effort.', 'تعذر تطبيق مستوى الاستدلال.')) : null,
         h(SuiteRecordStatus, { settings }))
     }
 
@@ -1754,12 +1758,11 @@ window.__ModuleLoader__.load({
         const connection = suiteConnection(ctx)
         const modelDirectories = ctx.modelDirectories
         const sessions = ctx.sessions
-        const sessionList = sessions.list
         ctx.slots.inject('conversation.composer.dock', () => ctx.slots.register({ name: 'conversation.composer.dock',
           id: 'abinadwan-reasoning-preference', order: 25, inject: sessionId => ({
             directory: sessionId && !sessions.subagentAddress(sessionId) ? modelDirectories.directoryFor(sessionId) : null,
             sessionId,
-          }) }, props => props.directory ? h(ReasoningComposer, { ...props, settingsService, connection, sessionList }) : null))
+          }) }, props => props.directory ? h(ReasoningComposer, { ...props, settingsService, connection }) : null))
       },
     }
 

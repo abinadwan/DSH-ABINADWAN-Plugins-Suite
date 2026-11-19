@@ -123,28 +123,34 @@ test('retention confirmation expires when the underlying settings revision is re
   assert.equal(settings.writes.length, 1)
 })
 
-test('composer applies only the resident model’s advertised saved effort through the owner route', async t => {
+test('composer defers Agent residency to the owner route and applies an advertised saved effort', async t => {
   const route = { provider: 'provider', model: 'model', reasoningEffort: 'balanced-v2' }
   const groups = [{ id: 'provider', models: [{ id: 'model', reasoning: { efforts: [{ id: 'balanced-v2' }, { id: 'wide-v2' }] } }] }]
   const directory = { store: observable({ current: route, groups, status: 'ready', routable: true }), async load() {} }
   const requests = []
   const settings = settingsFixture('adaptive-reasoning', { preferences: [{ ...route, effort: 'wide-v2' }] })
   const { div } = await mount(t, { modelDirectories: { directoryFor: () => directory }, settings: settings.service,
-    sessions: { phase: 'ready', byId: { 'test-session': { agentAvailable: true } } },
+    sessions: { phase: 'ready', byId: { 'test-session': { running: false } } },
     async fetch(url, options) {
       assert.equal(url.pathname, '/api/abinadwan-reasoning/effort')
       assert.equal(options.credentials, 'same-origin')
       const selection = JSON.parse(options.body)
       requests.push(selection)
+      if (requests.length === 1) return Response.json({ error: 'session-unavailable' }, { status: 409 })
       return new Response(JSON.stringify({ selected: selection }))
     } },
     'adaptive-reasoning', 'conversation.composer.dock')
   const apply = [...div.querySelectorAll('button')].find(button => button.textContent === 'Apply saved effort')
   assert.equal(apply.disabled, false)
   await act(async () => apply.click())
+  assert.match(div.textContent, /Start or resume this chat before applying the saved effort/)
+  assert.equal(apply.disabled, false)
+  await act(async () => apply.click())
+  assert.match(div.textContent, /Effort applied/)
   assert.equal(requests[0].sessionId, 'test-session')
   assert.equal(requests[0].provider, 'provider')
   assert.equal(requests[0].reasoningEffort, 'wide-v2')
+  assert.deepEqual(requests[1], requests[0])
   await act(async () => directory.store.set({ current: route, status: 'ready', routable: true, groups: [{ id: 'provider', models: [
     { id: 'model', reasoning: { efforts: [{ id: 'balanced-v2' }] } },
   ] }] }))
