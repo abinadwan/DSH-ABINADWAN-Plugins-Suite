@@ -1,0 +1,237 @@
+// Windows AppContainer confinement for the Direct Chat companion (QA fixture).
+// Bindings use the Harness runtime's own koffi dependency. No administrator rights are needed:
+// the profile is per user, and access grants are added only to directories the user owns.
+import { spawnSync } from 'node:child_process'
+import { createRequire } from 'node:module'
+import { join } from 'node:path'
+
+export const profileName = 'abinadwan.direct-chat.qa'
+const S_OK = 0
+const E_ALREADY_EXISTS = 0x800700b7 | 0
+const PROC_THREAD_ATTRIBUTE_HANDLE_LIST = 0x00020002
+const PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES = 0x00020009
+const PROC_THREAD_ATTRIBUTE_CHILD_PROCESS_POLICY = 0x0002000e
+const PROC_THREAD_ATTRIBUTE_ALL_APPLICATION_PACKAGES_POLICY = 0x0002000f
+const EXTENDED_STARTUPINFO_PRESENT = 0x00080000
+const CREATE_SUSPENDED = 0x4
+const CREATE_UNICODE_ENVIRONMENT = 0x400
+const DETACHED_PROCESS = 0x8
+const STARTF_USESTDHANDLES = 0x100
+const HANDLE_FLAG_INHERIT = 1
+const JOB_OBJECT_LIMIT_ACTIVE_PROCESS = 0x8
+const JOB_OBJECT_LIMIT_JOB_MEMORY = 0x200
+const JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION = 0x400
+const JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x2000
+const JobObjectExtendedLimitInformation = 9
+const INFINITE = 0xffffffff
+
+export function bind(runtime) {
+  const koffi = createRequire(join(runtime, 'package.json'))('koffi')
+  const userenv = koffi.load('userenv.dll')
+  const advapi32 = koffi.load('advapi32.dll')
+  const kernel32 = koffi.load('kernel32.dll')
+  const kernelbase = koffi.load('kernelbase.dll')
+  const SidAndAttributes = koffi.struct('SID_AND_ATTRIBUTES', { Sid: 'void *', Attributes: 'uint32' })
+  const SecurityCapabilities = koffi.struct('SECURITY_CAPABILITIES', {
+    AppContainerSid: 'void *', Capabilities: 'void *', CapabilityCount: 'uint32', Reserved: 'uint32',
+  })
+  const StartupInfo = koffi.struct('STARTUPINFOW', {
+    cb: 'uint32', lpReserved: 'void *', lpDesktop: 'void *', lpTitle: 'void *', dwX: 'uint32', dwY: 'uint32',
+    dwXSize: 'uint32', dwYSize: 'uint32', dwXCountChars: 'uint32', dwYCountChars: 'uint32',
+    dwFillAttribute: 'uint32', dwFlags: 'uint32', wShowWindow: 'uint16', cbReserved2: 'uint16',
+    lpReserved2: 'void *', hStdInput: 'void *', hStdOutput: 'void *', hStdError: 'void *',
+  })
+  const StartupInfoEx = koffi.struct('STARTUPINFOEXW', { StartupInfo, lpAttributeList: 'void *' })
+  const ProcessInformation = koffi.struct('PROCESS_INFORMATION', {
+    hProcess: 'void *', hThread: 'void *', dwProcessId: 'uint32', dwThreadId: 'uint32',
+  })
+  const BasicLimit = koffi.struct('JOBOBJECT_BASIC_LIMIT_INFORMATION', {
+    PerProcessUserTimeLimit: 'int64', PerJobUserTimeLimit: 'int64', LimitFlags: 'uint32',
+    MinimumWorkingSetSize: 'size_t', MaximumWorkingSetSize: 'size_t', ActiveProcessLimit: 'uint32',
+    Affinity: 'uintptr_t', PriorityClass: 'uint32', SchedulingClass: 'uint32',
+  })
+  const IoCounters = koffi.struct('IO_COUNTERS', {
+    a: 'uint64', b: 'uint64', c: 'uint64', d: 'uint64', e: 'uint64', f: 'uint64',
+  })
+  const ExtendedLimit = koffi.struct('JOBOBJECT_EXTENDED_LIMIT_INFORMATION', {
+    BasicLimitInformation: BasicLimit, IoInfo: IoCounters, ProcessMemoryLimit: 'size_t',
+    JobMemoryLimit: 'size_t', PeakProcessMemoryUsed: 'size_t', PeakJobMemoryUsed: 'size_t',
+  })
+  void SidAndAttributes
+  return {
+    koffi, StartupInfoEx, ProcessInformation, SecurityCapabilities, ExtendedLimit,
+    CreateAppContainerProfile: userenv.func('int32 __stdcall CreateAppContainerProfile(str16, str16, str16, void *, uint32, _Out_ void **)'),
+    DeriveAppContainerSidFromAppContainerName: userenv.func('int32 __stdcall DeriveAppContainerSidFromAppContainerName(str16, _Out_ void **)'),
+    DeleteAppContainerProfile: userenv.func('int32 __stdcall DeleteAppContainerProfile(str16)'),
+    ConvertSidToStringSidW: advapi32.func('bool __stdcall ConvertSidToStringSidW(void *, _Out_ void **)'),
+    FreeSid: advapi32.func('void * __stdcall FreeSid(void *)'),
+    LocalFree: kernel32.func('void * __stdcall LocalFree(void *)'),
+    GetLastError: kernel32.func('uint32 __stdcall GetLastError()'),
+    GetStdHandle: kernel32.func('void * __stdcall GetStdHandle(int32)'),
+    SetHandleInformation: kernel32.func('bool __stdcall SetHandleInformation(void *, uint32, uint32)'),
+    InitializeProcThreadAttributeList: kernel32.func('bool __stdcall InitializeProcThreadAttributeList(void *, uint32, uint32, _Inout_ size_t *)'),
+    UpdateProcThreadAttribute: kernel32.func('bool __stdcall UpdateProcThreadAttribute(void *, uint32, uintptr_t, void *, size_t, void *, void *)'),
+    DeleteProcThreadAttributeList: kernel32.func('void __stdcall DeleteProcThreadAttributeList(void *)'),
+    CreateProcessW: kernel32.func('bool __stdcall CreateProcessW(str16, void *, void *, void *, bool, uint32, void *, str16, STARTUPINFOEXW *, _Out_ PROCESS_INFORMATION *)'),
+    CreateJobObjectW: kernel32.func('void * __stdcall CreateJobObjectW(void *, void *)'),
+    SetInformationJobObject: kernel32.func('bool __stdcall SetInformationJobObject(void *, int32, JOBOBJECT_EXTENDED_LIMIT_INFORMATION *, uint32)'),
+    AssignProcessToJobObject: kernel32.func('bool __stdcall AssignProcessToJobObject(void *, void *)'),
+    TerminateProcess: kernel32.func('bool __stdcall TerminateProcess(void *, uint32)'),
+    ResumeThread: kernel32.func('uint32 __stdcall ResumeThread(void *)'),
+    WaitForSingleObject: kernel32.func('uint32 __stdcall WaitForSingleObject(void *, uint32)'),
+    GetExitCodeProcess: kernel32.func('bool __stdcall GetExitCodeProcess(void *, _Out_ uint32 *)'),
+    CloseHandle: kernel32.func('bool __stdcall CloseHandle(void *)'),
+    DeriveCapabilitySidsFromName: kernelbase.func('bool __stdcall DeriveCapabilitySidsFromName(str16, _Out_ void **, _Out_ uint32 *, _Out_ void **, _Out_ uint32 *)'),
+  }
+}
+
+/** Create or reuse the per-user profile and return its package SID. */
+export function ensureProfile(api, name = profileName) {
+  const out = [null]
+  let hr = api.CreateAppContainerProfile(name, 'ABINADWAN Direct Chat (QA)', 'Confined Direct Chat companion', null, 0, out)
+  if (hr === E_ALREADY_EXISTS) hr = api.DeriveAppContainerSidFromAppContainerName(name, out)
+  if (hr !== S_OK) throw new Error(`AppContainer profile unavailable (0x${(hr >>> 0).toString(16)})`)
+  const text = [null]
+  if (!api.ConvertSidToStringSidW(out[0], text)) throw new Error('AppContainer SID conversion failed')
+  const sid = api.koffi.decode(text[0], 'char16_t', -1)
+  api.LocalFree(text[0])
+  return { pointer: out[0], sid }
+}
+
+/** Resolve named capabilities (for example `registryRead`) to SID_AND_ATTRIBUTES entries. */
+export function capabilitySids(api, names) {
+  const { koffi } = api
+  return names.map(name => {
+    const groups = [null], groupCount = [0], sids = [null], sidCount = [0]
+    if (!api.DeriveCapabilitySidsFromName(name, groups, groupCount, sids, sidCount) || sidCount[0] < 1) {
+      throw new Error(`Unknown capability ${name}`)
+    }
+    const sid = koffi.decode(sids[0], 'void *')
+    return { Sid: sid, Attributes: 4 } // SE_GROUP_ENABLED
+  })
+}
+
+export function deleteProfile(api, name = profileName) {
+  const hr = api.DeleteAppContainerProfile(name)
+  if (hr !== S_OK) throw new Error(`AppContainer profile removal failed (0x${(hr >>> 0).toString(16)})`)
+}
+
+const icacls = () => join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'icacls.exe')
+
+/** Grant the package SID inheritable access to a directory tree the user owns. `rights` is RX or M. */
+export function grant(path, sid, rights) {
+  const listed = spawnSync(icacls(), [path], { encoding: 'utf8', windowsHide: true })
+  if (listed.status !== 0) throw new Error(`Cannot read ACL for ${path}`)
+  if (listed.stdout.includes(`${sid}:(OI)(CI)(${rights})`)) return false
+  const result = spawnSync(icacls(), [path, '/grant', `*${sid}:(OI)(CI)${rights}`, '/T', '/Q', '/C'],
+    { encoding: 'utf8', windowsHide: true })
+  if (result.status !== 0) throw new Error(`Cannot grant ${rights} on ${path}: ${result.stdout}${result.stderr}`)
+  return true
+}
+
+/** Remove every ACE for the package SID from a tree. Used by the QA cleanup. */
+export function revoke(path, sid) {
+  const result = spawnSync(icacls(), [path, '/remove:g', `*${sid}`, '/T', '/Q', '/C'], { encoding: 'utf8', windowsHide: true })
+  if (result.status !== 0) throw new Error(`Cannot revoke on ${path}: ${result.stdout}${result.stderr}`)
+}
+
+function quote(arg) {
+  if (arg && !/[\s"]/.test(arg)) return arg
+  return `"${arg.replace(/(\\*)"/g, '$1$1\\"').replace(/(\\+)$/, '$1$1')}"`
+}
+
+/**
+ * Start `exe args` in the AppContainer with this process's standard handles as its only inherited handles.
+ * The child cannot create processes, is killed when the returned job closes, and receives `env` only.
+ */
+export function launch(api, { exe, args, cwd, env, appContainerSid, lpac, capabilities = [], jobMemoryLimit }) {
+  const { koffi } = api
+  const handles = []
+  for (const kind of [-10, -11, -12]) {
+    const handle = api.GetStdHandle(kind)
+    if (!handle) throw new Error('Confined launch requires piped standard handles')
+    if (!handles.some(existing => koffi.address(existing) === koffi.address(handle))) handles.push(handle)
+    if (!api.SetHandleInformation(handle, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT)) throw new Error('Handle inheritance failed')
+  }
+  const [stdin, stdout, stderr] = [-10, -11, -12].map(kind => api.GetStdHandle(kind))
+  const attributes = 4
+  const size = [0]
+  api.InitializeProcThreadAttributeList(null, attributes, 0, size)
+  const list = Buffer.alloc(size[0])
+  if (!api.InitializeProcThreadAttributeList(list, attributes, 0, size)) throw new Error('Attribute list failed')
+  const securityCapabilities = koffi.alloc(api.SecurityCapabilities, 1)
+  const granted = capabilitySids(api, capabilities)
+  const grantedList = granted.length ? koffi.alloc('SID_AND_ATTRIBUTES', granted.length) : null
+  if (granted.length) koffi.encode(grantedList, koffi.array('SID_AND_ATTRIBUTES', granted.length), granted)
+  koffi.encode(securityCapabilities, api.SecurityCapabilities,
+    { AppContainerSid: appContainerSid, Capabilities: grantedList, CapabilityCount: granted.length, Reserved: 0 })
+  const handleList = koffi.alloc('void *', handles.length)
+  koffi.encode(handleList, koffi.array('void *', handles.length), handles)
+  const childPolicy = Buffer.alloc(4)
+  childPolicy.writeUInt32LE(1) // PROCESS_CREATION_CHILD_PROCESS_RESTRICTED
+  const packagesPolicy = Buffer.alloc(4)
+  packagesPolicy.writeUInt32LE(1) // PROCESS_CREATION_ALL_APPLICATION_PACKAGES_OPT_OUT (LPAC)
+  try {
+    const update = (attribute, value, length) => {
+      if (!api.UpdateProcThreadAttribute(list, 0, attribute, value, length, null, null)) {
+        throw new Error(`Attribute 0x${attribute.toString(16)} failed (${api.GetLastError()})`)
+      }
+    }
+    update(PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES, securityCapabilities, koffi.sizeof(api.SecurityCapabilities))
+    update(PROC_THREAD_ATTRIBUTE_HANDLE_LIST, handleList, koffi.sizeof('void *') * handles.length)
+    update(PROC_THREAD_ATTRIBUTE_CHILD_PROCESS_POLICY, childPolicy, 4)
+    if (lpac) update(PROC_THREAD_ATTRIBUTE_ALL_APPLICATION_PACKAGES_POLICY, packagesPolicy, 4)
+
+    const block = Buffer.from(Object.entries(env).map(([key, value]) => `${key}=${value}\0`).join('') + '\0', 'utf16le')
+    const commandLine = Buffer.from([exe, ...args].map(quote).join(' ') + '\0', 'utf16le')
+    const info = {
+      StartupInfo: { cb: koffi.sizeof(api.StartupInfoEx), dwFlags: STARTF_USESTDHANDLES,
+        hStdInput: stdin, hStdOutput: stdout, hStdError: stderr },
+      lpAttributeList: list,
+    }
+    const created = {}
+    const job = api.CreateJobObjectW(null, null)
+    if (!job) throw new Error('Job creation failed')
+    const limits = {
+      BasicLimitInformation: { LimitFlags: JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE | JOB_OBJECT_LIMIT_ACTIVE_PROCESS
+        | JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION | JOB_OBJECT_LIMIT_JOB_MEMORY, ActiveProcessLimit: 1 },
+      JobMemoryLimit: jobMemoryLimit,
+    }
+    if (!api.SetInformationJobObject(job, JobObjectExtendedLimitInformation, limits, koffi.sizeof(api.ExtendedLimit))) {
+      api.CloseHandle(job)
+      throw new Error(`Job limits failed (${api.GetLastError()})`)
+    }
+    if (!api.CreateProcessW(exe, commandLine, null, null, true,
+      EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED | CREATE_UNICODE_ENVIRONMENT | DETACHED_PROCESS,
+      block, cwd, info, created)) {
+      const error = api.GetLastError()
+      api.CloseHandle(job)
+      throw new Error(`Confined process creation failed (${error})`)
+    }
+    if (!api.AssignProcessToJobObject(job, created.hProcess)) {
+      const error = api.GetLastError()
+      // The suspended process never ran. Terminating it here is the only safe outcome.
+      api.TerminateProcess(created.hProcess, 1)
+      api.CloseHandle(job)
+      api.CloseHandle(created.hThread)
+      api.CloseHandle(created.hProcess)
+      throw new Error(`Job assignment failed (${error})`)
+    }
+    api.ResumeThread(created.hThread)
+    api.CloseHandle(created.hThread)
+    return { job, process: created.hProcess, pid: created.dwProcessId }
+  } finally {
+    api.DeleteProcThreadAttributeList(list)
+  }
+}
+
+export function wait(api, handle) {
+  return new Promise((resolve, reject) => {
+    api.WaitForSingleObject.async(handle, INFINITE, error => {
+      if (error) { reject(error); return }
+      const code = [0]
+      api.GetExitCodeProcess(handle, code)
+      resolve(code[0])
+    })
+  })
+}

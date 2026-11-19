@@ -1,9 +1,8 @@
-import { fork } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { appendFile, mkdir, realpath } from 'node:fs/promises'
 import { basename, dirname, join } from 'node:path'
-import { fileURLToPath } from 'node:url'
 import { bindChannel, streamTable } from './channel.js'
+import { CONFINEMENT_FAILED, startCompanion } from './companion-process.js'
 
 export const name = 'abinadwan-direct-chat-desktop-fixture'
 export const inject = ['connection', 'llm', 'agentDefaultModel']
@@ -20,6 +19,8 @@ export async function apply(ctx) {
   const verifiedHome = await realpath(fixtureHome)
   if (verifiedHome !== fixtureHome) throw new Error('Direct Chat fixture root differs from its canonical path')
   const runtime = await realpath(runtimePath)
+  if (!process.env.ABINADWAN_D2_NODE) throw new Error('Direct Chat needs ABINADWAN_D2_NODE for its confined runtime')
+  const node = await realpath(process.env.ABINADWAN_D2_NODE)
   const fixtureRootName = process.env.ABINADWAN_D2_FIXTURE_HOME ?? '.direct-chat-d2-home'
   if (!/^\.direct-chat-d2-[a-z0-9-]+$/.test(fixtureRootName)) throw new Error('Invalid Direct Chat fixture root name')
   const home = join(dirname(verifiedHome), fixtureRootName)
@@ -47,20 +48,13 @@ export async function apply(ctx) {
     if (child) return child
     start = (async () => {
       const begun = performance.now()
-      const { SystemRoot, WINDIR, ABINADWAN_D2_DIAGNOSTICS } = process.env
-      const proc = fork(fileURLToPath(new URL('./worker.js', import.meta.url)), [], {
-        cwd: home, windowsHide: true, execArgv: [],
-        stdio: ['ignore', 'ignore', ABINADWAN_D2_DIAGNOSTICS === '1' ? 'pipe' : 'ignore', 'ipc'],
-        env: { SystemRoot, WINDIR, DSH_HOME: home, HOME: home, USERPROFILE: home, TMP: home, TEMP: home,
-          ABINADWAN_D2_RUNTIME: runtime, ABINADWAN_D2_DIAGNOSTICS },
-      })
-      proc.stderr?.on('data', chunk => { void appendFile(join(home, 'diagnostics.log'), chunk).catch(() => {}) })
-      // Under the Desktop utility-process Host, 'close' is not reliably emitted for a forked child.
-      const exited = new Promise(resolve => proc.once('exit', (code, signal) => resolve([code, signal])))
+      // Always confined. A launch that cannot establish the AppContainer exits without a companion.
+      const { proc, port, exited } = startCompanion({ node, runtime, home,
+        diagnostics: process.env.ABINADWAN_D2_DIAGNOSTICS === '1' })
       const flows = streamTable()
       const activeSamples = new Map()
       let modelCatalog
-      const link = bindChannel(proc, async (operation, data, signal) => {
+      const link = bindChannel(port, async (operation, data, signal) => {
         if (operation === 'catalog') {
           const selection = ctx.agentDefaultModel.currentSelection()
           const models = await Promise.all((await ctx.llm.listModels(selection.provider)).map(async ({ id }) => {
@@ -105,11 +99,12 @@ export async function apply(ctx) {
       function sample(kind, modelCall) {
         return link.request('stats').then(metrics => measure(kind, { ...metrics, modelCall })).catch(() => {})
       }
-      const instance = { link, proc, exited, flows }
+      const instance = { link, proc, port, exited, flows }
       void exited.then(([code, signal]) => {
         if (child === instance) { child = undefined; peers.clear() }
         void flows.dispose()
-        void measure('exit', { pid: proc.pid, code, signal, requested: instance.requested === true }).catch(() => {})
+        void measure('exit', { launcherPid: proc.pid, code, signal, requested: instance.requested === true,
+          confinementFailed: code === CONFINEMENT_FAILED }).catch(() => {})
       })
       try {
         const metrics = await bounded(link.request('ready'), 12_000)
@@ -141,7 +136,7 @@ export async function apply(ctx) {
         await step('flows-disposed')
         await bounded(instance.link.request('shutdown'), 5000)
         await step('worker-disposed')
-        if (instance.proc.connected) instance.proc.disconnect()
+        instance.port.disconnect()
         const result = await bounded(instance.exited, 5000)
         await measure('shutdown', { exitCode: result?.[0] })
       } catch (error) {

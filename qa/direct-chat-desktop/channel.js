@@ -1,4 +1,45 @@
+import { EventEmitter } from 'node:events'
+
 const closed = () => new Error('Direct Chat channel closed')
+const maxFrameChars = 8 * 1024 * 1024
+
+/**
+ * A process-channel-shaped port over an inherited byte-stream pair, one JSON frame per line.
+ * The AppContainer companion uses it because libuv 1.52.1 cannot create IPC pipes there (nodejs/node#66374).
+ */
+export function streamPort(input, output) {
+  const port = new EventEmitter()
+  port.connected = true
+  let buffered = ''
+  const disconnect = () => {
+    if (!port.connected) return
+    port.connected = false
+    port.emit('disconnect')
+  }
+  const fail = () => { disconnect(); input.destroy() }
+  input.setEncoding('utf8')
+  input.on('data', chunk => {
+    buffered += chunk
+    let newline
+    while ((newline = buffered.indexOf('\n')) !== -1) {
+      const line = buffered.slice(0, newline)
+      buffered = buffered.slice(newline + 1)
+      let frame
+      try { frame = JSON.parse(line) } catch { fail(); return }
+      port.emit('message', frame)
+    }
+    if (buffered.length > maxFrameChars) fail()
+  })
+  input.once('end', disconnect)
+  input.once('close', disconnect)
+  input.on('error', disconnect)
+  output.on('error', disconnect)
+  port.send = (frame, callback) => {
+    output.write(`${JSON.stringify(frame)}\n`, error => callback?.(error ?? null))
+  }
+  port.disconnect = () => { disconnect(); output.end(); input.destroy() }
+  return port
+}
 
 /** Request/reply carrier over an inherited process channel. Each stream pull is a separate request. */
 export function bindChannel(port, dispatch) {
