@@ -1,3 +1,19 @@
 node_modules/
 *.tgz
 .package-check-*/
+
+# Phase 7D benchmark: raw inference stores, logs, backups and raw-output audit sheets stay local.
+qa/phase7d/evidence/*
+!qa/phase7d/evidence/acceptance.json
+!qa/phase7d/evidence/acceptance.md
+!qa/phase7d/evidence/summary.json
+!qa/phase7d/evidence/tables.md
+!qa/phase7d/evidence/judge-eval.json
+!qa/phase7d/evidence/spotcheck-agreement.json
+!qa/phase7d/evidence/spotcheck-key.json
+!qa/phase7d/evidence/spotcheck-manual.json
+!qa/phase7d/evidence/token-limit.json
+!qa/phase7d/evidence/context-perf.json
+# One-off maintenance of the local evidence store (prior-import hash check, context-split archive).
+qa/phase7d/ctxsplit.mjs
+qa/phase7d/hashcheck.mjs

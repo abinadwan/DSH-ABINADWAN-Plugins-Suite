@@ -1,0 +1,70 @@
+{
+ "res": {
+  "pair": {
+   "n": 8,
+   "agree": 6
+  },
+  "grill": {
+   "n": 8,
+   "agree": 8
+  },
+  "code": {
+   "n": 8,
+   "agree": 7
+  },
+  "humanizer": {
+   "n": 8,
+   "agree": 7
+  }
+ },
+ "disagreements": [
+  {
+   "id": "S013",
+   "area": "pair",
+   "manual": "tie",
+   "judge": {
+    "more": "A"
+   }
+  },
+  {
+   "id": "S023",
+   "area": "code",
+   "manual": {
+    "security": true,
+    "performance": true,
+    "tests": true,
+    "fix_safe": true,
+    "false_claims": true
+   },
+   "judge": {
+    "security": true,
+    "performance": true,
+    "tests": true,
+    "fix_safe": true,
+    "false_claims": false
+   }
+  },
+  {
+   "id": "S024",
+   "area": "humanizer",
+   "manual": {
+    "added_claims": false,
+    "changed_certainty": false,
+    "natural": false
+   },
+   "judge": {
+    "added_claims": false,
+    "changed_certainty": false,
+    "natural": true
+   }
+  },
+  {
+   "id": "S029",
+   "area": "pair",
+   "manual": "B",
+   "judge": {
+    "more": "A"
+   }
+  }
+ ]
+}

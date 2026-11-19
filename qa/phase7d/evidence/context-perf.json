@@ -1,0 +1,308 @@
+{
+ "date": "2026-11-18T22:06:21.176Z",
+ "model": "qwen3.5:4b",
+ "items": [
+  {
+   "key": "qwen3.5:4b|101|60c9e2219667a710c6d97b3908eaeab51b3373d58f0a6fbe11339c4667d78a55",
+   "period": "262144",
+   "storedMs": 52326
+  },
+  {
+   "key": "qwen3.5:4b|202|60c9e2219667a710c6d97b3908eaeab51b3373d58f0a6fbe11339c4667d78a55",
+   "period": "262144",
+   "storedMs": 71165
+  },
+  {
+   "key": "qwen3.5:4b|101|22b05428101c3e0e21a41a1ced9aa2408ac0a3d402f4be565d246094ba25fe0c",
+   "period": "262144",
+   "storedMs": 33114
+  },
+  {
+   "key": "qwen3.5:4b|101|e82ffe7ffed24245e93e6e8e3d4eaef468ec41375525a11397b706d5d4096078",
+   "period": "262144",
+   "storedMs": 43080
+  },
+  {
+   "key": "qwen3.5:4b|101|c9dacf6fb1f3a95ab1b90e081df6adf5b15500c498acb2fdb2bee45504b3c0d6",
+   "period": "262144",
+   "storedMs": 13055
+  },
+  {
+   "key": "qwen3.5:4b|101|33786c54427b7a91d8233f5358de10780f5c04c64da7091d16e5fe0df3af0cf3",
+   "period": "65536",
+   "storedMs": 5072
+  },
+  {
+   "key": "qwen3.5:4b|101|04bf9edfda5f03a2edd2146b719d58a548c77fdf5388c92af5c379928f8ee487",
+   "period": "65536",
+   "storedMs": 16716
+  },
+  {
+   "key": "qwen3.5:4b|202|efc06ebe980381479be1b7810e2dd3919739707cf7edc7c51b22b945036c50c5",
+   "period": "65536",
+   "storedMs": 4088
+  }
+ ],
+ "runs": {
+  "65536": {
+   "loadMs": 3895,
+   "runtime": {
+    "ctx": 65536,
+    "size": 12023591074,
+    "vram": 12023591074
+   },
+   "results": [
+    {
+     "key": "qwen3.5:4b|101|60c9e2219667a710c6d97b3908eaeab51b3373d58f0a6fbe11339c4667d78a55",
+     "period": "262144",
+     "ms": 16269,
+     "completionTokens": 1564,
+     "tokPerS": 96.1,
+     "error": null,
+     "finish": "stop",
+     "identicalToStored": false,
+     "runtime": {
+      "ctx": 65536,
+      "size": 12023591074,
+      "vram": 12023591074
+     }
+    },
+    {
+     "key": "qwen3.5:4b|202|60c9e2219667a710c6d97b3908eaeab51b3373d58f0a6fbe11339c4667d78a55",
+     "period": "262144",
+     "ms": 11890,
+     "completionTokens": 1562,
+     "tokPerS": 131.4,
+     "error": null,
+     "finish": "stop",
+     "identicalToStored": false,
+     "runtime": {
+      "ctx": 65536,
+      "size": 12023591074,
+      "vram": 12023591074
+     }
+    },
+    {
+     "key": "qwen3.5:4b|101|22b05428101c3e0e21a41a1ced9aa2408ac0a3d402f4be565d246094ba25fe0c",
+     "period": "262144",
+     "ms": 7508,
+     "completionTokens": 982,
+     "tokPerS": 130.8,
+     "error": null,
+     "finish": "stop",
+     "identicalToStored": true,
+     "runtime": {
+      "ctx": 65536,
+      "size": 12023591074,
+      "vram": 12023591074
+     }
+    },
+    {
+     "key": "qwen3.5:4b|101|e82ffe7ffed24245e93e6e8e3d4eaef468ec41375525a11397b706d5d4096078",
+     "period": "262144",
+     "ms": 45012,
+     "completionTokens": 6075,
+     "tokPerS": 135,
+     "error": null,
+     "finish": "stop",
+     "identicalToStored": false,
+     "runtime": {
+      "ctx": 65536,
+      "size": 12023591074,
+      "vram": 12023591074
+     }
+    },
+    {
+     "key": "qwen3.5:4b|101|c9dacf6fb1f3a95ab1b90e081df6adf5b15500c498acb2fdb2bee45504b3c0d6",
+     "period": "262144",
+     "ms": 10876,
+     "completionTokens": 1508,
+     "tokPerS": 138.7,
+     "error": null,
+     "finish": "stop",
+     "identicalToStored": false,
+     "runtime": {
+      "ctx": 65536,
+      "size": 12023591074,
+      "vram": 12023591074
+     }
+    },
+    {
+     "key": "qwen3.5:4b|101|33786c54427b7a91d8233f5358de10780f5c04c64da7091d16e5fe0df3af0cf3",
+     "period": "65536",
+     "ms": 2499,
+     "completionTokens": 341,
+     "tokPerS": 136.5,
+     "error": null,
+     "finish": "stop",
+     "identicalToStored": true,
+     "runtime": {
+      "ctx": 65536,
+      "size": 12023591074,
+      "vram": 12023591074
+     }
+    },
+    {
+     "key": "qwen3.5:4b|101|04bf9edfda5f03a2edd2146b719d58a548c77fdf5388c92af5c379928f8ee487",
+     "period": "65536",
+     "ms": 12439,
+     "completionTokens": 1725,
+     "tokPerS": 138.7,
+     "error": null,
+     "finish": "stop",
+     "identicalToStored": true,
+     "runtime": {
+      "ctx": 65536,
+      "size": 12023591074,
+      "vram": 12023591074
+     }
+    },
+    {
+     "key": "qwen3.5:4b|202|efc06ebe980381479be1b7810e2dd3919739707cf7edc7c51b22b945036c50c5",
+     "period": "65536",
+     "ms": 4573,
+     "completionTokens": 636,
+     "tokPerS": 139.1,
+     "error": null,
+     "finish": "stop",
+     "identicalToStored": false,
+     "runtime": {
+      "ctx": 65536,
+      "size": 12023591074,
+      "vram": 12023591074
+     }
+    }
+   ]
+  },
+  "262144": {
+   "loadMs": 4762,
+   "runtime": {
+    "ctx": 262144,
+    "size": 14287424713,
+    "vram": 9408453016
+   },
+   "results": [
+    {
+     "key": "qwen3.5:4b|101|60c9e2219667a710c6d97b3908eaeab51b3373d58f0a6fbe11339c4667d78a55",
+     "period": "262144",
+     "ms": 54216,
+     "completionTokens": 2189,
+     "tokPerS": 40.4,
+     "error": null,
+     "finish": "stop",
+     "identicalToStored": true,
+     "runtime": {
+      "ctx": 262144,
+      "size": 14287424713,
+      "vram": 9408453016
+     }
+    },
+    {
+     "key": "qwen3.5:4b|202|60c9e2219667a710c6d97b3908eaeab51b3373d58f0a6fbe11339c4667d78a55",
+     "period": "262144",
+     "ms": 74495,
+     "completionTokens": 2973,
+     "tokPerS": 39.9,
+     "error": null,
+     "finish": "stop",
+     "identicalToStored": true,
+     "runtime": {
+      "ctx": 262144,
+      "size": 14287424713,
+      "vram": 9408453016
+     }
+    },
+    {
+     "key": "qwen3.5:4b|101|22b05428101c3e0e21a41a1ced9aa2408ac0a3d402f4be565d246094ba25fe0c",
+     "period": "262144",
+     "ms": 32292,
+     "completionTokens": 1295,
+     "tokPerS": 40.1,
+     "error": null,
+     "finish": "stop",
+     "identicalToStored": true,
+     "runtime": {
+      "ctx": 262144,
+      "size": 14287424713,
+      "vram": 9408453016
+     }
+    },
+    {
+     "key": "qwen3.5:4b|101|e82ffe7ffed24245e93e6e8e3d4eaef468ec41375525a11397b706d5d4096078",
+     "period": "262144",
+     "ms": 44363,
+     "completionTokens": 1784,
+     "tokPerS": 40.2,
+     "error": null,
+     "finish": "stop",
+     "identicalToStored": true,
+     "runtime": {
+      "ctx": 262144,
+      "size": 14287424713,
+      "vram": 9408453016
+     }
+    },
+    {
+     "key": "qwen3.5:4b|101|c9dacf6fb1f3a95ab1b90e081df6adf5b15500c498acb2fdb2bee45504b3c0d6",
+     "period": "262144",
+     "ms": 11626,
+     "completionTokens": 485,
+     "tokPerS": 41.7,
+     "error": null,
+     "finish": "stop",
+     "identicalToStored": true,
+     "runtime": {
+      "ctx": 262144,
+      "size": 14287424713,
+      "vram": 9408453016
+     }
+    },
+    {
+     "key": "qwen3.5:4b|101|33786c54427b7a91d8233f5358de10780f5c04c64da7091d16e5fe0df3af0cf3",
+     "period": "65536",
+     "ms": 18669,
+     "completionTokens": 785,
+     "tokPerS": 42,
+     "error": null,
+     "finish": "stop",
+     "identicalToStored": true,
+     "runtime": {
+      "ctx": 262144,
+      "size": 14287424713,
+      "vram": 9408453016
+     }
+    },
+    {
+     "key": "qwen3.5:4b|101|04bf9edfda5f03a2edd2146b719d58a548c77fdf5388c92af5c379928f8ee487",
+     "period": "65536",
+     "ms": 59914,
+     "completionTokens": 2480,
+     "tokPerS": 41.4,
+     "error": null,
+     "finish": "stop",
+     "identicalToStored": false,
+     "runtime": {
+      "ctx": 262144,
+      "size": 14287424713,
+      "vram": 9408453016
+     }
+    },
+    {
+     "key": "qwen3.5:4b|202|efc06ebe980381479be1b7810e2dd3919739707cf7edc7c51b22b945036c50c5",
+     "period": "65536",
+     "ms": 10471,
+     "completionTokens": 428,
+     "tokPerS": 40.9,
+     "error": null,
+     "finish": "stop",
+     "identicalToStored": true,
+     "runtime": {
+      "ctx": 262144,
+      "size": 14287424713,
+      "vram": 9408453016
+     }
+    }
+   ]
+  }
+ }
+}

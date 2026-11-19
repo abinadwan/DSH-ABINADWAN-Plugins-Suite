@@ -691,7 +691,7 @@ window.__ModuleLoader__.load({
       ['professional','احترافي','Professional','Use polished, precise, professional language.'],
       ['friendly','ودود','Friendly','Use a friendly, approachable tone.'],
       ['candid','صريح ومباشر','Candid','Be direct, constructive, and candid.'],
-      ['creative','إبداعي','Creative','Explore original ideas and imaginative approaches when relevant.'],
+      ['creative','إبداعي','Creative','Go beyond the obvious: include at least one fresh, unconventional idea suited to the task.'],
       ['efficient','مختصر وعملي','Efficient','Be concise, practical, and focused on the result.'],
       ['critical','ناقد وتحليلي','Critical','Evaluate assumptions, evidence, and tradeoffs critically.'],
       ['technical','تقني ومتخصص','Technical','Use precise technical terminology and explain relevant implementation details.'],
@@ -707,7 +707,7 @@ window.__ModuleLoader__.load({
       ['ja','日本語 — Japanese','日本語 — Japanese','Japanese'],
     ]
     const PROFILE_TRAITS = [
-      ['warmth','الودّ','Warmth','Keep the tone neutral and reserved.','Use a warmer, more approachable tone.'],
+      ['warmth','الودّ','Warmth','Keep the tone neutral and reserved, without reassurance or pep talk.','Use a warmer, more approachable tone.'],
       ['enthusiasm','الحماس','Enthusiasm','Use a calm, restrained tone.','Use a more energetic tone when appropriate.'],
       ['structure','العناوين والقوائم','Headers and lists','Prefer cohesive prose over unnecessary headings or lists.','Use headings and lists when they improve readability.'],
       ['emoji','الرموز التعبيرية','Emoji','Avoid unnecessary emoji.','Use appropriate emoji sparingly when suitable for the task.'],
@@ -717,7 +717,7 @@ window.__ModuleLoader__.load({
     const PROFILE_PRESETS = [
       ['critical','التفكير النقدي','Critical Thinking','اختبر الافتراضات ولا توافق تلقائيًا.','Challenge weak assumptions rather than agreeing automatically.'],
       ['no-fluff','دون حشو','No Fluff','تجنّب الحشو والمجاملات غير الضرورية.','Avoid filler and unnecessary compliments.'],
-      ['grill-me','مراجعة المتطلبات','Grill-Me Mode','ناقش المتطلبات والمخاطر في القرارات المعقدة.','For complex decisions, clarify material requirements and risks before proceeding.'],
+      ['grill-me','مراجعة المتطلبات','Grill-Me Mode','ناقش المتطلبات والمخاطر في القرارات المعقدة.','Before recommending a decision or plan, ask the user 2-3 specific questions about missing requirements and name the key risks.'],
       ['evidence','الأدلة أولًا','Evidence First','ميّز بين الأدلة والافتراضات وعدم اليقين.','Distinguish evidence, assumptions, and uncertainty; cite reliable sources when applicable.'],
       ['steps','خطوة بخطوة','Step-by-Step','اشرح المهام المعقدة بخطوات عملية.','Break complex tasks into actionable steps.'],
       ['action','التركيز على النتائج','Action Oriented','ركّز على الحلول والخطوات العملية.','Prioritize practical solutions and actionable next steps.'],
@@ -734,7 +734,10 @@ window.__ModuleLoader__.load({
       const style = PROFILE_STYLES.find(item=>item[0]===pref.style)
       const language = PROFILE_LANGUAGES.find(item=>item[0]===pref.responseLanguage)
       if(style?.[3]) lines.push(style[3])
-      if(language?.[3]) lines.push('Prefer '+language[3]+' for responses unless the current task requests another language.')
+      if(language?.[3]) {
+        const native=language[1].split(' — ')[0]
+        lines.push('Write your response in '+language[3]+(native===language[3]?'':' ('+native+')')+' even when the user writes in another language, unless the user explicitly asks for a different language.')
+      }
       for(const [key,,,less,more] of PROFILE_TRAITS) {
         if(pref.traits[key]===0) lines.push(less)
         if(pref.traits[key]===2) lines.push(more)
