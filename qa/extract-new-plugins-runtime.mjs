@@ -43,7 +43,8 @@ try {
   const scratch = mkdtempSync(join(parent, `${desktop.dshBuildCommit}-`))
   const roots = [
     'sharp', 'zod', '@deepseek-ai/cordis', '@deepseek-ai/dsh-agent-loop',
-    '@deepseek-ai/dsh-api-session-controller', '@deepseek-ai/dsh-session-persistence-jsonl',
+    '@deepseek-ai/dsh-api-session-controller', '@deepseek-ai/dsh-api-remote-access',
+    '@deepseek-ai/dsh-attachment-local', '@deepseek-ai/dsh-session-persistence-jsonl',
     '@deepseek-ai/dsh-storage-json', '@deepseek-ai/dsh-storage-domain',
     '@deepseek-ai/dsh-tool-executor-native', '@deepseek-ai/dsh-session-query-sqlite',
     '@deepseek-ai/dsh-client-connection', '@deepseek-ai/dsh-agent-preset-registry', '@deepseek-ai/cordis-plugin-loader',
