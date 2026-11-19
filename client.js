@@ -7,6 +7,7 @@ window.__ModuleLoader__.load({
   id: '@abinadwan/dsh-plugins-suite',
   factory(require) {
     const React = require('react')
+    const { Button, Checkbox, Menu, Toast } = require('@deepseek-ai/dsh-client-ui-primitives')
     const h = React.createElement
     const PANEL_ID = 'environment-sidebar'
     const border = '1px solid rgba(128,128,128,.27)'
@@ -1469,6 +1470,387 @@ window.__ModuleLoader__.load({
           ? h(ProfileDraft) : null))
       },
     }
+    const lifecycleIcon = ['M10 13H6V7a1 1 0 0 1 1-1h8m-9 7-1 2m3.5-3.5v-2H15',
+      'M18.25 11.25a4.5 4.5 0 1 1-6.5 1.25m3.75.75v2.25h2']
+    const reasoningIcon = ['M6.5 15v3m5.5-6v6m5.5-9v9M6.5 11.5c3.6 0 5-4.5 8.8-4.5',
+      'M19.5 7a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z']
+    const suiteGlyph = (paths, size = 18) => h('svg', { width: size, height: size, viewBox: '0 0 24 24',
+      fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
+    ...paths.map(path => h('path', { key: path, d: path })))
+    const suiteWatch = source => React.useSyncExternalStore(
+      notify => source.subscribe(notify), () => source.getSnapshot(), () => source.getSnapshot())
+    const suiteSettingsView = view => view?.value && Number.isSafeInteger(view.revision) && view.revision >= 0 ? view : null
+
+    function useSuiteRecord(settings, id, useRemoteAccess, connection) {
+      const mayRead = useRemoteAccess?.('settings/describe') === true
+      const mayWrite = useRemoteAccess?.('settings/replace') === true
+      const [state, setState] = React.useState({ status: 'loading' })
+      const [reload, setReload] = React.useState(0)
+      const epoch = React.useRef(0)
+      const busy = React.useRef(false)
+      const access = React.useRef({ mayRead, mayWrite })
+      const generationAtRender = suiteWatch(connection)
+      access.current = { mayRead, mayWrite }
+      const ns = `abinadwan-${id}`
+      React.useEffect(() => {
+        const generation = ++epoch.current
+        const live = () => epoch.current === generation && connection.getSnapshot() === generationAtRender
+        busy.current = false
+        if (!mayRead) setState({ status: 'unavailable' })
+        else {
+          setState({ status: 'loading' })
+          Promise.resolve().then(() => settings.describe()).then(result => {
+            if (!live()) return
+            const view = result?.ok && suiteSettingsView(result.value?.namespaces?.find(item => item.ns === ns))
+            setState(view ? { status: 'ready', view, writable: result.value.writable === true,
+              connectionGeneration: generationAtRender } : { status: 'unavailable' })
+          }).catch(() => { if (live()) setState({ status: 'unavailable' }) })
+        }
+        return () => { epoch.current++ }
+      }, [settings, ns, mayRead, reload, generationAtRender])
+
+      const currentView = state.connectionGeneration === generationAtRender
+      const writable = mayRead && mayWrite && currentView && state.writable === true &&
+        ['ready', 'saved', 'failed'].includes(state.status)
+      async function save(record) {
+        if (!writable || busy.current || connection.getSnapshot() !== generationAtRender ||
+            !access.current.mayRead || !access.current.mayWrite) return false
+        const generation = epoch.current
+        busy.current = true
+        setState({ ...state, status: 'saving' })
+        try {
+          const result = await settings.replace(ns, { record }, state.view.revision)
+          if (generation !== epoch.current || connection.getSnapshot() !== generationAtRender || !access.current.mayRead) return false
+          const view = result?.ok && suiteSettingsView(result.value)
+          if (view && view.ns === ns) {
+            setState({ ...state, status: 'saved', view })
+            return true
+          }
+          setState({ ...state, status: result?.error?.code === 'settings/conflict' ? 'conflict' : 'failed' })
+        } catch {
+          if (generation === epoch.current && connection.getSnapshot() === generationAtRender && access.current.mayRead) {
+            setState({ ...state, status: 'failed' })
+          }
+        } finally { if (generation === epoch.current) busy.current = false }
+        return false
+      }
+      const source = mayRead && currentView ? state.view : undefined
+      return { record: source?.value.record, source, writable,
+        status: mayRead && state.view && !currentView ? 'loading' : state.status, save,
+        reload: () => { if (!busy.current) setReload(value => value + 1) } }
+    }
+
+    function suiteConnection(ctx) {
+      let generation = 0
+      const listeners = new Set()
+      const invalidate = () => { generation++; for (const notify of listeners) notify() }
+      ctx.on('connection/reset', invalidate)
+      ctx.effect(() => ctx.remote.$on('settings/document-updated', invalidate))
+      return { getSnapshot: () => generation,
+        subscribe: notify => { listeners.add(notify); return () => listeners.delete(notify) } }
+    }
+
+    function SuiteRecordStatus({ settings }) {
+      const labels = {
+        loading: 'Loading settings…', unavailable: 'Settings unavailable.',
+        saving: 'Saving…', saved: 'Saved.', failed: 'Save failed.',
+        conflict: 'Settings changed in another window. Reload before saving again.',
+      }
+      const label = labels[settings.status]
+      return label ? h('div', { role: 'status', style: lifecycleMuted }, label, ' ',
+        ['conflict', 'unavailable'].includes(settings.status) ? h(Button, { size: 'sm',
+          onClick: settings.reload }, 'Reload settings') : null) : null
+    }
+
+    const lifecycleDurations = ['365', '180', '90', '30', '7']
+    const lifecycleMuted = { color: 'var(--dsw-alias-label-secondary, inherit)', fontSize: 12, lineHeight: 1.45 }
+    const lifecycleRule = '1px solid var(--dsw-alias-border-l3, CanvasText)'
+    const lifecycleLabel = { display: 'grid', gap: 6, fontSize: 13, fontWeight: 500, minWidth: 0 }
+    const lifecycleSelect = {
+      display: 'block', width: '100%', minWidth: 0, height: 32, paddingInline: 8,
+      borderRadius: 8, border: lifecycleRule, color: 'inherit', font: 'inherit',
+      background: 'var(--dsw-alias-settings-card-fill, Canvas)',
+    }
+    const lifecycleActions = { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }
+
+    function LifecycleGroup({ title, children }) {
+      return h('section', { style: { display: 'grid', gap: 10, minWidth: 0, paddingBlockStart: 14,
+        borderBlockStart: lifecycleRule } },
+      h('h2', { style: { margin: 0, fontSize: 14, fontWeight: 600 } }, title), children)
+    }
+
+    function RetentionField({ label, value, inherit, disabled, onChange }) {
+      return h('label', { style: lifecycleLabel }, label,
+        h('select', { style: lifecycleSelect, value, disabled, onChange: event => onChange(event.target.value) },
+          inherit ? h('option', { value: 'inherit' }, 'Use global policy') : null,
+          h('option', { value: 'forever' }, 'Keep forever'),
+          ...lifecycleDurations.map(days => h('option', { key: days, value: days }, `${days} days`))))
+    }
+
+    function WorkspaceLifecycle({ services, useRemoteAccess }) {
+      const settings = useSuiteRecord(services.settings, 'conversation-lifecycle', useRemoteAccess, services.connection)
+      const workspace = suiteWatch(services.workspaces)
+      const sessions = suiteWatch(services.sessions)
+      const [scope, setScope] = React.useState('')
+      const [proposal, setChange] = React.useState(null)
+      const [previewAt, setPreviewAt] = React.useState(null)
+      const record = settings.record
+      const ready = workspace?.phase === 'ready' && sessions?.phase === 'ready'
+      const workspaces = ready ? workspace.items : []
+      const chosen = workspaces.find(item => item.workspaceId === scope)
+      const change = proposal && proposal.source === settings.source &&
+        (!proposal.workspaceId || chosen?.workspaceId === proposal.workspaceId) ? proposal : null
+      React.useEffect(() => {
+        if (proposal && !change) { setChange(null); setPreviewAt(null) }
+      }, [proposal, change])
+      const override = record?.overrides?.find(item => item.workspace === chosen?.workspaceId)?.retention ?? 'inherit'
+      const memberships = new Map()
+      for (const item of workspaces) for (const id of item.sessionIds ?? []) {
+        if (memberships.has(id)) memberships.set(id, null)
+        else memberships.set(id, item.workspaceId)
+      }
+      const archived = new Set(workspace?.archivedSessionIds ?? [])
+      const protectedIds = new Set(record?.protectedIds ?? [])
+      const rows = []
+      let unknown = 0
+      const selectedIds = chosen ? new Set(chosen.sessionIds ?? []) : null
+      for (const [id, member] of memberships) {
+        if (selectedIds && !selectedIds.has(id)) continue
+        if (member === null) { unknown++; continue }
+        const row = sessions.byId?.[id]
+        if (!row) { unknown++; continue }
+        const projection = sessions.projectionsBySession?.[id]?.values
+        if (projection?.agentPreset === 'abinadwan-direct-chat' || row.agentPreset === 'abinadwan-direct-chat') continue
+        const isActive = row.running !== false || row.agentAvailable === true ||
+          Object.values(row.retainedBy ?? {}).some(count => count > 0)
+        const examined = change?.next ?? record
+        const days = examined?.overrides?.find(item => item.workspace === member)?.retention ?? examined?.retention
+        // The installed Session Controller reports max(createdAt, lastPromptAt).
+        // Count only known prompt-derived dates, never an unstarted Session's creation date.
+        const summaryPrompt = Number.isFinite(row.createdAt) && row.updatedAt > row.createdAt ? row.updatedAt : undefined
+        const lastPrompt = projection?.sessionListMetadata?.lastPromptAt ?? summaryPrompt
+        const isProtected = protectedIds.has(id)
+        const candidate = previewAt !== null && !isActive && !isProtected && lifecycleDurations.includes(days) &&
+          Number.isFinite(lastPrompt) && lastPrompt > 0 && lastPrompt <= previewAt - Number(days) * 86400000
+        rows.push({ id, row, isActive, isProtected, candidate })
+      }
+      const update = next => {
+        setChange(null)
+        setPreviewAt(null)
+        void settings.save(next)
+      }
+      function propose(value, workspaceId) {
+        if (!record) return
+        const next = workspaceId ? { ...record, overrides: [...record.overrides.filter(row => row.workspace !== workspaceId),
+          ...(value === 'inherit' ? [] : [{ workspace: workspaceId, retention: value }])] } : { ...record, retention: value }
+        setChange({ value, workspaceId, next, source: settings.source })
+        setPreviewAt(Date.now())
+      }
+
+      const candidates = rows.filter(row => row.candidate)
+      const stats = [
+        ['Known conversations', ready ? rows.length : 'Unavailable'],
+        ['Archived', ready ? rows.filter(row => archived.has(row.id)).length : 'Unavailable'],
+        ['Storage usage', 'Unavailable'],
+      ]
+      return h('section', { lang: 'en', dir: 'ltr', style: { padding: '8px 16px 20px', display: 'grid', gap: 16, minWidth: 0 } },
+        h('header', null, h('h1', { style: { margin: '0 0 4px', fontSize: 18, lineHeight: 1.3 } }, 'Conversation Lifecycle'),
+          h('p', { style: { ...lifecycleMuted, margin: 0 } }, 'Part of the ABINADWAN Plugins Suite.')),
+        h(SuiteRecordStatus, { settings }),
+        h(LifecycleGroup, { title: 'Overview' },
+          h('label', { style: lifecycleLabel }, 'Workspace',
+            h('select', { style: lifecycleSelect, value: chosen ? scope : '', disabled: !ready, onChange: event => {
+              setScope(event.target.value)
+              setChange(null)
+              setPreviewAt(null)
+            } }, h('option', { value: '' }, 'All Workspaces'),
+            ...workspaces.map(item => h('option', { value: item.workspaceId, key: item.workspaceId, dir: 'auto' }, item.title)))),
+          h('dl', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(112px, 1fr))', gap: 8, margin: 0 } },
+            ...stats.map(([label, value]) => h('div', { key: label, style: { border: lifecycleRule, borderRadius: 8,
+              padding: '8px 10px', background: 'var(--dsw-alias-settings-card-fill, Canvas)' } },
+            h('dt', { style: lifecycleMuted }, label),
+            h('dd', { style: { margin: '3px 0 0', fontSize: 14, fontWeight: 600 } }, value)))),
+          unknown > 0 ? h('small', { style: lifecycleMuted }, `${unknown} unavailable or ambiguous`) : null),
+        h(LifecycleGroup, { title: 'Retention Policy' },
+          h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 } },
+            h(RetentionField, { label: 'Global retention', value: change && !change.workspaceId ? change.value : record?.retention ?? '',
+              disabled: !settings.writable, onChange: value => propose(value) }),
+            chosen ? h(RetentionField, { label: 'Workspace override', inherit: true,
+              value: change?.workspaceId === chosen.workspaceId ? change.value : override,
+              disabled: !settings.writable, onChange: value => propose(value, chosen.workspaceId) }) : null),
+          !chosen ? h('small', { style: lifecycleMuted }, 'Select a Workspace to set its own retention policy.') : null,
+          change ? h('div', { style: lifecycleActions },
+            h('span', { style: lifecycleMuted }, 'Save this policy for previews?'),
+            h(Button, { size: 'sm', variant: 'primary', disabled: !settings.writable, onClick: () => update(change.next) },
+              'Confirm and save'),
+            h(Button, { size: 'sm', onClick: () => { setChange(null); setPreviewAt(null) } }, 'Cancel')) : null),
+        h(LifecycleGroup, { title: 'Protected Conversations' },
+          ready && rows.length ? h('ul', { style: { listStyle: 'none', padding: 0, margin: 0,
+            maxBlockSize: 185, overflow: 'auto', overflowWrap: 'anywhere' } },
+          ...rows.map(({ id, row, isProtected }) => h('li', { key: id, style: { ...lifecycleActions, minHeight: 32 } },
+            h(Checkbox, { label: h(React.Fragment, null, 'Protect ', h('bdi', null, row.displayTitle || id)),
+              checked: isProtected, disabled: !settings.writable,
+              onChange: checked => update({ ...record, protectedIds: checked ? [...protectedIds, id] : [...protectedIds].filter(value => value !== id) }) }),
+            archived.has(id) ? h('small', { style: lifecycleMuted }, 'Archived') : null))) :
+            h('p', { style: { ...lifecycleMuted, margin: 0 } }, ready ? 'No known conversations in this view.' : 'Workspace inventory is unavailable.')),
+        h(LifecycleGroup, { title: 'Cleanup Management' },
+          h('strong', { style: { fontSize: 13 } }, 'Preview only'),
+          h('p', { style: { ...lifecycleMuted, margin: 0 } },
+            'Estimates use known last prompt dates. Active, protected, Direct Chat, and unverified conversations are excluded.'),
+          h('p', { style: { ...lifecycleMuted, margin: 0 } },
+            'Permanent deletion and automatic cleanup are unavailable.'),
+          h('div', { style: lifecycleActions },
+            h(Button, { size: 'sm', variant: 'outline', disabled: !record || !ready, onClick: () => setPreviewAt(Date.now()) }, 'Preview cleanup'),
+            previewAt !== null ? h('span', { role: 'status', style: { fontSize: 13 } },
+              `${candidates.length} estimated candidate${candidates.length === 1 ? '' : 's'}`) : null),
+          candidates.length ? h('ul', { style: { margin: 0, paddingInlineStart: 20, fontSize: 13 } },
+            ...candidates.map(({ id, row }) => h('li', { key: id }, h('bdi', null, row.displayTitle || id)))) : null))
+    }
+
+    function ReasoningComposer({ directory, sessionId, settingsService, connection, useRemoteAccess, useAccess }) {
+      const settings = useSuiteRecord(settingsService, 'adaptive-reasoning', useRemoteAccess, connection)
+      const directoryState = suiteWatch(directory.store)
+      const canSelect = useAccess?.('session/selectModel') === true
+      const [open, setOpen] = React.useState(false)
+      const [working, setWorking] = React.useState(false)
+      const [notice, setNotice] = React.useState(null)
+      const busy = React.useRef(false)
+      const noticeId = React.useRef(0)
+      const selection = directoryState.current
+      React.useEffect(() => { void directory.load().catch(() => {}) }, [directory])
+
+      function capability(snapshot) {
+        const current = snapshot.current
+        if (!current || snapshot.routable !== true) return null
+        return snapshot.groups.find(group => group.id === current.provider)?.models
+          .find(model => model.id === current.model)?.reasoning
+      }
+
+      const reasoning = capability(directoryState)
+      if (!canSelect || !selection || !reasoning?.efforts?.length) return null
+      const effort = selection.reasoningEffort ?? reasoning.defaultEffort
+      const preferences = settings.record?.preferences ?? []
+      const isCurrentRoute = row => row.provider === selection.provider && row.model === selection.model
+      const saved = preferences.find(isCurrentRoute)
+      const level = id => reasoning.efforts.find(row => row.id === id)
+      const currentLabel = level(effort)?.name || effort || 'Provider default'
+      const savedLabel = saved
+        ? `Saved preference: ${level(saved.effort)?.name || saved.effort}${level(saved.effort) ? '' : ' (unavailable)'}`
+        : settings.record ? 'No saved preference' : 'Saved preferences unavailable'
+
+      function show(text, success = false) {
+        setNotice({ id: ++noticeId.current, text, success })
+      }
+
+      async function changeEffort(current, value, manual) {
+        const expected = { provider: current.provider, model: current.model, reasoningEffort: value }
+        const endpoint = new URL('api/abinadwan-reasoning/effort', document.baseURI)
+        if (endpoint.origin !== document.location.origin) throw new Error('Cross-origin reasoning endpoint')
+        const result = await fetch(endpoint, { method: 'POST', credentials: 'same-origin', redirect: 'error',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ sessionId, ...expected, ...(manual ? { mode: 'manual' } : {}) }) })
+        const response = await result.json()
+        if (result.status === 409 && response?.error === 'session-unavailable') {
+          show(manual ? 'Start or resume this chat before changing its effort.' :
+            'Start or resume this chat before applying the saved effort.')
+          return
+        }
+        if (result.status === 409 && response?.error === 'preference-changed') settings.reload()
+        const confirmed = response?.selected
+        if (!result.ok || confirmed?.provider !== expected.provider || confirmed?.model !== expected.model ||
+            confirmed?.reasoningEffort !== value) throw new Error('Effort selection was not accepted')
+        show(manual ? 'Effort changed.' : 'Effort applied.', true)
+      }
+
+      async function selectItem(id) {
+        if (busy.current) return
+        setOpen(false)
+        if (id === 'reload') { settings.reload(); return }
+        const latest = directory.store.getSnapshot()
+        const current = latest.current
+        const available = capability(latest)
+        if (!current || !isCurrentRoute(current) || !available || latest.pending != null) return
+        const currentEffort = current.reasoningEffort ?? available.defaultEffort
+        busy.current = true
+        setWorking(true)
+        try {
+          if (id === 'save' || id === 'remove') {
+            if (!settings.writable || (id === 'remove' && !saved) ||
+                (id === 'save' && !available.efforts.some(option => option.id === currentEffort))) return
+            const remaining = preferences.filter(row => !isCurrentRoute(row))
+            const next = id === 'save' ? [...remaining, { provider: current.provider,
+              model: current.model, effort: currentEffort }] : remaining
+            const savedOk = await settings.save({ preferences: next })
+            show(savedOk ? (id === 'save' ? 'Preference saved.' : 'Preference removed.') :
+              'Preference could not be updated.', savedOk)
+          } else {
+            const manual = id !== 'apply'
+            const value = manual ? available.efforts.find(option => `effort:${option.id}` === id)?.id : saved?.effort
+            if (value && value !== currentEffort && available.efforts.some(option => option.id === value)) {
+              await changeEffort(current, value, manual)
+            }
+          }
+        } catch {
+          show('Harness could not change the effort.')
+        } finally {
+          busy.current = false
+          setWorking(false)
+        }
+      }
+
+      const items = [
+        { type: 'label', id: 'session-label', text: 'Current session' },
+        ...reasoning.efforts.map(option => ({ id: `effort:${option.id}`, label: option.name || option.id })),
+        { type: 'separator', id: 'preference-divider' },
+        { type: 'label', id: 'preference-label', text: savedLabel },
+        { id: 'save', label: 'Save current effort', disabled: !settings.writable || !level(effort) || saved?.effort === effort },
+        ...(saved ? [
+          { id: 'apply', label: 'Apply saved effort', disabled: !level(saved.effort) || saved.effort === effort },
+          { id: 'remove', label: 'Remove saved preference', disabled: !settings.writable },
+        ] : []),
+        ...(['conflict', 'unavailable'].includes(settings.status)
+          ? [{ id: 'reload', label: 'Reload preferences' }] : []),
+      ]
+      const trigger = h(Button, { variant: 'toolbar', size: 'sm', icon: suiteGlyph(reasoningIcon, 14),
+        lang: 'en', dir: 'ltr', title: 'Adaptive Reasoning', 'aria-label': `Adaptive Reasoning: ${currentLabel}`,
+        'aria-haspopup': 'menu', 'aria-expanded': open, disabled: working || directoryState.pending != null,
+        onClick: () => setOpen(value => !value) }, currentLabel)
+      return h('span', { lang: 'en', dir: 'ltr' },
+        h(Menu, { open, anchor: trigger, items, selectedId: level(effort) ? `effort:${effort}` : undefined,
+          portal: true, side: 'top', align: 'end', compact: true, autoFocus: true,
+          onClose: () => setOpen(false), onSelect: id => void selectItem(id) }),
+        notice ? h(Toast, { key: notice.id, text: notice.text, tone: notice.success ? 'success' : undefined,
+          holdMs: 1800, onDone: () => setNotice(null) }) : null)
+    }
+
+    const reasoningComposerPlugin = {
+      inject: ['slots', 'remote', 'remote.settings', 'sessions', 'modelDirectories'],
+      apply(ctx) {
+        const settingsService = ctx.remote.settings
+        const connection = suiteConnection(ctx)
+        const modelDirectories = ctx.modelDirectories
+        const sessions = ctx.sessions
+        ctx.slots.inject('conversation.input.right', () => ctx.slots.register({ name: 'conversation.input.right',
+          id: 'abinadwan-reasoning-preference', order: 25, inject: sessionId => ({
+            directory: sessionId && !sessions.subagentAddress(sessionId) ? modelDirectories.directoryFor(sessionId) : null,
+            sessionId,
+          }) }, props => props.directory ? h(ReasoningComposer, { ...props, settingsService, connection }) : null))
+      },
+    }
+
+    const lifecycleSettingsPlugin = {
+      inject: ['slots', 'remote', 'remote.settings', 'sessions', 'workspaces'],
+      apply(ctx) {
+        const services = { settings: ctx.remote.settings, sessions: ctx.sessions.list, workspaces: ctx.workspaces.list,
+          connection: suiteConnection(ctx) }
+        const id = 'abinadwan-conversation-lifecycle'
+        ctx.slots.inject('settings.section', () => ctx.slots.register({ name: 'settings.section',
+          id, label: 'Conversation Lifecycle', order: 45 }, props => h(WorkspaceLifecycle, { ...props, services })))
+        ctx.slots.inject('settings.section.icon', () => ctx.slots.register({ name: 'settings.section.icon', id },
+          ({ size }) => suiteGlyph(lifecycleIcon, size)))
+      },
+    }
+
     return {
       // `remote.pluginManager` is its own Cordis service (one per Remote
       // namespace). It must be injected here: Cordis 4 throws "cannot get
@@ -1515,6 +1897,8 @@ window.__ModuleLoader__.load({
           const components = [
             [TYPE + '/environment-context', environmentPlugin],
             [TYPE + '/personal-profile', profilePlugin],
+            [TYPE + '/conversation-lifecycle', lifecycleSettingsPlugin],
+            [TYPE + '/adaptive-reasoning', reasoningComposerPlugin],
           ]
           async function refresh() {
             const request = ++generation

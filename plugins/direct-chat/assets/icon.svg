@@ -1,0 +1,10 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" role="img" aria-labelledby="title">
+  <title id="title">Direct Chat</title>
+  <rect x="1" y="1" width="22" height="22" rx="6" fill="#2563EB"/>
+  <rect x="2.5" y="2.5" width="19" height="19" rx="4.5" fill="#173A8A"/>
+  <path d="M9 2.5h6" fill="none" stroke="#93C5FD" stroke-width="1" stroke-linecap="round"/>
+  <g id="glyph" fill="none" stroke="#F8FAFC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7.5 6.5h9a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-6l-5 3v-10a2 2 0 0 1 2-2Z"/>
+    <path d="M9 10h6m-6 2.75h3.5"/>
+  </g>
+</svg>
