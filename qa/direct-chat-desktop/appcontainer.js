@@ -240,7 +240,7 @@ export function launch(api, { exe, args, cwd, env, appContainerSid, packageSid, 
     }
     api.ResumeThread(created.hThread)
     api.CloseHandle(created.hThread)
-    return { job, desktop: desktop.handle, process: created.hProcess, pid: created.dwProcessId }
+    return { job, desktop: desktop.handle, desktopName: desktop.name, process: created.hProcess, pid: created.dwProcessId }
   } finally {
     api.DeleteProcThreadAttributeList(list)
   }

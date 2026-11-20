@@ -12,7 +12,7 @@ try {
   for (const path of config.write) grant(path, profile.sid, 'M')
   const child = launch(api, { ...config, appContainerSid: profile.pointer, packageSid: profile.sid })
   api.FreeSid(profile.pointer)
-  process.stderr.write(`[Direct Chat confinement] pid=${child.pid} sid=${profile.sid} lpac=${config.lpac}\n`)
+  process.stderr.write(`[Direct Chat confinement] pid=${child.pid} sid=${profile.sid} lpac=${config.lpac} desktop=${child.desktopName}\n`)
   const code = await wait(api, child.process)
   api.CloseHandle(child.process)
   api.CloseHandle(child.job)
