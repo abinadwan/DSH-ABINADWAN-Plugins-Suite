@@ -18,7 +18,7 @@ const routeKey = selection => `${selection.provider}\u0000${selection.model}`
  * Precedence for a root message: its one-time override; the session's own
  * effort in Manual mode or the local classification in Adaptive mode; the
  * route's saved preference for a session still on the native default; and
- * last the native default. An override or Adaptive effort lasts one message:
+ * last the native default. Every effort chosen here lasts one message:
  * the session's effort returns at the next user message or idle, unless
  * someone changed the selection since.
  */
@@ -140,11 +140,13 @@ export class MessageEfforts {
       }
     }
     if (!decision && this.record().mode === 'adaptive') decision = this.adaptive(agent, message, saved, batch)
+    if (!decision && saved.reasoningEffort === undefined) {
+      // A session still on the native default takes its route's saved preference for this message.
+      const preferred = this.preferred(saved)
+      if (preferred) decision = { source: 'saved', effort: preferred }
+    }
     if (!decision) {
-      // A session still on the native default takes its route's saved preference, as the Apply action would.
-      const preferred = saved.reasoningEffort === undefined ? this.preferred(saved) : undefined
-      if (preferred) agent.model.select({ ...saved, reasoningEffort: preferred })
-      this.stats.message(preferred ? 'saved' : this.sourceOf(saved))
+      this.stats.message(this.sourceOf(saved))
       return
     }
     this.stats.message(decision.source)
@@ -194,7 +196,8 @@ export class MessageEfforts {
   /** Apply the configured policy to an in-process subagent's own selection; the parent is untouched. */
   subagentClaimed(agent, message) {
     const kind = message.source?.kind
-    if (kind !== 'parent' && kind !== 'user') return
+    // A child's task arrives as `user`; later messages from its parent arrive as `agent-message`.
+    if (kind !== 'user' && kind !== 'agent-message') return
     const { subagents: policy, subagentEffort } = this.record()
     if (policy === 'inherit' || policy === undefined) return
     const current = agent.model.current()

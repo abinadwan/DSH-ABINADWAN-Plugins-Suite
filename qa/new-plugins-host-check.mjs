@@ -144,8 +144,10 @@ test('native selections reach the offline adapter and stay local to each session
     a.model.select({ ...route, reasoningEffort: 'deliberate-v2' })
     assert.equal(a.session.seq, selectionSequence, 'reselecting the same tuple leaves no new user-intent record')
     const selectedMs = await send(a)
+    // Session b is on the native default, so its route's saved preference serves this message only.
     const defaultMs = await send(b)
-    assert.deepEqual(adapter.requests.map(request => request.reasoningEffort), ['deliberate-v2', 'fast-v2'])
+    assert.deepEqual(adapter.requests.map(request => request.reasoningEffort), ['deliberate-v2', 'deliberate-v2'])
+    assert.equal(b.model.current().reasoningEffort, undefined)
     assert.equal(a.session.requestHeader().config.reasoningEffort, 'deliberate-v2')
     await assert.rejects(ctx.llm.resolveCallConfig({ ...route, reasoningEffort: 'guessed-high' }),
       { code: 'UNSUPPORTED_REASONING_EFFORT' })
@@ -167,7 +169,7 @@ test('native selections reach the offline adapter and stay local to each session
     assert.equal((await transport.fetch(request(), connection.browserPeer)).status, 404)
     await ctx.sessions.flush(a.session)
     await ctx.sessions.flush(b.session)
-    t.diagnostic(`Offline smoke timings in ms: explicit ${selectedMs}, adapter default ${defaultMs}. No provider timing inference.`)
+    t.diagnostic(`Offline smoke timings in ms: explicit ${selectedMs}, saved preference ${defaultMs}. No provider timing inference.`)
   } finally {
     await ctx.fiber.dispose()
   }
