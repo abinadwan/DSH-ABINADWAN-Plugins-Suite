@@ -3,7 +3,7 @@ import test from 'node:test'
 import { TIERS, classify, effortForTier, readContent } from '../plugins/adaptive-reasoning/classify.js'
 import { MessageEfforts } from '../plugins/adaptive-reasoning/efforts.js'
 import { ReasoningStats } from '../plugins/adaptive-reasoning/stats.js'
-import { run as benchmark } from '../qa/adaptive-reasoning-benchmark.mjs'
+import { run as benchmark } from '../test-support/reasoning-benchmark.js'
 
 const DEEPSEEK = ['off', 'low', 'high', 'max'].map(id => ({ id }))
 const route = { provider: 'deepseek', model: 'deepseek-v4' }
