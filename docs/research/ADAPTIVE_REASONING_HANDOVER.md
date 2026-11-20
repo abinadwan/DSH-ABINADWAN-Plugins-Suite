@@ -1,5 +1,7 @@
 # Adaptive Reasoning: Completion Handover
 
+> This report records the original Adaptive Reasoning branch. The unified baseline gates temporary effort and unsupported subagent policies on rc.3 and rc.5. [Current development handover](../../HANDOVER.md)
+
 Branch `feature/adaptive-reasoning-completion`, rebased on local `integration/suite-v0.8` at `656eedc` (it contains `687a936`). Local commits only. Nothing is pushed, merged or released.
 
 ## Status

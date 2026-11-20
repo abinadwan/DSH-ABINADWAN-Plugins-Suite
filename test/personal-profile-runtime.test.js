@@ -25,11 +25,8 @@ test('response renderer matches entire browser catalog and renderer',()=>{
   const helper=readFileSync(new URL('../plugins/personal-profile/preferences.js',import.meta.url),'utf8').replace(/\r\n/g,'\n')
   const browser=client.slice(client.indexOf('    const PROFILE_STYLES'),client.indexOf('    const PROFILE_NS'))
     .split('\n').map(l=>l.startsWith('    ')?l.slice(4):l).join('\n')
-  assert.equal(browser,helper.slice(helper.indexOf('const PROFILE_STYLES'),helper.indexOf('const keys=')).replaceAll('export function ','function ').trimEnd()+'\n')
+  assert.equal(browser,helper.slice(helper.indexOf('const PROFILE_STYLES'),helper.indexOf('export const RECORD_VERSION')).replaceAll('export function ','function ').trimEnd()+'\n')
   const preview=runInNewContext(browser+'\npreviewProfilePreferences')
-  const disclosure=runInNewContext(browser+'\npreviewProfileDisclosure')
-  for(const record of [disclosureRecord(),{...disclosureRecord(),allowCloud:false},{...disclosureRecord(),policies:{preferredName:'ask_first',nationality:'allow',gender:'private'}}])
-    assert.equal(disclosure(record),profileDisclosure(record))
   const r=profile.emptyRecord()
   for(const style of ['default','professional','friendly','candid','creative','efficient','critical','technical']){
     r.preferences.style=style
@@ -98,24 +95,18 @@ test('Cordis mount/update/dispose reads only volatile persisted config; optional
     assert.equal(section.text({}),'')
     const next=profile.emptyRecord();next.preferences.responseLanguage='ja'
     await fiber.update({record:next})
-    assert.equal(ctx.systemPrompt.sections.size,2)
-    const shared=ctx.systemPrompt.sections.get(DISCLOSURE_SECTION_NAME)
-    assert.equal(shared.interpolate,false)
-    assert.equal(shared.text(selection()),'','nothing is shared by default')
-    await fiber.update({record:{...disclosureRecord(),preferences:next.preferences}})
-    assert.match(ctx.systemPrompt.sections.get(DISCLOSURE_SECTION_NAME).text(selection()),/Preferred name: SYNTHETIC_P8_NAME/)
-    assert.equal(ctx.systemPrompt.sections.get(DISCLOSURE_SECTION_NAME).text({}),'','ineligible scopes get nothing')
+    assert.equal(ctx.systemPrompt.sections.size,1)
     assert.match(ctx.systemPrompt.sections.get(SECTION_NAME).text(selection()),/Japanese/)
     assert.doesNotMatch(ctx.systemPrompt.sections.get(SECTION_NAME).text(selection()),/friendly/)
     await fiber.dispose()
     assert.equal(ctx.systemPrompt.sections.size,0)
     await ctx.plugin(profile,{record:r}).await()
-    assert.equal(ctx.systemPrompt.sections.size,2)
+    assert.equal(ctx.systemPrompt.sections.size,1)
   }finally{await ctx.fiber.dispose()}
 })
 
 // ---------- Phase 8: shared details (synthetic values only) ----------
-test('P8 admission: a field is shared only when it is Allow and both switches are On (all 108 combinations)',()=>{
+test('P8 synthetic policy: a field is shared only when it is Allow and both switches are On (all 108 combinations)',()=>{
   const labels=['Preferred name: SYNTHETIC_P8_NAME','Nationality: SYNTHETIC_P8_NATIONALITY','Gender: female']
   let cases=0
   for(const master of [false,true])for(const cloud of [false,true])
@@ -129,7 +120,7 @@ test('P8 admission: a field is shared only when it is Allow and both switches ar
     }
   assert.equal(cases,108)
 })
-test('P8 admission: empty or unspecified values are omitted; values are single-line; malformed records share nothing',()=>{
+test('P8 synthetic policy: empty or unspecified values are omitted; values are single-line; malformed records share nothing',()=>{
   const r=disclosureRecord()
   r.information={preferredName:'  A\nB C‮D\tE  ',nationality:'',gender:'unspecified'}
   assert.equal(profileDisclosure(r),DISCLOSURE_HEADER+'\nPreferred name: A B C D E','control, line and bidi characters cannot add lines')
@@ -247,4 +238,25 @@ test('7D: worst-case section stays within the measured size budget',()=>{
   const s=responsePreferences(r)
   assert.equal(s.length,1330)
   assert.equal(s.split('\n').length,17)
+})
+
+
+test('P8 integration: the default Host has no details contribution for either unified record version', async () => {
+  const ctx = new Context()
+  try {
+    await ctx.plugin(Registry).await()
+    const stored = disclosureRecord()
+    const fiber = ctx.plugin(profile, { record: stored })
+    await fiber.await()
+    for (const version of [2, 3]) {
+      await fiber.update({ record: { ...stored, version } })
+      assert.equal(ctx.systemPrompt.sections.has(DISCLOSURE_SECTION_NAME), false)
+      assert.doesNotMatch(
+        [...ctx.systemPrompt.sections.values()].map(section => section.text(selection())).join('\n'),
+        /SYNTHETIC_P8|female/,
+      )
+    }
+  } finally {
+    await ctx.fiber.dispose()
+  }
 })

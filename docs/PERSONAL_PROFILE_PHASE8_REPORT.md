@@ -1,5 +1,7 @@
 # Personal Profile Phase 8 — verification report for integration
 
+> This report records the original Phase 8 branch. The unified baseline disables structured disclosure pending verified destination admission. [Current development handover](../HANDOVER.md)
+
 Date: 2026-11-20. Branch `feature/phase8-profile-disclosure-v08` in `C:\Users\Admin\Desktop\DSH-Suite-Phase8`, based on `687a936`. Local only: no push, PR, merge or release. Synthetic personal values only; the owner's real backup file was never opened, copied or modified. Design and gates: [Phase 8 plan](PERSONAL_PROFILE_PHASE8_PLAN.md).
 
 ## 1. What changed

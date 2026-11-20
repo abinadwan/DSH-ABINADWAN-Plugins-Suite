@@ -64,16 +64,16 @@ export function classify(text, context = {}) {
 }
 
 /**
- * Map a tier onto the model's own declared efforts. The adapter's declared
- * order is read as lowest to highest effort.
+ * Map a tier onto a validated, lowest-to-highest effort list. The adapter's
+ * advertised array alone does not establish this ordering.
  * @param {number} tier - index into {@link TIERS}.
- * @param {readonly string[]} efforts - the route's declared effort ids.
+ * @param {readonly string[]} orderedEfforts - validated effort ids in ascending order.
  * @returns {string | undefined} a declared effort id, or undefined when the route declares none.
  */
-export function effortForTier(tier, efforts) {
-  if (!Array.isArray(efforts) || efforts.length === 0) return undefined
-  const index = Math.round(tier * (efforts.length - 1) / ADVANCED)
-  return efforts[Math.min(efforts.length - 1, Math.max(0, index))]
+export function effortForTier(tier, orderedEfforts) {
+  if (!Array.isArray(orderedEfforts) || orderedEfforts.length === 0) return undefined
+  const index = Math.round(tier * (orderedEfforts.length - 1) / ADVANCED)
+  return orderedEfforts[Math.min(orderedEfforts.length - 1, Math.max(0, index))]
 }
 
 /**

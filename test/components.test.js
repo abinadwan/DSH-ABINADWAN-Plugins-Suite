@@ -56,7 +56,7 @@ test('Personal Profile Host attaches settings and prompt services independently'
   const ctx={fiber:{},inject(keys,callback){calls.push(keys);callback({effect(fn){return fn()},settings:{configure(options,owner){calls.push([options,owner])}},systemPrompt:{section(options){calls.push(options.name)}}})},
     on(event,listener){calls.push(event);assert.equal(typeof listener,'function')}}
   profile.apply(ctx)
-  // Phase 8: a second section (shared details) and the llm/stream send-time guard.
+  // Keep response preferences and the send-time guard while structured admission is disabled.
   assert.deepEqual(calls,[['settings'],[{auto:false},ctx.fiber],['systemPrompt'],'abinadwan:personal-profile-preferences',
-    'abinadwan:personal-profile-information','llm/stream'])
+    'llm/stream'])
 })

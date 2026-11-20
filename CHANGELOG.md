@@ -2,12 +2,12 @@
 
 All notable changes are documented here.
 
-## [Unreleased] — Personal Profile Phase 8 (local, not released)
+## [Unreleased] — Unified development baseline
 
-- **Structured sharing.** Preferred name, nationality and gender set to Allow are added to new requests only while both sharing switches are On. Every provider is treated as cloud (Harness cannot verify locality). Private and Ask First are never sent. The Access page previews exactly what is shared.
-- **Send-time refusal.** A request that still carries details the current settings would not share (retry, in-history replay, provider switch, edited value, restored or branched chat) is stopped with a non-retryable error before it reaches the provider; the user is told to start a new chat. Nothing already sent is deleted.
-- **Restore.** Replace All and Merge Custom Instructions is now the default; Replace All needs its own confirmation. A restore always leaves both sharing switches Off. Backups stay plain JSON, version 2, not encrypted.
-- Details and gates: [Phase 8 plan](docs/PERSONAL_PROFILE_PHASE8_PLAN.md), [verification report](docs/PERSONAL_PROFILE_PHASE8_REPORT.md).
+- Direct Chat verifies exclusive Windows root ownership and recovers interrupted deletion and migration. Failed ACL and AppContainer cleanup retains records for retry.
+- Personal Profile keeps structured sharing disabled and rejects identifiable replay while enabled. Upgrading from formerly inert sharing settings stays private. Plain JSON Review & Merge preserves omitted settings and each import starts a fresh review.
+- Adaptive Reasoning keeps manual effort and a single Host. Temporary effort and unsupported subagent policies stay unavailable on Harness rc.3 and rc.5.
+- See [development handover](HANDOVER.md) for the component matrix, verification and acceptance gates.
 
 ## [0.8.0-rc.1] — Candidate baseline, Windows functional review recorded (2026-11-18)
 

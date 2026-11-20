@@ -61,9 +61,10 @@ export function previewProfilePreferences(pref) {
   if(pref.sendCustom===true && pref.custom.trim()) lines.push(pref.custom)
   return lines.length ? ['Response preferences (follow the current request and higher-priority host/safety/tool requirements; custom guidance takes precedence over other style preferences where compatible).',...new Set(lines)].join('\n') : ''
 }
-// Phase 8: no provider route can be verified as local, so every destination is
-// treated as cloud. A field is shared only when it is Allow and BOTH switches are
-// On. Ask First has no native approval contract and is never shared.
+export const RECORD_VERSION=3
+
+// Phase 8 policy evaluation for synthetic cases. It does not establish a
+// verified provider destination and is not used to admit live requests.
 const PROFILE_DISCLOSURE_HEADER='Personal details the user chose to share (use them only when relevant to the request):'
 const PROFILE_DISCLOSURE_FIELDS=[['preferredName','Preferred name'],['nationality','Nationality'],['gender','Gender']]
 const profileDisclosureValue=value=>String(value).replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029\u202a-\u202e\u2066-\u2069]/g,' ').replace(/\s+/g,' ').trim()
@@ -81,7 +82,7 @@ export function previewProfileDisclosure(record) {
 const keys=(value,expected)=>value!==null&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).length===expected.length&&expected.every(k=>Object.hasOwn(value,k))
 export const SECTION_NAME='abinadwan:personal-profile-preferences'
 export function responsePreferences(record) {
-  if(!record||record.version!==2)return ''
+  if(!record||![2,RECORD_VERSION].includes(record.version))return ''
   const p=record.preferences
   const expected=['style','responseLanguage','traits','presets','custom']
   if(p && Object.hasOwn(p,'sendCustom'))expected.push('sendCustom')
@@ -94,9 +95,9 @@ export function responsePreferences(record) {
 }
 export const DISCLOSURE_SECTION_NAME='abinadwan:personal-profile-information'
 const FIELD_KEYS=PROFILE_DISCLOSURE_FIELDS.map(([key])=>key)
-/** Host admission for the shared-details block. Any malformed input shares nothing. */
+/** Evaluate the explicit field policies. An older record or malformed input yields no block. */
 export function profileDisclosure(record) {
-  if(!record||record.version!==2||typeof record.allowPersonalInformation!=='boolean'||typeof record.allowCloud!=='boolean')return ''
+  if(!record||record.version!==RECORD_VERSION||typeof record.allowPersonalInformation!=='boolean'||typeof record.allowCloud!=='boolean')return ''
   const {information:i,policies:p}=record
   if(!keys(i,FIELD_KEYS)||!keys(p,FIELD_KEYS)||
     !FIELD_KEYS.every(k=>['private','ask_first','allow'].includes(p[k]))||
@@ -128,9 +129,9 @@ export function disclosureBlocks(request) {
   return blocks
 }
 /**
- * Send-time check: true when a request carries a shared-details block that the
- * current settings would not produce now (revoked, narrowed or edited). Covers
- * retries that reuse a step prompt and earlier prompts replayed from history.
+ * Send-time check for earlier Profile blocks. The Host supplies no settings
+ * for admission, so any matching block carried by a retry or replay is refused.
+ * Synthetic policy fixtures can supply a record to compare the exact text.
  */
 export function staleDisclosure(request,record) {
   const blocks=disclosureBlocks(request)

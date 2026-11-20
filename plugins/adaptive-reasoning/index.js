@@ -1,6 +1,5 @@
 import Schema from '@deepseek-ai/schemastery'
-import { MessageEfforts } from './efforts.js'
-import { isSubagent, readObject, sameRoute } from './http.js'
+import { isSubagent, readObject, sameRoute, uuid } from './http.js'
 import { ReasoningStats } from './stats.js'
 
 export const name = 'abinadwan-adaptive-reasoning'
@@ -8,7 +7,7 @@ const identifier = Schema.string().min(1).max(256).required()
 export const Config = Schema.object({
   record: Schema.object({
     preferences: Schema.array(Schema.object({ provider: identifier, model: identifier, effort: identifier })).max(200).default([]),
-    // Adaptive is chosen explicitly by the user; Manual keeps the session's own effort.
+    // Keep legacy policy fields readable. This runtime only applies explicit session changes.
     mode: Schema.union(['manual', 'adaptive']).default('manual'),
     subagents: Schema.union(['inherit', 'default', 'adaptive', 'effort']).default('inherit'),
     subagentEffort: Schema.string().min(1).max(256),
@@ -24,12 +23,14 @@ export function apply(ctx, config) {
       path, methods: ['POST'], requestBody: 'streaming', fetch: handle,
     }))
     const stats = new ReasoningStats()
-    const turns = new MessageEfforts(child.agents, child.llm, record, stats)
+    const revisions = { active: true, adapters: 0, selections: new WeakMap() }
     route('/api/abinadwan-reasoning/effort',
-      request => applySessionEffort(request, child.agents, child.llm, () => record().preferences))
-    route('/api/abinadwan-reasoning/next', request => turns.bind(request))
-    route('/api/abinadwan-reasoning/next/status', request => turns.status(request))
-    route('/api/abinadwan-reasoning/next/withdraw', request => turns.withdraw(request))
+      request => applySessionEffort(request, child.agents, child.llm, () => record().preferences, revisions))
+    const identity = ['sessionId', 'requestId']
+    route('/api/abinadwan-reasoning/next',
+      request => unavailable(request, [...identity, 'provider', 'model', 'reasoningEffort']))
+    route('/api/abinadwan-reasoning/next/status', request => unavailable(request, identity))
+    route('/api/abinadwan-reasoning/next/withdraw', request => unavailable(request, identity))
     route('/api/abinadwan-reasoning/stats', async request => await readObject(request, [])
       ? Response.json(stats.snapshot()) : Response.json({ error: 'invalid-request' }, { status: 400 }))
     route('/api/abinadwan-reasoning/stats/reset', async request => {
@@ -37,21 +38,28 @@ export function apply(ctx, config) {
       stats.reset()
       return Response.json(stats.snapshot())
     })
-    child.on('agent/created', ({ agent }) => turns.created(agent))
-    child.on('agent/inbox/inserted', ({ agent, message }) => turns.inserted(agent, message))
-    child.on('agent/inbox/claimed', ({ agent, message, turn }) => turns.claimed(agent, message, turn))
-    child.on('agent/inbox/discarded', ({ agent, message }) => turns.discarded(agent, message))
-    child.on('agent/status', ({ agent, status }) => { if (status === 'idle') turns.restore(agent, 'finished') })
-    child.on('agent/disposed', ({ agent }) => turns.ended(agent))
-    child.on('agent/assistant-stream', ({ agent, frame }) => turns.stream(agent, frame))
-    child.on('session/event', (session, event) => turns.event(session, event))
-    child.effect(() => () => turns.dispose())
+    child.on('llm/adapters-updated', () => { revisions.adapters++ })
+    child.on('agent/assistant-stream', ({ agent, frame }) => stats.stream(agent.session, frame))
+    child.on('session/event', (session, event) => {
+      if (event.type === 'model/selection') {
+        revisions.selections.set(session, (revisions.selections.get(session) ?? 0) + 1)
+      }
+      stats.event(session, event)
+    })
+    child.effect(() => () => { revisions.active = false })
   })
 }
 
+// The rc.3 and rc.5 Agent loops only accept durable model selection. Reject
+// message-bound effort requests before storing any state or touching a session.
+async function unavailable(request, keys) {
+  const input = await readObject(request, keys)
+  if (!input || !uuid.test(input.requestId)) return Response.json({ error: 'invalid-request' }, { status: 400 })
+  return Response.json({ error: 'request-local-effort-unavailable' }, { status: 501 })
+}
 
 /** Apply to a resident root Agent without changing the native default for other sessions. */
-async function applySessionEffort(request, agents, llm, readPreferences) {
+async function applySessionEffort(request, agents, llm, readPreferences, revisions) {
   const input = await readObject(request, ['sessionId', 'provider', 'model', 'reasoningEffort'], { mode: 'manual' })
   if (!input) return Response.json({ error: 'invalid-selection' }, { status: 400 })
   const { sessionId, mode, ...selection } = input
@@ -59,11 +67,16 @@ async function applySessionEffort(request, agents, llm, readPreferences) {
   if (!agent || isSubagent(agent)) return Response.json({ error: 'session-unavailable' }, { status: 409 })
   const current = agent.model.current()
   if (!sameRoute(current, selection)) return Response.json({ error: 'route-changed' }, { status: 409 })
+  const adapterRevision = revisions.adapters
+  const selectionRevision = revisions.selections.get(agent.session)
   try {
     await llm.resolveCallConfig(selection, request.signal)
     request.signal.throwIfAborted()
+    if (!revisions.active) return Response.json({ error: 'session-unavailable' }, { status: 409 })
+    if (revisions.adapters !== adapterRevision) return Response.json({ error: 'capability-changed' }, { status: 409 })
     const latest = agent.model.current()
-    if (agents.get(sessionId) !== agent || !sameRoute(latest, selection) || latest.reasoningEffort !== current.reasoningEffort) {
+    if (agents.get(sessionId) !== agent || revisions.selections.get(agent.session) !== selectionRevision ||
+        !sameRoute(latest, selection) || latest.reasoningEffort !== current.reasoningEffort) {
       return Response.json({ error: 'route-changed' }, { status: 409 })
     }
     if (mode !== 'manual') {

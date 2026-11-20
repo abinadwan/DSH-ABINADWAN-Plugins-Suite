@@ -1,121 +1,49 @@
-# Handover: integration/suite-v0.8
+# ABINADWAN Plugins Suite development handover
 
-Local integration of the ABINADWAN Plugins Suite with all six components, prepared on 2026-11-19 for owner review. **This branch is unpushed and not merged into `main`. Nothing in it is released.**
+## Baseline and workflow
 
-| | |
-|---|---|
-| Worktree | `C:\Users\Admin\Desktop\DSH-Suite-Integration` |
-| Branch | `integration/suite-v0.8`, with no upstream configured on purpose |
-| Baseline | `origin/main` at `31b071c` (Phase 7D merge, PR #23) |
-| Merged | `feature/new-plugins` at `c09d049`, which includes Phase D2. The merge had no conflicts. |
-| Version | `0.8.0-rc.1`, unchanged |
+**Development branch:** `develop`. **Target release:** v1.0.0. **Current candidate:** `0.8.0-rc.1`.
 
-## Branch provenance
+This is the private, unified development baseline for all six components. Branch future work from `develop` and integrate it back into `develop`. The stable release will use one owner-approved pull request into `main` after the acceptance gates close.
 
-- **Personal Profile.** Every committed Personal Profile change through Phase 7D is already in `origin/main`, including `0.7.0`–`0.7.2`, Phase 7A–7D and `481f822` (response wording). Nothing further was merged.
-- **Not merged: `origin/qa/personal-profile-production-readiness`.** It has three commits from 2026-11-17 that are not in `main`. It is a superseded experiment. `main` later took the 0.7.0 native-Settings simplification and the Phase 7 path instead, so merging it would reintroduce a parallel design.
-- **Untouched: Phase 8 drafts.** The main checkout `C:\Users\Admin\Desktop\DSH-ABINADWAN-Plugins-Suite` (`feature/phase8-profile-disclosure`) holds uncommitted Phase 8 drafts: `CHANGELOG.md`, the Phase 7D docs and `PERSONAL_PROFILE_PHASE8_PLAN.md`. They were not read into this branch or modified. Phase 8 stays **NO-GO** per the owner.
-- **Untouched: other worktrees.** The `fix-phase7d-response-reliability` worktree at `2c475f9` and all original branches were left as they were.
+The integration worktree started at `4faa6fa`, the accepted Direct Chat storage and Windows lifecycle hardening. Merge `cb31863` adds Personal Profile Phase 8 from `5d8ba7b`. Merge `4dff6eb` adds Adaptive Reasoning from `dcfc346`. The only merge conflict was in `test-support/client.js`. The resolved test context contains `TextDecoder`, `Blob` and `crypto`. The earlier Host-only work at `b10610f` is retained as provenance on its original branch.
 
-The auto-merged shared files keep both sides. `client.js` and `plugins/personal-profile/preferences.js` carry the Phase 7D wording, and the new-plugin UI and roster are intact. `package.json` gains the new-plugin exports, and `cordis.patch.yml` gains the three new component entries. `.gitignore` keeps the Phase 7D evidence rules. `package-lock.json` is unchanged.
+The older Phase 8 and Adaptive Reasoning reports document their branch snapshots. Use this handover for the feature gates in the unified baseline. The local Project Recovery Audit is preserved in the original recovery worktree.
 
-## Architecture
+## Six-component baseline
 
-The suite is one npm package, `@abinadwan/dsh-plugins-suite`. It holds a Cordis plugin group (`index.js`) with six independently toggleable components and one browser module (`client.js`). There are no Harness core modifications.
+| Component | Available in this baseline | Open or gated |
+| --- | --- | --- |
+| Environment & Context | Default-on read-only session and Workspace inspector, context pressure and token projections. | Rerun the supported Desktop smoke matrix on the release artifact. |
+| Humanizer | Default-on native Skill registration and independent enable/disable. | Current registration tests cover lifecycle. Model writing quality depends on the configured model and needs release acceptance. |
+| Personal Profile | Default-off native settings, response preferences and explicitly authorized custom text. Plain JSON backup, Review & Merge, separate Replace All confirmation and revision-checked Save. Legacy settings remain readable and formerly inert sharing switches cannot become active on upgrade. Native Save uses version 3 while plain exports retain the version 2 backup format. | Structured personal-information disclosure stays off. Verified effective destination, native Ask First approval and isolated Desktop outgoing-request acceptance are open. The enabled Host rejects the identifiable structured section on replay. Derived history is outside that literal-block check. |
+| Direct Chat | Default-off Windows companion with LPAC, private desktop, broker, separate history, Markdown, quoted UTF-8 attachments, and root-scoped storage, migration, deletion and retention. The accepted `4faa6fa` Windows ownership, quarantine, and retryable cleanup protections remain in the integrated tree. | Final packed Desktop install, restart and uninstall acceptance. General binary/image attachments, history search and web search are outside the currently enabled capabilities. |
+| Conversation Lifecycle | Default-off native Settings for Workspace inventory, protection, global and Workspace retention preferences and a cleanup preview. | Workspace deletion and automatic retention depend on authoritative upstream retirement, artifact coverage and restart-safe reconciliation. Exact storage usage is unavailable. |
+| Adaptive Reasoning | Default-off composer integration for supported manual model effort, saved selection, Apply/Remove and local statistics backed by observed requests. | One-shot reasoning, automatic application and unsupported subagent policies stay gated on rc.3/rc.5. The public native request path offers no safe way to set a temporary effort without persisting it. Classifier evaluation stays synthetic. |
 
-| Component | Host side | Client side | Settings |
-|---|---|---|---|
-| Environment & Context | `plugins/environment-context` | Read-only right-sidebar session inspector | — |
-| Humanizer | `plugins/humanizer` (runtime Skill) | — | — |
-| Personal Profile | `plugins/personal-profile` with native Harness Settings, local and private by default | Left-sidebar **Personal Profile** page | Its own page. Phase 8 structured disclosure is blocked. |
-| Direct Chat | `plugins/direct-chat`: metadata, original icon, **no session producer** | Not exposed in the product. A QA fixture lives in `qa/direct-chat-desktop` and is not packed. | Its own page once activation is safe |
-| Conversation Lifecycle | `plugins/conversation-lifecycle` with a native metadata domain | Independent native **Settings → Conversation Lifecycle** page: inventory, global and Workspace retention, protection, preview-only cleanup | Independent page |
-| Adaptive Reasoning | `plugins/adaptive-reasoning` validates manual session effort against the adapter's values | One compact control beside the native model selector | **None, by design** |
+## Verification
 
-Approved UI decisions that must hold: English UI and metadata for the three new components, the original icon assets, and the existing component identities. There is **no** combined "ABINADWAN Suite Settings" section.
+Use synthetic inputs and isolated Harness roots. Run package checks from PowerShell so the tar invocation handles Windows paths. The native fixtures use the bundled Node 24.21.0 and separately pinned Harness rc.3 and rc.5 runtimes. Stop pre-locking Direct Chat Hosts before an upgrade exercise. Existing installations and personal backups are outside the acceptance fixture.
 
-### Direct Chat fixture (QA only)
+| Suite | Coverage |
+| --- | --- |
+| `npm test` | Source, component registration and lifecycle, Profile backup and privacy, reasoning controls and request gating, Direct Chat storage and client contracts. |
+| `npm run check:package` | Package allowlist, version agreement and tests against the extracted package. |
+| `qa/profile-host-check.mjs`, `qa/phase8-disclosure-check.mjs`, `qa/phase8-persistence-check.mjs` | Native preference, structured privacy and persistence checks with an offline adapter and synthetic settings. Use `--import ./qa/runtime-resolve.mjs`. |
+| `qa/adaptive-reasoning-host-check.mjs`, `qa/new-plugins-host-check.mjs` | Native reasoning admission and shared component behavior using offline adapter fixtures. |
+| `qa/direct-chat-appcontainer-check.mjs`, `qa/direct-chat-production-check.mjs` | LPAC and private desktop, competing Hosts, stale storage identity, reparse refusal, retention, verified migration, concurrent deletion and access-cleanup retry. |
 
-A scoped renderer Context in the existing Harness window has its own Session Controller, Conversation, Chat and model picker. It talks to owner-authenticated routes on the main Host (`/api/abinadwan-direct-chat-fixture/*`). The main Host forks an on-demand **companion** over inherited IPC. The companion composes a native, tool-free Session stack with its own JSONL root, and the main Host brokers model calls through its configured adapter, so credentials never reach the child. The renderer holds an expiring Peer lease, renewed every 20 seconds and valid for 90. Unknown or expired Peers get HTTP 410, and the renderer reconnects. The companion shuts down 5 seconds after the last Peer leaves. The fixture loads only when `ABINADWAN_D2_FIXTURE=1` and the synthetic profile path match. See [Phase D2](docs/research/NEW_PLUGINS_PHASE_D2.md).
+The integrated Windows baseline passed **220/220** source tests and **220/220** extracted-package tests on both Node 24.21.0 and 26.10.0. The package has **73** files and excludes QA, tests and Desktop captures. The offline native suites passed **38/38** on each of Harness rc.3 and rc.5 with Node 24.21.0. A synthetic Profile export was also checked against the v2 browser decoder and native schema from main.
 
-## Completed and verified
+Historical evidence remains in [Direct Chat Phase D3](docs/research/NEW_PLUGINS_PHASE_D3.md), the [Phase 8 plan and branch verification](docs/PERSONAL_PROFILE_PHASE8_REPORT.md), and the [Adaptive Reasoning branch handover](docs/research/ADAPTIVE_REASONING_HANDOVER.md).
 
-- Environment & Context, Humanizer and Personal Profile are at the 0.8.0-rc.1 / Phase 7D baseline.
-- Lifecycle: inventory, retention policies (global and per Workspace), protection, and read-only cleanup preview.
-- Adaptive Reasoning: manual session effort, saved per-model preference, and Apply or Remove. The adapter receives the exact value.
-- Direct Chat fixture: create, stream, select model, resume after cold restart and after a hard kill, reconnect after a forced child exit, graceful idle and Desktop-exit shutdown, and authenticated carrier refusals. Workspace transcripts are unaffected.
+## v1.0.0 completion order
 
-## Test evidence (2026-11-19, this branch)
+1. **P0 · Personal Profile privacy.** Keep structured sharing gated while the Host cannot verify the effective destination. In an isolated Desktop profile, capture actual request bytes for default denial, v2 upgrade, sparse import, restore, retries, route changes, branching, restart and corrupted input. Agree on the scope of positive sharing before enabling it. Keep plain JSON and the existing simple field policies. Verify rollback using an archived Harness configuration and the compatible JSON export.
+2. **P0 · Direct Chat Windows acceptance.** Exercise a packed install and upgrade with older Hosts stopped, native renderer navigation, recovery after Host termination, and component and suite uninstall. Verify real grant/profile cleanup, previous-root preservation, and failure recovery in disposable profiles. Unknown legacy quarantine remains a manual recovery case.
+3. **P1 · Adaptive Reasoning native contract.** Establish a supported request-local effort at the claim boundary before enabling temporary selection. Verify late and stale bindings, retries, explicit manual precedence, per-route capability changes, shared-step accounting and hard-crash restoration. Accept light/dark composer and DeepSeek transport evidence before expanding scope. Keep unsupported subagent integrations off.
+4. **P1 · Conversation Lifecycle authority.** Finish the external reference review and establish authoritative Workspace ownership, retirement, artifact inventory, recovery and accounting before executing deletions. Test deletion and retention gates on synthetic data.
+5. **P1 · Release candidate regression and documentation.** Run the supported Windows and Linux/Node matrix on the final combined package. Verify the real Desktop update, rollback, localization and lifecycle paths, then align user-facing docs and package metadata with the approved six-component scope.
+6. **Release gate.** Review source history and distribution contents for private artifacts, check notices, confirm supported runtimes and acceptance results, and secure owner approval for the single consolidated pull request and stable version change.
 
-| Check | Result |
-|---|---|
-| `npm test` | 168/168 (164 suite + 4 Phase 7D Profile runtime) |
-| `npm run check:package` (run from PowerShell) | 168/168, 60 published files |
-| `qa/direct-chat-desktop/carrier-check.mjs` | 2/2 |
-| `qa/direct-chat-companion-check.mjs` | rc.3 3/3 · rc.5 3/3 |
-| `qa/new-plugins-host-check.mjs` | rc.3 13/13 · rc.5 13/13 (includes message-bound effort) |
-| `qa/direct-chat-appcontainer-check.mjs` | rc.3 3/3 · rc.5 3/3 |
-| `qa/profile-host-check.mjs` | rc.3 1/1 · rc.5 1/1 |
-
-These checks ran on isolated Windows Desktop `0.2.2-rc.3` (synthetic profile and loopback provider) with the packed integration build:
-
-- The Plugins inventory listed all six components with their original icons.
-- Enabling Personal Profile added its page. Disabling Adaptive Reasoning removed the composer control and kept the native picker, and re-enabling it restored the control.
-- Selecting **Low** produced `effort: low` at the adapter.
-- Lifecycle Settings showed the persisted 30-day policy, the protected conversation and four Workspace conversations. Direct Chat history was excluded.
-- After **Restart App and Host**, Profile was still enabled and the session was still at Low.
-- A Direct Chat turn completed alongside the suite with 0 tools. The Adaptive Reasoning control did not appear inside the Direct Chat renderer.
-
-Screenshots are in `docs/assets/integration-v0.8/`. rc.5 is verified at the native-package level and in one mixed rc.3 Desktop + rc.5 companion run. No matching rc.5 Windows Desktop build exists.
-
-After the run the synthetic profile still has Personal Profile **enabled** and `Desktop Alpha Baseline` at **Low**. Its staged suite is the integration pack. The previous Phase C pack is backed up in the session scratch directory and can be regenerated from `feature/new-plugins`.
-
-## Known blockers
-
-| Blocker | Why it blocks | Needs |
-|---|---|---|
-| Direct Chat process confinement | **Resolved for the QA fixture (Phase D3).** LPAC AppContainer with only `registryRead`, dedicated storage, no network, no child processes and a kill-on-close Job. Verified on rc.3 and rc.5 natively and on rc.3 Desktop. | Owner approval to carry the design into the product |
-| Direct Chat production carrier | The fixture routes, lease and scoped renderer are QA-only | Product plugin behind a capability gate, after confinement |
-| Matching rc.5 Desktop | No Windows Desktop rc.5 artifact is published | Rerun the Desktop acceptance once one exists |
-| Permanent deletion and retention execution | Harness persistence has no retirement or delete contract, no authoritative artifact manifest, and no restart-safe metadata reconciliation | An upstream native contract. No safe local path exists. |
-| Adaptive and next-message effort | **Native contract found (Phase D3).** `agent/inbox/claimed` runs before step capture and carries the prompt `rpcId`. Proven on rc.3 and rc.5. UI binding is not built. Automatic classification must run synchronously inside that event. | Composer binding by `requestId`, then the product feature |
-
-## Next implementation tasks
-
-1. **Approve the confinement design** in [Phase D3](docs/research/NEW_PLUGINS_PHASE_D3.md). It is done and verified for the fixture. Optional follow-up: drop the 42 MiB resident launcher by waiting on the process handle from the Host.
-2. **Direct Chat productization**, gated on step 1. Move the carrier, lease, scoped renderer and denials from `qa/direct-chat-desktop` into `plugins/direct-chat`. Add the Direct Chat Settings page with the actual storage root and preview-only retention. Keep `createWebSocket` denied and compaction nodes suppressed.
-3. **Direct Chat storage management.** Choose a root at first configuration only, with canonical-path and reparse checks at every start. Migrating existing history needs separate migration and rollback contracts.
-4. **Direct Chat attachments.** Images and files need restricted admission, an upload carrier bound to the companion (never the page-global upload client) and a size and type policy.
-5. **Safe deletion.** Individual, bulk and per-Workspace deletion, plus Delete All Direct Chats, wait on a native retirement contract. The exclusive companion root narrows Direct Chat deletion but still needs artifact coverage and reparse containment.
-6. **Automatic retention execution.** Depends on step 5 plus policy-revision and eligibility rechecks at admission.
-7. **Next-message override.** Add a Host route that records `{sessionId, requestId, effort}` and applies it in `agent/inbox/claimed` with restore-on-next-claim or idle, as in the native test. Bind from the composer using the `requestId` that `beginSubmission()` creates, and report a late binding as "not applied". **Adaptive Reasoning** can classify the claimed message synchronously in the same event, with real provider effort values only.
-8. **Finish the reference review:** `lsz-asd`, `Geralt4` and `qwased` deletion plugins, `zhuifengqug` and `HaoyueQin` reasoning plugins, `cycl0n3` launcher, and discussion #3339.
-9. **Soak.** Measure long idle, lease expiry across sleep and resume, and repeated reconnects for the companion.
-
-**Do not repeat** these approaches without new evidence:
-
-- offline transcript deletion (Phase C)
-- tool-declaration filtering or a restricted preset as the Direct Chat boundary
-- Workspace-free or internal-Workspace sessions on the ordinary Host
-- SQLite-provider retirement
-- continuable subagents or LiveShare as Direct Chat
-- Node's permission model with addons disabled
-- Node `fork` or IPC inside an AppContainer with libuv 1.52.1 (`nodejs/node#66374`; it spins forever)
-- `CREATE_NO_WINDOW` for the confined Node (its `conhost` child is blocked; use `DETACHED_PROCESS`)
-
-See [Phase C continuation](docs/research/NEW_PLUGINS_PHASE_C_CONTINUATION.md), [Phase D](docs/research/NEW_PLUGINS_PHASE_D.md) and [Phase D3](docs/research/NEW_PLUGINS_PHASE_D3.md). The D3 upstream review found no deletion, retirement, confinement or per-message effort contract on rc.4, rc.5 or `master` (`2e39e70`).
-
-## Running the checks
-
-```powershell
-npm ci --ignore-scripts
-npm test
-npm run check:package
-node --test qa/direct-chat-desktop/carrier-check.mjs
-```
-
-Run `check:package` from PowerShell, because Git Bash's GNU `tar` reads `C:` as a remote host.
-
-`qa/direct-chat-appcontainer-check.mjs` also needs `ABINADWAN_TEST_NODE`, which points to a copy of the bundled `node.exe`. Keep the runtime and Node copies under `node_modules/.direct-chat-confined/` so that ACL grants land only there. Each storage root has its own AppContainer profile, and its Host state folder (`<root>.host` for the Desktop fixture) holds the grant manifest, metrics and diagnostics. `node qa/direct-chat-desktop/cleanup-appcontainer.mjs <runtime> --state <state-folder>` removes every recorded grant and the profile. The Desktop fixture also needs `ABINADWAN_D2_NODE`.
-
-Native checks need bundled Node 24.21.0 and `ABINADWAN_TEST_RUNTIME`, which points to an extracted rc.3 Host runtime (`qa/extract-new-plugins-runtime.mjs`) or an rc.5 registry install. The companion check also needs `ABINADWAN_TEST_CLIENT_STORE`. `qa/profile-host-check.mjs` imports bare `@deepseek-ai/*` specifiers, so give it an ESM resolve hook that resolves them from the runtime directory. The Desktop fixture rerun is described in the Phase D2 report.
+The unified baseline supports continued private development. Desktop acceptance and release approval remain open.

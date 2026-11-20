@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import { copyFile, cp, mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, rmdir, symlink, utimes, writeFile } from 'node:fs/promises'
+import { copyFile, cp, lstat, mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, rmdir, symlink, utimes, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import test from 'node:test'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -118,7 +118,14 @@ async function transcripts(storage) {
   const out = []
   const sessions = join(storage, 'sessions')
   for (const group of await readdir(sessions).catch(() => [])) {
-    for (const id of await readdir(join(sessions, group))) out.push({ id, file: join(sessions, group, id, 'session.v4.jsonl') })
+    for (const id of await readdir(join(sessions, group))) {
+      const file = join(sessions, group, id, 'session.v4.jsonl')
+      // The writer creates the session directory before publishing its transcript.
+      const info = await lstat(file).catch(error => {
+        if (error.code !== 'ENOENT') throw error
+      })
+      if (info?.isFile()) out.push({ id, file })
+    }
   }
   return out
 }

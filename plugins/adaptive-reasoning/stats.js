@@ -1,10 +1,11 @@
-// Process-local aggregate counters. They hold no prompt, response, session or
-// credential data, are never written to disk and never leave the Host.
+// Process-local aggregate counts. The snapshot includes no prompt, response,
+// session identity or credentials.
 
-import { TIERS } from './classify.js'
+import { performance } from 'node:perf_hooks'
 
 const SOURCES = ['override', 'adaptive', 'manual', 'saved', 'default']
 const MAX_KEYS = 64
+const MAX_UNTIMED = 32
 const bucket = () => ({ requests: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0, totalReported: 0,
   reasoningTokens: 0, reasoningReported: 0, durationMs: 0, timed: 0 })
 
@@ -18,36 +19,68 @@ export class ReasoningStats {
     this.since = this.now()
     this.messages = 0
     this.sources = Object.fromEntries(SOURCES.map(source => [source, 0]))
-    this.tiers = Object.fromEntries(TIERS.map(tier => [tier, 0]))
+    this.pendingMessages = new WeakMap()
+    this.starts = new Map()
+    this.untimed = new Map()
     // Provider-chosen ids become keys, so the tables have no prototype.
-    this.overrides = { applied: 0, notApplied: Object.create(null) }
-    this.subagents = { applied: 0, notApplied: Object.create(null) }
     this.requests = { session: Object.create(null), subagent: Object.create(null) }
-    this.classifier = { runs: 0, totalMs: 0, maxMs: 0 }
   }
 
-  /** One user message admitted to a root session, with the source that decided its effort. */
-  message(source) {
-    this.messages++
-    if (Object.hasOwn(this.sources, source)) this.sources[source]++
+  event(session, event) {
+    if (event.type === 'user/message' && session.header.origin !== 'subagent') {
+      const kind = event.data.source.kind
+      if (kind === 'user' || kind === 'retry') {
+        this.pendingMessages.set(session, (this.pendingMessages.get(session) ?? 0) + 1)
+      }
+    }
+    if (event.type === 'step/end') this.pendingMessages.delete(session)
+    if (event.type !== 'assistant/message') return
+
+    const header = session.requestHeader()
+    const row = {
+      scope: session.header.origin === 'subagent' ? 'subagent' : 'session',
+      effort: header?.config.reasoningEffort ?? 'default',
+      usage: event.data.usage,
+    }
+    this.untimed.set(this.requestKey(session, event.seq), row)
+    // Count a commit without timing even if its stream end is unavailable.
+    if (this.untimed.size > MAX_UNTIMED) {
+      const [oldest, value] = this.untimed.entries().next().value
+      this.untimed.delete(oldest)
+      this.request(value.scope, value.effort, value.usage)
+    }
   }
 
-  classified(tier, elapsedMs) {
-    const name = TIERS[tier]
-    if (name) this.tiers[name]++
-    this.classifier.runs++
-    this.classifier.totalMs += elapsedMs
-    if (elapsedMs > this.classifier.maxMs) this.classifier.maxMs = elapsedMs
+  stream(session, frame) {
+    if (frame.type === 'start') {
+      this.starts.set(frame.attemptId, performance.now())
+      if (this.starts.size > MAX_UNTIMED) this.starts.delete(this.starts.keys().next().value)
+      // The header was logged before this stream opened. A shared step may
+      // carry multiple user messages, and a retry does not admit them again.
+      const messages = this.pendingMessages.get(session)
+      if (messages) {
+        this.pendingMessages.delete(session)
+        const header = session.requestHeader()
+        const explicit = header?.config.reasoningEffort !== undefined && header.adapterDefaults?.reasoningEffort !== true
+        this.messages += messages
+        this.sources[explicit ? 'manual' : 'default'] += messages
+      }
+      return
+    }
+    if (frame.type !== 'end') return
+
+    const start = this.starts.get(frame.attemptId)
+    this.starts.delete(frame.attemptId)
+    if (frame.outcome.kind !== 'committed' || frame.outcome.eventType !== 'assistant/message') return
+    const key = this.requestKey(session, frame.outcome.seq)
+    const row = this.untimed.get(key)
+    if (!row) return
+    this.untimed.delete(key)
+    this.request(row.scope, row.effort, row.usage, start === undefined ? undefined : performance.now() - start)
   }
 
-  override(applied, reason) {
-    if (applied) this.overrides.applied++
-    else count(this.overrides.notApplied, reason)
-  }
-
-  subagent(applied, reason) {
-    if (applied) this.subagents.applied++
-    else count(this.subagents.notApplied, reason)
+  requestKey(session, seq) {
+    return session.id + '\u0000' + seq
   }
 
   /**
@@ -72,23 +105,17 @@ export class ReasoningStats {
   }
 
   snapshot() {
-    const round = value => Math.round(value * 1000) / 1000
     return structuredClone({
       since: new Date(this.since).toISOString(),
       persistent: false,
       messages: this.messages,
       sources: this.sources,
-      tiers: this.tiers,
-      overrides: this.overrides,
-      subagents: this.subagents,
+      // Retain the stats response fields expected by already mounted clients.
+      tiers: { simple: 0, standard: 0, complex: 0, advanced: 0 },
+      overrides: { applied: 0, notApplied: {} },
+      subagents: { applied: 0, notApplied: {} },
       requests: this.requests,
-      classifier: { runs: this.classifier.runs, totalMs: round(this.classifier.totalMs), maxMs: round(this.classifier.maxMs) },
+      classifier: { runs: 0, totalMs: 0, maxMs: 0 },
     })
   }
-}
-
-function count(table, reason) {
-  const key = typeof reason === 'string' && reason.length <= 64 ? reason : 'other'
-  if (!Object.hasOwn(table, key) && Object.keys(table).length >= MAX_KEYS) table.other = (table.other ?? 0) + 1
-  else table[key] = (table[key] ?? 0) + 1
 }

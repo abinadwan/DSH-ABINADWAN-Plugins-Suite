@@ -2,7 +2,7 @@
 
 Experimental community package · v0.8.0-rc.1
 
-Three independently toggleable Components share one suite installation. The package card uses the Saudi developer avatar, and the rows have individual transparent artwork.
+Six independently toggleable components share one suite installation. The package card uses the Saudi developer avatar, and the rows have individual transparent artwork.
 
 ## Environment & Context
 
@@ -20,7 +20,19 @@ Enabled by default. Registers the runtime Skill **abinadwan-humanizer**. Ask the
 
 <img src="../plugins/personal-profile/icon.png" width="64" alt="Amber ID and gear"/>
 
-Disabled by default. When enabled, a **Personal Profile** page in the left sidebar edits one unified profile: optional preferred name, nationality and gender, response preferences (eight personalities, Automatic plus seven response languages, six characteristics, eight behavior presets, custom instructions) with an effective-instructions preview, and one access policy per field. **Save** writes through the native Harness settings of the active Profile and is confirmed only after Harness accepts it. Settings from 0.7.1 are migrated after review and explicit confirmation. Backup & Restore downloads, copies or shows the complete JSON (including permissions) and restores it with Replace All or Replace All and Merge Custom Instructions; permissions are restored only on request. Settings and JSON backups are not encrypted by this plugin; do not enter sensitive information. Nothing is sent to the agent or a model: access and sharing switches are saved preferences only.
+Disabled by default. When enabled, a **Personal Profile** page in the left sidebar edits one unified profile: optional preferred name, nationality and gender, response preferences (eight personalities, Automatic plus seven response languages, six characteristics, eight behavior presets, custom instructions) with an effective-instructions preview, and one access policy per field. **Save** writes through the native Harness settings of the active Profile and is confirmed only after Harness accepts it. Settings from 0.7.1 are migrated after review and explicit confirmation. Backup & Restore downloads, copies or shows the complete JSON (including permissions) and imports a plain JSON file or pasted JSON. Review & Merge preserves omitted settings. Replace All and permission import require separate confirmation. Both structured sharing switches stay Off. Supported native agent steps receive response preferences and explicitly authorized custom text. Structured fields stay local.
+
+## Direct Chat
+
+Disabled by default. The Windows companion has an independent conversation view and history. It validates storage ownership for deletion, retention and migration. The previous folder is kept when switching storage or migrating.
+
+## Conversation Lifecycle
+
+Disabled by default. Native Settings lists Workspace conversations, stores protection and retention preferences, and previews cleanup. Workspace deletion and automatic retention remain gated.
+
+## Adaptive Reasoning
+
+Disabled by default. The composer supports explicit manual effort for eligible models, saved selections and local request statistics. Temporary, Adaptive and unsupported subagent effort remain gated.
 
 ## Versions
 

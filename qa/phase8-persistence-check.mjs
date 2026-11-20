@@ -69,13 +69,16 @@ test('the record survives the native atomic write, a reload and a Host restart u
   assert.deepEqual(reloaded, record, 'every value, permission and switch round-trips exactly')
   // Restart: a new Host context mounts the plugin from the reloaded configuration.
   for (let restart = 0; restart < 2; restart++) {
+    const stored=restart===0 ? { ...record, version: 2 } : record
+    await save(path, stored)
+    assert.deepEqual(await load(path), stored)
     const ctx = new Context()
     try {
       await ctx.plugin(Registry).await()
       await ctx.plugin(profile, { record: await load(path) }).await()
       assert.match(ctx.systemPrompt.sections.get(SECTION_NAME).text(eligible()), /\{\{literal\}\} 0x10/)
-      assert.equal(ctx.systemPrompt.sections.get(DISCLOSURE_SECTION_NAME).text(eligible()),
-        'Personal details the user chose to share (use them only when relevant to the request):\nPreferred name: SYNTHETIC: "Name" # not a comment\nGender: female')
+      assert.equal(ctx.systemPrompt.sections.has(DISCLOSURE_SECTION_NAME), false)
+      assert.doesNotMatch(ctx.systemPrompt.sections.get(SECTION_NAME).text(eligible()), /SYNTHETIC/)
     } finally { await ctx.fiber.dispose() }
   }
   // A later save of a revoked record wins on reload.

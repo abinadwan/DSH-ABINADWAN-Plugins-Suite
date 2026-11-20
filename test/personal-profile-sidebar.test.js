@@ -62,7 +62,7 @@ test('native page removes sensitive fields and lock controls; saves structured s
   assert.equal(transport.calls.length,1)
   assert.equal(transport.calls[0].expected,0)
   let record=transport.view().value.record
-  assert.equal(record.version,2)
+  assert.equal(record.version,3)
   assert.equal(record.information.gender,'female')
   assert.equal(record.preferences.responseLanguage,'ja')
   assert.equal(record.policies.gender,'ask_first')
@@ -93,10 +93,10 @@ test('read or write access missing: no settings write',async t=>{
 // (the 0.7.0/0.7.1 export dropped them). Restoring them stays opt-in.
 test('backup text includes the draft permissions as set and never writes by itself',async t=>{
   const {byId,click,select,transport}=await mount(t)
-  await click('tab-access');await click('opt-in');await click('cloud');await select('policy-gender','allow')
+  await click('tab-access');await select('policy-gender','allow')
   await click('tab-backup');await click('export-view')
   const data=JSON.parse(byId('export-json').value)
-  assert.equal(data.allowCloud,true);assert.equal(data.allowPersonalInformation,true)
+  assert.equal(data.allowCloud,false);assert.equal(data.allowPersonalInformation,false)
   assert.equal(data.policies.gender,'allow')
   assert.equal(data.workspaces,undefined)
   assert.equal(transport.calls.length,0)

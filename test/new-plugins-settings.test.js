@@ -207,7 +207,7 @@ test('one English composer menu selects, saves, applies and removes supported ef
   await open()
   assert.match(div.textContent, /Saved preference: Wide/)
   assert.deepEqual([...div.querySelectorAll('[role=menuitem]')].slice(0, 4).map(button => button.textContent),
-    ['Manual', 'Adaptive', 'Balanced', 'Wide'])
+    ['Balanced', 'Wide', 'Save current effort', 'Apply saved effort'])
   assert.doesNotMatch(div.textContent, /\p{Script=Arabic}/u)
   await choose('Apply saved effort')
   assert.match(div.textContent, /Start or resume this chat before applying the saved effort/)
@@ -235,10 +235,7 @@ test('one English composer menu selects, saves, applies and removes supported ef
   assert.equal(div.querySelector('button[aria-haspopup=menu]'), null)
 })
 
-// Records built inside the client sandbox carry its realm's prototypes.
-const plain = value => JSON.parse(JSON.stringify(value))
-
-function reasoningFixture(t, { record = { preferences: [], mode: 'manual', subagents: 'inherit' }, handlers = {}, prompt } = {}) {
+function reasoningFixture({ record = { preferences: [] }, handlers = {} } = {}) {
   const route = { provider: 'provider', model: 'model', reasoningEffort: 'balanced-v2' }
   const groups = [{ id: 'provider', models: [{ id: 'model', reasoning: {
     efforts: [{ id: 'balanced-v2', name: 'Balanced' }, { id: 'wide-v2', name: 'Wide' }], defaultEffort: 'balanced-v2',
@@ -246,22 +243,9 @@ function reasoningFixture(t, { record = { preferences: [], mode: 'manual', subag
   const directory = { store: observable({ current: route, groups, status: 'ready', routable: true }), async load() {} }
   const settings = settingsFixture('adaptive-reasoning', record)
   const calls = []
-  const listeners = new Set()
-  let snapshot = { running: false }
-  class Face {
-    prompts = []
-    async prompt(content, mode, signal, requestId) {
-      this.prompts.push({ content, mode, requestId })
-      return prompt ? prompt(requestId) : { ok: true, value: { accepted: true } }
-    }
-    subscribe(listener) { listeners.add(listener); return () => listeners.delete(listener) }
-    getSnapshot() { return snapshot }
-  }
-  const face = new Face()
-  return { route, directory, settings, calls, face, setRunning(running) {
-    snapshot = { running }
-    for (const listener of [...listeners]) listener()
-  }, options: { language: 'en', modelDirectories: { directoryFor: () => directory }, settings: settings.service,
+  const face = { async prompt() { return { ok: true } } }
+  return { settings, calls, face, options: {
+    language: 'en', modelDirectories: { directoryFor: () => directory }, settings: settings.service,
     sessions: { phase: 'ready', byId: { 'test-session': { running: false } } },
     sessionBinding: id => id === 'test-session' ? { session: face } : undefined,
     async fetch(url, options) {
@@ -269,138 +253,59 @@ function reasoningFixture(t, { record = { preferences: [], mode: 'manual', subag
       const path = url.pathname.replace('/api/abinadwan-reasoning/', '')
       const body = JSON.parse(options.body)
       calls.push({ path, body })
-      const handler = handlers[path]
-      return handler ? handler(body) : Response.json({ error: 'unexpected' }, { status: 500 })
-    } } }
+      return handlers[path]?.(body) ?? Response.json({ error: 'unexpected' }, { status: 500 })
+    },
+  } }
 }
 
 async function openReasoning(t, fixture) {
   const { div } = await mount(t, fixture.options, 'adaptive-reasoning', 'conversation.input.right')
   const trigger = () => div.querySelector('button[aria-haspopup=menu]')
-  const items = label => [...div.querySelectorAll('[role=menuitem]')].filter(button => button.textContent === label)
-  const item = label => items(label)[0]
-  const choose = async (label, index = 0) => {
-    await act(async () => trigger().click())
-    assert.ok(items(label)[index], `menu item ${label}`)
-    await act(async () => items(label)[index].click())
-  }
-  // The first "Wide" is the session effort; the one-time choice is the second, in the Next message submenu.
-  const arm = () => choose('Wide', 1)
-  return { div, trigger, item, choose, arm }
+  const open = () => act(async () => trigger().click())
+  const item = label => [...div.querySelectorAll('[role=menuitem]')].find(button => button.textContent === label)
+  return { div, trigger, open, item }
 }
 
-test('mode and subagent policy save into the record without dropping saved preferences', async t => {
-  const preferences = [{ provider: 'provider', model: 'model', effort: 'wide-v2' }]
-  const fixture = reasoningFixture(t, { record: { preferences, mode: 'manual', subagents: 'inherit' } })
+test('legacy policy settings leave the composer on explicit session effort', async t => {
+  const fixture = reasoningFixture({ record: { preferences: [], mode: 'adaptive', subagents: 'effort', subagentEffort: 'wide-v2' } })
+  const originalPrompt = fixture.face.prompt
   const view = await openReasoning(t, fixture)
-  await view.choose('Adaptive')
-  assert.deepEqual(plain(fixture.settings.writes[0].value.record), { preferences, mode: 'adaptive', subagents: 'inherit' })
-  assert.match(view.div.textContent, /Adaptive mode on/)
-  assert.match(view.trigger().textContent, /Auto · Balanced/)
-  assert.match(view.trigger().getAttribute('aria-label'), /Adaptive mode/)
-  await view.choose('Always Wide')
-  assert.deepEqual(plain(fixture.settings.writes[1].value.record),
-    { preferences, mode: 'adaptive', subagents: 'effort', subagentEffort: 'wide-v2' })
-  await view.choose('Same as this chat')
-  assert.deepEqual(plain(fixture.settings.writes[2].value.record), { preferences, mode: 'adaptive', subagents: 'inherit' })
-  await act(async () => view.trigger().click())
-  assert.equal(view.item('Adaptive').getAttribute('aria-checked'), 'true')
-  assert.equal(view.item('Same as this chat').getAttribute('aria-checked'), 'true')
-  assert.deepEqual(fixture.calls, [], 'record changes need no Host route')
-})
-
-test('a one-time effort binds to the next prompt requestId, shows while armed and reports its outcome', async t => {
-  const statuses = ['active', 'finished']
-  const fixture = reasoningFixture(t, { handlers: {
-    next: body => Response.json({ bound: body }),
-    'next/status': () => Response.json({ status: statuses.shift() ?? 'finished', effort: 'wide-v2' }),
-  } })
-  const view = await openReasoning(t, fixture)
-  await view.arm()
-  assert.equal(fixture.calls.length, 0, 'arming sends nothing until a prompt is sent')
-  assert.equal(view.trigger().textContent, 'Next: Wide')
-  assert.match(view.trigger().getAttribute('aria-label'), /next message Wide/)
-  assert.ok(Object.hasOwn(fixture.face, 'prompt'), 'the armed window wraps only its own session face')
-  const requestId = '20000000-0000-4000-8000-000000000001'
-  await act(async () => { await fixture.face.prompt([{ type: 'text', text: 'Fictional prompt' }], 'queue', undefined, requestId) })
-  assert.deepEqual(fixture.calls[0], { path: 'next', body: { sessionId: 'test-session', requestId,
-    provider: 'provider', model: 'model', reasoningEffort: 'wide-v2' } })
-  assert.equal(fixture.face.prompts[0].requestId, requestId, 'the prompt keeps the bound requestId')
-  assert.equal(Object.hasOwn(fixture.face, 'prompt'), false, 'the wrapper is gone after one prompt')
+  await view.open()
   assert.equal(view.trigger().textContent, 'Balanced')
-  assert.deepEqual(fixture.calls[1], { path: 'next/status', body: { sessionId: 'test-session', requestId } })
-  assert.match(view.div.textContent, /One-time effort applied: Wide/)
-  await act(async () => fixture.setRunning(true))
-  await act(async () => fixture.setRunning(false))
-  await act(async () => { await fixture.face.prompt([{ type: 'text', text: 'Another' }], 'queue', undefined, 'other') })
-  assert.equal(fixture.calls.filter(call => call.path === 'next').length, 1, 'later prompts carry no override')
-  // A retry without its own id gets a fresh one minted for the binding.
-  await view.arm()
-  await act(async () => { await fixture.face.prompt([], 'queue', undefined, undefined) })
-  const minted = fixture.face.prompts.at(-1).requestId
-  assert.match(minted, /^[0-9a-f-]{36}$/)
-  assert.equal(fixture.calls.filter(call => call.path === 'next').at(-1).body.requestId, minted)
+  assert.equal(view.item('Balanced').getAttribute('aria-checked'), 'true')
+  assert.equal(view.item('Adaptive'), undefined)
+  assert.equal(view.item('Next message only'), undefined)
+  assert.equal(view.item('Subagents'), undefined)
+  assert.equal(fixture.face.prompt, originalPrompt)
+  await act(async () => view.item('Save current effort').click())
+  assert.equal(fixture.settings.writes[0].value.record.mode, 'adaptive')
+  assert.equal(fixture.settings.writes[0].value.record.subagentEffort, 'wide-v2')
+  assert.deepEqual(fixture.calls, [])
 })
-
-test('a refused binding still sends the prompt, a failed send withdraws, and cancel or a model change disarms', async t => {
-  let bindStatus = 409
-  let sendOk = true
-  const fixture = reasoningFixture(t, {
-    handlers: {
-      next: body => bindStatus === 200 ? Response.json({ bound: body }) : Response.json({ error: 'route-changed' }, { status: bindStatus }),
-      'next/withdraw': () => Response.json({ withdrawn: true }),
-      'next/status': () => Response.json({ status: 'pending' }),
-    },
-    prompt: () => sendOk ? { ok: true, value: { accepted: true } } : { ok: false, error: { code: 'x', message: 'refused' } },
-  })
-  const view = await openReasoning(t, fixture)
-  const send = id => act(async () => { await fixture.face.prompt([{ type: 'text', text: 'x' }], 'queue', undefined, id) })
-  await view.arm()
-  await send('30000000-0000-4000-8000-000000000001')
-  assert.equal(fixture.face.prompts.length, 1, 'the message is never held back')
-  assert.match(view.div.textContent, /One-time effort not applied: the model changed/)
-  bindStatus = 200
-  sendOk = false
-  await view.arm()
-  await send('30000000-0000-4000-8000-000000000002')
-  assert.deepEqual(fixture.calls.at(-1), { path: 'next/withdraw',
-    body: { sessionId: 'test-session', requestId: '30000000-0000-4000-8000-000000000002' } })
-  assert.match(view.div.textContent, /not applied: the message was not sent/)
-  await view.arm()
-  await view.choose('Cancel one-time effort')
-  assert.equal(Object.hasOwn(fixture.face, 'prompt'), false)
-  assert.equal(view.trigger().textContent, 'Balanced')
-  await view.arm()
-  await act(async () => fixture.directory.store.set({ ...fixture.directory.store.getSnapshot(),
-    current: { provider: 'provider', model: 'other', reasoningEffort: 'balanced-v2' },
-    groups: [{ id: 'provider', models: [{ id: 'model', reasoning: { efforts: [{ id: 'wide-v2' }] } },
-      { id: 'other', reasoning: { efforts: [{ id: 'balanced-v2', name: 'Balanced' }] } }] }] }))
-  assert.match(view.div.textContent, /One-time effort cancelled because the model changed/)
-  assert.equal(Object.hasOwn(fixture.face, 'prompt'), false)
-})
-
 test('statistics open in a native dialog with honest reasoning-token labels and a reset', async t => {
   const empty = { since: '2026-11-20T08:00:00.000Z', persistent: false, messages: 0,
     sources: { override: 0, adaptive: 0, manual: 0, saved: 0, default: 0 }, tiers: { simple: 0, standard: 0, complex: 0, advanced: 0 },
     overrides: { applied: 0, notApplied: {} }, subagents: { applied: 0, notApplied: {} }, requests: { session: {}, subagent: {} },
     classifier: { runs: 0, totalMs: 0, maxMs: 0 } }
-  const filled = { ...empty, messages: 3, sources: { ...empty.sources, override: 1, adaptive: 2 },
+  const filled = { ...empty, messages: 3, sources: { ...empty.sources, manual: 2, default: 1 },
     tiers: { ...empty.tiers, simple: 1, advanced: 1 }, classifier: { runs: 2, totalMs: 0.004, maxMs: 0.003 },
     overrides: { applied: 1, notApplied: { 'shared-step': 1 } },
     requests: { session: { 'wide-v2': { requests: 2, inputTokens: 1200, outputTokens: 300, totalTokens: 0, totalReported: 0,
       reasoningTokens: 0, reasoningReported: 0, durationMs: 3000, timed: 2 } }, subagent: {} } }
-  const fixture = reasoningFixture(t, { handlers: {
+  const fixture = reasoningFixture({ handlers: {
     stats: () => Response.json(filled), 'stats/reset': () => Response.json(empty),
   } })
   const view = await openReasoning(t, fixture)
-  await view.choose('Reasoning statistics…')
+  await view.open()
+  await act(async () => view.item('Reasoning statistics…').click())
   const dialog = view.div.querySelector('[role=dialog]')
   assert.equal(dialog.getAttribute('aria-label'), 'Reasoning statistics')
   assert.match(dialog.textContent, /Wide/)
   assert.match(dialog.textContent, /1,200/)
   assert.match(dialog.textContent, /Not reported/)
   assert.match(dialog.textContent, /1\.5 s/)
-  assert.match(dialog.textContent, /it was sent together with another message/)
+  assert.match(dialog.textContent, /Session effort/)
+  assert.doesNotMatch(dialog.textContent, /One-time effort|Adaptive classification|Subagent policy/)
   assert.match(dialog.textContent, /No savings are estimated/)
   assert.match(dialog.textContent, /Nothing is sent anywhere/)
   assert.doesNotMatch(dialog.textContent, /\p{Script=Arabic}/u)

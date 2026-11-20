@@ -14,19 +14,22 @@
 
 ## Overview
 
-One installation supplies three independently toggleable DSH Components. The package card uses the approved Saudi developer avatar. Each Component resolves its own title and transparent icon.
+One installation supplies six independently toggleable DSH components. The package card uses the approved Saudi developer avatar. Each Component resolves its own title and transparent icon.
 
-| Component | Delivered in 0.6.0 | Default | Documentation |
+| Component | Development scope | Default | Documentation |
 | --- | --- | --- | --- |
 | <img src="plugins/environment-context/icon.png" width="32" alt="Teal monitor"/> **Environment & Context** | Read-only session inspector | On | [Plugin details](plugins/environment-context/README.md) |
 | <img src="plugins/humanizer/icon.png" width="32" alt="Purple feather"/> **Humanizer** | Runtime writing Skill | On | [Usage and scope](plugins/humanizer/README.md) |
 | <img src="plugins/personal-profile/icon.png" width="32" alt="Amber ID and gear"/> **Personal Profile** | Native response preferences (RC) | Host Off | [Local settings and acceptance](plugins/personal-profile/README.md) |
+| **Direct Chat** | Windows companion, independent history and guarded storage | Off | [Suite details](docs/DETAIL.md) |
+| **Conversation Lifecycle** | Workspace inventory, protection and retention preview | Off | [Suite details](docs/DETAIL.md) |
+| **Adaptive Reasoning** | Manual session effort and local statistics | Off | [Suite details](docs/DETAIL.md) |
 
 ## Personal Profile (0.8.0-rc.1 candidate)
 
 One unified profile per active Harness Profile: optional preferred name, nationality and gender; Agent Instructions with personality, response language, characteristics, presets and custom text; one Private / Ask First / Allow policy per field plus personal-information and cloud-sharing switches (all Private / Off by default). No Workspace selector or per-Workspace overrides. Explicit Save uses the native Harness settings service with a revision check. Settings saved by 0.7.1 are migrated only after review, export and explicit confirmation.
 
-**Backup & Restore** exports the complete profile, including saved permissions, as a JSON file (download, copy or view) and imports a file or pasted JSON with **Replace All** or **Replace All and Merge Custom Instructions**. Permissions are restored only if you opt in. The JSON file is **not encrypted**. No plugin-specific encryption; avoid sensitive information. Saved response preferences enter supported native agent steps; custom instructions require separate saved consent, including cloud use. Editing or restoring custom text clears consent. History can retain and replay previously supplied instructions. Structured personal fields are never disclosed by the suite, even with Allow or cloud sharing enabled; their policies remain saved preferences only. See [runtime and privacy gate](docs/PERSONAL_PROFILE_PHASE7C_PRIVACY_GATE.md), [design](docs/PERSONAL_PROFILE_LOCAL_SETTINGS.md), [0.7.2 change record](docs/PERSONAL_PROFILE_V072_CHANGE_RECORD.md) and [0.7.2 Windows acceptance](docs/PERSONAL_PROFILE_WINDOWS_ACCEPTANCE.md) and [Phase 7 RC Desktop acceptance record](docs/PERSONAL_PROFILE_PHASE7_WINDOWS_ACCEPTANCE.md).
+**Backup & Restore** exports the complete profile, including saved permissions, as a JSON file (download, copy or view) and imports a file or pasted JSON. **Review & Merge** preserves omitted fields by default. **Replace All** requires separate confirmation. Permission import is opt-in, and both sharing switches stay Off on restore. The plain JSON backup stays compatible with the version 2 backup format. Archive the previous Harness configuration before saving an upgraded record if you need a rollback path. Saved response preferences enter supported native agent steps; custom instructions require separate saved consent, including cloud use. Editing or restoring custom text clears consent. History can retain and replay previously supplied instructions. Structured personal fields stay local in this candidate. Their policies remain saved preferences. See [runtime and privacy gate](docs/PERSONAL_PROFILE_PHASE7C_PRIVACY_GATE.md), [design](docs/PERSONAL_PROFILE_LOCAL_SETTINGS.md), [0.7.2 change record](docs/PERSONAL_PROFILE_V072_CHANGE_RECORD.md) and [0.7.2 Windows acceptance](docs/PERSONAL_PROFILE_WINDOWS_ACCEPTANCE.md) and [Phase 7 RC Desktop acceptance record](docs/PERSONAL_PROFILE_PHASE7_WINDOWS_ACCEPTANCE.md).
 
 ### Release status and next phase
 
@@ -67,7 +70,7 @@ For Harness Desktop, use the native Plugins UI and the active Desktop Profile; d
 github:abinadwan/DSH-ABINADWAN-Plugins-Suite#RELEASE_COMMIT_SHA
 ```
 
-Restart Harness completely, open **Plugins → ABINADWAN Plugins Suite**, enable the suite and inspect its three Components. Toggle each independently. Personal Profile starts off. When enabled, open its native left-sidebar settings page. Open a normal conversation for Environment & Context and ask the agent to use Humanizer for an editing task.
+Restart Harness completely, open **Plugins → ABINADWAN Plugins Suite**, enable the suite and inspect its six components. Toggle each independently. Personal Profile starts off. When enabled, open its native left-sidebar settings page. Open a normal conversation for Environment & Context and ask the agent to use Humanizer for an editing task.
 
 For non-Desktop installations, use the documented CLI workflow for the actual active profile. Upgrading from 0.4.0 keeps the `abinadwan-suite` group identity and the current inspector behavior. Existing user-layer disable overrides remain applicable. The package ships ready-to-run JavaScript and installs directly from GitHub. No build step is required. An immutable version can be installed by appending `#<full-commit-sha>` to the GitHub reference.
 

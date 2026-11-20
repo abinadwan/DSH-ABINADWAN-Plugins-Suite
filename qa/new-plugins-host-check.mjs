@@ -144,9 +144,9 @@ test('native selections reach the offline adapter and stay local to each session
     a.model.select({ ...route, reasoningEffort: 'deliberate-v2' })
     assert.equal(a.session.seq, selectionSequence, 'reselecting the same tuple leaves no new user-intent record')
     const selectedMs = await send(a)
-    // Session b is on the native default, so its route's saved preference serves this message only.
+    // Session b stays on the native default until the owner explicitly applies a preference.
     const defaultMs = await send(b)
-    assert.deepEqual(adapter.requests.map(request => request.reasoningEffort), ['deliberate-v2', 'deliberate-v2'])
+    assert.deepEqual(adapter.requests.map(request => request.reasoningEffort), ['deliberate-v2', 'fast-v2'])
     assert.equal(b.model.current().reasoningEffort, undefined)
     assert.equal(a.session.requestHeader().config.reasoningEffort, 'deliberate-v2')
     await assert.rejects(ctx.llm.resolveCallConfig({ ...route, reasoningEffort: 'guessed-high' }),
@@ -169,7 +169,7 @@ test('native selections reach the offline adapter and stay local to each session
     assert.equal((await transport.fetch(request(), connection.browserPeer)).status, 404)
     await ctx.sessions.flush(a.session)
     await ctx.sessions.flush(b.session)
-    t.diagnostic(`Offline smoke timings in ms: explicit ${selectedMs}, saved preference ${defaultMs}. No provider timing inference.`)
+    t.diagnostic(`Offline smoke timings in ms: explicit ${selectedMs}, provider default ${defaultMs}. No provider timing inference.`)
   } finally {
     await ctx.fiber.dispose()
   }
@@ -202,51 +202,46 @@ test('a pre-step effort change applies only after the loop has captured its curr
   }
 })
 
-test('an effort selected while its own message is claimed reaches only that message', async () => {
-  const { ctx, adapter } = await loopHost()
+test('a refused one-time effort leaves the native default in the durable log and after reload', async t => {
+  const root = join(await scratch(t), 'blocked-reasoning-sessions')
+  const sessionId = SessionId('synthetic-request-local-gate')
+  const { ctx, adapter } = await loopHost(root)
   try {
-    const agent = await ctx.agentLoop.create(SessionId('synthetic-message-bound'), route)
-    agent.model.select({ ...route, reasoningEffort: 'fast-v2' })
-    const pending = new Map([['request-override', 'deliberate-v2']])
-    let active
-    const restore = () => {
-      if (!active) return
-      const current = agent.model.current()
-      if (current?.reasoningEffort === active.applied) agent.model.select(active.saved)
-      active = undefined
-    }
-    agent.ctx.on('agent/inbox/claimed', ({ message }) => {
-      const effort = message.source.kind === 'user' ? pending.get(message.source.rpcId) : undefined
-      if (effort === undefined) { restore(); return }
-      pending.delete(message.source.rpcId)
-      restore()
-      active = { saved: agent.model.current(), applied: effort }
-      agent.model.select({ ...active.saved, reasoningEffort: effort })
+    const agent = await ctx.agentLoop.create(sessionId, route)
+    await mount(ctx, { name: 'fixture-connection', apply(child) { new HostConnectionService(child, [], {}) } })
+    await mount(ctx, Reasoning, { record: { mode: 'adaptive', preferences: [{ ...route, effort: 'deliberate-v2' }] } })
+    const transport = ctx.connection.createSharedFetchHandler('/api')
+    const requestId = '10000000-0000-4000-8000-000000000001'
+    const refused = await transport.fetch(new Request('http://localhost/api/abinadwan-reasoning/next', {
+      method: 'POST', headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ sessionId, requestId, ...route, reasoningEffort: 'deliberate-v2' }),
+    }), ctx.connection.browserPeer)
+    assert.equal(refused.status, 501)
+    const selections = []
+    ctx.on('session/event', (session, event) => {
+      if (session === agent.session && event.type === 'model/selection') selections.push(event.data)
     })
-    agent.ctx.on('agent/status', ({ status }) => { if (status === 'idle') restore() })
-    const message = rpcId => createUserMessage({ content: [{ type: 'text', text: 'Fictional fixture prompt' }],
-      source: { kind: 'user', rpcId } })
-    // Another window's prompt is queued first and must not consume the override.
-    agent.followup(message('request-other-window'))
-    agent.followup(message('request-override'))
-    agent.followup(message('request-after'))
+    agent.followup(createUserMessage({ content: [{ type: 'text', text: 'Prove that this distributed protocol is correct.' }],
+      source: { kind: 'user', rpcId: requestId } }))
     await agent.whenIdle()
-    assert.deepEqual(adapter.requests.map(request => request.reasoningEffort), ['fast-v2', 'deliberate-v2', 'fast-v2'])
-    assert.equal(agent.model.current().reasoningEffort, 'fast-v2')
-    assert.equal(pending.size, 0)
-
-    // A one-use override followed by idle restores the saved effort before any later prompt.
-    pending.set('request-single', 'deliberate-v2')
-    agent.followup(message('request-single'))
-    await agent.whenIdle()
-    assert.equal(agent.model.current().reasoningEffort, 'fast-v2')
-    await send(agent)
-    assert.deepEqual(adapter.requests.slice(3).map(request => request.reasoningEffort), ['deliberate-v2', 'fast-v2'])
+    assert.deepEqual(adapter.requests.map(request => request.reasoningEffort), ['fast-v2'])
+    assert.deepEqual(selections, [])
+    assert.equal(agent.session.requestHeader().adapterDefaults.reasoningEffort, true)
+    await ctx.sessions.flush(agent.session)
   } finally {
     await ctx.fiber.dispose()
   }
-})
 
+  const restarted = await loopHost(root)
+  try {
+    const { agent } = await restarted.ctx.agents.resume({ resumeSessionId: sessionId, agentOptions: route })
+    assert.equal(agent.model.current().reasoningEffort, undefined)
+    await send(agent)
+    assert.deepEqual(restarted.adapter.requests.map(request => request.reasoningEffort), ['fast-v2'])
+  } finally {
+    await restarted.ctx.fiber.dispose()
+  }
+})
 test('the native scoped allowlist excludes inherited shell tools without altering Workspace agents', async () => {
   const { ctx, adapter } = await loopHost()
   try {

@@ -33,9 +33,13 @@ const ids = Array.from({ length: 40 }, (_, i) => `10000000-0000-4000-8000-${Stri
 class ScriptAdapter extends LlmAdapter {
   requests = []
   script = []
+  efforts = EFFORTS
+  beforeResolve
 
   async resolveModel(provider, id) {
-    return { provider, id, name: id, reasoning: { efforts: EFFORTS.map(effort => ({ id: effort, name: effort })), defaultEffort: 'fast-v2' } }
+    const efforts = this.efforts
+    await this.beforeResolve?.()
+    return { provider, id, name: id, reasoning: { efforts: efforts.map(effort => ({ id: effort, name: effort })), defaultEffort: 'fast-v2' } }
   }
 
   async *stream(request) {
@@ -66,7 +70,7 @@ async function host(t, record = {}) {
   for (const plugin of [Llm, Sessions, Projections, SystemPrompt, Tools, Executor, Agents]) await ctx.plugin(plugin).await()
   await ctx.plugin(Loop, { agents: [] }).await()
   const adapter = new ScriptAdapter()
-  ctx.llm.registerAdapter(['offline'], adapter)
+  const registration = ctx.llm.registerAdapter(['offline'], adapter)
   ctx.tools.register(defineTool({
     name: 'fixture_echo', description: 'Fictional tool that returns a constant', parameters: {},
     output: { schema: { type: 'string' }, render: (_, value) => [{ type: 'text', text: value }] },
@@ -85,185 +89,140 @@ async function host(t, record = {}) {
   }
   const bind = (agent, requestId, reasoningEffort, extra = {}) =>
     call('next', { sessionId: agent.id, requestId, ...route, reasoningEffort, ...extra })
-  const status = (agent, requestId) => call('next/status', { sessionId: agent.id, requestId }).then(r => r.body)
   const create = async (name, effort = 'fast-v2') => {
     const agent = await ctx.agentLoop.create(SessionId(name), route)
     if (effort) agent.model.select({ ...route, reasoningEffort: effort })
     return agent
   }
-  return { ctx, adapter, feature, call, bind, status, create }
+  return { ctx, adapter, registration, feature, call, bind, create }
 }
 
 const prompt = (rpcId, text = 'Fictional fixture prompt') =>
   createUserMessage({ content: [{ type: 'text', text }], source: { kind: 'user', ...rpcId ? { rpcId } : {} } })
 
-test('routes admit only the owner and validate the exact requestId binding', async t => {
+test('only an owner can query unsupported one-message effort controls', async t => {
   const h = await host(t)
-  const a = await h.create('ar-routes')
-  assert.equal(a.id, a.session.id, 'the Agent id is the session id the composer knows')
-  assert.equal((await h.call('next', { sessionId: a.id, requestId: ids[0], ...route, reasoningEffort: 'deliberate-v2' },
-    { principal: { kind: 'viewer' } })).status, 403)
+  const a = await h.create('ar-disabled-route')
+  const params = { sessionId: a.id, requestId: ids[0], ...route, reasoningEffort: 'deliberate-v2' }
+  assert.equal((await h.call('next', params, { principal: { kind: 'viewer' } })).status, 403)
   assert.equal((await h.bind(a, 'not-a-uuid', 'deliberate-v2')).status, 400)
-  assert.equal((await h.bind(a, ids[0], 'guessed-high')).status, 422)
-  assert.equal((await h.bind(a, ids[0], 'deliberate-v2', { model: 'other' })).status, 409)
-  assert.equal((await h.bind(a, ids[0], 'deliberate-v2')).status, 200)
-  assert.equal((await h.bind(a, ids[0], 'deliberate-v2')).status, 409)
-  assert.deepEqual(await h.status(a, ids[0]), { status: 'pending', effort: 'deliberate-v2' })
-  assert.equal((await h.call('stats', {})).status, 200)
-  assert.equal((await h.call('stats', { extra: 'x' })).status, 400)
+  const unavailable = { status: 501, body: { error: 'request-local-effort-unavailable' } }
+  assert.deepEqual(await h.bind(a, ids[0], 'deliberate-v2'), unavailable)
+  assert.deepEqual(await h.call('next/status', { sessionId: a.id, requestId: ids[0] }), unavailable)
+  assert.deepEqual(await h.call('next/withdraw', { sessionId: a.id, requestId: ids[0] }), unavailable)
   await h.feature.dispose()
-  assert.equal((await h.bind(a, ids[1], 'deliberate-v2')).status, 404, 'disabling the plugin removes its routes')
-  assert.equal(a.model.current().reasoningEffort, 'fast-v2')
+  assert.equal((await h.bind(a, ids[0], 'deliberate-v2')).status, 404)
 })
 
-test('a bound override reaches only its own queued message, across tool steps and retries', async t => {
-  const h = await host(t)
-  const a = await h.create('ar-queue')
+test('late and stale bindings cannot affect steered messages sharing a request', async t => {
+  const h = await host(t, { mode: 'adaptive', preferences: [{ ...route, effort: 'deliberate-v2' }] })
+  const a = await h.create('ar-shared')
+  const original = a.model.current()
+  const events = []
+  h.ctx.on('session/event', (session, event) => { if (session === a.session) events.push(event) })
   await h.bind(a, ids[1], 'deliberate-v2')
-  // Another window's prompt is queued first; the bound one runs a tool step and survives a request retry.
-  h.adapter.script.push({}, { tool: true }, { fail: true }, {}, {})
-  a.followup(prompt(ids[0]))
-  a.followup(prompt(ids[1]))
-  a.followup(prompt(ids[2]))
-  await a.whenIdle()
-  assert.deepEqual(h.adapter.requests, ['fast-v2', 'deliberate-v2', 'deliberate-v2', 'deliberate-v2', 'fast-v2'])
-  assert.deepEqual(await h.status(a, ids[1]), { status: 'finished', effort: 'deliberate-v2', restored: true })
-  assert.equal(a.model.current().reasoningEffort, 'fast-v2')
-  // A regeneration carries its own requestId and binds afresh; a stale id cannot be reused.
-  assert.equal((await h.bind(a, ids[1], 'balanced-v2')).status, 409)
-  await h.bind(a, ids[3], 'balanced-v2')
-  a.followup(createUserMessage({ content: [], source: { kind: 'retry', rpcId: ids[3] } }))
-  await a.whenIdle()
-  assert.equal(h.adapter.requests.at(-1), 'balanced-v2')
-  assert.equal(a.model.current().reasoningEffort, 'fast-v2')
-})
-
-test('a manual change mid-turn wins, steering takes its own effort, and cancel restores', async t => {
-  const h = await host(t)
-  const a = await h.create('ar-manual')
-  await h.bind(a, ids[4], 'deliberate-v2')
-  h.adapter.script.push({ before: () => a.model.select({ ...route, reasoningEffort: 'balanced-v2' }) })
-  a.followup(prompt(ids[4]))
-  await a.whenIdle()
-  assert.equal(a.model.current().reasoningEffort, 'balanced-v2')
-  assert.deepEqual(await h.status(a, ids[4]), { status: 'finished', effort: 'deliberate-v2', restored: false })
-
-  // Steering joins the running turn at its next step and brings its own binding.
-  a.model.select({ ...route, reasoningEffort: 'fast-v2' })
-  await h.bind(a, ids[5], 'deliberate-v2')
-  h.adapter.script.push({ tool: true, before: () => a.steer(prompt(ids[5])) }, {})
-  const before = h.adapter.requests.length
-  a.followup(prompt())
-  await a.whenIdle()
-  assert.deepEqual(h.adapter.requests.slice(before), ['fast-v2', 'deliberate-v2'])
-  assert.equal(a.model.current().reasoningEffort, 'fast-v2')
-
-  // Cancelling discards the queued bound prompt, and the running override is restored.
-  let release
-  const gate = new Promise(resolve => { release = resolve })
-  await h.bind(a, ids[6], 'deliberate-v2')
-  await h.bind(a, ids[7], 'balanced-v2')
-  h.adapter.script.push({ before: () => gate })
-  a.followup(prompt(ids[6]))
-  await new Promise(resolve => setImmediate(resolve))
-  a.followup(prompt(ids[7]))
-  assert.equal(a.model.current().reasoningEffort, 'deliberate-v2')
-  a.cancel({ kind: 'user' })
-  release()
-  await a.whenIdle()
-  assert.equal(a.model.current().reasoningEffort, 'fast-v2')
-  assert.equal((await h.status(a, ids[6])).status, 'finished')
-  assert.deepEqual(await h.status(a, ids[7]), { status: 'not-applied', reason: 'discarded', effort: 'balanced-v2' })
-
-  // A withdrawn binding never applies, and a route change before the claim is reported.
-  await h.bind(a, ids[8], 'deliberate-v2')
-  assert.equal((await h.call('next/withdraw', { sessionId: a.id, requestId: ids[8] })).status, 200)
-  await h.bind(a, ids[9], 'deliberate-v2')
-  a.model.select({ provider: 'offline', model: 'synthetic-other', reasoningEffort: 'fast-v2' })
-  a.followup(prompt(ids[8]))
-  await a.whenIdle()
-  a.followup(prompt(ids[9]))
-  await a.whenIdle()
-  assert.deepEqual(h.adapter.requests.slice(-2), ['fast-v2', 'fast-v2'])
-  assert.equal((await h.status(a, ids[8])).reason, 'withdrawn')
-  assert.equal((await h.status(a, ids[9])).reason, 'route-changed')
-})
-
-test('disabling the plugin mid-turn restores the session effort and reports pending overrides', async t => {
-  const h = await host(t)
-  const a = await h.create('ar-dispose')
-  await h.bind(a, ids[10], 'deliberate-v2')
-  h.adapter.script.push({ before: () => h.feature.dispose() })
-  a.followup(prompt(ids[10]))
-  await a.whenIdle()
-  assert.deepEqual(h.adapter.requests, ['deliberate-v2'], 'the captured request keeps its effort')
-  assert.equal(a.model.current().reasoningEffort, 'fast-v2')
-  a.followup(prompt())
-  await a.whenIdle()
-  assert.equal(h.adapter.requests.at(-1), 'fast-v2')
-})
-
-test('Adaptive mode maps local tiers onto declared efforts per message, below a one-time override', async t => {
-  const h = await host(t, { mode: 'adaptive' })
-  const a = await h.create('ar-adaptive')
-  for (const text of ['thanks', 'Explain closures in JavaScript with an example.',
-    'Design a distributed lock service and discuss the consistency trade-offs.']) {
-    a.followup(prompt(undefined, text))
-    await a.whenIdle()
-    assert.equal(a.model.current().reasoningEffort, 'fast-v2', 'the session effort returns after each message')
+  const advance = () => {
+    a.steer(prompt(ids[1], 'Prove that this distributed consensus protocol is safe.'))
+    a.steer(prompt(ids[2], 'Thanks.'))
   }
-  assert.deepEqual(h.adapter.requests, ['fast-v2', 'balanced-v2', 'deliberate-v2'])
-  await h.bind(a, ids[11], 'fast-v2')
-  a.followup(prompt(ids[11], 'Prove that this distributed consensus protocol is safe.'))
+  h.adapter.script.push({ tool: true, before: advance }, { fail: true }, {})
+  a.followup(prompt(ids[0]))
   await a.whenIdle()
-  assert.equal(h.adapter.requests.at(-1), 'fast-v2')
+  assert.equal((await h.bind(a, ids[1], 'deliberate-v2')).status, 501)
+  assert.equal((await h.bind(a, ids[2], 'deliberate-v2', { model: 'stale-model' })).status, 501)
+  assert.deepEqual(h.adapter.requests, ['fast-v2', 'fast-v2', 'fast-v2'])
+  assert.deepEqual(a.model.current(), original)
+  assert.equal(events.filter(event => event.type === 'model/selection').length, 0)
+  assert.deepEqual(events.filter(event => event.type === 'request/header').map(event => event.data.header.config.reasoningEffort),
+    ['fast-v2'])
   const { body } = await h.call('stats', {})
-  assert.equal(body.sources.adaptive, 3)
-  assert.equal(body.sources.override, 1)
-  assert.equal(body.classifier.runs, 3)
+  assert.equal(body.messages, 3)
+  assert.equal(body.sources.manual, 3)
+  assert.equal(body.sources.override, 0)
+  assert.equal(body.sources.adaptive, 0)
+  assert.equal(body.overrides.applied, 0)
+  assert.equal(body.requests.session['fast-v2'].requests, 2)
 })
 
-test('a saved preference fills a session on the native default; a manual effort outranks it', async t => {
+test('a native default stays native with legacy automatic policy and saved records', async t => {
+  const h = await host(t, { mode: 'adaptive', preferences: [{ ...route, effort: 'deliberate-v2' }] })
+  const a = await h.create('ar-native-default', null)
+  a.followup(prompt(ids[0], 'Prove that this distributed consensus protocol is safe.'))
+  await a.whenIdle()
+  assert.deepEqual(h.adapter.requests, ['fast-v2'])
+  assert.equal(a.model.current().reasoningEffort, undefined)
+  assert.equal(a.session.requestHeader().adapterDefaults.reasoningEffort, true)
+  assert.equal((await h.call('stats', {})).body.sources.default, 1)
+})
+
+test('explicit manual and Apply actions validate against the current adapter on the exact route', async t => {
   const h = await host(t, { preferences: [{ ...route, effort: 'balanced-v2' }] })
-  const fresh = await h.create('ar-saved', null)
-  await h.ctx.llm.resolveModelInfo(route.provider, route.model)
-  fresh.followup(prompt())
-  await fresh.whenIdle()
-  const manual = await h.create('ar-manual-wins', 'deliberate-v2')
-  manual.followup(prompt())
-  await manual.whenIdle()
-  assert.deepEqual(h.adapter.requests, ['balanced-v2', 'deliberate-v2'])
-  assert.equal(fresh.model.current().reasoningEffort, undefined, 'the session record stays on the native default')
+  const a = await h.create('ar-manual')
+  const set = (reasoningEffort, manual = false) =>
+    h.call('effort', { sessionId: a.id, ...route, reasoningEffort, ...manual ? { mode: 'manual' } : {} })
+  assert.equal((await set('deliberate-v2')).status, 409, 'Apply must match the saved preference')
+  assert.equal((await set('balanced-v2')).status, 200)
+  assert.equal((await set('fast-v2', true)).status, 200)
+  h.adapter.efforts = ['fast-v2', 'deliberate-v2']
+  assert.equal((await set('balanced-v2')).status, 422, 'the route no longer advertises the saved effort')
+  assert.equal(a.model.current().reasoningEffort, 'fast-v2')
+  assert.equal((await set('deliberate-v2', true)).status, 200)
+  a.followup(prompt(ids[0]))
+  await a.whenIdle()
+  assert.deepEqual(h.adapter.requests, ['deliberate-v2'])
+  assert.equal(a.model.current().reasoningEffort, 'deliberate-v2')
+  assert.equal(a.session.requestHeader().config.reasoningEffort, 'deliberate-v2')
 })
 
-test('subagent policy changes only the in-process child request, never the parent', async t => {
+test('a durable manual write is rejected if the adapter registry changes during validation', async t => {
+  const h = await host(t)
+  const a = await h.create('ar-generation')
+  let validating
+  const started = new Promise(resolve => { validating = resolve })
+  let release
+  const paused = new Promise(resolve => { release = resolve })
+  h.adapter.beforeResolve = () => { validating(); return paused }
+  const pending = h.call('effort', { sessionId: a.id, ...route, reasoningEffort: 'deliberate-v2', mode: 'manual' })
+  await started
+  h.adapter.efforts = ['fast-v2']
+  h.registration.replace(['offline'])
+  release()
+  assert.deepEqual(await pending, { status: 409, body: { error: 'capability-changed' } })
+  assert.equal(a.model.current().reasoningEffort, 'fast-v2')
+})
+
+test('legacy subagent policies are inert for native children and manual routes refuse a child', async t => {
   const h = await host(t, { subagents: 'effort', subagentEffort: 'deliberate-v2' })
-  const parent = await h.create('ar-parent')
+  const parent = await h.create('ar-parent', 'balanced-v2')
   const { agent: child } = await h.ctx.agents.create({
     sessionId: SessionId('ar-child'),
     meta: { origin: 'subagent', parentSession: parent.id, delegationDepth: 1 },
-    agentOptions: { ...route, reasoningEffort: 'fast-v2' },
+    agentOptions: { ...route, reasoningEffort: 'balanced-v2' },
   })
-  assert.equal((await h.bind(child, ids[12], 'balanced-v2')).status, 409, 'a subagent session cannot bind a root override')
-  child.followup(prompt(undefined, 'Fictional delegated task'))
+  const selection = { sessionId: child.id, ...route, reasoningEffort: 'deliberate-v2', mode: 'manual' }
+  assert.equal((await h.call('effort', selection)).status, 409)
+  assert.equal((await h.bind(child, ids[0], 'deliberate-v2')).status, 501)
+  child.followup(prompt(ids[0], 'Fictional delegated task'))
   await child.whenIdle()
-  parent.followup(prompt())
+  parent.followup(prompt(ids[1]))
   await parent.whenIdle()
-  assert.deepEqual(h.adapter.requests, ['deliberate-v2', 'fast-v2'])
-  assert.equal(parent.model.current().reasoningEffort, 'fast-v2')
+  assert.deepEqual(h.adapter.requests, ['balanced-v2', 'balanced-v2'])
+  assert.equal(child.model.current().reasoningEffort, 'balanced-v2')
+  assert.equal(parent.model.current().reasoningEffort, 'balanced-v2')
   const { body } = await h.call('stats', {})
-  assert.equal(body.subagents.applied, 1)
-  assert.equal(body.requests.subagent['deliberate-v2'].requests, 1)
-  assert.equal(body.requests.session['fast-v2'].requests, 1)
+  assert.equal(body.subagents.applied, 0)
+  assert.equal(body.messages, 1, 'child messages are not counted as root messages')
+  assert.equal(body.requests.subagent['balanced-v2'].requests, 1)
+  assert.equal(body.requests.session['balanced-v2'].requests, 1)
 })
 
 test('statistics count committed requests by logged effort with Host timing and no content', async t => {
   const h = await host(t)
-  const a = await h.create('ar-stats')
-  await h.bind(a, ids[13], 'deliberate-v2')
+  const a = await h.create('ar-stats', 'deliberate-v2')
   h.adapter.script.push({ tool: true }, {})
-  a.followup(prompt(ids[13], 'Secret fixture words that must never be counted'))
+  a.followup(prompt(ids[0], 'Secret fixture words that must never be counted'))
   await a.whenIdle()
+  a.model.select({ ...route, reasoningEffort: 'fast-v2' })
   a.followup(prompt())
   await a.whenIdle()
   const { body } = await h.call('stats', {})
@@ -271,10 +230,9 @@ test('statistics count committed requests by logged effort with Host timing and 
   assert.equal(deliberate.requests, 2)
   assert.equal(deliberate.inputTokens, 20)
   assert.equal(deliberate.outputTokens, 5)
-  assert.equal(deliberate.timed, 2, 'each committed request was timed from its stream start')
-  assert.equal(deliberate.reasoningReported, 0, 'no reasoning count is invented when the adapter reports none')
+  assert.equal(deliberate.timed, 2)
+  assert.equal(deliberate.reasoningReported, 0)
   assert.equal(body.requests.session['fast-v2'].requests, 1)
-  assert.equal(body.overrides.applied, 1)
   assert.doesNotMatch(JSON.stringify(body), /Secret|fixture|ar-stats/)
   const reset = await h.call('stats/reset', {})
   assert.equal(reset.body.messages, 0)

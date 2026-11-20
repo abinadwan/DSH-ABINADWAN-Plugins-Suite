@@ -29,8 +29,8 @@ test('real React renders the Environment and the native-settings Personal Profil
   assert.doesNotMatch(html.replace('without plugin-level encryption', ''), /encrypt|DPAPI|Argon|protected|secure storage/i)
   // Default-private access policies.
   assert.match(html, /All access is Private by default/)
-  // No active agent injection or cloud disclosure.
-  assert.match(html, /structured personal information disclosure is not implemented/)
+  // Structured fields stay local.
+  assert.match(html, /Personal information sharing is disabled in this build/)
   assert.doesNotMatch(html, /design draft|preview only|synthetic/i)
   assert.doesNotMatch(html, /<(?:form|input|textarea|select)\b/)
   // The summary follows the Host row state and never renders for unrelated subjects.

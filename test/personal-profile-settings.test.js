@@ -44,7 +44,7 @@ test('describe failures, missing namespace and malformed views fail closed witho
     ['negative revision', async () => ok({ writable: true, namespaces: [{ ...view(emptyRecord()), revision: -1 }] })],
     ['fractional revision', async () => ok({ writable: true, namespaces: [{ ...view(emptyRecord()), revision: 1.5 }] })],
     ['unknown record field', async () => ok({ writable: true, namespaces: [view({ ...emptyRecord(), fullName: 'x' })] })],
-    ['unsupported version', async () => ok({ writable: true, namespaces: [view({ ...emptyRecord(), version: 3 })] })],
+    ['unsupported version', async () => ok({ writable: true, namespaces: [view({ ...emptyRecord(), version: 4 })] })],
     ['v2 record carrying Workspace rows', async () => ok({ writable: true, namespaces: [view({ ...emptyRecord(), workspaces: [] })] })],
     ['invalid policy value', async () => ok({ writable: true, namespaces: [view({ ...emptyRecord(), policies: { ...policies(), preferredName: 'always' } })] })],
     ['unknown preferences key', async () => ok({ writable: true, namespaces: [view({ ...emptyRecord(), preferences: { ...emptyPreferences(), secret: 1 } })] })],
@@ -89,7 +89,7 @@ test('every write carries the revision last read; sequential saves advance it', 
   await type('preferredName', 'Fictional B'); await click('save')
   assert.deepEqual(transport.calls.map(c => [c.ns, c.expected]), [[namespace, 0], [namespace, 1]])
   assert.deepEqual(Object.keys(transport.calls[0].value), ['record'])
-  assert.equal(transport.calls[0].value.record.version, 2)
+  assert.equal(transport.calls[0].value.record.version, 3)
   assert.match(status(), SAVED)
   assert.equal(transport.record.information.preferredName, 'Fictional B')
 })
@@ -203,10 +203,10 @@ test('withdrawn write access disables Save without issuing a write', async t => 
 
 // ---------- Unified profile (no Workspace dependency) ----------
 
-test('unified schema: version 2, one preference set and one policy set; no Workspace fields', () => {
+test('unified schema: version 3, one preference set and one policy set; no Workspace fields', () => {
   const value = resolved({})
   assert.deepEqual(value, emptyRecord())
-  assert.equal(value.version, 2)
+  assert.equal(value.version, 3)
   assert.deepEqual(Object.keys(value), ['version', 'locale', 'information', 'preferences', 'policies', 'allowPersonalInformation', 'allowCloud'])
   assert.deepEqual(value.policies, policies())
   assert.equal(value.allowPersonalInformation, false)
@@ -214,7 +214,7 @@ test('unified schema: version 2, one preference set and one policy set; no Works
   const schema = JSON.stringify(Config.toJSON())
   assert.doesNotMatch(schema, /fullName|dateOfBirth|customFields|password|apiKey/)
   assert.doesNotMatch(schema, /"max":64/, 'no Workspace count limit anywhere')
-  assert.throws(() => Config({ record: { ...emptyRecord(), version: 3 } }), 'unsupported versions are rejected by the Host schema')
+  assert.throws(() => Config({ record: { ...emptyRecord(), version: 4 } }), 'unsupported versions are rejected by the Host schema')
 })
 
 test('the Host schema keeps a stored v0.7.1 record intact (never stripped or rejected)', () => {
@@ -272,7 +272,7 @@ test('one set of preferences and policies is edited and saved for the whole prof
   await click('tab-access'); await select('policy-nationality', 'ask_first'); await select('policy-gender', 'allow')
   await click('save')
   const saved = transport.record
-  assert.equal(saved.version, 2)
+  assert.equal(saved.version, 3)
   assert.equal(saved.workspaces, undefined)
   assert.deepEqual([saved.preferences.style, saved.preferences.responseLanguage, saved.preferences.presets], ['technical', 'ja', ['evidence']])
   assert.deepEqual(saved.policies, { preferredName: 'private', nationality: 'ask_first', gender: 'allow' })
@@ -300,7 +300,7 @@ test('migration without Workspace data keeps information, locale, preferences an
   assert.equal(view.byId('save').disabled, false)
   await view.click('save')
   assert.match(view.status(), /Save confirmed/)
-  assert.deepEqual(transport.record, { version: 2, locale: 'en', information: legacy.information, preferences: legacy.global,
+  assert.deepEqual(transport.record, { version: 3, locale: 'en', information: legacy.information, preferences: legacy.global,
     policies: policies(), allowPersonalInformation: false, allowCloud: false })
   assert.equal(view.byId('migration'), null)
 })
@@ -377,14 +377,13 @@ test('Reload during migration with unsaved edits still asks first', async t => {
 
 // ---------- Privacy boundaries ----------
 
-test('Phase 8 access: off by default; the shared preview follows Allow + both switches; Ask First and Private never share; no encryption is claimed', async t => {
+test('Phase 8 access: each field defaults to Private and structured sharing is disabled pending verification', async t => {
   const { d, click, byId, select } = await mountProfile(t, { transport: mockSettings(recordWith(r => { r.information.gender = 'female' })) })
   await click('tab-access')
   const text = d.body.textContent
-  assert.match(text, /يُعامَل كل مزود نماذج كمزود سحابي/)
+  assert.match(text, /حتى يمكن التحقق من وجهة إرسالها في Harness/)
   assert.match(text, /«اسأل أولًا» غير مفعّل/)
-  assert.match(text, /لا يحذف ما أُرسل سابقًا/, 'retention limits are stated')
-  assert.doesNotMatch(text, /غير مفعّل في الوكيل|المرحلة السابعة/, 'Phase 7 "not active" copy is gone')
+  assert.match(text, /قد تبقى التفاصيل التي شاركتها سابقًا/, 'retention limits are stated')
   assert.equal(byId('opt-in').checked, false); assert.equal(byId('cloud').checked, false)
   for (const field of ['preferredName', 'nationality', 'gender']) assert.equal(byId('policy-' + field).value, 'private')
   assert.deepEqual(Array.from(byId('policy-gender').options, o => o.value), ['private', 'ask_first', 'allow'])
@@ -392,13 +391,9 @@ test('Phase 8 access: off by default; the shared preview follows Allow + both sw
   assert.equal(preview(), 'لا تتم مشاركة أي شيء.')
   for (const field of ['preferredName', 'nationality', 'gender']) await select('policy-' + field, 'allow')
   assert.equal(preview(), 'لا تتم مشاركة أي شيء.', 'Allow alone shares nothing')
-  await click('opt-in')
-  assert.equal(preview(), 'لا تتم مشاركة أي شيء.', 'cloud switch Off shares nothing: no provider is verified local')
-  await click('cloud')
-  assert.equal(preview(), 'Personal details the user chose to share (use them only when relevant to the request):\nPreferred name: Fictional Tester\nNationality: Testland\nGender: female')
-  await select('policy-nationality', 'ask_first'); await select('policy-gender', 'private')
-  assert.equal(preview(), 'Personal details the user chose to share (use them only when relevant to the request):\nPreferred name: Fictional Tester')
-  await click('opt-in')
+  assert.equal(byId('opt-in').disabled, true)
+  assert.equal(byId('cloud').disabled, true)
+  await click('opt-in'); await click('cloud')
   assert.equal(preview(), 'لا تتم مشاركة أي شيء.')
   await click('tab-privacy')
   assert.match(d.body.textContent, /دون تشفير خاص بالإضافة/)
@@ -436,8 +431,9 @@ const savedWithPermissions = () => recordWith(r => {
   r.allowPersonalInformation = true; r.allowCloud = true
 })
 
-test('export contains every setting with the saved permissions unchanged, via download, copy and view', async t => {
+test('export uses the same v2 settings and field policies via download, copy and view', async t => {
   const stored = savedWithPermissions()
+  const archived = { ...stored, version: 2, allowPersonalInformation: false, allowCloud: false }
   const view = await mountProfile(t, { transport: mockSettings(stored) })
   await view.click('tab-backup')
   assert.match(view.d.body.textContent, /not encrypted/)
@@ -447,15 +443,15 @@ test('export contains every setting with the saved permissions unchanged, via do
   assert.equal(view.downloads[0].name, 'personal-profile-backup.json')
   assert.equal(view.downloads[0].blob.type, 'application/json')
   const fileJson = JSON.parse(await view.blobText(view.downloads[0].blob))
-  assert.deepEqual(fileJson, stored, 'complete export, permissions not replaced with Private/Off')
+  assert.deepEqual(fileJson, archived)
   assert.match(view.backupStatus(), /Download started/)
   await view.click('export-copy'); await view.settle()
-  assert.deepEqual(JSON.parse(view.copied[0]), stored)
+  assert.deepEqual(JSON.parse(view.copied[0]), archived)
   assert.match(view.backupStatus(), /copied/)
   assert.equal(view.byId('export-json'), null)
   await view.click('export-view')
   const area = view.byId('export-json')
-  assert.deepEqual(JSON.parse(area.value), stored)
+  assert.deepEqual(JSON.parse(area.value), archived)
   assert.equal(area.getAttribute('dir'), 'ltr', 'JSON is LTR in every interface language')
   assert.equal(area.readOnly, true)
   assert.match(area.style.fontFamily, /monospace/)
@@ -488,9 +484,9 @@ test('the JSON areas stay LTR and monospace in the Arabic RTL interface', async 
 
 async function review(view, backup, { strategy, file = false } = {}) {
   await view.click('tab-backup')
-  if (strategy) await view.click('strategy-' + strategy)
   if (file) await view.upload('import-file', typeof backup === 'string' ? backup : JSON.stringify(backup))
   else { await view.type('restore-json', typeof backup === 'string' ? backup : JSON.stringify(backup)); await view.button(REVIEW) }
+  if (strategy) await view.click('strategy-' + strategy)
 }
 
 test('Replace All from a JSON file: preview, explicit confirmation, draft only, then explicit Save', async t => {
@@ -536,14 +532,14 @@ test('optional permission restoration shows the exact permissions and needs its 
   await view.click('restore-apply'); await view.click('save')
   assert.deepEqual(transport.record, { ...backup, allowPersonalInformation: false, allowCloud: false },
     'exact policies restored after both acknowledgments; both switches Off')
-  // Restored Allow shares nothing until the user turns both switches on.
+  // Restored field policies stay local while structured sharing is disabled.
   await view.click('tab-access')
   assert.equal(view.byId('shared-preview').textContent, 'Nothing is shared.')
-  await view.click('opt-in'); await view.click('cloud')
-  assert.equal(view.byId('shared-preview').textContent, 'Personal details the user chose to share (use them only when relevant to the request):\nPreferred name: Fictional Tester')
+  assert.equal(view.byId('opt-in').disabled, true)
+  assert.equal(view.byId('cloud').disabled, true)
 })
 
-test('Replace All and Merge Custom Instructions keeps existing text, appends new paragraphs, skips duplicates', async t => {
+test('Review & Merge keeps existing text, appends new paragraphs, and skips duplicates', async t => {
   const current = recordWith(r => { r.preferences = { ...emptyPreferences(), style: 'candid', custom: 'Keep this.\n\n  - Shared rule\n  - second line' } })
   const transport = mockSettings(current)
   const view = await mountProfile(t, { transport })
@@ -551,27 +547,27 @@ test('Replace All and Merge Custom Instructions keeps existing text, appends new
     r.information.preferredName = 'Imported Name'
     r.preferences = { ...emptyPreferences(), style: 'technical', custom: '  - Shared rule\n  - second line\n\nImported paragraph\n    with indentation\r\n\r\nKeep this.' }
   })
-  await review(view, backup, { strategy: 'replace-merge' })
+  await review(view, backup, { strategy: 'merge' })
   const merged = view.byId('restore-merged')
   assert.equal(merged.value, 'Keep this.\n\n  - Shared rule\n  - second line\n\nImported paragraph\n    with indentation')
   await view.type('restore-merged', merged.value + '\n\nEdited during review')
   await view.click('restore-confirm'); await view.click('restore-apply'); await view.click('save')
   const saved = transport.record
   assert.equal(saved.information.preferredName, 'Imported Name')
-  assert.equal(saved.preferences.style, 'technical', 'everything except custom instructions is replaced')
+  assert.equal(saved.preferences.style, 'technical', 'the supplied style replaces the existing style')
   assert.equal(saved.preferences.custom, 'Keep this.\n\n  - Shared rule\n  - second line\n\nImported paragraph\n    with indentation\n\nEdited during review')
 })
 
 test('merge handles empty and identical instructions without duplicating text', async t => {
   for (const [label, existing, imported, expected] of [
     ['identical', 'Same text', 'Same text', 'Same text'],
-    ['imported empty', 'Existing', '', 'Existing'],
+    ['imported empty explicitly clears', 'Existing', '', ''],
     ['existing empty', '', 'Imported only', 'Imported only'],
     ['whitespace-only difference', 'Para A\n\nPara B', '  Para B  \n\n\n\nPara A', 'Para A\n\nPara B'],
   ]) {
     await t.test(label, async t => {
       const view = await mountProfile(t, { transport: mockSettings(recordWith(r => { r.preferences.custom = existing })) })
-      await review(view, recordWith(r => { r.preferences.custom = imported }), { strategy: 'replace-merge' })
+      await review(view, recordWith(r => { r.preferences.custom = imported }), { strategy: 'merge' })
       assert.equal(view.byId('restore-merged').value, expected)
     })
   }
@@ -580,7 +576,7 @@ test('merge handles empty and identical instructions without duplicating text', 
 test('merged instructions over the limit are never truncated; Apply waits until they are shortened', async t => {
   const transport = mockSettings(recordWith(r => { r.preferences.custom = 'a'.repeat(5000) }))
   const view = await mountProfile(t, { transport })
-  await review(view, recordWith(r => { r.preferences.custom = 'b'.repeat(5000) }), { strategy: 'replace-merge' })
+  await review(view, recordWith(r => { r.preferences.custom = 'b'.repeat(5000) }), { strategy: 'merge' })
   const merged = view.byId('restore-merged')
   assert.equal(merged.value.length, 10002, 'full merged text, nothing cut')
   assert.equal(merged.getAttribute('aria-invalid'), 'true')
@@ -604,7 +600,7 @@ test('a v0.7.1 backup restores its global settings; Workspace entries are listed
   assert.equal(view.byId('restore-permissions'), null, 'no unified permissions to restore from a v1 backup')
   assert.match(view.byId('restore-preview').textContent, /0\.7\.1|متوقف/)
   await view.click('restore-confirm'); await view.click('restore-apply'); await view.click('save')
-  assert.deepEqual(transport.record, { version: 2, locale: 'en', information: legacy.information, preferences: legacy.global,
+  assert.deepEqual(transport.record, { version: 3, locale: 'en', information: legacy.information, preferences: legacy.global,
     policies: policies(), allowPersonalInformation: false, allowCloud: false })
 })
 
@@ -613,7 +609,7 @@ test('invalid, unsupported, oversized and malformed backups are rejected with a 
   const bad = [
     ['invalid JSON', '{"version":2,', /ليس JSON صالحًا/],
     ['empty', '', /غير صالح/],
-    ['unsupported version', JSON.stringify({ ...base, version: 3 }), /إصدار النسخة غير مدعوم/],
+    ['unsupported version', JSON.stringify({ ...base, version: 4 }), /إصدار النسخة غير مدعوم/],
     ['missing version', JSON.stringify({ ...base, version: undefined }), /إصدار النسخة غير مدعوم/],
     ['oversized', JSON.stringify({ ...base, information: { ...base.information, preferredName: 'x'.repeat(3_000_001) } }), /أكبر من الحد/],
     ['unknown field', JSON.stringify({ ...base, dateOfBirth: '2000-01-01' }), /حقولًا غير معروفة/],
@@ -621,7 +617,7 @@ test('invalid, unsupported, oversized and malformed backups are rejected with a 
     ['too-long name', JSON.stringify({ ...base, information: { ...base.information, preferredName: 'x'.repeat(129) } }), /غير صالح/],
     ['instructions over 8192', JSON.stringify({ ...base, preferences: { ...base.preferences, custom: 'x'.repeat(8193) } }), /لم يُقتطع شيء/],
     ['invalid policy', JSON.stringify({ ...base, policies: { ...base.policies, gender: 'always' } }), /صلاحية غير صالحة/],
-    ['missing policy', JSON.stringify({ ...base, policies: { preferredName: 'allow' } }), /صلاحية غير صالحة/],
+    ['unknown policy field', JSON.stringify({ ...base, policies: { dateOfBirth: 'allow' } }), /صلاحية غير صالحة/],
     ['non-boolean switch', JSON.stringify({ ...base, allowCloud: 'yes' }), /غير صالح/],
     ['malformed preferences', JSON.stringify({ ...base, preferences: { ...base.preferences, traits: { warmth: 5 } } }), /غير صالح/],
     ['unknown preset', JSON.stringify({ ...base, preferences: { ...base.preferences, presets: ['run-skill'] } }), /غير صالح/],
@@ -669,24 +665,25 @@ test('cancelling a reviewed restore, or editing its text, leaves the draft uncha
   await view.type('restore-json', '')
   assert.equal(view.byId('restore-apply'), null, 'editing the text discards the review')
   await view.button(REVIEW); await view.type('restore-json', JSON.stringify(other)); await view.button(REVIEW)
-  await view.click('strategy-replace-merge')
+  await view.click('restore-confirm')
+  await view.click('strategy-replace')
   assert.equal(view.byId('restore-confirm').checked, false, 'changing strategy needs a new confirmation')
   await view.click('tab-information')
   assert.equal(view.byId('preferredName').value, 'Fictional Tester')
   assert.equal(view.byId('save').disabled, true, 'nothing dirty')
 })
 
-test('the general-purpose merge strategy is gone; exactly two restore strategies exist; merging is the default', async t => {
+test('restore starts with Review & Merge; Replace All is available after reviewing a backup', async t => {
   const view = await mountProfile(t)
   await view.click('tab-backup')
+  assert.equal(view.byId('strategy-merge'), null)
+  await review(view, fictional())
   const radios = [...view.d.querySelectorAll('input[name="pp-strategy"]')].map(x => x.value)
-  assert.deepEqual(radios, ['replace', 'replace-merge'])
-  assert.equal(view.byId('strategy-replace-merge').checked, true, 'Phase 8: Replace All and Merge Custom Instructions is the default')
+  assert.deepEqual(radios, ['merge', 'replace'])
+  assert.equal(view.byId('strategy-merge').checked, true)
   assert.equal(view.byId('strategy-replace').checked, false)
-  assert.equal(view.byId('backup-strategy'), null)
-  assert.doesNotMatch(view.d.body.textContent, /دمج دون استبدال موجود|Merge without replacing/)
   await view.select('language', 'en')
-  assert.match(view.d.body.textContent, /Replace All and Merge Custom Instructions/)
+  assert.match(view.d.body.textContent, /Review & Merge/)
   assert.match(view.d.body.textContent, /including custom instructions/)
 })
 
@@ -719,9 +716,10 @@ test('Arabic and English pages: labels, unique IDs, direction and axe DOM checks
         await view.click('export-view')
         await view.type('restore-json', JSON.stringify(savedWithPermissions()))
         await view.button(locale === 'ar' ? REVIEW : 'Review backup')
+        await view.click('strategy-replace')
         await view.click('restore-permissions')
         await audit(`${locale}/backup replace`)
-        await view.click('strategy-replace-merge')
+        await view.click('strategy-merge')
       }
       await audit(`${locale}/${page}`)
       if (page === 'backup') { await view.click('restore-cancel'); await view.click('export-view') }
@@ -845,7 +843,7 @@ test('the discard confirmation is localized in English', async t => {
 })
 
 test('custom consent is saved explicitly, exported, and reset by both restore strategies', async t => {
-  for (const strategy of ['replace','replace-merge']) await t.test(strategy, async t => {
+  for (const strategy of ['replace','merge']) await t.test(strategy, async t => {
     const {byId,click,type,transport,...rest}=await mountProfile(t)
     const view={byId,click,type,transport,...rest}
     await click('tab-instructions')
