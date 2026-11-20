@@ -221,7 +221,8 @@ export async function clientHarness(options = {}) {
     items: options.workspaceItems || [{ workspaceId: 'w', title: 'HomeBook', path: 'C:/Work/HomeBook', sessionIds: ['s1'] }],
     archivedSessionIds: options.archivedSessionIds ?? [], pinnedSessionIds: [], state: 'idle', phase: 'ready', error: null,
   })
-  ctx.provide('sessions', { list: sessions, subagentAddress: () => undefined })
+  ctx.provide('sessions', { list: sessions, subagentAddress: () => undefined,
+    binding: id => options.sessionBinding?.(id) })
   ctx.provide('workspaces', { list: workspaces })
   if (options.modelDirectories) ctx.provide('modelDirectories', options.modelDirectories)
   ctx.provide('sidebarRight', {
@@ -240,7 +241,7 @@ export async function clientHarness(options = {}) {
     fetch: options.fetch || (() => { throw new Error('unexpected network request') }),
     navigator: options.navigator,
     document: options.document,
-    AbortSignal, URL,
+    AbortSignal, URL, crypto: globalThis.crypto,
   })
   const plugin = loaded.factory(name => {
     const react = options.React || ReactStub
@@ -251,10 +252,16 @@ export async function clientHarness(options = {}) {
         Checkbox: ({ label, onChange, ...props }) => h('label', null,
           h('input', { type: 'checkbox', ...props, onChange: event => onChange(event.target.checked) }), label),
         Toast: ({ text }) => h('span', { role: 'alert' }, text),
-        Menu: ({ open, anchor, items, onSelect }) => h('span', null, anchor, open && h('div', { role: 'menu' },
-          ...items.map(item => item.type === 'label' ? h('span', { key: item.id }, item.text) :
-            item.type === 'separator' ? h('hr', { key: item.id }) : h('button', { key: item.id, role: 'menuitem',
-              disabled: item.disabled, onClick: () => onSelect(item.id) }, item.label)))),
+        // Submenu rows render inline after their parent, which opens them without selecting.
+        Menu: ({ open, anchor, items, onSelect, selectedId, selectedIds }) => {
+          const rows = list => list.flatMap(item => item.type === 'label' ? [h('span', { key: item.id }, item.text)] :
+            item.type === 'separator' ? [h('hr', { key: item.id })] : [h('button', { key: item.id, role: 'menuitem',
+              disabled: item.disabled, 'aria-checked': item.id === selectedId || selectedIds?.includes(item.id) ? 'true' : undefined,
+              onClick: () => { if (!item.submenu) onSelect(item.id) } }, item.label), ...item.submenu ? rows(item.submenu) : []])
+          return h('span', null, anchor, open && h('div', { role: 'menu' }, ...rows(items)))
+        },
+        Modal: ({ open, title, description, children, footer }) => open ? h('div', { role: 'dialog', 'aria-label': title },
+          h('h2', null, title), description ? h('p', null, description) : null, children, footer) : null,
       }
     }
     if (name !== 'react') throw new Error(`unexpected browser import ${name}`)
