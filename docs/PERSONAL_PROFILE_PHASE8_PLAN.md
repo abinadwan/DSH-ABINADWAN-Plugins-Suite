@@ -1,125 +1,105 @@
 # Phase 8 — Controlled Personal Profile Disclosure
 
-Status: **plan updated 2026-11-19; stopped at the implementation approval gate (§6). Nothing is implemented.** The branch `feature/phase8-profile-disclosure` is fast-forwarded to main (`31b071c`, Phase 7D merged). Phase 7 fail-closed behaviour stays intact until the owner decides §6. The `max_tokens` provider configuration is separate and out of scope.
+Status: **owner approved the prospective-only contract on 2026-11-20, with the requirements in §2. P1 (negative tests and this correction) is done. Production activation is NO-GO until every mandatory gate in §4 passes.** Nothing that discloses personal information is implemented. Work is local only, in `DSH-Suite-Phase8` (`feature/phase8-profile-disclosure-v08`, based on `687a936`). The earlier draft is preserved in commit `f420fc6`, and the evidence is in the [Phase 8 audit](PERSONAL_PROFILE_PHASE8_AUDIT.md). The `max_tokens` provider configuration is separate.
 
-## 1. Scope (unchanged)
+## 1. Scope
 
 - **Fields:** existing optional fields only: preferred name, nationality, gender. No new personal fields.
-- **Always deny:** Master Off and Private.
-- **Allow and Ask First:** these may only take effect under a contract the owner has approved (§3).
-- **Cloud Off:** denies unknown, untrusted and cloud destinations. Trust is never inferred from localhost.
-- **Custom instructions** stay a separate explicit consent channel. No stored grant is reclassified or promoted automatically.
-- **Storage and JSON backups** stay plaintext under the current contract.
+- **Default:** disclosure is disabled. Master Off and Private always deny.
+- **Ask First** stays disabled until a native destination-bound approval contract is verified (audit P8-04).
+- **Custom instructions** stay a separate consent channel and are not reclassified.
+- **Synthetic data only** in every test, fixture, log and report. Real backups are never read, copied or modified.
 
-## 2. 8A — upstream review (read-only, done)
+## 2. Owner requirements (2026-11-20)
 
-| Blocker from the [Phase 7C privacy gate](PERSONAL_PROFILE_PHASE7C_PRIVACY_GATE.md) | Status at rc.5 |
+| # | Requirement | Where it is met |
+|---|---|---|
+| R1 | Disabled by default | §5 8B migration, §4 G4 |
+| R2 | Consent covers only explicitly authorized *future* disclosure | §3 |
+| R3 | Never claim revocation removes transmitted, logged, summarized or branched data | §3, §5 8D copy |
+| R4 | Bind consent to verified environment, provider identity and effective endpoint | §4 G1 (**not satisfiable today**) |
+| R5 | Invalidate consent when the destination changes | §4 G2 |
+| R6 | Recheck at the latest reliable admission boundary | §4 G3 (assembly + send time) |
+| R7 | Prevent stale retry disclosure wherever enforceable | §4 G3 send-time guard |
+| R8 | No consent from backups or legacy Allow | §4 G4, tests in §6 |
+| R9 | Fresh explicit consent before activation | §4 G4 |
+| R10 | Explicit consent scope and expiration | §4 G5 |
+| R11 | Ask First disabled | §1 |
+| R12 | Encrypt persistent profile data and backups | §4 G7, §5 8G |
+| R13 | Disclose that Harness logs may retain shared information | §3, §5 8D |
+| R14 | Synthetic data in every test | §1, §6 |
+
+## 3. Contract (corrected)
+
+**Guaranteed** (once the gates pass): a field is added to a *future* request only if every condition holds at both admission points (§4 G3):
+- Master On, field Allow and Cloud On;
+- a current, unexpired consent whose scope matches this request (§4 G5);
+- a destination that matches the consent binding (§4 G1, G2).
+
+**Not guaranteed (shown before consent, in both languages):**
+- **Earlier content stays.** Revocation applies from the **next step**. It does not remove content that was already sent, logged, summarized or copied into a branch.
+- **Retries.** A retry inside a running step reuses the prompt accepted for that step. This is proven by `qa/phase8-negative-check.mjs` and by the upstream test `system-prompt-admission.spec.ts:313`. The send-time guard refuses such a retry instead of sending it (G3), but only for this plugin's exact Profile block.
+- **Replay depends on the route.** On in-history routes the earlier system prompt stays in later requests, including after a switch to another in-history provider (proven, audit N-5). On replace routes the prompt is normalized, but the stored event stays in the session log.
+- **Derived content.** Model replies, compaction summaries and forks (proven) carry earlier content forward, and the Harness can neither filter nor delete it.
+- **Plaintext logs.** Harness conversation logs store shared values in plaintext, outside plugin control, even when the profile record and backups are encrypted.
+- **Clean boundary.** Only a new chat gives a clean context.
+
+## 4. Mandatory gates for production activation
+
+| Gate | Requirement | Mechanism | Status |
+|---|---|---|---|
+| G1 | Consent bound to environment, provider identity and effective endpoint | Environment = active Harness Profile. Provider identity = route label. **Endpoint: no verified value exists in rc.3, rc.5 or master.** Needs an upstream verified destination, or a verifiable endpoint fingerprint (research R1). | **FAIL**, blocks activation |
+| G2 | Destination change invalidates consent | Invalidate when the label, the adapter generation or the endpoint fingerprint changes. Whether an endpoint edit emits `llm/adapters-updated` is unverified (R1). | Open |
+| G3 | Recheck at the latest reliable boundary; no stale retry | (a) Admission at section assembly. (b) Send-time guard on `llm/stream`, the last point before the adapter, where the loop request is frozen and may be refused but not rewritten. It refuses a request that carries this plugin's Profile block when current admission denies it, which covers retries and in-history replay. Derivatives cannot be detected (accepted limit, §3). A refused in-history chat tells the user to start a new chat. | Open |
+| G4 | Fresh explicit consent; never restored | Record v3 `disclosure` is written only by the consent screen. Migration, restore, import and backup never set it. The Host checks it independently of the page. | Open (current fail-closed behaviour tested) |
+| G5 | Consent scope and expiry | Scope = {Harness Profile, consented field set, provider label, endpoint fingerprint, field values, contract version}. Expiry: **30 days**, or earlier when any scope element changes, on Master Off, on restore or import, or when a consented value is edited. A future or backward timestamp denies. | Open |
+| G6 | Ask First disabled | No positive path; current omit tests | Pass (current) |
+| G7 | Encrypted profile data and backups | Backups: password-based authenticated encryption (§5 8G). Record at rest: needs a key that is not stored beside it (OS-bound or unlocked per session). No native Harness facility exists. | **FAIL**, needs design decision |
+| G8 | Retention disclosure | §3 text on the consent screen and after revocation | Open |
+| G9 | Request-level evidence | Phase 7 #11–#13 and #18 closed, plus actual Desktop request capture with synthetic values | Open |
+
+G1 and G7 are not achievable with the current Harness and current design. Phase 8 can be built and tested behind a disabled state, but **cannot be activated** until both pass.
+
+## 5. Implementation plan
+
+- **8B — record v3 and consent state** (`plugins/personal-profile/index.js` schema, `client.js` decoder):
+  - `disclosure: {contract, acknowledgedAt, fields, provider, endpoint} | null`;
+  - v2→v3 sets `null`;
+  - backups export without `disclosure`, and imports reject it (already the case for v2, tested);
+  - rollback warning before the first v3 save, because 0.8.0-rc.1 and 0.7.2 reject v3.
+- **8C — admission** (`preferences.js` Host, and its `client.js` preview mirror):
+  - one fixed-label, single-line, length-checked Profile block; gender limited to its enum;
+  - every G1–G5 condition is checked, and any error yields no block;
+  - plus the G3 send-time guard in the same plugin.
+- **8D — UI:**
+  - consent screen with the §3 limits, names the provider and the binding, shows the expiry;
+  - revocation for Master, per field and per provider;
+  - post-revocation notice: "Earlier messages, summaries and branches may still contain it; start a new chat";
+  - Ask First keeps its "not active" text.
+- **8E — tests:** extend §6 to the positive path, both routes and rc.3 + rc.5.
+- **8F — docs and acceptance:** README, SECURITY, CHANGELOG, privacy gate and Windows checklist.
+- **8G — encryption:**
+  - **8G-1 backups (first).** Versioned envelope with AES-256-GCM via WebCrypto in the page, a random salt and nonce, a password-derived key, authentication before parsing, and the same generic failure for a wrong password or tampering. Plaintext v2 import stays available for migration only, with a warning. Encrypted import never restores consent.
+  - **8G-2 record at rest.** Key source to be decided by the owner (§7). Disclosure stays off while the record is unreadable.
+- **R1 research:** does an endpoint edit under an unchanged label change the adapter generation or emit `llm/adapters-updated`? Is there any value that can serve as an endpoint fingerprint without reading credentials?
+
+No Harness change, transport or package export. 8G-1 needs no new dependency if the key derivation uses WebCrypto PBKDF2 (§7).
+
+## 6. P1 results (2026-11-20, synthetic data)
+
+| Check | Result |
 |---|---|
-| System prompt is stored in the append-only session log and replayed; no supported last-mile redaction | **Unchanged** |
-| Endpoint metadata is advisory; no verified local-only destination | **Unchanged** |
-| No native destination-bound, single-use approval | **Unchanged** |
-| No isolation across retry, compaction, provider switch or plugin disable | **Unchanged** |
+| `test/personal-profile-phase8-backup.test.js` | 5 pass, 5 todo. Synthetic owner-equivalent v2 backup (field Allow, both switches Off):<br>• the Host reads it unchanged and contributes no field;<br>• default restore keeps every non-sensitive preference and resets permissions to Private;<br>• restored custom consent is dropped;<br>• opted-in permission restore keeps switches Off and discloses nothing;<br>• forged `disclosure` consent (v2 or v3) is rejected;<br>• export is plaintext and says so.<br>Todos: v3 migration, fresh consent, encrypted export (fails today on plaintext), secure import ×2. |
+| `qa/phase8-negative-check.mjs` | rc.3 4/4 · rc.5 4/4:<br>• retry reuses the step prompt after revocation;<br>• an in-history provider switch resends the earlier prompt;<br>• a replace route does not;<br>• the log keeps it on both;<br>• a fork seed copies it;<br>• legacy Allow is inert on both routes.<br>No field and no `approval/asked` in any request or log. |
+| `qa/profile-host-check.mjs` | rc.3 1/1 · rc.5 1/1 (unchanged) |
+| `npm test` (Node 24.21.0) | all pass, plus the todos above |
 
-Evidence for the table:
-- **Versions compared.** Upstream has published 0.2.2-rc.4 (2026-11-17) and rc.5 (2026-11-18). The suite and Desktop are pinned to rc.3.
-- **Files compared.** The published `dsh-agent-loop`, `dsh-session` and `dsh-llm` packages were compared file by file. Between rc.3 and rc.5, `dsh-agent-loop` and `dsh-session` differ only in `package.json` (the version). `dsh-llm` adds one error code (`CONTENT_REFUSED`).
-- **Plugin side.** The plugin's admission point already exposes a route label (`modelSelection.provider`/`model`) in `eligibleAssembly`. That label is a name, not a verified endpoint.
+Runtimes are isolated copies in `node_modules/.phase8-qa/`, loaded through `qa/runtime-resolve.mjs`.
 
-**Conclusion: the original Phase 8 guarantee is still NO-GO.** That guarantee is that no restricted information or derivative is replayed after permissions change. Positive disclosure is possible only if the owner explicitly approves the weaker **prospective-only** contract that the privacy gate already names as an option (§3).
+## 7. Open owner decisions
 
-Phase 7 evidence gates that are still open and stay prerequisites for any stable release ([acceptance record](PERSONAL_PROFILE_PHASE7_WINDOWS_ACCEPTANCE.md)):
-- **#12 (BLOCKED):** actual request inspection.
-- **#13 (BLOCKED):** route and provider change.
-- **#11 (PARTIAL):** permission opt-in evidence.
-- **#18 (PARTIAL):** post-rollback integrity.
-
-## 3. Contract proposed for approval: prospective-only disclosure
-
-**What it guarantees:**
-- **Admission.** A field is added to *future* requests only when every condition holds at request assembly:
-  - Master On;
-  - field policy Allow;
-  - a current Phase 8 acknowledgment;
-  - Cloud On;
-  - the active route's provider on the user's authorized list.
-- **Revocation.** Any revocation removes the field from every *later* request immediately.
-
-**What it does not guarantee (shown to the user before consent):**
-- **History.** Requests already sent, and the session history, keep the field. That includes the system prompt the Harness stores and replays, and anything the model said about it.
-- **Provider switch.** Switching provider inside a chat that already contains the field replays that history to the new provider. The provider list controls only new admissions. Starting a new chat is the only clean boundary.
-- **Labels.** The provider label is the Harness route name, not a verified endpoint. Cloud Off therefore denies everything: there is no verified local-only destination.
-
-**Deliberately excluded:**
-- **Ask First stays omitted.** No native single-use, destination-bound approval exists, and a plugin-drawn prompt would promise what cannot be enforced. This is the same rule as Phase 7C.
-- **No retroactive erasure claim**, and no change to custom-text consent.
-
-## 4. Minimal implementation (only if §3 is approved)
-
-### 8B — consent and destination authorization (state)
-
-- **Record version 3 with a migration.**
-  - New field: `disclosure: {acknowledged: <contract version> | null, providers: string[]}`.
-  - The Browser decoder is strict and rejects unknown fields, so a version bump is the only correct way to store this.
-  - Migrating v2 records sets `acknowledged:null, providers:[]`.
-- **No silent activation.** Existing Allow grants stay inactive until the user acknowledges the contract. The migration activates nothing.
-- **The acknowledgment and the provider list are cleared on:**
-  - backup restore, import and migration (same rule as `sendCustom`);
-  - any change of the contract version;
-  - Master Off.
-- **Rollback impact.** 0.8.0-rc.1 and 0.7.2 cannot read a v3 record or a v3 backup. The 8F acceptance must test rollback, and the UI must warn before the first v3 save. This needs owner approval (§6, decision 2).
-
-### 8C — admission (one place)
-
-- **Location.** Extend the single existing renderer path (`responsePreferences`, Host, with its `client.js` preview mirror). Add a separate allowlisted "Profile" block that is built only from the three fields. No second injection path.
-- **Inputs.** Admission takes the record plus `context.modelSelection.provider`. Every unknown or malformed state denies.
-- **Values.** Field values are length-checked and normalized to a single line, and inserted as data under fixed labels (for example `Preferred name: …`). Gender is limited to its enumerated values.
-- **Fail-closed.** Any exception yields no Profile block. The existing preferences still render.
-
-### 8D — UI and revocation
-
-- **Consent step.** It shows the §3 limits in plain language, names the current provider, and records the acknowledgment and the authorized providers.
-- **Revocation controls.** Master, per-field and per-provider switches. Each removes the field from the next request.
-- **Notice after revocation.** "Earlier messages in this chat still contain it; start a new chat for a clean context."
-- **Ask First.** It keeps today's "not active" explanation.
-
-### 8E — tests (synthetic data only; no LLM benchmarks or heavy local models)
-
-1. **Unit admission matrix.** All combinations of master × policy (3 fields) × acknowledgment × Cloud × provider authorized/unauthorized/missing. The field appears **only** when all conditions hold. Every Phase 7C negative case (108 combinations) still returns exactly the baseline.
-2. **Consent lifecycle.**
-   - Migration from v2 activates nothing.
-   - Restore, import and contract-version change clear the acknowledgment and providers.
-   - Master Off clears them.
-   - Ask First never renders.
-3. **Revocation.** On the request after each revocation (master, field, provider, Cloud), the field is absent.
-4. **Destination.** A provider switch to an unauthorized provider omits the field from new admissions. A test also asserts and documents that history from earlier turns is still replayed, which proves the limitation stated in the UI.
-5. **Privacy regressions:**
-   - custom-text consent behaviour is unchanged;
-   - Phase 7D wording is unchanged (existing golden tests);
-   - Host = Browser parity covers the new block;
-   - no field leaks through tools or approval prompts;
-   - malformed and oversize values deny.
-6. **Real Agent Loop.** The offline adapter at the pinned rc.3 (extending `qa/profile-host-check.mjs`) covers positive and negative paths, and asserts the session log after revocation and after plugin disable.
-7. **Rollback.** v3 to 0.8.0-rc.1 and 0.7.2 behaves as documented (record ignored or refused, no crash, no data loss of the v2 backup kept before migration).
-
-### 8F — documentation and acceptance
-
-- Update the privacy gate, README, CHANGELOG and the Windows acceptance checklist.
-- Owner Windows acceptance includes actual outgoing-request inspection, which closes Phase 7 #12 and #13 for this contract.
-- No stable release without separate approval.
-
-## 5. Size and risk
-
-- **Size.** About three focused changes (schema/migration, admission, UI) plus tests in the existing files. No Harness change, dependency or new transport.
-- **Main risks:**
-  - users may misread the prospective-only limits (mitigated by the consent text and the post-revocation notice);
-  - the v3 record breaks rollback (mitigated by the pre-save warning and the retained v2 backup);
-  - provider labels can be renamed by the user (mitigated because authorization binds to the exact label, and an unknown label denies).
-
-## 6. Approval gate — owner decisions required
-
-1. **Contract:** approve the prospective-only disclosure contract in §3, or keep Phase 8 NO-GO. Keeping NO-GO leaves the fail-closed Phase 7C behaviour unchanged and ends Phase 8 here.
-2. **Record v3:** approve record v3 and its rollback consequences for 0.8.0-rc.1 and 0.7.2 backups.
-3. **Ask First:** confirm it stays inactive (recommended) until upstream provides native destination-bound single-use approval.
-4. **Cloud Off:** confirm Cloud Off denies all destinations (recommended, since no destination is verifiable as local).
-
-Nothing in §4 starts before these decisions. The `max_tokens` configuration stays a separate decision.
+1. **Key derivation for 8G-1.** PBKDF2-SHA-256 via WebCrypto (native, no dependency; recommended), or Argon2id as in the Phase 5 design (memory-hard; needs a reviewed WASM dependency).
+2. **Plaintext export.** Remove it after 8G-1 (recommended), or keep it behind an explicit warning for rollback to 0.7.2 / 0.8.0-rc.1.
+3. **Record encryption key (8G-2).** Windows DPAPI through the Host (Phase 5 prerequisites still open), or a passphrase unlocked each session.
+4. **Expiry.** Confirm 30 days (G5).
+5. **G1.** Accept that activation waits for an upstream verified destination, or approve a weaker binding (label + adapter generation) explicitly. The owner's current requirement is the verified binding.

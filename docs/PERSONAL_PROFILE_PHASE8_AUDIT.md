@@ -1,6 +1,6 @@
 # Personal Profile Phase 8 — recovery and security audit
 
-Status: **read-only audit, 2026-11-20. Nothing is implemented.** Phase 8 stays **NO-GO** until the owner decides the gate in §9. No push, PR, release or experiment with real personal data. Use synthetic values only.
+Status: **read-only audit, 2026-11-20.** The owner then approved the prospective-only contract with requirements, and P1 is done; see the [corrected plan](PERSONAL_PROFILE_PHASE8_PLAN.md). Production activation stays **NO-GO**. No push, PR, release or experiment with real personal data. Use synthetic values only.
 
 | | |
 |---|---|
@@ -114,7 +114,7 @@ Status key: **Unresolved** = blocked by Harness and unchanged on rc.5 and master
 | N-2 | Auxiliary calls: subagents, delegation, origin sessions and diagnostic assembly are excluded. Titles read human messages only. | `preferences.js:79-85`; [session-title L98](https://github.com/deepseek-ai/deepseek-harness/blob/9c2670d3bce5275e0d1610272958121af87787bb/packages/session/session-title/src/index.ts#L98) | Keep. Compaction can summarize derivatives (P8-01). |
 | N-3 | Custom text is gated by `sendCustom` only, not Cloud Off (by design, label says "including cloud") | `client.js:749` | Phase 8 copy must not imply that Cloud Off restricts custom text |
 | N-4 | Logging: suite logs only inventory and environment errors. The Host section swallows errors and returns `''`. | `client.js:661,1912,1930`; `index.js:65-67` | No value leakage. Keep value-free. |
-| N-5 | Provider switch to an **in-history** route without a new series may resend the old Profile node to the new provider (from source; `startsSeries` is not forced by a header change) | `runtime-context.ts L106`; `agent.ts L458-L463` | Prove or refute in test 8E-4 |
+| N-5 | **Proven 2026-11-20 (rc.3, rc.5):** after a switch to another **in-history** route, the earlier prompt is resent to the new provider. A replace route does not resend it. | `qa/phase8-negative-check.mjs`; `runtime-context.ts L106` | Stated in the corrected contract (plan §3) |
 
 ## 4. Remaining implementation tasks (only after §9 approval)
 
