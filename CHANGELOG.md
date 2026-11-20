@@ -10,6 +10,7 @@ All notable changes are documented here.
 - Offline real Harness rc.3 integration tests, Windows/Linux Node 22/24 matrix and packaging checks.
 - Version-dependent tests now derive expected UI versions from the manifest; source lockfile checks run before packaging and extracted-artifact checks remain independent of source-only files.
 - Owner-reported Windows functional results and actual rollback to 0.7.2 recorded in [Phase 7 Desktop acceptance](docs/PERSONAL_PROFILE_PHASE7_WINDOWS_ACCEPTANCE.md). Remaining checks, including actual outgoing-request evidence, are explicitly open.
+- Phase 7D response-preference wording: the selected language is followed even when the user writes in another language (explicit requests still win), and Creative, Grill-Me and low-warmth instructions are stronger. The changes were benchmarked on local models with held-out checks. Code Reviewer and Humanizer are unchanged. Details: [Phase 7D plan](docs/PERSONAL_PROFILE_PHASE7D_PLAN.md).
 - No stable update offer until remaining acceptance gates are resolved and a stable release is explicitly approved. Structured disclosure remains deferred to [Phase 8](docs/PERSONAL_PROFILE_PHASE8_PLAN.md).
 
 ## [0.7.2] — Released
