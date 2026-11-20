@@ -1,16 +1,18 @@
-// Native Harness settings schema. No separate storage, cryptography, agent
-// transport or structured personal disclosure. The active Harness Profile owns the file.
+// Native Harness settings schema. No separate storage, cryptography or agent
+// transport. The active Harness Profile owns the file.
 //
 // Record version 2 (0.7.2) is one unified profile: personal information, one
 // preference set and one set of field policies. It does not depend on any
 // Workspace and is designed to apply to every existing and future
-// supported native agent step. Only response preferences are contributed.
+// supported native agent step. Contributions: response preferences, and (Phase 8)
+// the fields set to Allow while both sharing switches are On, rechecked at send time.
 //
 // Record version 1 (0.7.0/0.7.1, per-Workspace overrides and policies) is still
 // accepted by the schema so a stored v1 record is never rejected or stripped
 // by the Host. The browser page migrates it only after explicit review + Save.
 import z from '@deepseek-ai/schemastery'
-import { SECTION_NAME, responsePreferences, eligibleAssembly } from './preferences.js'
+import { SECTION_NAME, DISCLOSURE_SECTION_NAME, responsePreferences, profileDisclosure, staleDisclosure,
+  refuseStaleDisclosure, eligibleAssembly } from './preferences.js'
 
 const choice = (values,initial) => z.union(values).default(initial)
 const styles=['default','professional','friendly','candid','creative','efficient','critical','technical']
@@ -66,5 +68,18 @@ export function apply(ctx,config) {
       if(!eligibleAssembly(context))return ''
       try { return responsePreferences(config.record.get()) } catch { return '' }
     }})
+    // Phase 8 admission at assembly: evaluated for every new step.
+    child.systemPrompt.section({name:DISCLOSURE_SECTION_NAME,order:51,interpolate:false,text:context=>{
+      if(!eligibleAssembly(context))return ''
+      try { return profileDisclosure(config.record.get()) } catch { return '' }
+    }})
+  })
+  // Phase 8 send-time recheck, the last native point before the adapter. A frozen
+  // request is never rewritten: one that carries a shared-details block the current
+  // settings would not produce is refused (terminal, non-retryable) instead of sent.
+  ctx.on('llm/stream',(request,next)=>{
+    let record=null
+    try { record=config.record.get() } catch { record=null }
+    return staleDisclosure(request,record) ? refuseStaleDisclosure(record?.locale) : next()
   })
 }

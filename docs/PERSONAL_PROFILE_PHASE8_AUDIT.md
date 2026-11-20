@@ -1,6 +1,6 @@
 # Personal Profile Phase 8 — recovery and security audit
 
-Status: **read-only audit, 2026-11-20.** The owner then approved the prospective-only contract with requirements, and P1 is done; see the [corrected plan](PERSONAL_PROFILE_PHASE8_PLAN.md). Production activation stays **NO-GO**. No push, PR, release or experiment with real personal data. Use synthetic values only.
+Status: **read-only audit, 2026-11-20, kept as evidence.** Later the same day the owner replaced the encryption and consent-record requirements with a simplified model (no backup or profile encryption, no consent expiry or new consent records). The findings below still describe the native limits; how each is now handled is in the [Phase 8 plan](PERSONAL_PROFILE_PHASE8_PLAN.md) and the [verification report](PERSONAL_PROFILE_PHASE8_REPORT.md). Sections 4, 7, 8 and 9 are superseded by that plan. No push, PR, release or experiment with real personal data. Use synthetic values only.
 
 | | |
 |---|---|

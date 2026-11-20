@@ -2,6 +2,13 @@
 
 All notable changes are documented here.
 
+## [Unreleased] — Personal Profile Phase 8 (local, not released)
+
+- **Structured sharing.** Preferred name, nationality and gender set to Allow are added to new requests only while both sharing switches are On. Every provider is treated as cloud (Harness cannot verify locality). Private and Ask First are never sent. The Access page previews exactly what is shared.
+- **Send-time refusal.** A request that still carries details the current settings would not share (retry, in-history replay, provider switch, edited value, restored or branched chat) is stopped with a non-retryable error before it reaches the provider; the user is told to start a new chat. Nothing already sent is deleted.
+- **Restore.** Replace All and Merge Custom Instructions is now the default; Replace All needs its own confirmation. A restore always leaves both sharing switches Off. Backups stay plain JSON, version 2, not encrypted.
+- Details and gates: [Phase 8 plan](docs/PERSONAL_PROFILE_PHASE8_PLAN.md), [verification report](docs/PERSONAL_PROFILE_PHASE8_REPORT.md).
+
 ## [0.8.0-rc.1] — Candidate baseline, Windows functional review recorded (2026-11-18)
 
 - Native response preferences in supported Harness Agent Loop steps; style, language, traits and behavioral presets read committed settings.

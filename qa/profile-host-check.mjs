@@ -59,7 +59,9 @@ test('rc.3 real loop: committed config, new and existing sessions, disable and c
     installModelSelection(a.ctx)
     const r=profile.emptyRecord()
     r.information={preferredName:marker,nationality:nationalityMarker,gender:'female'}
-    r.allowCloud=r.allowPersonalInformation=true
+    // Phase 8: sharing needs Allow + both switches. Cloud stays Off here, so this
+    // preferences regression never shares a field (positive path: phase8-disclosure-check).
+    r.allowPersonalInformation=true;r.allowCloud=false
     r.policies={preferredName:'allow',nationality:'allow',gender:'allow'}
     r.preferences.style='friendly'
     r.preferences.custom=custom
@@ -101,9 +103,10 @@ test('rc.3 real loop: committed config, new and existing sessions, disable and c
     await send(a,plain,'complete preset')
     assert.equal(latest(plain),'Complete test prompt.')
     await remove()
-    // Real request boundary: prohibit all fields regardless of changes in grant or route.
+    // Real request boundary: every combination short of Allow + both switches shares no field.
     for(const policy of ['private','ask_first','allow']){
       for(const master of [false,true])for(const cloud of [false,true]){
+        if(policy==='allow'&&master&&cloud)continue
         const record=structuredClone(next)
         record.allowPersonalInformation=master;record.allowCloud=cloud
         record.policies={preferredName:policy,nationality:policy,gender:policy}

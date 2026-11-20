@@ -749,6 +749,22 @@ window.__ModuleLoader__.load({
       if(pref.sendCustom===true && pref.custom.trim()) lines.push(pref.custom)
       return lines.length ? ['Response preferences (follow the current request and higher-priority host/safety/tool requirements; custom guidance takes precedence over other style preferences where compatible).',...new Set(lines)].join('\n') : ''
     }
+    // Phase 8: no provider route can be verified as local, so every destination is
+    // treated as cloud. A field is shared only when it is Allow and BOTH switches are
+    // On. Ask First has no native approval contract and is never shared.
+    const PROFILE_DISCLOSURE_HEADER='Personal details the user chose to share (use them only when relevant to the request):'
+    const PROFILE_DISCLOSURE_FIELDS=[['preferredName','Preferred name'],['nationality','Nationality'],['gender','Gender']]
+    const profileDisclosureValue=value=>String(value).replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029\u202a-\u202e\u2066-\u2069]/g,' ').replace(/\s+/g,' ').trim()
+    function previewProfileDisclosure(record) {
+      if(record.allowPersonalInformation!==true||record.allowCloud!==true) return ''
+      const lines=[]
+      for(const [key,label] of PROFILE_DISCLOSURE_FIELDS) {
+        if(record.policies[key]!=='allow') continue
+        const value=key==='gender' ? (['male','female'].includes(record.information.gender)?record.information.gender:'') : profileDisclosureValue(record.information[key])
+        if(value) lines.push(label+': '+value)
+      }
+      return lines.length ? [PROFILE_DISCLOSURE_HEADER,...lines].join('\n') : ''
+    }
     const PROFILE_NS = 'abinadwan-personal-profile'
     const PERSONAL_FIELDS = ['preferredName','nationality','gender']
     const POLICY_VALUES = ['private','ask_first','allow']
@@ -909,7 +925,9 @@ window.__ModuleLoader__.load({
       const [exportView,setExportView]=React.useState(false)
       const [backupMessage,setBackupMessage]=React.useState('')
       const [restoreText,setRestoreText]=React.useState('')
-      const [restoreStrategy,setRestoreStrategy]=React.useState('replace')
+      // Phase 8: merging custom instructions is the default; Replace All needs its own confirmation.
+      const [restoreStrategy,setRestoreStrategy]=React.useState('replace-merge')
+      const [replaceAck,setReplaceAck]=React.useState(false)
       const [restoreReview,setRestoreReview]=React.useState(null)
       const [restoreAck,setRestoreAck]=React.useState(false)
       const [restorePermissions,setRestorePermissions]=React.useState(false)
@@ -920,7 +938,7 @@ window.__ModuleLoader__.load({
       const access=React.useRef({canRead,canWrite,generation})
       access.current={canRead,canWrite,generation}
       const lifetimeValid = g=>connectionSource.getSnapshot()===g&&access.current.canRead
-      const clearRestore=()=>{setRestoreReview(null);setRestoreAck(false);setRestorePermissions(false);setPermissionsAck(false);setMergedText('')}
+      const clearRestore=()=>{setRestoreReview(null);setRestoreAck(false);setReplaceAck(false);setRestorePermissions(false);setPermissionsAck(false);setMergedText('')}
       const load = async () => {
         const id=++request.current,g=connectionSource.getSnapshot()
         inFlight.current=true;setConfirmReload(false);setStatus('loading');setRevision(null);setSaved(null)
@@ -984,7 +1002,7 @@ window.__ModuleLoader__.load({
       const setField=(id,value)=>setRecord(old=>({...old,information:{...old.information,[id]:value}}))
       const ar = {
         information:'معلوماتي', instructions:'تعليمات الوكيل', access:'التحكم في الوصول', backup:'النسخ والاستعادة', privacy:'الخصوصية والأمان',title:'الملف الشخصي',
-        subtitle:'ملف شخصي موحّد ضمن ملف Harness الحالي',warning:'يُحفظ هذا المحتوى محليًا دون تشفير خاص بالإضافة. لا تكتب كلمات مرور أو مفاتيح أو معلومات حساسة. تُرسل تفضيلات الرد المحفوظة إلى النموذج المختار وقد تبقى في سجل المحادثة. حقول المعلومات الشخصية لا تُرسل.',
+        subtitle:'ملف شخصي موحّد ضمن ملف Harness الحالي',warning:'يُحفظ هذا المحتوى محليًا دون تشفير خاص بالإضافة. لا تكتب كلمات مرور أو مفاتيح أو معلومات حساسة. تُرسل تفضيلات الرد المحفوظة إلى النموذج المختار وقد تبقى في سجل المحادثة. لا تُرسل المعلومات الشخصية إلا للحقول المضبوطة على «سماح» مع تفعيل مفتاحي المشاركة.',
         language:'لغة الواجهة',preferredName:'الاسم المفضل',nationality:'الجنسية',gender:'الجنس',male:'ذكر',female:'أنثى',unspecified:'أفضّل عدم الذكر',
         unified:'إعدادات موحّدة',unifiedHint:'تُطبّق التفضيلات المحفوظة عند تجهيز الخطوة التالية في المحادثات الأصلية المدعومة، دون اختيار مساحة عمل. قد تتجاوزها بعض إعدادات الوكيل الخاصة.',
         personality:'الشخصية',styleTone:'الأسلوب والنبرة',responseLanguage:'لغة الردود',characteristics:'خصائص الردود',presets:'خيارات سلوكية جاهزة',customInstructions:'تعليمات مخصصة',
@@ -992,9 +1010,12 @@ window.__ModuleLoader__.load({
         less:'أقل',neutral:'متوازن',more:'أكثر',characters:'حرف',
         preferenceHint:'كل الاختيارات اختيارية وتُطبّق بعد الحفظ.',languageHint:'لغة الردود مستقلة عن لغة الواجهة. اللهجة تُكتب ضمن التعليمات.',
         previewHint:'معاينة المسودة التي ستُرسل بعد الحفظ في المحادثات المدعومة؛ لا تُحذف التعليمات السابقة من السجل.',presetHint:'لا اختيار افتراضيًا.',resetPreferences:'إعادة ضبط التفضيلات',
-        effective:'المعاينة النهائية',optIn:'السماح باستخدام المعلومات الشخصية (إعداد محفوظ، غير مفعّل في الوكيل)',
+        effective:'المعاينة النهائية',optIn:'السماح بمشاركة المعلومات الشخصية مع النموذج',
         fieldPolicies:'صلاحيات الحقول',policiesHint:'صلاحية واحدة لكل حقل تنطبق على الملف كله، لا على مساحة عمل بعينها.',private:'خاص',ask:'اسأل أولًا',allow:'سماح',on:'مفعّل',off:'متوقف',
-        cloud:'السماح بإرسال المعلومات الشخصية إلى مزود سحابي (إعداد محفوظ، غير مفعّل)',accessHint:'لا يتم الوصول للمعلومات أو إرسالها حاليًا. صلاحيات المرحلة السابعة محفوظة فقط: الإفصاح محظور لأن Harness لا يضمن عزل السجل عند تغيير الصلاحية أو المزود. حتى «سماح» لا يرسل الحقول.',
+        cloud:'السماح بمشاركة المعلومات الشخصية مع المزودين السحابيين',accessHint:'تُضاف الحقول المضبوطة على «سماح» إلى الطلبات الجديدة فقط عندما يكون المفتاحان مفعّلين. يُعامَل كل مزود نماذج كمزود سحابي، لأن Harness لا يستطيع التحقق من أن المزود يعمل محليًا. الحقول «خاص» و«اسأل أولًا» لا تُرسل أبدًا. تُطبّق التغييرات من الطلب التالي بعد الحفظ.',
+        sharedTitle:'ما يُشارك مع النموذج بعد الحفظ',sharedNone:'لا تتم مشاركة أي شيء.',
+        askFirstNote:'«اسأل أولًا» غير مفعّل: لا يوفر Harness حتى الآن نافذة موافقة للمعلومات الشخصية، لذلك لا تُرسل هذه الحقول أبدًا.',
+        retention:'إيقاف المشاركة أو تغيير قيمة يُطبّق من الطلب التالي، ولا يحذف ما أُرسل سابقًا إلى المزود أو ما بقي في سجل المحادثة أو سجلات Harness أو الملخصات أو الفروع. إذا كانت محادثة ما تحمل معلومات لم تعد تشاركها فسيتوقف طلبها التالي: ابدأ محادثة جديدة.',
         exportTitle:'تصدير نسخة احتياطية',exportHint:'ملف JSON غير مشفّر. يحتوي معلوماتك الشخصية وتعليماتك وصلاحيات الوصول المحفوظة كما هي. احفظه في مكان آمن ولا تشاركه.',
         download:'تنزيل ملف JSON',copy:'نسخ JSON',view:'عرض JSON',hideView:'إخفاء JSON',exportJson:'نسخة JSON',
         importTitle:'استيراد واستعادة',importHint:'اختر ملف JSON أو الصقه، ثم راجعه. لا يُحفظ شيء قبل الضغط على «حفظ التغييرات».',
@@ -1004,8 +1025,9 @@ window.__ModuleLoader__.load({
         previewTitle:'معاينة الاستعادة',setting:'الإعداد',current:'المسودة الحالية',proposed:'بعد الاستعادة',interfaceLanguage:'لغة الواجهة',
         mergedLabel:'التعليمات بعد الدمج (قابلة للتعديل)',importedInstructions:'التعليمات المستوردة',none:'لا شيء',empty:'—',
         permissionsTitle:'الصلاحيات المحفوظة في النسخة',restorePermissions:'استعادة الصلاحيات المحفوظة في هذه النسخة',
-        permissionsDefault:'افتراضيًا تُعاد كل الصلاحيات إلى «خاص» ويبقى المفتاحان متوقفين.',permissionsAck:'أفهم أن هذه الصلاحيات ستُحفظ كتفضيلات فقط، وأنها لا تُفعّل أي وصول للوكيل أو إرسال سحابي.',
+        permissionsDefault:'افتراضيًا تُعاد كل الصلاحيات إلى «خاص». يبقى مفتاحا المشاركة متوقفين دائمًا بعد الاستعادة؛ فعّلهما بنفسك من التحكم في الوصول.',permissionsAck:'أفهم أن الحقول المستعادة على «سماح» لا تُشارك إلا بعد أن أفعّل مفتاحي المشاركة بنفسي.',
         permissionsLegacy:'هذه النسخة من الإصدار 0.7.1 ولا تحوي صلاحيات موحّدة؛ تُستعاد كل الصلاحيات «خاص» والمفتاحان متوقفان.',
+        switchesOff:'متوقف بعد الاستعادة',replaceConfirm:'أفهم أن «استبدال الكل» يستبدل تعليماتي المخصصة الحالية بالتعليمات المستوردة.',
         legacyEntries:'إعدادات خاصة بمساحات العمل في هذه النسخة لن تُستعاد:',
         confirm:'راجعت هذه النسخة وأوافق على تطبيقها على المسودة.',applyRestore:'تطبيق الاستعادة على المسودة',
         reviewReady:'النسخة صالحة. راجع المعاينة ثم طبّقها.',restoreApplied:'طُبّقت الاستعادة على المسودة فقط. لم يُحفظ شيء بعد: اضغط «حفظ التغييرات».',
@@ -1033,7 +1055,7 @@ window.__ModuleLoader__.load({
       }
       const en = {
         information:'My Information',instructions:'Agent Instructions',access:'Access Control',backup:'Backup & Restore',privacy:'Privacy & Security',title:'Personal Profile',
-        subtitle:'One unified profile in the active Harness Profile',warning:'Stored locally without plugin-level encryption. Do not enter passwords, keys or sensitive information. Saved response preferences are sent to the selected model and may remain in conversation history. Structured personal fields are not sent.',
+        subtitle:'One unified profile in the active Harness Profile',warning:'Stored locally without plugin-level encryption. Do not enter passwords, keys or sensitive information. Saved response preferences are sent to the selected model and may remain in conversation history. Personal information is sent only for fields you set to Allow, with both sharing switches On.',
         language:'Interface language',preferredName:'Preferred name',nationality:'Nationality',gender:'Gender',male:'Male',female:'Female',unspecified:'Prefer not to say',
         unified:'Unified preferences',unifiedHint:'Saved preferences apply at the next assembled step in supported native conversations, independent of Workspace. Some agent presets may override them.',
         personality:'Personality',styleTone:'Style and tone',responseLanguage:'Response language',characteristics:'Response characteristics',presets:'Behavior presets',customInstructions:'Custom instructions',
@@ -1041,9 +1063,12 @@ window.__ModuleLoader__.load({
         less:'Less',neutral:'Balanced',more:'More',characters:'characters',
         preferenceHint:'Optional choices apply after Save.',languageHint:'Response language is separate from interface language. Put dialect preferences in custom instructions.',
         previewHint:'Draft preview of what is contributed after Save in supported conversations. Earlier instructions are not erased from history.',presetHint:'None selected by default.',resetPreferences:'Reset preferences',
-        effective:'Effective preview',optIn:'Allow use of personal information (saved preference, not active in agent)',
+        effective:'Effective preview',optIn:'Allow sharing personal information with the model',
         fieldPolicies:'Field policies',policiesHint:'One policy per field for the whole profile, not per Workspace.',private:'Private',ask:'Ask First',allow:'Allow',on:'On',off:'Off',
-        cloud:'Allow personal information to be sent to a cloud provider (saved preference, not active)',accessHint:'No information is disclosed or sent today from structured personal fields. Policies are saved only: disclosure is blocked because Harness cannot guarantee history isolation after permission or provider changes. Even Allow does not send fields.',
+        cloud:'Allow sharing personal information with cloud providers',accessHint:'Fields set to Allow are added to new requests only when both switches are On. Every model provider is treated as cloud, because Harness cannot verify that a provider runs locally. Private and Ask First fields are never sent. Changes apply from the next request after Save.',
+        sharedTitle:'Shared with the model after Save',sharedNone:'Nothing is shared.',
+        askFirstNote:'Ask First is not active: Harness has no approval prompt for personal details yet, so these fields are never sent.',
+        retention:'Turning sharing off, or changing a value, applies from the next request. It does not remove details already sent to a provider or kept in conversation history, Harness logs, summaries or branches. If a chat still carries details you no longer share, its next request is stopped: start a new chat.',
         exportTitle:'Export backup',exportHint:'The JSON file is not encrypted. It contains your personal information, instructions and saved access permissions exactly as set. Keep it somewhere safe and do not share it.',
         download:'Download JSON file',copy:'Copy JSON',view:'View JSON',hideView:'Hide JSON',exportJson:'JSON backup',
         importTitle:'Import and restore',importHint:'Choose a JSON file or paste JSON, then review it. Nothing is saved until you press Save changes.',
@@ -1053,8 +1078,9 @@ window.__ModuleLoader__.load({
         previewTitle:'Restore preview',setting:'Setting',current:'Current draft',proposed:'After restore',interfaceLanguage:'Interface language',
         mergedLabel:'Merged instructions (editable)',importedInstructions:'Imported instructions',none:'None',empty:'—',
         permissionsTitle:'Permissions saved in this backup',restorePermissions:'Restore the permissions saved in this backup',
-        permissionsDefault:'By default every policy is restored as Private and both switches stay Off.',permissionsAck:'I understand these permissions are saved as preferences only and do not enable any agent access or cloud disclosure.',
+        permissionsDefault:'By default every policy is restored as Private. Both sharing switches are always Off after a restore; turn them on yourself in Access Control.',permissionsAck:'I understand that restored Allow fields are shared only after I turn both sharing switches on myself.',
         permissionsLegacy:'This backup is from 0.7.1 and has no unified permissions; every policy is restored as Private and both switches Off.',
+        switchesOff:'Off after restore',replaceConfirm:'I understand Replace All overwrites my current custom instructions with the imported ones.',
         legacyEntries:'Workspace-specific settings in this backup that will not be restored:',
         confirm:'I reviewed this backup and want to apply it to the draft.',applyRestore:'Apply restore to draft',
         reviewReady:'Backup is valid. Review the preview, then apply it.',restoreApplied:'Restore applied to the draft only. Nothing is saved yet: press Save changes.',
@@ -1169,10 +1195,10 @@ window.__ModuleLoader__.load({
       const proposeRestore = () => {
         if(!restoreReview)return null
         const incoming=restoreReview.incoming
-        const permissions=restorePermissions&&restoreReview.permissions
-          ? restoreReview.permissions : {policies:privatePolicies(),allowPersonalInformation:false,allowCloud:false}
-        const proposal={...incoming,preferences:withoutCustomConsent(incoming.preferences),policies:{...permissions.policies},
-          allowPersonalInformation:permissions.allowPersonalInformation,allowCloud:permissions.allowCloud}
+        const policies=restorePermissions&&restoreReview.permissions ? restoreReview.permissions.policies : privatePolicies()
+        // A restore never turns sharing on: both switches are Off whatever the backup holds.
+        const proposal={...incoming,preferences:withoutCustomConsent(incoming.preferences),policies:{...policies},
+          allowPersonalInformation:false,allowCloud:false}
         if(restoreStrategy==='replace-merge')proposal.preferences={...withoutCustomConsent(incoming.preferences),custom:mergedText}
         return proposal
       }
@@ -1276,17 +1302,22 @@ window.__ModuleLoader__.load({
           h('p',{style:muted},t('policiesHint')),
           ...PERSONAL_FIELDS.map(id=>dropdown('policy-'+id,t(id),record.policies[id],
             POLICY_VALUES.map(v=>[v,policyLabel(v)]),
-            v=>setRecord(old=>({...old,policies:{...old.policies,[id]:v}})))))
+            v=>setRecord(old=>({...old,policies:{...old.policies,[id]:v}})))),
+          h('p',{style:muted},t('askFirstNote')),
+          h('h3',{style:{fontSize:15}},t('sharedTitle')),
+          h('output',{id:'pp-shared-preview',dir:'auto',style:{display:'block',whiteSpace:'pre-wrap',overflowWrap:'anywhere'}},
+            previewProfileDisclosure(record)||t('sharedNone')),
+          h('p',{role:'note',style:muted},t('retention')))
       } else if(page==='backup') {
         const proposal=proposeRestore()
         const mergeTooLong=!!restoreReview&&restoreStrategy==='replace-merge'&&mergedText.length>PROFILE_CUSTOM_MAX
         let proposalValid=false
         try{proposalValid=!!proposal&&!mergeTooLong&&!!decodeProfile(proposal)}catch{proposalValid=false}
-        const canApply=proposalValid&&restoreAck&&(!restorePermissions||permissionsAck)
+        const canApply=proposalValid&&restoreAck&&(!restorePermissions||permissionsAck)&&(restoreStrategy!=='replace'||replaceAck)
         const strategyOption=(value,title,hint)=>h('div',{key:value,style:check},
           h('input',{id:'pp-strategy-'+value,type:'radio',name:'pp-strategy',value,checked:restoreStrategy===value,
             style:{marginTop:5},'aria-describedby':'pp-strategy-'+value+'-hint',
-            onChange:()=>{setRestoreStrategy(value);setRestoreAck(false)}}),
+            onChange:()=>{setRestoreStrategy(value);setRestoreAck(false);setReplaceAck(false)}}),
           h('div',null,h('label',{htmlFor:'pp-strategy-'+value,style:{fontWeight:650}},title),
             h('p',{id:'pp-strategy-'+value+'-hint',style:{...muted,marginTop:2}},hint)))
         const currentRows=summarize(record)
@@ -1318,10 +1349,11 @@ window.__ModuleLoader__.load({
             restorePermissions ? h('div',{style:{padding:'10px 14px',border:'1px solid rgba(208,58,52,.5)',borderRadius:10}},
               h('ul',{id:'pp-restore-permission-list',style:{margin:'0 0 8px'}},
                 ...PERSONAL_FIELDS.map(key=>h('li',{key},t(key)+': '+policyLabel(restoreReview.permissions.policies[key]))),
-                h('li',null,t('optIn')+': '+(restoreReview.permissions.allowPersonalInformation?t('on'):t('off'))),
-                h('li',null,t('cloud')+': '+(restoreReview.permissions.allowCloud?t('on'):t('off')))),
+                h('li',null,t('optIn')+': '+t('switchesOff')),
+                h('li',null,t('cloud')+': '+t('switchesOff'))),
               checkbox('restore-permissions-ack',permissionsAck,v=>{setPermissionsAck(v);setRestoreAck(false)},t('permissionsAck'))) : null)
             : h('p',{style:muted},t('permissionsLegacy')),
+          restoreStrategy==='replace' ? checkbox('restore-replace-ack',replaceAck,setReplaceAck,t('replaceConfirm'),{disabled:!proposalValid}) : null,
           checkbox('restore-confirm',restoreAck,setRestoreAck,t('confirm'),{disabled:!proposalValid}),
           h('div',{style:row},
             h('button',{id:'pp-restore-apply',type:'button',style:btn,disabled:!canApply,onClick:()=>{
@@ -1347,7 +1379,7 @@ window.__ModuleLoader__.load({
             h('button',{id:'pp-restore-review',type:'button',style:btn,onClick:()=>startReview(restoreText)},t('import'))),
           reviewCard)
       }else {
-        contents=card(t('privacy'),h('p',null,t('warning')),h('p',null,t('accessHint')),h('p',null,t('exportHint')))
+        contents=card(t('privacy'),h('p',null,t('warning')),h('p',null,t('accessHint')),h('p',null,t('retention')),h('p',null,t('exportHint')))
       }
       const migrationCard = legacy ? h('section',{id:'pp-migration',style:{...surface,border:'1px solid rgba(208,158,52,.75)'},'aria-label':t('migrationTitle')},
         h('h2',{style:{fontSize:17,margin:'0 0 10px'}},t('migrationTitle')),
