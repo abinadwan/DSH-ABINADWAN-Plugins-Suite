@@ -7,7 +7,7 @@ window.__ModuleLoader__.load({
   id: '@abinadwan/dsh-plugins-suite',
   factory(require) {
     const React = require('react')
-    const { Button, Checkbox, Menu, Toast } = require('@deepseek-ai/dsh-client-ui-primitives')
+    const { Button, Checkbox, Menu, Modal, Toast } = require('@deepseek-ai/dsh-client-ui-primitives')
     const h = React.createElement
     const PANEL_ID = 'environment-sidebar'
     const border = '1px solid rgba(128,128,128,.27)'
@@ -1739,17 +1739,111 @@ window.__ModuleLoader__.load({
             ...candidates.map(({ id, row }) => h('li', { key: id }, h('bdi', null, row.displayTitle || id)))) : null))
     }
 
-    function ReasoningComposer({ directory, sessionId, settingsService, connection, useRemoteAccess, useAccess }) {
+    const reasoningReasons = {
+      'shared-step': 'it was sent together with another message',
+      'route-changed': 'the model changed',
+      unsupported: 'the model no longer offers that effort',
+      discarded: 'the message was removed from the queue',
+      withdrawn: 'the message was not sent',
+      expired: 'the message did not start in time',
+      'session-ended': 'the chat ended',
+      disabled: 'Adaptive Reasoning was turned off',
+      'selection-unavailable': 'Harness rejected that effort',
+      'too-many-pending': 'too many messages are waiting',
+      'request-known': 'the message was already sent',
+      unknown: 'Harness could not confirm it',
+    }
+    const reasoningSources = [['override', 'One-time effort'], ['adaptive', 'Adaptive'], ['manual', 'Manual'],
+      ['saved', 'Saved preference'], ['default', 'Provider default']]
+    const reasoningTiers = [['simple', 'Simple'], ['standard', 'Standard'], ['complex', 'Complex'], ['advanced', 'Advanced']]
+    const reasoningCell = { padding: '4px 8px', textAlign: 'end', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
+
+    /** Same-origin POST to an owner-only Adaptive Reasoning route. */
+    async function reasoningPost(path, body) {
+      const endpoint = new URL(`api/abinadwan-reasoning/${path}`, document.baseURI)
+      if (endpoint.origin !== document.location.origin) throw new Error('Cross-origin reasoning endpoint')
+      const result = await fetch(endpoint, { method: 'POST', credentials: 'same-origin', redirect: 'error',
+        headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+      return { ok: result.ok, status: result.status, body: await result.json().catch(() => null) }
+    }
+
+    function ReasoningStatistics({ open, onClose, nameOf }) {
+      const [state, setState] = React.useState({ status: 'loading' })
+      const request = React.useRef(0)
+      function load(path) {
+        const id = ++request.current
+        setState({ status: 'loading' })
+        reasoningPost(path, {}).then(result => {
+          if (id === request.current) setState(result.ok && result.body ? { status: 'ready', stats: result.body } : { status: 'failed' })
+        }).catch(() => { if (id === request.current) setState({ status: 'failed' }) })
+      }
+      React.useEffect(() => { if (open) load('stats'); return () => { request.current++ } }, [open])
+      const stats = state.stats
+      const count = value => Number(value || 0).toLocaleString('en-US')
+      const line = (label, value) => h('div', { key: label, style: { display: 'flex', justifyContent: 'space-between', gap: 16 } },
+        h('span', null, label), h('span', { style: { fontVariantNumeric: 'tabular-nums' } }, value))
+      const group = (title, children) => h('section', { key: title, style: { marginBottom: 14 } },
+        h('h3', { style: { fontSize: 13, fontWeight: 650, margin: '0 0 6px' } }, title), children)
+      const reasons = table => Object.entries(table || {}).map(([reason, value]) =>
+        line(`Not applied: ${reasoningReasons[reason] ?? reason}`, count(value)))
+      const rows = stats ? ['session', 'subagent'].flatMap(scope => Object.entries(stats.requests?.[scope] || {})
+        .map(([effort, row]) => ({ scope, effort, row }))) : []
+      const body = state.status === 'loading' ? h('div', { role: 'status' }, 'Loading statistics…')
+        : state.status === 'failed' ? h('div', { role: 'status' }, 'Statistics are unavailable.')
+        : h('div', { style: { fontSize: 13, lineHeight: 1.6 } },
+          group('Messages', [line('Total', count(stats.messages)),
+            ...reasoningSources.map(([key, label]) => line(label, count(stats.sources?.[key])))]),
+          stats.classifier?.runs ? group('Adaptive classification', [
+            ...reasoningTiers.map(([key, label]) => line(label, count(stats.tiers?.[key]))),
+            line('Average local time', `${(stats.classifier.totalMs / stats.classifier.runs * 1000).toFixed(1)} µs`),
+          ]) : null,
+          group('One-time effort', [line('Applied', count(stats.overrides?.applied)), ...reasons(stats.overrides?.notApplied)]),
+          stats.subagents?.applied || Object.keys(stats.subagents?.notApplied || {}).length
+            ? group('Subagent policy', [line('Applied', count(stats.subagents.applied)), ...reasons(stats.subagents.notApplied)]) : null,
+          group('Requests by effort', rows.length ? h('table', { style: { borderCollapse: 'collapse', width: '100%' } },
+            h('thead', null, h('tr', null, ...['Effort', 'Requests', 'Input tokens', 'Output tokens', 'Reasoning tokens', 'Average time']
+              .map((label, index) => h('th', { key: label, scope: 'col', style: { ...reasoningCell, textAlign: index ? 'end' : 'start', fontWeight: 600 } }, label)))),
+            h('tbody', null, ...rows.map(({ scope, effort, row }) => h('tr', { key: `${scope}:${effort}` },
+              h('th', { scope: 'row', style: { ...reasoningCell, textAlign: 'start', fontWeight: 400 } },
+                `${effort === 'default' ? 'Provider default' : nameOf(effort)}${scope === 'subagent' ? ' (subagents)' : ''}`),
+              h('td', { style: reasoningCell }, count(row.requests)),
+              h('td', { style: reasoningCell }, count(row.inputTokens)),
+              h('td', { style: reasoningCell }, count(row.outputTokens)),
+              h('td', { style: reasoningCell }, row.reasoningReported
+                ? `${count(row.reasoningTokens)}${row.reasoningReported < row.requests ? ` (${row.reasoningReported} of ${row.requests})` : ''}`
+                : 'Not reported'),
+              h('td', { style: reasoningCell }, row.timed ? `${(row.durationMs / row.timed / 1000).toFixed(1)} s` : '—'))))
+          ) : h('div', { style: lifecycleMuted }, 'No requests yet.')),
+          h('p', { style: { ...lifecycleMuted, margin: 0 } },
+            'Times run on this computer from the first streamed output to the saved reply. Reasoning tokens appear only when the provider reports them. No savings are estimated.'))
+      return h(Modal, { open, onClose, title: 'Reasoning statistics', closeLabel: 'Close',
+        description: stats ? `Aggregate counts kept in memory on this computer since ${new Date(stats.since).toLocaleString('en-US')}. Nothing is sent anywhere, and restarting Harness clears them.` : undefined,
+        footer: h('div', { style: lifecycleActions },
+          h(Button, { size: 'sm', variant: 'outline', disabled: state.status !== 'ready', onClick: () => load('stats/reset') }, 'Reset statistics'),
+          h(Button, { size: 'sm', onClick: onClose }, 'Done')) },
+      h('div', { lang: 'en', dir: 'ltr' }, body))
+    }
+
+    function ReasoningComposer({ directory, sessionId, sessions, settingsService, connection, useRemoteAccess, useAccess }) {
       const settings = useSuiteRecord(settingsService, 'adaptive-reasoning', useRemoteAccess, connection)
       const directoryState = suiteWatch(directory.store)
       const canSelect = useAccess?.('session/selectModel') === true
       const [open, setOpen] = React.useState(false)
       const [working, setWorking] = React.useState(false)
       const [notice, setNotice] = React.useState(null)
+      // One-time effort armed in this window for this chat's next prompt.
+      const [armed, setArmed] = React.useState(null)
+      const [statsOpen, setStatsOpen] = React.useState(false)
       const busy = React.useRef(false)
       const noticeId = React.useRef(0)
+      const mounted = React.useRef(true)
+      const trackers = React.useRef(new Set())
       const selection = directoryState.current
       React.useEffect(() => { void directory.load().catch(() => {}) }, [directory])
+      React.useEffect(() => () => {
+        mounted.current = false
+        for (const stop of trackers.current) stop()
+      }, [])
 
       function capability(snapshot) {
         const current = snapshot.current
@@ -1758,69 +1852,182 @@ window.__ModuleLoader__.load({
           .find(model => model.id === current.model)?.reasoning
       }
 
+      function show(text, success = false) {
+        if (mounted.current) setNotice({ id: ++noticeId.current, text, success })
+      }
+
       const reasoning = capability(directoryState)
+      const level = id => reasoning?.efforts?.find(row => row.id === id)
+      const nameOf = id => level(id)?.name || id
+      const notApplied = reason => show(`One-time effort not applied: ${reasoningReasons[reason] ?? reasoningReasons.unknown}.`)
+
+      // A one-time effort never outlives its route: a model change or a lost effort cancels it.
+      const armedValid = !armed || (selection?.provider === armed.provider && selection?.model === armed.model &&
+        !!level(armed.effort))
+      React.useEffect(() => {
+        if (armed && !armedValid) {
+          setArmed(null)
+          show('One-time effort cancelled because the model changed.')
+        }
+      }, [armed, armedValid])
+
+      // Follow one bound prompt until the Host reports whether its effort applied.
+      function track(face, requestId, effort) {
+        let checks = 0
+        let running
+        let stopped = false
+        let announced = false
+        let unsubscribe
+        const stop = () => { stopped = true; unsubscribe?.(); trackers.current.delete(stop) }
+        const check = async () => {
+          if (stopped) return
+          checks++
+          try {
+            const result = await reasoningPost('next/status', { sessionId, requestId })
+            if (stopped) return
+            const status = result.body?.status
+            if ((status === 'active' || status === 'finished') && !announced) {
+              announced = true
+              show(`One-time effort applied: ${nameOf(effort)}.`, true)
+            }
+            if (status === 'pending' || status === 'active') { if (checks >= 40) stop(); return }
+            stop()
+            if (status !== 'finished') notApplied(status === 'not-applied' ? result.body.reason : 'unknown')
+          } catch { stop() }
+        }
+        trackers.current.add(stop)
+        unsubscribe = face.subscribe?.(() => {
+          const next = face.getSnapshot?.()?.running
+          if (next !== running) { running = next; void check() }
+        })
+        void check()
+      }
+
+      // While armed, this window's next prompt on this chat binds the effort to its own requestId.
+      React.useEffect(() => {
+        if (!armed || !armedValid) return
+        const face = sessions?.binding?.(sessionId)?.session
+        if (!face || typeof face.prompt !== 'function') {
+          setArmed(null)
+          show('Open this chat before choosing a one-time effort.')
+          return
+        }
+        const owned = Object.hasOwn(face, 'prompt')
+        const original = face.prompt
+        let spent = false
+        const release = () => {
+          if (face.prompt !== wrapper) return
+          if (owned) face.prompt = original
+          else delete face.prompt
+        }
+        async function wrapper(content, mode, signal, requestId) {
+          release()
+          if (spent) return original.call(face, content, mode, signal, requestId)
+          spent = true
+          if (mounted.current) setArmed(current => current === armed ? null : current)
+          const id = requestId ?? globalThis.crypto.randomUUID()
+          let bound = false
+          try {
+            const result = await reasoningPost('next', { sessionId, requestId: id,
+              provider: armed.provider, model: armed.model, reasoningEffort: armed.effort })
+            bound = result.ok && result.body?.bound?.requestId === id
+            if (!bound) notApplied(result.body?.error)
+          } catch { notApplied('unknown') }
+          let sent
+          try {
+            sent = await original.call(face, content, mode, signal, id)
+          } catch (error) {
+            if (bound) { void reasoningPost('next/withdraw', { sessionId, requestId: id }).catch(() => {}); notApplied('withdrawn') }
+            throw error
+          }
+          if (bound && sent && sent.ok === false) {
+            void reasoningPost('next/withdraw', { sessionId, requestId: id }).catch(() => {})
+            notApplied('withdrawn')
+          } else if (bound) track(face, id, armed.effort)
+          return sent
+        }
+        face.prompt = wrapper
+        return release
+      }, [armed, armedValid, sessions, sessionId])
+
       if (!canSelect || !selection || !reasoning?.efforts?.length) return null
       const effort = selection.reasoningEffort ?? reasoning.defaultEffort
-      const preferences = settings.record?.preferences ?? []
+      const record = settings.record
+      const mode = record?.mode === 'adaptive' ? 'adaptive' : 'manual'
+      const policy = record?.subagents ?? 'inherit'
+      const preferences = record?.preferences ?? []
       const isCurrentRoute = row => row.provider === selection.provider && row.model === selection.model
       const saved = preferences.find(isCurrentRoute)
-      const level = id => reasoning.efforts.find(row => row.id === id)
       const currentLabel = level(effort)?.name || effort || 'Provider default'
       const savedLabel = saved
-        ? `Saved preference: ${level(saved.effort)?.name || saved.effort}${level(saved.effort) ? '' : ' (unavailable)'}`
-        : settings.record ? 'No saved preference' : 'Saved preferences unavailable'
-
-      function show(text, success = false) {
-        setNotice({ id: ++noticeId.current, text, success })
-      }
+        ? `Saved preference: ${nameOf(saved.effort)}${level(saved.effort) ? '' : ' (unavailable)'}`
+        : record ? 'No saved preference' : 'Saved preferences unavailable'
 
       async function changeEffort(current, value, manual) {
         const expected = { provider: current.provider, model: current.model, reasoningEffort: value }
-        const endpoint = new URL('api/abinadwan-reasoning/effort', document.baseURI)
-        if (endpoint.origin !== document.location.origin) throw new Error('Cross-origin reasoning endpoint')
-        const result = await fetch(endpoint, { method: 'POST', credentials: 'same-origin', redirect: 'error',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ sessionId, ...expected, ...(manual ? { mode: 'manual' } : {}) }) })
-        const response = await result.json()
-        if (result.status === 409 && response?.error === 'session-unavailable') {
+        const result = await reasoningPost('effort', { sessionId, ...expected, ...(manual ? { mode: 'manual' } : {}) })
+        if (result.status === 409 && result.body?.error === 'session-unavailable') {
           show(manual ? 'Start or resume this chat before changing its effort.' :
             'Start or resume this chat before applying the saved effort.')
           return
         }
-        if (result.status === 409 && response?.error === 'preference-changed') settings.reload()
-        const confirmed = response?.selected
+        if (result.status === 409 && result.body?.error === 'preference-changed') settings.reload()
+        const confirmed = result.body?.selected
         if (!result.ok || confirmed?.provider !== expected.provider || confirmed?.model !== expected.model ||
             confirmed?.reasoningEffort !== value) throw new Error('Effort selection was not accepted')
         show(manual ? 'Effort changed.' : 'Effort applied.', true)
+      }
+
+      async function saveRecord(patch, message) {
+        if (!settings.writable || !record) return
+        const ok = await settings.save({ ...record, ...patch })
+        show(ok ? message : 'Setting could not be saved.', ok)
       }
 
       async function selectItem(id) {
         if (busy.current) return
         setOpen(false)
         if (id === 'reload') { settings.reload(); return }
+        if (id === 'stats') { setStatsOpen(true); return }
+        if (id === 'next:cancel') { setArmed(null); show('One-time effort cancelled.'); return }
         const latest = directory.store.getSnapshot()
         const current = latest.current
         const available = capability(latest)
         if (!current || !isCurrentRoute(current) || !available || latest.pending != null) return
+        const offered = value => available.efforts.some(option => option.id === value)
+        if (id.startsWith('next:')) {
+          const value = id.slice(5)
+          if (!offered(value)) return
+          setArmed({ provider: current.provider, model: current.model, effort: value })
+          show(`Your next message will use ${nameOf(value)}.`, true)
+          return
+        }
         const currentEffort = current.reasoningEffort ?? available.defaultEffort
         busy.current = true
         setWorking(true)
         try {
-          if (id === 'save' || id === 'remove') {
-            if (!settings.writable || (id === 'remove' && !saved) ||
-                (id === 'save' && !available.efforts.some(option => option.id === currentEffort))) return
+          if (id === 'mode:manual' || id === 'mode:adaptive') {
+            const next = id.slice(5)
+            if (next !== mode) await saveRecord({ mode: next }, next === 'adaptive' ? 'Adaptive mode on.' : 'Manual mode on.')
+          } else if (id.startsWith('sub:')) {
+            const [, kind, value] = id.split(':')
+            if (kind === 'effort' && !offered(value)) return
+            const { subagentEffort: _previous, ...rest } = record ?? {}
+            if (!record || !settings.writable) return
+            const ok = await settings.save(kind === 'effort' ? { ...rest, subagents: 'effort', subagentEffort: value } : { ...rest, subagents: kind })
+            show(ok ? 'Subagent policy saved.' : 'Setting could not be saved.', ok)
+          } else if (id === 'save' || id === 'remove') {
+            if (!settings.writable || !record || (id === 'remove' && !saved) || (id === 'save' && !offered(currentEffort))) return
             const remaining = preferences.filter(row => !isCurrentRoute(row))
             const next = id === 'save' ? [...remaining, { provider: current.provider,
               model: current.model, effort: currentEffort }] : remaining
-            const savedOk = await settings.save({ preferences: next })
+            const savedOk = await settings.save({ ...record, preferences: next })
             show(savedOk ? (id === 'save' ? 'Preference saved.' : 'Preference removed.') :
               'Preference could not be updated.', savedOk)
           } else {
             const manual = id !== 'apply'
             const value = manual ? available.efforts.find(option => `effort:${option.id}` === id)?.id : saved?.effort
-            if (value && value !== currentEffort && available.efforts.some(option => option.id === value)) {
-              await changeEffort(current, value, manual)
-            }
+            if (value && value !== currentEffort && offered(value)) await changeEffort(current, value, manual)
           }
         } catch {
           show('Harness could not change the effort.')
@@ -1830,9 +2037,19 @@ window.__ModuleLoader__.load({
         }
       }
 
+      const efforts = prefix => reasoning.efforts.map(option => ({ id: `${prefix}${option.id}`, label: option.name || option.id }))
       const items = [
-        { type: 'label', id: 'session-label', text: 'Current session' },
-        ...reasoning.efforts.map(option => ({ id: `effort:${option.id}`, label: option.name || option.id })),
+        { type: 'label', id: 'mode-label', text: 'Mode' },
+        { id: 'mode:manual', label: 'Manual', disabled: !settings.writable },
+        { id: 'mode:adaptive', label: 'Adaptive', disabled: !settings.writable },
+        { type: 'separator', id: 'session-divider' },
+        { type: 'label', id: 'session-label', text: mode === 'adaptive' ? 'Session effort between messages' : 'Current session' },
+        ...efforts('effort:'),
+        { type: 'separator', id: 'next-divider' },
+        { id: 'next', label: armed ? `Next message: ${nameOf(armed.effort)}` : 'Next message only', submenu: [
+          ...efforts('next:'),
+          ...(armed ? [{ type: 'separator', id: 'next-cancel-divider' }, { id: 'next:cancel', label: 'Cancel one-time effort' }] : []),
+        ] },
         { type: 'separator', id: 'preference-divider' },
         { type: 'label', id: 'preference-label', text: savedLabel },
         { id: 'save', label: 'Save current effort', disabled: !settings.writable || !level(effort) || saved?.effort === effort },
@@ -1840,19 +2057,38 @@ window.__ModuleLoader__.load({
           { id: 'apply', label: 'Apply saved effort', disabled: !level(saved.effort) || saved.effort === effort },
           { id: 'remove', label: 'Remove saved preference', disabled: !settings.writable },
         ] : []),
+        { type: 'separator', id: 'more-divider' },
+        { id: 'subagents', label: 'Subagents', disabled: !settings.writable, submenu: [
+          { id: 'sub:inherit', label: 'Same as this chat' },
+          { id: 'sub:default', label: 'Provider default' },
+          { id: 'sub:adaptive', label: 'Adaptive' },
+          { type: 'separator', id: 'sub-divider' },
+          ...reasoning.efforts.map(option => ({ id: `sub:effort:${option.id}`, label: `Always ${option.name || option.id}` })),
+        ] },
+        ...(Modal ? [{ id: 'stats', label: 'Reasoning statistics…' }] : []),
         ...(['conflict', 'unavailable'].includes(settings.status)
           ? [{ id: 'reload', label: 'Reload preferences' }] : []),
       ]
+      const selectedIds = [
+        record ? `mode:${mode}` : null,
+        level(effort) ? `effort:${effort}` : null,
+        armed ? `next:${armed.effort}` : null,
+        record ? (policy === 'effort' ? `sub:effort:${record.subagentEffort}` : `sub:${policy}`) : null,
+      ].filter(Boolean)
+      const label = armed ? `Next: ${nameOf(armed.effort)}` : mode === 'adaptive' ? `Auto · ${currentLabel}` : currentLabel
+      const description = `Adaptive Reasoning: ${currentLabel}${mode === 'adaptive' ? ', Adaptive mode' : ''}` +
+        `${armed ? `, next message ${nameOf(armed.effort)}` : ''}`
       const trigger = h(Button, { variant: 'toolbar', size: 'sm', icon: suiteGlyph(reasoningIcon, 14),
-        lang: 'en', dir: 'ltr', title: 'Adaptive Reasoning', 'aria-label': `Adaptive Reasoning: ${currentLabel}`,
+        lang: 'en', dir: 'ltr', title: description, 'aria-label': description, 'data-armed': armed ? 'true' : undefined,
         'aria-haspopup': 'menu', 'aria-expanded': open, disabled: working || directoryState.pending != null,
-        onClick: () => setOpen(value => !value) }, currentLabel)
+        onClick: () => setOpen(value => !value) }, label)
       return h('span', { lang: 'en', dir: 'ltr' },
-        h(Menu, { open, anchor: trigger, items, selectedId: level(effort) ? `effort:${effort}` : undefined,
+        h(Menu, { open, anchor: trigger, items, selectedIds, submenuBackLabel: 'Back',
           portal: true, side: 'top', align: 'end', compact: true, autoFocus: true,
           onClose: () => setOpen(false), onSelect: id => void selectItem(id) }),
+        Modal && statsOpen ? h(ReasoningStatistics, { open: statsOpen, onClose: () => setStatsOpen(false), nameOf }) : null,
         notice ? h(Toast, { key: notice.id, text: notice.text, tone: notice.success ? 'success' : undefined,
-          holdMs: 1800, onDone: () => setNotice(null) }) : null)
+          holdMs: 2400, onDone: () => setNotice(null) }) : null)
     }
 
     // ---------------------------------------------------------------- Direct Chat
@@ -2556,7 +2792,7 @@ window.__ModuleLoader__.load({
           id: 'abinadwan-reasoning-preference', order: 25, inject: sessionId => ({
             directory: sessionId && !sessions.subagentAddress(sessionId) ? modelDirectories.directoryFor(sessionId) : null,
             sessionId,
-          }) }, props => props.directory ? h(ReasoningComposer, { ...props, settingsService, connection }) : null))
+          }) }, props => props.directory ? h(ReasoningComposer, { ...props, sessions, settingsService, connection }) : null))
       },
     }
 
