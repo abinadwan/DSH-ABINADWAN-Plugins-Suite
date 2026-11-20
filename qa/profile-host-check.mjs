@@ -59,10 +59,7 @@ test('rc.3 real loop: committed config, new and existing sessions, disable and c
     installModelSelection(a.ctx)
     const r=profile.emptyRecord()
     r.information={preferredName:marker,nationality:nationalityMarker,gender:'female'}
-    // Phase 8: sharing needs Allow + both switches. Cloud stays Off here, so this
-    // preferences regression never shares a field (positive path: phase8-disclosure-check).
-    r.allowPersonalInformation=true;r.allowCloud=false
-    r.policies={preferredName:'allow',nationality:'allow',gender:'allow'}
+    // This fixture exercises preferences with all personal fields private.
     r.preferences.style='friendly'
     r.preferences.custom=custom
     await send(a,plain,'before enabling')
@@ -103,21 +100,37 @@ test('rc.3 real loop: committed config, new and existing sessions, disable and c
     await send(a,plain,'complete preset')
     assert.equal(latest(plain),'Complete test prompt.')
     await remove()
-    // Real request boundary: every combination short of Allow + both switches shares no field.
-    for(const policy of ['private','ask_first','allow']){
-      for(const master of [false,true])for(const cloud of [false,true]){
-        if(policy==='allow'&&master&&cloud)continue
-        const record=structuredClone(next)
-        record.allowPersonalInformation=master;record.allowCloud=cloud
-        record.policies={preferredName:policy,nationality:policy,gender:policy}
-        await fiber.update({record})
-        a.model.select({provider:'history',model:'test'})
-        await send(a,history,'permission matrix history')
-        a.model.select({provider:'plain',model:'test'})
-        await send(a,plain,'permission matrix plain')
-      }
+    // Old versions must not promote previously inactive sharing choices.
+    for(const version of [2,3]){
+      const record={...structuredClone(next),version,allowPersonalInformation:true,allowCloud:true,
+        policies:{preferredName:'allow',nationality:'allow',gender:'allow'}}
+      await fiber.update({record})
+      a.model.select({provider:'history',model:'test'})
+      await send(a,history,'legacy permission history')
+      a.model.select({provider:'plain',model:'test'})
+      await send(a,plain,'legacy permission plain')
     }
     assert.doesNotMatch(JSON.stringify(a.session.snapshotEvents()),new RegExp(marker+'|'+nationalityMarker+'|female'))
+    // Exercise the positive path with explicit v4 choices in fresh native sessions.
+    const checked={...structuredClone(next),policies:{preferredName:'allow',nationality:'private',gender:'private'}}
+    await fiber.update({record:checked})
+    for(const [provider,adapter] of [['plain',plain],['history',history]]){
+      const fresh=await ctx.agentLoop.create(SessionId('profile-checked-'+provider),{provider,model:'test'})
+      installModelSelection(fresh.ctx)
+      const count=adapter.requests.length
+      fresh.followup(createUserMessage({content:[{type:'text',text:'Who am I?'}],source:{kind:'user'}}))
+      await fresh.whenIdle()
+      assert.equal(adapter.requests.length,count+1)
+      const payload=JSON.stringify(adapter.requests.at(-1))
+      assert.match(payload,new RegExp(marker))
+      assert.doesNotMatch(payload,new RegExp(nationalityMarker+'|female'))
+    }
+    await fiber.update({record:{...checked,policies:profile.emptyPolicies()}})
+    for(const [provider,adapter] of [['plain',plain],['history',history]]){
+      const clean=await ctx.agentLoop.create(SessionId('profile-private-'+provider),{provider,model:'test'})
+      installModelSelection(clean.ctx)
+      await send(clean,adapter,'Who am I?')
+    }
     await fiber.dispose()
     await send(a,plain,'disabled after policy changes')
   }finally{await ctx.fiber.dispose()}

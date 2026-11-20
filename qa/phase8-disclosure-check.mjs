@@ -2,9 +2,7 @@
 // network or credentials, synthetic values only). Run against an exact runtime:
 //   ABINADWAN_TEST_RUNTIME=<rc dir> node --import ./qa/runtime-resolve.mjs --test qa/phase8-disclosure-check.mjs
 //
-// The real default Host never admits structured details. An isolated fixture
-// represents an earlier build so we can check stale retry, history replay,
-// provider switches and branching without a production admission bypass.
+// Check actual native prompt and send-time paths with synthetic adapters.
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { Context } from '@deepseek-ai/cordis'
@@ -40,13 +38,13 @@ class Capture extends LlmAdapter {
 }
 const systemOf=request=>request.messages.filter(m=>m.role==='system').map(m=>m.content.map(b=>b.text??'').join('')).join('\n')
 
-/** Synthetic record: every field Allow, both switches On. */
+/** Synthetic v4 record: all fields explicitly checked. */
 function sharing() {
   const r=profile.emptyRecord()
   r.locale='en'
   r.information={preferredName:NAME,nationality:NATIONALITY,gender:'male'}
   r.policies={preferredName:'allow',nationality:'allow',gender:'allow'}
-  r.allowPersonalInformation=r.allowCloud=true
+
   r.preferences.style='technical'
   r.preferences.custom='Synthetic permitted guidance'
   r.preferences.sendCustom=true
@@ -67,7 +65,7 @@ async function installHistoricalFixture(ctx){
   return fiber
 }
 
-async function installProfile(ctx,record=sharing()){
+async function installProfile(ctx,record={...sharing(),policies:profile.emptyPolicies()}){
   const fiber=ctx.plugin(profile,{record})
   await fiber.await()
   return fiber
@@ -100,11 +98,11 @@ function assertNoApproval(agents) {
 
 
 
-test('default Host: no structured details reach either native route, even with Allow and both switches On',async t=>{
+test('legacy records never share; saved v4 checkbox choices apply to both native routes',async t=>{
   const {ctx,adapters}=await harness(t,{plain:{},history:{inHistory:true}})
   const fiber=await installProfile(ctx)
   for(const version of [2,3]){
-    await fiber.update({record:{...sharing(),version}})
+    await fiber.update({record:{...sharing(),version,allowPersonalInformation:true,allowCloud:true}})
     for(const provider of ['plain','history']){
       const a=await agentOn(ctx,`p8-held-${version}-${provider}`,provider)
       await send(a,'hello')
@@ -114,6 +112,22 @@ test('default Host: no structured details reach either native route, even with A
       assert.match(sent,/Synthetic permitted guidance/)
       assertNoApproval([a])
     }
+  }
+  const checked={...sharing(),policies:{preferredName:'allow',nationality:'private',gender:'private'}}
+  await fiber.update({record:checked})
+  for(const provider of ['plain','history']){
+    const a=await agentOn(ctx,`p8-checked-${provider}`,provider)
+    await send(a,'Who am I?')
+    const sent=systemOf(adapters[provider].requests.at(-1))
+    assert.match(sent,new RegExp(NAME))
+    assert.doesNotMatch(sent,new RegExp(NATIONALITY+'|Gender: '))
+    assertNoApproval([a])
+  }
+  await fiber.update({record:{...checked,policies:profile.emptyPolicies()}})
+  for(const provider of ['plain','history']){
+    const a=await agentOn(ctx,`p8-private-new-${provider}`,provider)
+    await send(a,'Who am I?')
+    assert.doesNotMatch(systemOf(adapters[provider].requests.at(-1)),VALUES)
   }
 })
 
@@ -146,7 +160,7 @@ test('in-history replay is refused on the same route and after a switch; a repla
   for(const a of [stay,toB,toPlain])await send(a,'shared on A')
   assert.equal(adapters.historyA.requests.length,3)
   await earlier.dispose()
-  // Even a matching current record does not authorize replay on a label alone.
+  // The current record has revoked every field; prior structured blocks are refused.
   await installProfile(ctx)
   toB.model.select({provider:'historyB',model:'test'})
   toPlain.model.select({provider:'plain',model:'test'})
@@ -166,7 +180,7 @@ test('branched or restored history carrying an earlier Profile block is refused'
   const a=await agentOn(ctx,'p8-fork-parent','history')
   await send(a,'shared')
   await earlier.dispose()
-  await installProfile(ctx,{...sharing(),version:2})
+  await installProfile(ctx,{...sharing(),version:2,allowPersonalInformation:true,allowCloud:true})
   const events=a.session.snapshotEvents()
   const boundary=events.at(-1).seq
   const seed=buildForkSeed(events,boundary)

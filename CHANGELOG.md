@@ -5,7 +5,7 @@ All notable changes are documented here.
 ## [Unreleased] — Unified development baseline
 
 - Direct Chat verifies exclusive Windows root ownership and recovers interrupted deletion and migration. Failed ACL and AppContainer cleanup retains records for retry.
-- Personal Profile keeps structured sharing disabled and rejects identifiable replay while enabled. Upgrading from formerly inert sharing settings stays private. Plain JSON Review & Merge preserves omitted settings and each import starts a fresh review.
+- Personal Profile simplification candidate: one My Information page with three independent Available to agent checkboxes, no Ask First or global/cloud switches; v4 native settings, backwards-compatible v2 JSON, legacy choices start private, and consent-reviewed imports. Checked saved fields enter supported native agent prompts. Recognizable unauthorized replay remains gated. Desktop acceptance pending.
 - Adaptive Reasoning keeps manual effort and a single Host. Temporary effort and unsupported subagent policies stay unavailable on Harness rc.3 and rc.5.
 - See [development handover](HANDOVER.md) for the component matrix, verification and acceptance gates.
 

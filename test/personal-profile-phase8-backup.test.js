@@ -5,8 +5,7 @@
 //
 // Owner decision (2026-11-20, simplified Phase 8): backups stay plain JSON (no
 // password, no encryption), version 2 stays importable, Review & Merge is the
-// default, Replace All needs its own confirmation, and a restore never turns
-// sharing on.
+// default, Replace All needs its own confirmation, and imported sharing choices need explicit review and Save.
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { act } from 'react'
@@ -70,8 +69,8 @@ test('P8 legacy backup: default restore (merge) keeps preferences, resets permis
   await restore(view, backup)
   const saved = transport.record
   assert.deepEqual(saved.policies, privatePolicies, 'legacy Allow is not restored by default')
-  assert.equal(saved.allowPersonalInformation, false)
-  assert.equal(saved.allowCloud, false)
+  assert.equal(saved.allowPersonalInformation, undefined)
+  assert.equal(saved.allowCloud, undefined)
   assert.equal(Object.hasOwn(saved.preferences, 'sendCustom'), false, 'restored custom consent is never active')
   assert.deepEqual(nonSensitive(saved), nonSensitive(backup), 'style, language, traits, presets and text preserved exactly')
   assert.deepEqual(saved.information, backup.information, 'personal information restored')
@@ -79,23 +78,26 @@ test('P8 legacy backup: default restore (merge) keeps preferences, resets permis
   assert.doesNotMatch(responsePreferences(saved), /Synthetic standing instruction/, 'custom text needs fresh consent')
 })
 
-test('P8 restore never turns sharing on: a backup with both switches On restores them Off, also with permissions opted in', async t => {
+test('Explicitly reviewed permission restoration requires Save and does not retain obsolete switches', async t => {
   for (const strategy of ['merge', 'replace']) await t.test(strategy, async t => {
     const transport = mockSettings(emptyRecord())
     const view = await mountProfile(t, { transport })
     const backup = legacyAllowBackup({ switches: true })
+    backup.policies.nationality='ask_first'
     await restore(view, backup, { permissions: true, strategy })
     const saved = transport.record
-    assert.deepEqual(saved.policies, backup.policies, 'field-level privacy settings restored after both acknowledgments')
-    assert.equal(saved.allowPersonalInformation, false, strategy)
-    assert.equal(saved.allowCloud, false, strategy)
-    assert.deepEqual(nonSensitive(saved), nonSensitive(backup))
-    assert.equal(profileDisclosure(saved), '', 'restored settings share nothing')
-    await view.click('tab-access')
-    assert.equal(view.byId('shared-preview').textContent, 'Nothing is shared.')
+    assert.equal(saved.version,4)
+    assert.deepEqual(saved.policies, {preferredName:'allow',nationality:'private',gender:'allow'})
+    assert.equal(saved.allowPersonalInformation,undefined)
+    assert.equal(saved.allowCloud,undefined)
+    assert.deepEqual(nonSensitive(saved),nonSensitive(backup))
+    assert.match(profileDisclosure(saved),new RegExp(NAME))
+    assert.doesNotMatch(profileDisclosure(saved),new RegExp(NATIONALITY))
+    await view.click('tab-information')
+    assert.equal(view.byId('policy-preferredName').checked,true)
+    assert.equal(view.byId('policy-nationality').checked,false)
   })
 })
-
 test('P8 Replace All needs its own confirmation; the default merge keeps the current custom instructions', async t => {
   const current = emptyRecord(); current.preferences.custom = 'Synthetic current paragraph'
   const transport = mockSettings(current)
@@ -127,7 +129,7 @@ test('P8 backup import: malformed, unsupported or forged records are rejected wi
   await view.click('tab-backup')
   for (const bad of [
     { ...legacyAllowBackup(), disclosure: { acknowledged: 'phase8-v1', providers: ['synthetic-cloud'] } },
-    { ...legacyAllowBackup(), version: 4 },
+    { ...legacyAllowBackup(), version: 5 },
     { ...legacyAllowBackup(), policies: { ...legacyAllowBackup().policies, gender: 'always' } },
     { ...legacyAllowBackup(), allowCloud: 'yes' },
     { ...legacyAllowBackup(), information: { ...legacyAllowBackup().information, preferredName: 'x'.repeat(129) } },
@@ -141,7 +143,8 @@ test('P8 backup import: malformed, unsupported or forged records are rejected wi
 })
 
 test('P8 backup export: plain JSON uses the complete v2 shape and never carries active sharing switches', async t => {
-  const record = { ...legacyAllowBackup({ sendCustom: true, switches: true }), version: 3 }
+  const {allowPersonalInformation: _master,allowCloud: _cloud,...old}=legacyAllowBackup({sendCustom:true})
+  const record={...old,version:4}
   const view = await mountProfile(t, { transport: mockSettings(record) })
   await view.click('tab-backup')
   assert.match(view.d.body.textContent, /not encrypted/)
@@ -154,38 +157,38 @@ test('P8 backup export: plain JSON uses the complete v2 shape and never carries 
 })
 
 
-test('P8 integration: inert v2 switches load Off while existing instructions remain effective', async t => {
-  const old = { ...legacyAllowBackup({ sendCustom: true, switches: true }), version: 2 }
-  const stored = hostRecord(old)
-  assert.deepEqual(stored, old, 'the Host reads the existing record without rewriting it')
-  assert.equal(profileDisclosure(stored), '')
-  assert.match(responsePreferences(stored), /Synthetic standing instruction/)
-  const transport = mockSettings(old)
-  const view = await mountProfile(t, { transport })
-  await view.click('tab-access')
-  assert.equal(view.byId('opt-in').checked, false)
-  assert.equal(view.byId('cloud').checked, false)
-  assert.equal(view.byId('opt-in').disabled, true)
-  assert.equal(view.byId('cloud').disabled, true)
-  assert.equal(view.byId('shared-preview').textContent, 'Nothing is shared.')
-  assert.equal(transport.calls.length, 0, 'loading does not rewrite the old settings')
-  assert.match(view.d.body.textContent, /Older versions require an archived Harness configuration or a version 2 JSON backup/)
-  await view.click('rollback-view')
-  const archived = { ...old, allowPersonalInformation: false, allowCloud: false }
-  assert.deepEqual(JSON.parse(view.byId('rollback-json').value), archived)
-  await view.click('rollback-copy')
-  assert.deepEqual(JSON.parse(view.copied[0]), archived)
-  await view.click('rollback-download')
-  assert.deepEqual(JSON.parse(await view.blobText(view.downloads[0].blob)), archived)
-  assert.deepEqual(transport.record, old, 'the pre-Save backup actions leave the native record intact')
-  assert.equal(transport.calls.length, 0)
-  await view.click('save')
-  assert.deepEqual(transport.record, { ...archived, version: 3 })
-  assert.equal(view.byId('rollback-download'), null)
+test('Legacy v2 and v3 never activate previously inert choices during upgrade', async t => {
+  for(const version of [2,3])await t.test(String(version),async t=>{
+    const old={...legacyAllowBackup({sendCustom:true,switches:true}),version}
+    const stored=hostRecord(old)
+    assert.deepEqual(stored,old)
+    assert.equal(profileDisclosure(stored),'')
+    assert.match(responsePreferences(stored),/Synthetic standing instruction/)
+    const transport=mockSettings(old)
+    const view=await mountProfile(t,{transport})
+    assert.equal(view.byId('tab-access'),null)
+    for(const id of ['preferredName','nationality','gender'])assert.equal(view.byId('policy-'+id).checked,false)
+    assert.equal(view.byId('shared-preview').textContent,'Nothing is shared.')
+    assert.equal(transport.calls.length,0)
+    await view.click('rollback-view')
+    const archived={...old,version:2,policies:privatePolicies,allowPersonalInformation:false,allowCloud:false}
+    assert.deepEqual(JSON.parse(view.byId('rollback-json').value),archived)
+    await view.click('rollback-copy')
+    assert.deepEqual(JSON.parse(view.copied[0]),archived)
+    await view.click('rollback-download')
+    assert.deepEqual(JSON.parse(await view.blobText(view.downloads[0].blob)),archived)
+    assert.deepEqual(transport.record,old)
+    await view.click('save')
+    const {allowPersonalInformation,allowCloud,...rest}=archived
+    assert.deepEqual(transport.record,{...rest,version:4})
+    assert.equal(profileDisclosure(transport.record),'')
+    assert.equal(view.byId('rollback-download'),null)
+  })
 })
 
 test('P8 integration: the default merge keeps omitted settings and applies explicit values', async t => {
-  const current = { ...legacyAllowBackup({ sendCustom: true, switches: true }), version: 3 }
+  const {allowPersonalInformation: _master,allowCloud: _cloud,...old}=legacyAllowBackup({sendCustom:true})
+  const current={...old,version:4}
   current.preferences.style = 'friendly'
   current.preferences.custom = 'Existing instruction'
   const transport = mockSettings(current)
@@ -208,8 +211,7 @@ test('P8 integration: the default merge keeps omitted settings and applies expli
     ...current,
     information: { ...current.information, preferredName: '' },
     preferences: { ...previousPreferences, traits: { ...previousPreferences.traits, detail: 1 }, presets: [] },
-    allowPersonalInformation: false,
-    allowCloud: false,
+    policies: {...current.policies, preferredName:'private'},
   })
 })
 
@@ -266,11 +268,11 @@ test('P8 integration: an older file read cannot overwrite a newer pasted backup'
 
 test('P8 integration: explicitly restoring sparse field policies preserves other policies on merge', async t => {
   const current = emptyRecord()
-  current.policies = { preferredName: 'allow', nationality: 'ask_first', gender: 'allow' }
+  current.policies = { preferredName: 'allow', nationality: 'private', gender: 'allow' }
   const transport = mockSettings(current)
   const view = await mountProfile(t, { transport })
-  await restore(view, { version: 3, policies: { gender: 'private' } }, { permissions: true })
-  assert.deepEqual(transport.record.policies, { preferredName: 'allow', nationality: 'ask_first', gender: 'private' })
+  await restore(view, { version: 4, policies: { gender: 'private' } }, { permissions: true })
+  assert.deepEqual(transport.record.policies, { preferredName: 'allow', nationality: 'private', gender: 'private' })
 })
 
 test('P8 integration: confirmed Replace All resets settings omitted from a sparse backup', async t => {
@@ -280,7 +282,7 @@ test('P8 integration: confirmed Replace All resets settings omitted from a spars
   current.policies.gender = 'allow'
   const transport = mockSettings(current)
   const view = await mountProfile(t, { transport })
-  await restore(view, { version: 3, information: { preferredName: 'Replacement name' } }, { strategy: 'replace' })
+  await restore(view, { version: 4, information: { preferredName: 'Replacement name' } }, { strategy: 'replace' })
   assert.deepEqual(transport.record, {
     ...emptyRecord(),
     information: { preferredName: 'Replacement name', nationality: '', gender: '' },

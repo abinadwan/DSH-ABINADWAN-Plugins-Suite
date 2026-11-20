@@ -1,13 +1,11 @@
 // Native Harness settings schema. No separate storage, cryptography or agent
 // transport. The active Harness Profile owns the file.
 //
-// v3 keeps the unified shape and distinguishes the old, inactive v2 sharing
-// switches. Saved v1 and v2 records remain readable and are only upgraded by
-// an explicit Save. Response preferences keep working from existing v2 settings.
-// Structured personal details stay local until verified native admission is available.
+// v4 uses only explicit per-field sharing choices. Older records remain readable
+// and cannot authorize structured disclosure until the user selects and Saves.
 import z from '@deepseek-ai/schemastery'
 import { RECORD_VERSION, SECTION_NAME, responsePreferences, staleDisclosure,
-  refuseStaleDisclosure, eligibleAssembly } from './preferences.js'
+  refuseStaleDisclosure, eligibleAssembly, DISCLOSURE_SECTION_NAME, profileDisclosure } from './preferences.js'
 export { RECORD_VERSION } from './preferences.js'
 
 const choice = (values,initial) => z.union(values).default(initial)
@@ -20,7 +18,7 @@ export const emptyPreferences=()=>({style:'default',responseLanguage:'auto',trai
 export const emptyPolicies=()=>Object.fromEntries(fields.map(k=>[k,'private']))
 export const emptyInformation=()=>({preferredName:'',nationality:'',gender:''})
 export const emptyRecord=()=>({version:RECORD_VERSION,locale:'ar',information:emptyInformation(),
-  preferences:emptyPreferences(),policies:emptyPolicies(),allowPersonalInformation:false,allowCloud:false})
+  preferences:emptyPreferences(),policies:emptyPolicies()})
 /** v0.7.0/0.7.1 record shape. Used only to read and migrate stored data. */
 export const emptyLegacyRecord=()=>({version:1,locale:'ar',information:emptyInformation(),
   global:emptyPreferences(),workspaces:[],allowPersonalInformation:false,allowCloud:false})
@@ -30,25 +28,25 @@ const preferences=(unified=false)=>z.object({
   presets:z.array(z.union(presets)).max(8).default([]),custom:z.string().max(8192).default(''),
   ...(unified?{sendCustom:z.boolean()}:{}),
 }).default(emptyPreferences())
-const policies=()=>z.object(Object.fromEntries(fields.map(k=>[k,choice(['private','ask_first','allow'],'private')]))).default(emptyPolicies())
+const policies=(legacy=false)=>z.object(Object.fromEntries(fields.map(k=>[k,choice(legacy?['private','ask_first','allow']:['private','allow'],'private')]))).default(emptyPolicies())
 const information=()=>z.object({preferredName:z.string().max(128).default(''),nationality:z.string().max(128).default(''),
   gender:choice(['','male','female','unspecified'],'')}).default(emptyInformation())
 const unified=version=>z.object({
   version:z.const(version).required(),locale:choice(['ar','en'],'ar'),
-  information:information(),preferences:preferences(true),policies:policies(),
-  allowPersonalInformation:z.boolean().default(false),allowCloud:z.boolean().default(false),
+  information:information(),preferences:preferences(true),policies:policies(version!==RECORD_VERSION),
+  ...(version===RECORD_VERSION?{}:{allowPersonalInformation:z.boolean().default(false),allowCloud:z.boolean().default(false)}),
 })
 const legacy=z.object({
   version:z.const(1).default(1),locale:choice(['ar','en'],'ar'),
   information:information(),global:preferences(),
   workspaces:z.array(z.object({id:z.string().min(1).max(256).required(),
-    override:z.boolean().default(false),preferences:preferences(),policies:policies()})).default([]),
+    override:z.boolean().default(false),preferences:preferences(),policies:policies(true)})).default([]),
   allowPersonalInformation:z.boolean().default(false),allowCloud:z.boolean().default(false),
 })
 export const Config=z.object({
   // Unified versions require a version. A record without `version` resolves as legacy v1, the
   // only shape that ever omitted it.
-  record:z.union([unified(RECORD_VERSION),unified(2),legacy]).default(emptyRecord()).volatile(),
+  record:z.union([unified(RECORD_VERSION),unified(3),unified(2),legacy]).default(emptyRecord()).volatile(),
 })
 export const name='abinadwan-personal-profile'
 // Use the official Settings Controller's auto-generated namespace. No
@@ -63,13 +61,16 @@ export function apply(ctx,config) {
       if(!eligibleAssembly(context))return ''
       try { return responsePreferences(config.record.get()) } catch { return '' }
     }})
+    child.systemPrompt.section({name:DISCLOSURE_SECTION_NAME,order:51,interpolate:false,text:context=>{
+      if(!eligibleAssembly(context))return ''
+      try { return profileDisclosure(config.record.get()) } catch { return '' }
+    }})
   })
-  // The selected provider/model are labels, not a verified destination. Keep
-  // personal-information admission off. Refuse requests carrying an earlier
-  // literal Profile block at the native send boundary, without rewriting it.
+  // Check identifiable prior disclosures against the current saved field choices.
+  // The same choices apply to every configured model/provider.
   ctx.on('llm/stream',(request,next)=>{
     let record=null
     try { record=config.record.get() } catch { record=null }
-    return staleDisclosure(request) ? refuseStaleDisclosure(record?.locale) : next()
+    return staleDisclosure(request,record) ? refuseStaleDisclosure(record?.locale) : next()
   })
 }

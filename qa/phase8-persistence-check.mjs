@@ -26,8 +26,7 @@ function tricky() {
   const r = profile.emptyRecord()
   r.locale = 'en'
   r.information = { preferredName: 'SYNTHETIC: "Name" # not a comment', nationality: 'yes', gender: 'female' }
-  r.policies = { preferredName: 'allow', nationality: 'ask_first', gender: 'allow' }
-  r.allowPersonalInformation = r.allowCloud = true
+  r.policies = { preferredName: 'allow', nationality: 'private', gender: 'allow' }
   r.preferences.style = 'technical'
   r.preferences.custom = 'null\n  indented: line\n\n- not a list\n{{literal}} 0x10 ~ اختبار'
   r.preferences.sendCustom = true
@@ -69,7 +68,7 @@ test('the record survives the native atomic write, a reload and a Host restart u
   assert.deepEqual(reloaded, record, 'every value, permission and switch round-trips exactly')
   // Restart: a new Host context mounts the plugin from the reloaded configuration.
   for (let restart = 0; restart < 2; restart++) {
-    const stored=restart===0 ? { ...record, version: 2 } : record
+    const stored=restart===0 ? { ...record, version: 2, allowPersonalInformation:true, allowCloud:true } : record
     await save(path, stored)
     assert.deepEqual(await load(path), stored)
     const ctx = new Context()
@@ -77,13 +76,15 @@ test('the record survives the native atomic write, a reload and a Host restart u
       await ctx.plugin(Registry).await()
       await ctx.plugin(profile, { record: await load(path) }).await()
       assert.match(ctx.systemPrompt.sections.get(SECTION_NAME).text(eligible()), /\{\{literal\}\} 0x10/)
-      assert.equal(ctx.systemPrompt.sections.has(DISCLOSURE_SECTION_NAME), false)
+      const disclosure=ctx.systemPrompt.sections.get(DISCLOSURE_SECTION_NAME).text(eligible())
+      if(restart===0)assert.equal(disclosure,'')
+      else assert.match(disclosure,/SYNTHETIC/)
       assert.doesNotMatch(ctx.systemPrompt.sections.get(SECTION_NAME).text(eligible()), /SYNTHETIC/)
     } finally { await ctx.fiber.dispose() }
   }
   // A later save of a revoked record wins on reload.
-  await save(path, { ...record, allowCloud: false })
-  assert.equal((await load(path)).allowCloud, false)
+  await save(path, { ...record, policies: profile.emptyPolicies() })
+  assert.deepEqual((await load(path)).policies,profile.emptyPolicies())
 })
 
 test('corrupted or tampered stored data is rejected and shares nothing', async t => {
@@ -96,7 +97,7 @@ test('corrupted or tampered stored data is rejected and shares nothing', async t
   await writeFile(path, good.slice(0, Math.floor(good.length / 2)) + '\n  - "unterminated')
   await assert.rejects(load(path))
   // Well-formed YAML with invalid values: the Host schema refuses the record.
-  for (const bad of [{ ...tricky(), allowCloud: 'yes' }, { ...tricky(), policies: { ...tricky().policies, gender: 'always' } },
+  for (const bad of [{ ...tricky(), version: 2, allowPersonalInformation:true, allowCloud: 'yes' }, { ...tricky(), policies: { ...tricky().policies, gender: 'always' } },
     { ...tricky(), information: { ...tricky().information, preferredName: 'x'.repeat(129) } }]) {
     await writeFile(path, good)
     await save(path, bad)
@@ -106,7 +107,7 @@ test('corrupted or tampered stored data is rejected and shares nothing', async t
   const ctx = new Context()
   try {
     await ctx.plugin(Registry).await()
-    const fiber = ctx.plugin(profile, { record: { ...tricky(), allowCloud: 'yes' } })
+    const fiber = ctx.plugin(profile, { record: { ...tricky(), version: 2, allowPersonalInformation:true, allowCloud: 'yes' } })
     await fiber.await().catch(() => {})
     for (const section of ctx.systemPrompt.sections.values()) assert.doesNotMatch(section.text(eligible()), /SYNTHETIC/)
   } finally { await ctx.fiber.dispose() }

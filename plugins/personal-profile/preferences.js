@@ -61,15 +61,14 @@ export function previewProfilePreferences(pref) {
   if(pref.sendCustom===true && pref.custom.trim()) lines.push(pref.custom)
   return lines.length ? ['Response preferences (follow the current request and higher-priority host/safety/tool requirements; custom guidance takes precedence over other style preferences where compatible).',...new Set(lines)].join('\n') : ''
 }
-export const RECORD_VERSION=3
+export const RECORD_VERSION=4
 
-// Phase 8 policy evaluation for synthetic cases. It does not establish a
-// verified provider destination and is not used to admit live requests.
+// Structured fields are optional profile data, not instructions.
 const PROFILE_DISCLOSURE_HEADER='Personal details the user chose to share (use them only when relevant to the request):'
 const PROFILE_DISCLOSURE_FIELDS=[['preferredName','Preferred name'],['nationality','Nationality'],['gender','Gender']]
 const profileDisclosureValue=value=>String(value).replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029\u202a-\u202e\u2066-\u2069]/g,' ').replace(/\s+/g,' ').trim()
 export function previewProfileDisclosure(record) {
-  if(record.allowPersonalInformation!==true||record.allowCloud!==true) return ''
+  if(!record||record.version!==RECORD_VERSION) return ''
   const lines=[]
   for(const [key,label] of PROFILE_DISCLOSURE_FIELDS) {
     if(record.policies[key]!=='allow') continue
@@ -82,7 +81,7 @@ export function previewProfileDisclosure(record) {
 const keys=(value,expected)=>value!==null&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).length===expected.length&&expected.every(k=>Object.hasOwn(value,k))
 export const SECTION_NAME='abinadwan:personal-profile-preferences'
 export function responsePreferences(record) {
-  if(!record||![2,RECORD_VERSION].includes(record.version))return ''
+  if(!record||![2,3,RECORD_VERSION].includes(record.version))return ''
   const p=record.preferences
   const expected=['style','responseLanguage','traits','presets','custom']
   if(p && Object.hasOwn(p,'sendCustom'))expected.push('sendCustom')
@@ -97,10 +96,10 @@ export const DISCLOSURE_SECTION_NAME='abinadwan:personal-profile-information'
 const FIELD_KEYS=PROFILE_DISCLOSURE_FIELDS.map(([key])=>key)
 /** Evaluate the explicit field policies. An older record or malformed input yields no block. */
 export function profileDisclosure(record) {
-  if(!record||record.version!==RECORD_VERSION||typeof record.allowPersonalInformation!=='boolean'||typeof record.allowCloud!=='boolean')return ''
+  if(!record||record.version!==RECORD_VERSION)return ''
   const {information:i,policies:p}=record
   if(!keys(i,FIELD_KEYS)||!keys(p,FIELD_KEYS)||
-    !FIELD_KEYS.every(k=>['private','ask_first','allow'].includes(p[k]))||
+    !FIELD_KEYS.every(k=>['private','allow'].includes(p[k]))||
     typeof i.preferredName!=='string'||i.preferredName.length>128||typeof i.nationality!=='string'||i.nationality.length>128||
     !['','male','female','unspecified'].includes(i.gender))return ''
   return previewProfileDisclosure(record)
@@ -128,11 +127,7 @@ export function disclosureBlocks(request) {
   }
   return blocks
 }
-/**
- * Send-time check for earlier Profile blocks. The Host supplies no settings
- * for admission, so any matching block carried by a retry or replay is refused.
- * Synthetic policy fixtures can supply a record to compare the exact text.
- */
+/** Send-time check for recognizable prior Profile sections against saved choices. */
 export function staleDisclosure(request,record) {
   const blocks=disclosureBlocks(request)
   if(!blocks.length)return false

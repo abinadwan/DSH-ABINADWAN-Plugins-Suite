@@ -1,17 +1,27 @@
-# Personal Profile — 0.8.0-rc.1 candidate
+# Personal Profile — simplified development candidate
 
-Personal Profile stores an optional preferred name, nationality, gender, response preferences and custom instructions in the active Harness Profile. The profile applies across Workspaces. Edits use native Harness settings and require an explicit, revision-checked Save.
+Personal Profile is optional and disabled by default. It uses one native settings record across Workspaces of the active Harness Profile.
 
-## Sharing
+## My Information
 
-Saved response preferences apply to supported native agent steps. Custom text requires separate saved permission that includes cloud use. Editing or restoring the text clears that permission.
+Preferred name, nationality and gender are on one page, each beside an independent “Available to agent” checkbox. Checked, nonempty fields are included in supported top-level native agent prompts after an explicit, revision-checked Save. Unchecked fields remain stored but are not freshly injected. The same choice applies to every configured model/provider, including cloud providers. New fields default to private. No global sharing switch, cloud distinction or Ask First flow remains. Empty text and unspecified gender are not sent.
 
-Structured personal details stay local in this build. The sharing switches are disabled pending verified provider admission and request capture in an isolated Windows Desktop profile. Field policies remain editable and default to Private. Ask First remains inactive because Harness lacks a destination-bound approval prompt.
+## Agent Instructions
 
-Earlier saved v2 records keep their personal information, response preferences, custom-text permission and field policies. The editor loads both sharing switches Off and writes the v3 record only when you Save. To downgrade, keep an archived Harness configuration or export a compatible version 2 JSON backup before the first Save. The upgrade notice includes the export controls. The Host refuses requests carrying a literal Profile details block from an earlier build while the plugin is active. Earlier details can remain with providers and in conversation history, Harness logs, summaries or branches. Start a new chat if the guard stops a request. [Phase 8 audit](../../docs/PERSONAL_PROFILE_PHASE8_AUDIT.md)
+Response preferences, style, language, traits, presets and custom instructions are unchanged. Editing or restoring custom instructions clears their separate sending consent.
 
-## Backup and restore
+## Compatibility and storage
 
-Backup & Restore exports the draft as version 2 plain JSON with its field policies and both sharing switches Off. Backups may contain personal information and custom instructions, and neither backups nor native settings have plugin-level encryption. Imports accept current backups, v2 backups and the older Workspace-based v1 format.
+Native record v4 contains the information, preferences, locale and only two field policies: allow/private. v1, v2 and v3 remain readable, but their structured fields do not authorize sharing. On upgrade, existing values and compatible preferences are retained, the three checkboxes start unchecked, and no record is rewritten until Save. Legacy Workspace migration still requires review and confirmation. Export an archival v2 JSON backup and preserve the original Harness configuration before upgrading if rollback is needed.
 
-Review & Merge is the default for each import. It keeps omitted settings, applies supplied settings and offers an editable preview of merged custom instructions. An explicit empty custom instruction value clears that text. Replace All resets omitted settings to their defaults and requires separate confirmation. Applying any restore to the draft leaves both sharing switches Off and clears custom-text permission. Importing saved field policies requires a separate opt-in. Save to commit the reviewed draft.
+The plugin uses native settings.describe and settings.replace with a revision check; no independent database or filesystem. Plaintext settings and JSON backups are readable by anyone with file access.
+
+## Backup & Restore
+
+Export remains complete, plain version 2 JSON with both old switches Off for backward compatibility. Imports accept v1–v4. Merge preserves omitted values; imported changed information defaults to private unless its permissions are separately selected and acknowledged. Replace All starts Private and requires a separate confirmation. Legacy Ask First maps to Private. An explicitly acknowledged imported Allow choice applies only after Save. Custom-text permission clears on restore. No encryption, passwords or new consent registry.
+
+## Context boundary and acceptance
+
+The plugin contributes to supported native agent steps only. The send-time guard refuses a recognizable earlier Profile details section that no longer matches the current allowed block while the plugin is enabled. This does not erase information from previously sent messages, provider systems, logs, stored history, summaries, files, or other sources. A new clean Workspace/session should receive only current checked fields from this plugin; this is not a promise of global Workspace isolation.
+
+Use synthetic values and clean disposable Workspaces on rc.5 Desktop to exercise saved and unsaved checkbox changes, old and new conversations, switching providers, retries, restart, upgrade, backup and rollback. Verify actual outgoing request bytes, not model responses alone. Source, package and native/real Desktop verification remain acceptance gates for this feature branch. Do not merge until the owner approves.

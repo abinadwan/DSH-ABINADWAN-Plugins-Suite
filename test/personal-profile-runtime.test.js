@@ -8,12 +8,12 @@ import {responsePreferences,eligibleAssembly,SECTION_NAME,DISCLOSURE_SECTION_NAM
   disclosureBlocks,staleDisclosure,refuseStaleDisclosure} from '../plugins/personal-profile/preferences.js'
 
 const DISCLOSURE_HEADER='Personal details the user chose to share (use them only when relevant to the request):'
-/** Synthetic record: every field Allow and both switches On. */
+/** Synthetic record: every field explicitly checked. */
 function disclosureRecord() {
   const r=profile.emptyRecord()
   r.information={preferredName:'SYNTHETIC_P8_NAME',nationality:'SYNTHETIC_P8_NATIONALITY',gender:'female'}
   r.policies={preferredName:'allow',nationality:'allow',gender:'allow'}
-  r.allowPersonalInformation=r.allowCloud=true
+
   return r
 }
 function selection() {
@@ -47,7 +47,7 @@ test('response renderer matches entire browser catalog and renderer',()=>{
 test('structured fields are excluded even when all permissions allow; custom text requires opt-in',()=>{
   const r=profile.emptyRecord()
   r.information={preferredName:'Fictional private name',nationality:'Fictional private nationality',gender:'female'}
-  r.allowCloud=r.allowPersonalInformation=true
+
   r.policies={preferredName:'allow',nationality:'allow',gender:'allow'}
   r.preferences.custom='Fictional custom text'
   assert.equal(responsePreferences(r),'')
@@ -95,30 +95,26 @@ test('Cordis mount/update/dispose reads only volatile persisted config; optional
     assert.equal(section.text({}),'')
     const next=profile.emptyRecord();next.preferences.responseLanguage='ja'
     await fiber.update({record:next})
-    assert.equal(ctx.systemPrompt.sections.size,1)
+    assert.equal(ctx.systemPrompt.sections.size,2)
     assert.match(ctx.systemPrompt.sections.get(SECTION_NAME).text(selection()),/Japanese/)
     assert.doesNotMatch(ctx.systemPrompt.sections.get(SECTION_NAME).text(selection()),/friendly/)
     await fiber.dispose()
     assert.equal(ctx.systemPrompt.sections.size,0)
     await ctx.plugin(profile,{record:r}).await()
-    assert.equal(ctx.systemPrompt.sections.size,1)
+    assert.equal(ctx.systemPrompt.sections.size,2)
   }finally{await ctx.fiber.dispose()}
 })
 
 // ---------- Phase 8: shared details (synthetic values only) ----------
-test('P8 synthetic policy: a field is shared only when it is Allow and both switches are On (all 108 combinations)',()=>{
+test('Each saved field is shared only when checked (all eight combinations)',()=>{
   const labels=['Preferred name: SYNTHETIC_P8_NAME','Nationality: SYNTHETIC_P8_NATIONALITY','Gender: female']
-  let cases=0
-  for(const master of [false,true])for(const cloud of [false,true])
-    for(const a of ['private','ask_first','allow'])for(const b of ['private','ask_first','allow'])for(const c of ['private','ask_first','allow']){
-      const r={...disclosureRecord(),allowPersonalInformation:master,allowCloud:cloud,policies:{preferredName:a,nationality:b,gender:c}}
-      const lines=master&&cloud?labels.filter((_,i)=>[a,b,c][i]==='allow'):[]
-      assert.equal(profileDisclosure(r),lines.length?[DISCLOSURE_HEADER,...lines].join('\n'):'')
-      // The response-preferences section never carries a field.
-      assert.doesNotMatch(responsePreferences(r),/SYNTHETIC_P8|female/)
-      cases++
-    }
-  assert.equal(cases,108)
+  for(const a of ['private','allow'])for(const b of ['private','allow'])for(const c of ['private','allow']){
+    const r={...disclosureRecord(),policies:{preferredName:a,nationality:b,gender:c}}
+    const lines=labels.filter((_,i)=>[a,b,c][i]==='allow')
+    assert.equal(profileDisclosure(r),lines.length?[DISCLOSURE_HEADER,...lines].join('\n'):'')
+    assert.doesNotMatch(responsePreferences(r),/SYNTHETIC_P8|female/)
+  }
+  for(const version of [2,3])assert.equal(profileDisclosure({...disclosureRecord(),version,allowPersonalInformation:true,allowCloud:true}),'')
 })
 test('P8 synthetic policy: empty or unspecified values are omitted; values are single-line; malformed records share nothing',()=>{
   const r=disclosureRecord()
@@ -127,11 +123,11 @@ test('P8 synthetic policy: empty or unspecified values are omitted; values are s
   r.information={preferredName:'   ',nationality:'',gender:''}
   assert.equal(profileDisclosure(r),'','nothing to share')
   const ok=disclosureRecord()
-  for(const bad of [null,{},{...ok,version:1},{...ok,allowCloud:'true'},{...ok,policies:{...ok.policies,gender:'always'}},
+  for(const bad of [null,{},{...ok,version:1},{...ok,version:3,allowCloud:true,allowPersonalInformation:true},{...ok,policies:{...ok.policies,gender:'always'}},
     {...ok,policies:{preferredName:'allow'}},{...ok,information:{...ok.information,gender:'other'}},
     {...ok,information:{...ok.information,preferredName:'x'.repeat(129)}},{...ok,information:{...ok.information,extra:''}}])
     assert.equal(profileDisclosure(bad),'')
-  assert.equal(previewProfileDisclosure({...ok,allowPersonalInformation:false}),'')
+  assert.equal(previewProfileDisclosure({...ok,version:3}),'')
 })
 const requestWith=(...system)=>({provider:'p',model:'m',messages:[
   ...system.map(text=>({role:'system',content:[{type:'text',text}]})),
@@ -142,14 +138,14 @@ test('P8 send-time guard: refuses a request whose block differs from what curren
   assert.deepEqual(disclosureBlocks(sent),[block],'user messages are not scanned')
   assert.equal(staleDisclosure(sent,r),false,'current authorized block passes')
   assert.equal(staleDisclosure(requestWith('old\n\n'+block,'new\n\n'+block),r),false,'in-history replay of the same block passes')
-  assert.equal(staleDisclosure(sent,{...r,allowCloud:false}),true,'revoked')
+  assert.equal(staleDisclosure(sent,{...r,policies:profile.emptyPolicies()}),true,'revoked')
   assert.equal(staleDisclosure(sent,{...r,policies:{...r.policies,gender:'private'}}),true,'narrowed')
   assert.equal(staleDisclosure(sent,{...r,information:{...r.information,preferredName:'SYNTHETIC_P8_RENAMED'}}),true,'edited value')
   assert.equal(staleDisclosure(sent,null),true,'unreadable settings fail closed')
   assert.equal(staleDisclosure(requestWith('Base prompt.'),null),false,'requests without a block are never touched')
-  assert.equal(staleDisclosure({system:block,messages:[]},{...r,allowCloud:false}),true,'one-shot system text is checked')
-  assert.equal(staleDisclosure({messages:[{role:'developer',content:block}]},{...r,allowCloud:false}),true,'developer text is checked')
-  assert.equal(staleDisclosure({messages:[{role:'system',content:[{type:'text',text:'x'+block}]}]},{...r,allowCloud:false}),false,'only an exact header line counts')
+  assert.equal(staleDisclosure({system:block,messages:[]},{...r,policies:profile.emptyPolicies()}),true,'one-shot system text is checked')
+  assert.equal(staleDisclosure({messages:[{role:'developer',content:block}]},{...r,policies:profile.emptyPolicies()}),true,'developer text is checked')
+  assert.equal(staleDisclosure({messages:[{role:'system',content:[{type:'text',text:'x'+block}]}]},{...r,policies:profile.emptyPolicies()}),false,'only an exact header line counts')
 })
 test('P8 refusal is a terminal, non-retryable native outcome that names no value',async()=>{
   for(const locale of ['en','ar',undefined]){
@@ -241,22 +237,25 @@ test('7D: worst-case section stays within the measured size budget',()=>{
 })
 
 
-test('P8 integration: the default Host has no details contribution for either unified record version', async () => {
+test('Host shares only saved v4 checked fields, and never promotes legacy policy', async () => {
   const ctx = new Context()
   try {
     await ctx.plugin(Registry).await()
     const stored = disclosureRecord()
     const fiber = ctx.plugin(profile, { record: stored })
     await fiber.await()
-    for (const version of [2, 3]) {
-      await fiber.update({ record: { ...stored, version } })
-      assert.equal(ctx.systemPrompt.sections.has(DISCLOSURE_SECTION_NAME), false)
-      assert.doesNotMatch(
-        [...ctx.systemPrompt.sections.values()].map(section => section.text(selection())).join('\n'),
-        /SYNTHETIC_P8|female/,
-      )
+    const section=ctx.systemPrompt.sections.get(DISCLOSURE_SECTION_NAME)
+    assert.ok(section)
+    assert.equal(section.text(selection()),profileDisclosure(stored))
+    assert.equal(section.text({}),'')
+    for (const version of [2,3]) {
+      await fiber.update({record:{...stored,version,allowPersonalInformation:true,allowCloud:true}})
+      assert.equal(section.text(selection()),'')
     }
-  } finally {
-    await ctx.fiber.dispose()
-  }
+    await fiber.update({record:{...stored,policies:{preferredName:'allow',nationality:'private',gender:'private'}}})
+    assert.match(section.text(selection()),/SYNTHETIC_P8_NAME/)
+    assert.doesNotMatch(section.text(selection()),/SYNTHETIC_P8_NATIONALITY|female/)
+    await fiber.update({record:profile.emptyRecord()})
+    assert.equal(section.text(selection()),'')
+  } finally { await ctx.fiber.dispose() }
 })
