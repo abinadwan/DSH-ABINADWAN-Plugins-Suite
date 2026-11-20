@@ -3,9 +3,9 @@
 // access to that copy only, never to the Desktop installation. Desktop keeps its packages inside app.asar,
 // which only Electron can read, so the copy also makes them loadable by plain Node.
 import { createHash, randomUUID } from 'node:crypto'
-import { existsSync, readFileSync, statSync } from 'node:fs'
+import { existsSync, readFileSync, realpathSync, statSync } from 'node:fs'
 import { copyFile, mkdir, readFile, readdir, rename, rm, stat, writeFile } from 'node:fs/promises'
-import { basename, dirname, join, relative, resolve } from 'node:path'
+import { basename, dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const FORMAT = 1
@@ -41,33 +41,73 @@ export function hostSources(env = process.env, argv = process.argv, execPath = p
   return { modules: resolve(modules), node: resolve(node) }
 }
 
-/** Resolve the package closure the companion needs, the way Node resolves bare specifiers. */
+/**
+ * Resolve the package closure the companion needs, the way Node resolves bare specifiers from each package's
+ * real location, and lay it out as one hoisted node_modules tree. Packages are identified by real path, so
+ * linked layouts (pnpm, workspace junctions) and dependency cycles resolve once. A package is hoisted to the
+ * top unless a different copy of the same name is already visible there, in which case it is nested under
+ * its dependent, exactly where Node will look for it.
+ */
 export function packageClosure(modules) {
-  const top = dirname(modules)
-  const packages = new Map()
-  function locate(name, from) {
+  const graph = new Map()
+  function resolveFrom(name, from) {
     for (let folder = from; ; folder = dirname(folder)) {
       const candidate = join(folder, 'node_modules', name)
-      if (existsSync(join(candidate, 'package.json'))) return candidate
-      if (folder === top || dirname(folder) === folder) return undefined
+      if (existsSync(join(candidate, 'package.json'))) return realpathSync.native(candidate)
+      if (dirname(folder) === folder) return undefined
     }
   }
   function visit(name, from, required) {
-    const folder = locate(name, from)
-    if (!folder) {
+    const real = resolveFrom(name, from)
+    if (!real) {
       if (required) throw new RuntimeUnavailable(`Harness package is missing: ${name}`)
+      return undefined
+    }
+    if (graph.has(real)) return real
+    const manifest = JSON.parse(readFileSync(join(real, 'package.json'), 'utf8'))
+    const entry = { version: String(manifest.version ?? ''), deps: new Map() }
+    graph.set(real, entry)
+    const kinds = [[manifest.dependencies, true], [manifest.optionalDependencies, false], [manifest.peerDependencies, false]]
+    for (const [dependencies, needed] of kinds) {
+      for (const dependency of Object.keys(dependencies ?? {})) {
+        if (entry.deps.has(dependency)) continue
+        const found = visit(dependency, real, needed && !Object.hasOwn(manifest.optionalDependencies ?? {}, dependency))
+        if (found) entry.deps.set(dependency, found)
+      }
+    }
+    return real
+  }
+  const roots = ROOT_PACKAGES.map(name => [name, visit(name, dirname(modules), true)])
+
+  const placed = new Map()
+  const keyOf = chain => chain.join('\u0000')
+  const lookup = (chain, name) => {
+    for (let depth = chain.length; depth >= 0; depth--) {
+      const found = placed.get(keyOf([...chain.slice(0, depth), name]))
+      if (found) return found
+    }
+    return undefined
+  }
+  function place(real, chain) {
+    if (chain.length > 24) throw new RuntimeUnavailable('Harness package layout is too deep to copy')
+    const existing = placed.get(keyOf(chain))
+    if (existing) {
+      if (existing !== real) throw new RuntimeUnavailable(`Conflicting copies of ${chain.at(-1)}`)
       return
     }
-    const path = relative(modules, folder)
-    if (packages.has(path)) return
-    const manifest = JSON.parse(readFileSync(join(folder, 'package.json'), 'utf8'))
-    packages.set(path, { name, version: String(manifest.version ?? ''), folder })
-    for (const dependency of Object.keys(manifest.dependencies ?? {})) visit(dependency, folder, true)
-    for (const dependency of Object.keys(manifest.optionalDependencies ?? {})) visit(dependency, folder, false)
-    for (const dependency of Object.keys(manifest.peerDependencies ?? {})) visit(dependency, folder, false)
+    placed.set(keyOf(chain), real)
+    for (const [name, dependency] of graph.get(real).deps) {
+      const visible = lookup(chain, name)
+      if (visible === dependency) continue
+      place(dependency, visible === undefined ? [name] : [...chain, name])
+    }
   }
-  for (const name of ROOT_PACKAGES) visit(name, top, true)
-  return [...packages].map(([path, entry]) => ({ path, ...entry })).sort((a, b) => a.path.localeCompare(b.path))
+  for (const [name, real] of roots) if (lookup([], name) !== real) place(real, [name])
+  return [...placed].map(([key, folder]) => {
+    const chain = key.split('\u0000')
+    return { path: chain.map(name => `node_modules/${name}`).join('/'), name: chain.at(-1),
+      version: graph.get(folder).version, folder }
+  }).sort((a, b) => a.path.localeCompare(b.path))
 }
 
 function runtimeKey(sources, packages) {
@@ -127,7 +167,7 @@ export async function provisionRuntime(root, sources = hostSources()) {
       }
       for (let index = 0; index < packages.length; index += 8) {
         await Promise.all(packages.slice(index, index + 8).map(entry =>
-          copyPackage(entry.folder, join(temporary, 'node_modules', entry.path), totals)))
+          copyPackage(entry.folder, join(temporary, ...entry.path.split('/')), totals)))
       }
       await writeFile(join(temporary, 'package.json'), '{"private":true,"type":"module"}\n')
       info = { format: FORMAT, key, packages: packages.length, files: totals.files, bytes: totals.bytes,

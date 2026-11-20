@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import { mkdir, mkdtemp, readFile, readdir, realpath, rm, utimes, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import test from 'node:test'
 import { removedWhileHostRuns } from '../plugins/direct-chat/index.js'
 import { packageClosure, provisionRuntime, ROOT_PACKAGES } from '../plugins/direct-chat/host/runtime.js'
@@ -175,4 +175,38 @@ test('access is withdrawn only when Direct Chat itself is removed while the Host
   assert.equal(removedWhileHostRuns(plugin(null)), true, 'turned off or uninstalled')
   assert.equal(removedWhileHostRuns(plugin(7)), false, 'a dependency reload keeps the fiber')
   assert.equal(removedWhileHostRuns(plugin(null, 5)), false, 'the Host or package is unloading')
+})
+
+test('linked layouts resolve each package once, survive cycles and nest conflicting versions', async t => {
+  const root = await scratch(t)
+  const modules = join(root, 'host', 'node_modules')
+  const store = join(root, 'store')
+  const write = async (folder, manifest) => {
+    await mkdir(folder, { recursive: true })
+    await writeFile(join(folder, 'package.json'), JSON.stringify(manifest))
+  }
+  const link = (target, path) => mkdir(dirname(path), { recursive: true }).then(() => symlink(target, path, 'junction'))
+  // pnpm-style store: cycle-a <-> cycle-b are siblings of each other; conflict@1 is a sibling of cycle-b.
+  await write(join(store, 'cycle-a@1', 'node_modules', 'cycle-a'), { name: 'cycle-a', version: '1.0.0', dependencies: { 'cycle-b': '1' } })
+  await write(join(store, 'cycle-b@1', 'node_modules', 'cycle-b'), { name: 'cycle-b', version: '1.0.0', dependencies: { 'cycle-a': '1', conflict: '1' } })
+  await write(join(store, 'conflict@1', 'node_modules', 'conflict'), { name: 'conflict', version: '1.0.0' })
+  await write(join(store, 'conflict@2', 'node_modules', 'conflict'), { name: 'conflict', version: '2.0.0' })
+  await link(join(store, 'cycle-b@1', 'node_modules', 'cycle-b'), join(store, 'cycle-a@1', 'node_modules', 'cycle-b'))
+  await link(join(store, 'cycle-a@1', 'node_modules', 'cycle-a'), join(store, 'cycle-b@1', 'node_modules', 'cycle-a'))
+  await link(join(store, 'conflict@1', 'node_modules', 'conflict'), join(store, 'cycle-b@1', 'node_modules', 'conflict'))
+  for (const name of ROOT_PACKAGES) {
+    await write(join(modules, name), { name, version: '1.0.0',
+      dependencies: name === 'koffi' ? { conflict: '2' } : name === '@deepseek-ai/cordis' ? { 'cycle-a': '1' } : {} })
+  }
+  await link(join(store, 'cycle-a@1', 'node_modules', 'cycle-a'), join(modules, 'cycle-a'))
+  await link(join(store, 'conflict@2', 'node_modules', 'conflict'), join(modules, 'conflict'))
+  const closure = packageClosure(modules)
+  const paths = Object.fromEntries(closure.map(entry => [entry.path, entry.version]))
+  assert.equal(paths['node_modules/cycle-a'], '1.0.0')
+  assert.equal(paths['node_modules/cycle-b'], '1.0.0')
+  // cordis is placed first, so its transitive conflict@1 takes the top slot and koffi gets its own conflict@2.
+  assert.equal(paths['node_modules/conflict'], '1.0.0')
+  assert.equal(paths['node_modules/koffi/node_modules/conflict'], '2.0.0')
+  assert.equal(paths['node_modules/cycle-b/node_modules/conflict'], undefined)
+  assert.equal(closure.length, ROOT_PACKAGES.length + 4)
 })

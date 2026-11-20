@@ -35,7 +35,10 @@ const server = createServer(async (request, response) => {
     { type: 'content_block_start', index: 0, content_block: { type: 'text', text: '' } },
     { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: 'Synthetic Desktop response.' } },
     { type: 'content_block_delta', index: 0, delta: { type: 'text_delta', text: marker === 'Direct Chat Streaming'
-      ? '\n![fixture](C:/fixture-media-marker.png)\nStream complete.' : '' } },
+      ? '\n![fixture](C:/fixture-media-marker.png)\nStream complete.' : marker === 'Direct Chat Markdown'
+        ? '\n\n## Rendered safely\n\nSome **bold**, *italic* and `inline code`.\n\n- first item\n- second item\n  - nested item\n\n'
+          + '1. one\n2. two\n\n> A quoted line.\n\n```js\nconst answer = "<b>not html</b>"\n```\n\n| Column | Value |\n| --- | --- |\n| a | 1 |\n\n'
+          + 'A [link](https://example.com), raw <b>html</b> and an image ![local](C:/fixture-media-marker.png).' : '' } },
     { type: 'content_block_stop', index: 0 },
     { type: 'message_delta', delta: { stop_reason: 'end_turn' }, usage: { output_tokens: 1 } },
     { type: 'message_stop' },

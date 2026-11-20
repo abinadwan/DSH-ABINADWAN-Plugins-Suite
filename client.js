@@ -1970,13 +1970,13 @@ window.__ModuleLoader__.load({
     }
 
     /** A text file becomes quoted text in the message; anything else is refused before it leaves the page. */
-    async function directChatTextFile(file) {
+    async function directChatTextFile(file, displayName = file.name) {
       if (file.size > DIRECT_CHAT_TEXT_LIMIT) throw new Error('Text files over 256 KB are not supported in Direct Chat.')
       let text
       try { text = new TextDecoder('utf-8', { fatal: true }).decode(await file.arrayBuffer()) }
       catch { throw new Error('Only UTF-8 text files can be added to Direct Chat.') }
       if (text.includes('\u0000')) throw new Error('Only text files can be added to Direct Chat.')
-      const name = String(file.name || 'file.txt').replace(/[\r\n`]/g, ' ').slice(0, 120)
+      const name = String(displayName || 'file.txt').replace(/[\r\n`]/g, ' ').slice(0, 120)
       const longest = Math.max(2, ...(text.match(/`+/g) ?? []).map(run => run.length))
       const fence = '`'.repeat(longest + 1)
       return `Attached file: ${name}\n${fence}\n${text}\n${fence}`
@@ -2084,7 +2084,20 @@ window.__ModuleLoader__.load({
         })
       }
 
-      const titleOf = (id, index) => summary.byId[id]?.title || summary.byId[id]?.displayTitle || `Chat ${summary.ids.length - index}`
+      // The companion has no title service, so a chat is named after its first message (read by the Host).
+      const [previews, setPreviews] = React.useState({})
+      React.useEffect(() => {
+        const timer = setTimeout(() => {
+          void directChatCall('chats').then(({ chats }) => {
+            if (mounted.current) setPreviews(Object.fromEntries((chats ?? []).map(chat => [chat.id, chat.preview])))
+          }).catch(() => {})
+        }, 800)
+        return () => clearTimeout(timer)
+      }, [summary])
+      const titleOf = (id, index) => {
+        const native = summary.byId[id]?.title || summary.byId[id]?.displayTitle
+        return previews[id] || (native && native !== id && !native.startsWith('session-') ? native : `Chat ${summary.ids.length - index}`)
+      }
       return h('div', { style: { display: 'flex', width: '100%', height: '100%', minHeight: 0 } },
         h('nav', { 'aria-label': 'Direct Chat history', style: { display: 'flex', flexDirection: 'column', gap: 6, padding: 12,
           width: 232, flex: '0 0 232px', overflow: 'auto', borderInlineEnd: '1px solid var(--dsw-alias-border-l3, rgba(128,128,128,.3))' } },
@@ -2112,6 +2125,79 @@ window.__ModuleLoader__.load({
             h('p', { style: { ...lifecycleMuted, margin: 0 } }, 'Choose a chat or start a new one. Direct Chat has no tools and cannot read your files.'))))
     }
 
+    const DIRECT_CHAT_TEXT_TYPES = '.txt,.md,.markdown,.csv,.tsv,.json,.jsonl,.log,.xml,.yaml,.yml,.ini,.toml,.html,.css,'
+      + '.js,.mjs,.cjs,.ts,.tsx,.jsx,.py,.java,.c,.h,.cpp,.cs,.go,.rs,.rb,.php,.sh,.ps1,.sql,text/*'
+    const DIRECT_CHAT_MESSAGE_FILES = 5
+    const DIRECT_CHAT_MESSAGE_BYTES = 384 * 1024
+
+    /** Text files waiting for the next message of each chat. Pure page state; nothing is uploaded. */
+    function directChatAttachments() {
+      const bySession = new Map()
+      const listeners = new Set()
+      let version = 0
+      const changed = () => { version++; for (const notify of [...listeners]) notify() }
+      const list = sessionId => bySession.get(sessionId) ?? []
+      return {
+        subscribe(notify) { listeners.add(notify); return () => listeners.delete(notify) },
+        getSnapshot: () => version,
+        list,
+        add(sessionId, item) {
+          const current = list(sessionId)
+          const bytes = current.reduce((sum, entry) => sum + entry.text.length, item.text.length)
+          if (current.length >= DIRECT_CHAT_MESSAGE_FILES || bytes > DIRECT_CHAT_MESSAGE_BYTES) {
+            throw new Error('A message can carry up to 5 text files and 384 KB of text.')
+          }
+          bySession.set(sessionId, [...current, item])
+          changed()
+        },
+        remove(sessionId, id) { bySession.set(sessionId, list(sessionId).filter(entry => entry.id !== id)); changed() },
+        clear(sessionId, ids) { bySession.set(sessionId, list(sessionId).filter(entry => !ids.includes(entry.id))); changed() },
+        /** Put this chat's waiting files in front of the prompt text, as quoted text blocks. */
+        withStaged(payload) {
+          const request = payload?.payload?.args?.request
+          if (payload?.method !== 'session/prompt' || typeof request?.sessionId !== 'string' || !Array.isArray(request.content)) {
+            return { payload }
+          }
+          const staged = list(request.sessionId)
+          if (!staged.length) return { payload }
+          const content = [...staged.map(item => ({ type: 'text', text: item.text })), ...request.content]
+          return { sessionId: request.sessionId, ids: staged.map(item => item.id),
+            payload: { ...payload, payload: { ...payload.payload, args: { ...payload.payload.args, request: { ...request, content } } } } }
+        },
+      }
+    }
+
+    function DirectChatAttach({ sessionId, attachments }) {
+      React.useSyncExternalStore(attachments.subscribe, attachments.getSnapshot)
+      const input = React.useRef(null)
+      const [error, setError] = React.useState('')
+      const staged = attachments.list(sessionId)
+      async function pick(event) {
+        const files = [...(event.target.files ?? [])]
+        event.target.value = ''
+        setError('')
+        for (const file of files) {
+          try {
+            attachments.add(sessionId, { id: crypto.randomUUID(), name: file.name || 'file.txt', bytes: file.size,
+              text: await directChatTextFile(file) })
+          } catch (cause) { setError(String(cause?.message ?? cause)) }
+        }
+      }
+      return h('span', { style: { display: 'inline-flex', alignItems: 'center', gap: 4, minWidth: 0, maxWidth: 420, flexWrap: 'wrap' } },
+        h('input', { ref: input, type: 'file', multiple: true, hidden: true, accept: DIRECT_CHAT_TEXT_TYPES, onChange: pick }),
+        ...staged.map(item => h('span', { key: item.id, title: `${item.name} · ${formatBytes(item.bytes)}`, style: {
+          display: 'inline-flex', alignItems: 'center', gap: 2, maxWidth: 150, padding: '1px 2px 1px 8px', fontSize: 12,
+          borderRadius: 6, border: '1px solid var(--dsw-alias-border-l3, rgba(128,128,128,.35))' } },
+        h('bdi', { style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, item.name),
+        h('button', { type: 'button', 'aria-label': `Remove ${item.name}`, onClick: () => attachments.remove(sessionId, item.id),
+          style: { border: 0, background: 'none', color: 'inherit', cursor: 'pointer', padding: '0 4px', font: 'inherit' } }, '×'))),
+        error ? h('span', { role: 'alert', title: error, style: { fontSize: 11, maxWidth: 200, overflow: 'hidden',
+          textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, error) : null,
+        h(Button, { size: 'sm', variant: 'toolbar', 'aria-label': 'Attach a text file', title: 'Attach a text file',
+          onClick: () => input.current?.click() },
+        suiteGlyph(['M8.5 12.5l5.8-5.8a2.5 2.5 0 0 1 3.5 3.5l-7.4 7.4a4 4 0 0 1-5.7-5.7L11.5 5'], 15)))
+    }
+
     async function directChatBoot(modules, root, peer, selection, reconnect, lifetime) {
       const { Registry, installConnection, Gateway, Remotes, Renderer, LocaleRuntime, Sessions, UiSession, Conversation, Chat, Models } = modules
       async function load(plugin) { await root.plugin(plugin.default ?? plugin).await() }
@@ -2121,33 +2207,20 @@ window.__ModuleLoader__.load({
       const form = { ...idle, getSnapshot: () => ({ value: undefined }), set: async () => {} }
       const workspaceSnapshot = Object.freeze({ items: [], phase: 'ready' })
       const visible = new Set(['session/prompt', 'session/follow', 'session/events', 'session/selectModel', 'session/cancel'])
-      // Text files become quoted text when the message is sent. The receipts never leave this page.
-      const staged = new Map()
-      const refuse = message => ({ ok: false, error: { code: 'direct-chat/attachment', message, details: {} } })
-      const fileUpload = {
-        async upload(_sessionId, data, name) {
-          try {
-            const file = data instanceof Blob ? data : new Blob([data])
-            const text = await directChatTextFile(Object.assign(file, { name: name ?? file.name }))
-            const receiptId = `direct-chat-text-${crypto.randomUUID()}`
-            staged.set(receiptId, text)
-            return { ok: true, value: { receiptId, file: { attachmentId: receiptId, name: name || 'file.txt', bytes: file.size } } }
-          } catch (error) { return refuse(error.message) }
-        },
-        uploadImage: async () => refuse('Images are not available in Direct Chat.'),
-      }
-      const inline = payload => {
-        const request = payload?.payload?.args?.request
-        if (payload?.method !== 'session/prompt' || !Array.isArray(request?.content)) return payload
-        const content = request.content.map(block => block?.type === 'file' && staged.has(block.receiptId)
-          ? { type: 'text', text: staged.get(block.receiptId) } : block)
-        return { ...payload, payload: { ...payload.payload, args: { ...payload.payload.args, request: { ...request, content } } } }
-      }
+      // Text files picked with the paperclip wait here, per chat, as quoted text. The next prompt for that chat
+      // carries them as text blocks, and they are cleared once the companion accepts it. Nothing is uploaded.
+      const attachments = directChatAttachments()
       installConnection(root, { interactions: 'answer', transport: {
         async fetch(path, init) {
           const endpoint = String(path).replace(/^api\//, '')
-          const response = await directChatPost('rpc', { peer, endpoint, payload: inline(JSON.parse(init.body)) }, scoped(init.signal))
+          const payload = JSON.parse(init.body)
+          const outgoing = attachments.withStaged(payload)
+          const response = await directChatPost('rpc', { peer, endpoint, payload: outgoing.payload }, scoped(init.signal))
           if (response.status === 410) reconnect()
+          if (response.ok && outgoing.sessionId) {
+            const accepted = await response.clone().json().then(body => body?.result?.ok === true).catch(() => false)
+            if (accepted) attachments.clear(outgoing.sessionId, outgoing.ids)
+          }
           return response
         },
         openStream: (endpoint, payload, signal) => directChatStream(peer, endpoint, payload, scoped(signal), reconnect),
@@ -2163,7 +2236,7 @@ window.__ModuleLoader__.load({
         ctx.provide('uiWorkspace', { openWorkspace: deny, openSession: deny })
         ctx.provide('sidebarRight', { openResource: deny, openTab: deny })
         ctx.provide('fileDrag', { actions: { start: deny } })
-        ctx.provide('fileUpload', fileUpload)
+        ctx.provide('fileUpload', { upload: deny, uploadImage: deny })
         ctx.provide('commandUi', { register: () => () => {}, popupFor: () => undefined })
         ctx.provide('remoteAccess', { source: (kind, _id, action) => ({ ...idle,
           getSnapshot: () => kind === 'session' && visible.has(action) }) })
@@ -2198,6 +2271,9 @@ window.__ModuleLoader__.load({
       for (const key of ['compaction', 'manual-compaction']) {
         root.effect(() => root.slots.register({ name: 'conversation.chat.node', key, priority: -1 }, () => null))
       }
+      root.effect(() => root.slots.register({ name: 'conversation.input.right', id: 'abinadwan-direct-chat-attach', order: 5,
+        inject: sessionId => ({ sessionId }) }, ({ sessionId }) => sessionId
+        ? h(DirectChatAttach, { sessionId, attachments }) : null))
       await root.sessions.refresh()
     }
 
@@ -2466,7 +2542,7 @@ window.__ModuleLoader__.load({
 
     return {
       // Pure Direct Chat helpers, exposed for the package tests only.
-      directChat: { markdownBlocks, SafeMarkdown, textFile: directChatTextFile },
+      directChat: { markdownBlocks, SafeMarkdown, textFile: directChatTextFile, attachments: directChatAttachments },
       // `remote.pluginManager` is its own Cordis service (one per Remote
       // namespace). It must be injected here: Cordis 4 throws "cannot get
       // property without inject" when an un-injected namespace is read.

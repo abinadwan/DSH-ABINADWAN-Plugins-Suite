@@ -119,11 +119,35 @@ test('text attachments become fenced quoted text and binary or oversized files a
   const fixture = await clientHarness({ React, document })
   try {
     const { textFile } = fixture.plugin.directChat
-    const file = (content, name) => Object.assign(new Blob([content]), { name })
+    // Real File objects: `name` is a getter, so the helper must never assign to it.
+    const file = (content, name) => new File([content], name)
     const quoted = await textFile(file('line one\n```inner fence```\n', 'notes.md'))
     assert.match(quoted, /^Attached file: notes\.md\n````\nline one\n```inner fence```\n\n````$/)
+    assert.match(await textFile(file('x', 'original.txt'), 'renamed.txt'), /^Attached file: renamed\.txt\n/)
     await assert.rejects(textFile(file(new Uint8Array([0x66, 0x00, 0x67]), 'data.bin')), /Only text files/)
     await assert.rejects(textFile(file(new Uint8Array([0xff, 0xfe, 0xfd]), 'latin.txt')), /UTF-8/)
     await assert.rejects(textFile(file('x'.repeat(256 * 1024 + 1), 'big.txt')), /256 KB/)
+  } finally { await fixture.dispose() }
+})
+
+test('waiting text files go in front of that chat\'s next prompt only, within the per-message limits', async () => {
+  const fixture = await clientHarness({ React, document })
+  try {
+    const store = fixture.plugin.directChat.attachments()
+    const prompt = (sessionId, text) => ({ type: 'client-request', rpcId: 'r', method: 'session/prompt',
+      payload: { args: { request: { sessionId, requestId: 'q', mode: 'queue', content: [{ type: 'text', text }] } } } })
+    store.add('session-a', { id: 'f1', name: 'a.txt', bytes: 3, text: 'Attached file: a.txt' })
+    const outgoing = store.withStaged(prompt('session-a', 'question'))
+    assert.deepEqual(JSON.parse(JSON.stringify(outgoing.payload.payload.args.request.content)),
+      [{ type: 'text', text: 'Attached file: a.txt' }, { type: 'text', text: 'question' }])
+    assert.deepEqual(Array.from(outgoing.ids), ['f1'])
+    assert.equal(store.withStaged(prompt('session-b', 'other chat')).ids, undefined, 'another chat gets nothing')
+    const list = { method: 'session/list', payload: { args: {} } }
+    assert.equal(store.withStaged(list).payload, list)
+    store.clear('session-a', outgoing.ids)
+    assert.equal(store.list('session-a').length, 0)
+    for (let index = 0; index < 5; index++) store.add('session-c', { id: `c${index}`, name: 'c', bytes: 1, text: 'x' })
+    assert.throws(() => store.add('session-c', { id: 'c6', name: 'c', bytes: 1, text: 'x' }), /up to 5 text files/)
+    assert.throws(() => store.add('session-d', { id: 'd', name: 'd', bytes: 1, text: 'x'.repeat(384 * 1024 + 1) }), /384 KB/)
   } finally { await fixture.dispose() }
 })

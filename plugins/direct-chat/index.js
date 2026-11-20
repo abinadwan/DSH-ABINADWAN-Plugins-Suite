@@ -183,6 +183,7 @@ export async function apply(ctx) {
     try { return await start }
     catch (error) {
       phase = 'failed'
+      void trail(`launch failed: ${error?.name ?? 'Error'}: ${String(error?.message ?? error).slice(0, 300)}`)
       lastError = error instanceof Unavailable || error instanceof RuntimeUnavailable || error instanceof StorageRefused
         ? error.message : 'Direct Chat could not start.'
       throw error
