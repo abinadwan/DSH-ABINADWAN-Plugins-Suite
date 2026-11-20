@@ -1,6 +1,6 @@
 # Personal Profile Phase 7D — Response preferences reliability: plan and approval gate
 
-Status: **L2, S2, G3 and B1w applied on owner approval (2026-11-19); C2 and U1 not adopted. Uncommitted.** Phase 8 remains suspended. Production runtime source is unchanged. Phase 8 remains suspended.
+Status: **Completed (2026-11-19).** Merged to main in [PR #23](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/23), merge commit `31b071c`; CI passed on Windows/Linux Node 22/24. L2, S2, G3 and B1w ship in both renderers; C2 and U1 were not adopted. The `max_tokens` configuration (§4.4) remains a separate, unapplied proposal.
 
 ## 1. Corrections to the previous plan
 
@@ -42,7 +42,7 @@ Consequence: in normal Desktop use, the request asks for about 128k tokens, so t
 
 **Owner decision (2026-11-19): apply L2, S2, G3 and B1w only.** C2 (Code Reviewer) and U1 (Humanizer) keep their current wording, because their gain was not reconfirmed on held-out tasks.
 
-Applied (uncommitted):
+Applied (merged in PR #23):
 - **Renderers.** `plugins/personal-profile/preferences.js` and the `client.js` mirror, changed identically.
 - **Tests.** 4 tests added to `test/personal-profile-runtime.test.js`.
 - **Unchanged:** installed settings, model files, the `max_tokens` configuration (§4.4) and consent behaviour.

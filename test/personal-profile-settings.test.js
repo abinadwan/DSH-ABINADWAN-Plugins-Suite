@@ -377,16 +377,29 @@ test('Reload during migration with unsaved edits still asks first', async t => {
 
 // ---------- Privacy boundaries ----------
 
-test('access settings are disclosed as saved, non-enforced preferences until Phase 7; no encryption is claimed', async t => {
-  const { d, click, byId } = await mountProfile(t)
+test('Phase 8 access: off by default; the shared preview follows Allow + both switches; Ask First and Private never share; no encryption is claimed', async t => {
+  const { d, click, byId, select } = await mountProfile(t, { transport: mockSettings(recordWith(r => { r.information.gender = 'female' })) })
   await click('tab-access')
   const text = d.body.textContent
-  assert.match(text, /غير مفعّل/)
-  assert.match(text, /لا يتم الوصول للمعلومات أو إرسالها حاليًا/)
-  assert.match(text, /المرحلة السابعة/)
+  assert.match(text, /يُعامَل كل مزود نماذج كمزود سحابي/)
+  assert.match(text, /«اسأل أولًا» غير مفعّل/)
+  assert.match(text, /لا يحذف ما أُرسل سابقًا/, 'retention limits are stated')
+  assert.doesNotMatch(text, /غير مفعّل في الوكيل|المرحلة السابعة/, 'Phase 7 "not active" copy is gone')
   assert.equal(byId('opt-in').checked, false); assert.equal(byId('cloud').checked, false)
   for (const field of ['preferredName', 'nationality', 'gender']) assert.equal(byId('policy-' + field).value, 'private')
   assert.deepEqual(Array.from(byId('policy-gender').options, o => o.value), ['private', 'ask_first', 'allow'])
+  const preview = () => byId('shared-preview').textContent
+  assert.equal(preview(), 'لا تتم مشاركة أي شيء.')
+  for (const field of ['preferredName', 'nationality', 'gender']) await select('policy-' + field, 'allow')
+  assert.equal(preview(), 'لا تتم مشاركة أي شيء.', 'Allow alone shares nothing')
+  await click('opt-in')
+  assert.equal(preview(), 'لا تتم مشاركة أي شيء.', 'cloud switch Off shares nothing: no provider is verified local')
+  await click('cloud')
+  assert.equal(preview(), 'Personal details the user chose to share (use them only when relevant to the request):\nPreferred name: Fictional Tester\nNationality: Testland\nGender: female')
+  await select('policy-nationality', 'ask_first'); await select('policy-gender', 'private')
+  assert.equal(preview(), 'Personal details the user chose to share (use them only when relevant to the request):\nPreferred name: Fictional Tester')
+  await click('opt-in')
+  assert.equal(preview(), 'لا تتم مشاركة أي شيء.')
   await click('tab-privacy')
   assert.match(d.body.textContent, /دون تشفير خاص بالإضافة/)
   assert.doesNotMatch(d.body.textContent, /مشفّر بالكامل|محمي بالتشفير|DPAPI|Argon/)
@@ -484,7 +497,7 @@ test('Replace All from a JSON file: preview, explicit confirmation, draft only, 
   const transport = mockSettings(fictional())
   const view = await mountProfile(t, { transport })
   const backup = savedWithPermissions()
-  await review(view, backup, { file: true })
+  await review(view, backup, { file: true, strategy: 'replace' })
   assert.match(view.backupStatus(), /النسخة صالحة/)
   assert.equal(view.byId('restore-json').value, JSON.stringify(backup), 'file content shown for review')
   const preview = view.byId('restore-preview')
@@ -495,7 +508,9 @@ test('Replace All from a JSON file: preview, explicit confirmation, draft only, 
   assert.match(row('allowCloud'), /متوقف.*متوقف/)
   assert.equal(view.byId('restore-permissions').checked, false, 'permission restore is an unchecked option')
   assert.equal(view.byId('restore-apply').disabled, true, 'explicit confirmation required')
-  await view.click('restore-confirm'); await view.click('restore-apply')
+  await view.click('restore-confirm')
+  assert.equal(view.byId('restore-apply').disabled, true, 'Replace All needs its own confirmation')
+  await view.click('restore-replace-ack'); await view.click('restore-apply')
   assert.match(view.backupStatus(), /Nothing is saved yet/, 'the restored interface language (en) applies immediately')
   assert.equal(transport.calls.length, 0, 'restore never writes by itself')
   await view.click('save')
@@ -511,16 +526,21 @@ test('optional permission restoration shows the exact permissions and needs its 
   await view.click('restore-permissions')
   const list = view.byId('restore-permission-list').textContent
   assert.match(list, /الاسم المفضل: سماح/); assert.match(list, /الجنسية: اسأل أولًا/); assert.match(list, /الجنس: خاص/)
-  assert.match(list, /مزود سحابي.*: مفعّل/)
+  assert.match(list, /المزودين السحابيين: متوقف بعد الاستعادة/, 'the backup had both switches On; a restore never turns them on')
+  assert.doesNotMatch(list, /مفعّل/)
   assert.equal(view.byId('restore-apply').disabled, true, 'permission acknowledgment required')
   assert.equal(view.byId('restore-confirm').checked, false, 'changing the permission choice resets the confirmation')
   await view.click('restore-permissions-ack'); await view.click('restore-confirm')
   assert.match(view.byId('restore-preview').querySelector('[data-restore-row="policy-preferredName"]').textContent, /سماح/)
+  assert.match(view.byId('restore-preview').querySelector('[data-restore-row="allowCloud"]').textContent, /متوقف.*متوقف/)
   await view.click('restore-apply'); await view.click('save')
-  assert.deepEqual(transport.record, backup, 'exact permissions restored only after both acknowledgments')
-  // Restored permissions remain saved preferences: the Access page still says nothing is enforced or sent.
+  assert.deepEqual(transport.record, { ...backup, allowPersonalInformation: false, allowCloud: false },
+    'exact policies restored after both acknowledgments; both switches Off')
+  // Restored Allow shares nothing until the user turns both switches on.
   await view.click('tab-access')
-  assert.match(view.d.body.textContent, /No information is disclosed or sent today/)
+  assert.equal(view.byId('shared-preview').textContent, 'Nothing is shared.')
+  await view.click('opt-in'); await view.click('cloud')
+  assert.equal(view.byId('shared-preview').textContent, 'Personal details the user chose to share (use them only when relevant to the request):\nPreferred name: Fictional Tester')
 })
 
 test('Replace All and Merge Custom Instructions keeps existing text, appends new paragraphs, skips duplicates', async t => {
@@ -656,12 +676,13 @@ test('cancelling a reviewed restore, or editing its text, leaves the draft uncha
   assert.equal(view.byId('save').disabled, true, 'nothing dirty')
 })
 
-test('the general-purpose merge strategy is gone; exactly two restore strategies exist', async t => {
+test('the general-purpose merge strategy is gone; exactly two restore strategies exist; merging is the default', async t => {
   const view = await mountProfile(t)
   await view.click('tab-backup')
   const radios = [...view.d.querySelectorAll('input[name="pp-strategy"]')].map(x => x.value)
   assert.deepEqual(radios, ['replace', 'replace-merge'])
-  assert.equal(view.byId('strategy-replace').checked, true, 'Replace All is the default')
+  assert.equal(view.byId('strategy-replace-merge').checked, true, 'Phase 8: Replace All and Merge Custom Instructions is the default')
+  assert.equal(view.byId('strategy-replace').checked, false)
   assert.equal(view.byId('backup-strategy'), null)
   assert.doesNotMatch(view.d.body.textContent, /دمج دون استبدال موجود|Merge without replacing/)
   await view.select('language', 'en')
@@ -843,6 +864,7 @@ test('custom consent is saved explicitly, exported, and reset by both restore st
     backup.preferences.custom='Fictional imported replacement'
     await review(view,backup,{strategy})
     await click('restore-permissions'); await click('restore-permissions-ack')
+    if(strategy==='replace')await click('restore-replace-ack')
     await click('restore-confirm'); await click('restore-apply')
     assert.equal(transport.record.preferences.sendCustom,true,'restore remains draft only')
     await click('tab-instructions')

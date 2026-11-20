@@ -1,6 +1,6 @@
 # Phase 7D — Benchmark method and results
 
-Status: **Stage A/B, validation, judging, the judge audit and the token-limit check are complete. Held-out acceptance is running.** Nothing here changes production runtime source.
+Status: **Completed (2026-11-19).** Merged to main in [PR #23](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/23), merge commit `31b071c`; CI passed on Windows/Linux Node 22/24. All stages, judging, the judge audit, the token-limit check and the owner-limited acceptance are complete.
 
 ## 1. Harness
 

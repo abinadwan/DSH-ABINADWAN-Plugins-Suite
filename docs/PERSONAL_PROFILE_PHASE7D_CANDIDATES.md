@@ -1,6 +1,6 @@
 # Phase 7D — Response preference candidates
 
-Status: **L2, S2, G3 and B1w applied to both renderers (owner decision 2026-11-19, uncommitted). C2 and U1 not adopted.** Production renderers (`plugins/personal-profile/preferences.js` and its `client.js` mirror) are unchanged. Every candidate below is rendered only in memory by the isolated harness in `qa/phase7d/`, which first proves byte-for-byte parity with both production renderers.
+Status: **Completed (2026-11-19).** Merged to main in [PR #23](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/23), merge commit `31b071c`; CI passed on Windows/Linux Node 22/24. L2, S2, G3 and B1w ship in `plugins/personal-profile/preferences.js` and its `client.js` mirror; C2 and U1 were not adopted. Candidates were rendered only in memory by the isolated harness in `qa/phase7d/`, which pins the pre-7D baseline and asserts parity with the shipped renderers.
 
 ## 1. Correction of the previous candidate list
 

@@ -4,8 +4,18 @@ import {readFileSync} from 'node:fs'
 import {runInNewContext} from 'node:vm'
 import {Context,Service} from '@deepseek-ai/cordis'
 import * as profile from '../plugins/personal-profile/index.js'
-import {responsePreferences,eligibleAssembly,SECTION_NAME} from '../plugins/personal-profile/preferences.js'
+import {responsePreferences,eligibleAssembly,SECTION_NAME,DISCLOSURE_SECTION_NAME,profileDisclosure,previewProfileDisclosure,
+  disclosureBlocks,staleDisclosure,refuseStaleDisclosure} from '../plugins/personal-profile/preferences.js'
 
+const DISCLOSURE_HEADER='Personal details the user chose to share (use them only when relevant to the request):'
+/** Synthetic record: every field Allow and both switches On. */
+function disclosureRecord() {
+  const r=profile.emptyRecord()
+  r.information={preferredName:'SYNTHETIC_P8_NAME',nationality:'SYNTHETIC_P8_NATIONALITY',gender:'female'}
+  r.policies={preferredName:'allow',nationality:'allow',gender:'allow'}
+  r.allowPersonalInformation=r.allowCloud=true
+  return r
+}
 function selection() {
   const agent={session:{header:{}},options:{}}
   return {agent,scope:agent,signal:new AbortController().signal,modelSelection:{provider:'test',model:'test'}}
@@ -15,8 +25,11 @@ test('response renderer matches entire browser catalog and renderer',()=>{
   const helper=readFileSync(new URL('../plugins/personal-profile/preferences.js',import.meta.url),'utf8').replace(/\r\n/g,'\n')
   const browser=client.slice(client.indexOf('    const PROFILE_STYLES'),client.indexOf('    const PROFILE_NS'))
     .split('\n').map(l=>l.startsWith('    ')?l.slice(4):l).join('\n')
-  assert.equal(browser,helper.slice(helper.indexOf('const PROFILE_STYLES'),helper.indexOf('const keys=')).replace('export function previewProfilePreferences','function previewProfilePreferences').trimEnd()+'\n')
+  assert.equal(browser,helper.slice(helper.indexOf('const PROFILE_STYLES'),helper.indexOf('const keys=')).replaceAll('export function ','function ').trimEnd()+'\n')
   const preview=runInNewContext(browser+'\npreviewProfilePreferences')
+  const disclosure=runInNewContext(browser+'\npreviewProfileDisclosure')
+  for(const record of [disclosureRecord(),{...disclosureRecord(),allowCloud:false},{...disclosureRecord(),policies:{preferredName:'ask_first',nationality:'allow',gender:'private'}}])
+    assert.equal(disclosure(record),profileDisclosure(record))
   const r=profile.emptyRecord()
   for(const style of ['default','professional','friendly','candid','creative','efficient','critical','technical']){
     r.preferences.style=style
@@ -85,14 +98,77 @@ test('Cordis mount/update/dispose reads only volatile persisted config; optional
     assert.equal(section.text({}),'')
     const next=profile.emptyRecord();next.preferences.responseLanguage='ja'
     await fiber.update({record:next})
-    assert.equal(ctx.systemPrompt.sections.size,1)
+    assert.equal(ctx.systemPrompt.sections.size,2)
+    const shared=ctx.systemPrompt.sections.get(DISCLOSURE_SECTION_NAME)
+    assert.equal(shared.interpolate,false)
+    assert.equal(shared.text(selection()),'','nothing is shared by default')
+    await fiber.update({record:{...disclosureRecord(),preferences:next.preferences}})
+    assert.match(ctx.systemPrompt.sections.get(DISCLOSURE_SECTION_NAME).text(selection()),/Preferred name: SYNTHETIC_P8_NAME/)
+    assert.equal(ctx.systemPrompt.sections.get(DISCLOSURE_SECTION_NAME).text({}),'','ineligible scopes get nothing')
     assert.match(ctx.systemPrompt.sections.get(SECTION_NAME).text(selection()),/Japanese/)
     assert.doesNotMatch(ctx.systemPrompt.sections.get(SECTION_NAME).text(selection()),/friendly/)
     await fiber.dispose()
     assert.equal(ctx.systemPrompt.sections.size,0)
     await ctx.plugin(profile,{record:r}).await()
-    assert.equal(ctx.systemPrompt.sections.size,1)
+    assert.equal(ctx.systemPrompt.sections.size,2)
   }finally{await ctx.fiber.dispose()}
+})
+
+// ---------- Phase 8: shared details (synthetic values only) ----------
+test('P8 admission: a field is shared only when it is Allow and both switches are On (all 108 combinations)',()=>{
+  const labels=['Preferred name: SYNTHETIC_P8_NAME','Nationality: SYNTHETIC_P8_NATIONALITY','Gender: female']
+  let cases=0
+  for(const master of [false,true])for(const cloud of [false,true])
+    for(const a of ['private','ask_first','allow'])for(const b of ['private','ask_first','allow'])for(const c of ['private','ask_first','allow']){
+      const r={...disclosureRecord(),allowPersonalInformation:master,allowCloud:cloud,policies:{preferredName:a,nationality:b,gender:c}}
+      const lines=master&&cloud?labels.filter((_,i)=>[a,b,c][i]==='allow'):[]
+      assert.equal(profileDisclosure(r),lines.length?[DISCLOSURE_HEADER,...lines].join('\n'):'')
+      // The response-preferences section never carries a field.
+      assert.doesNotMatch(responsePreferences(r),/SYNTHETIC_P8|female/)
+      cases++
+    }
+  assert.equal(cases,108)
+})
+test('P8 admission: empty or unspecified values are omitted; values are single-line; malformed records share nothing',()=>{
+  const r=disclosureRecord()
+  r.information={preferredName:'  A\nB C‮D\tE  ',nationality:'',gender:'unspecified'}
+  assert.equal(profileDisclosure(r),DISCLOSURE_HEADER+'\nPreferred name: A B C D E','control, line and bidi characters cannot add lines')
+  r.information={preferredName:'   ',nationality:'',gender:''}
+  assert.equal(profileDisclosure(r),'','nothing to share')
+  const ok=disclosureRecord()
+  for(const bad of [null,{},{...ok,version:1},{...ok,allowCloud:'true'},{...ok,policies:{...ok.policies,gender:'always'}},
+    {...ok,policies:{preferredName:'allow'}},{...ok,information:{...ok.information,gender:'other'}},
+    {...ok,information:{...ok.information,preferredName:'x'.repeat(129)}},{...ok,information:{...ok.information,extra:''}}])
+    assert.equal(profileDisclosure(bad),'')
+  assert.equal(previewProfileDisclosure({...ok,allowPersonalInformation:false}),'')
+})
+const requestWith=(...system)=>({provider:'p',model:'m',messages:[
+  ...system.map(text=>({role:'system',content:[{type:'text',text}]})),
+  {role:'user',content:[{type:'text',text:DISCLOSURE_HEADER+'\nPreferred name: typed by the user'}]}]})
+test('P8 send-time guard: refuses a request whose block differs from what current settings produce',()=>{
+  const r=disclosureRecord(), block=profileDisclosure(r)
+  const sent=requestWith('Base prompt.\n\n'+block)
+  assert.deepEqual(disclosureBlocks(sent),[block],'user messages are not scanned')
+  assert.equal(staleDisclosure(sent,r),false,'current authorized block passes')
+  assert.equal(staleDisclosure(requestWith('old\n\n'+block,'new\n\n'+block),r),false,'in-history replay of the same block passes')
+  assert.equal(staleDisclosure(sent,{...r,allowCloud:false}),true,'revoked')
+  assert.equal(staleDisclosure(sent,{...r,policies:{...r.policies,gender:'private'}}),true,'narrowed')
+  assert.equal(staleDisclosure(sent,{...r,information:{...r.information,preferredName:'SYNTHETIC_P8_RENAMED'}}),true,'edited value')
+  assert.equal(staleDisclosure(sent,null),true,'unreadable settings fail closed')
+  assert.equal(staleDisclosure(requestWith('Base prompt.'),null),false,'requests without a block are never touched')
+  assert.equal(staleDisclosure({system:block,messages:[]},{...r,allowCloud:false}),true,'one-shot system text is checked')
+  assert.equal(staleDisclosure({messages:[{role:'developer',content:block}]},{...r,allowCloud:false}),true,'developer text is checked')
+  assert.equal(staleDisclosure({messages:[{role:'system',content:[{type:'text',text:'x'+block}]}]},{...r,allowCloud:false}),false,'only an exact header line counts')
+})
+test('P8 refusal is a terminal, non-retryable native outcome that names no value',async()=>{
+  for(const locale of ['en','ar',undefined]){
+    const chunks=[];for await(const c of refuseStaleDisclosure(locale))chunks.push(c)
+    assert.equal(chunks.length,1)
+    assert.equal(chunks[0].type,'finish');assert.equal(chunks[0].reason.kind,'error')
+    assert.equal(chunks[0].reason.failure.code,'INVALID_REQUEST')
+    assert.match(chunks[0].reason.failure.message,locale==='ar'?/ابدأ محادثة جديدة/:/Start a new chat/)
+    assert.doesNotMatch(JSON.stringify(chunks),/SYNTHETIC/)
+  }
 })
 
 test('7C: all structured permission combinations have no effect on outgoing preferences',()=>{

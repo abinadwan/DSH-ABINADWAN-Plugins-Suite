@@ -2,6 +2,13 @@
 
 All notable changes are documented here.
 
+## [Unreleased] — Personal Profile Phase 8 (local, not released)
+
+- **Structured sharing.** Preferred name, nationality and gender set to Allow are added to new requests only while both sharing switches are On. Every provider is treated as cloud (Harness cannot verify locality). Private and Ask First are never sent. The Access page previews exactly what is shared.
+- **Send-time refusal.** A request that still carries details the current settings would not share (retry, in-history replay, provider switch, edited value, restored or branched chat) is stopped with a non-retryable error before it reaches the provider; the user is told to start a new chat. Nothing already sent is deleted.
+- **Restore.** Replace All and Merge Custom Instructions is now the default; Replace All needs its own confirmation. A restore always leaves both sharing switches Off. Backups stay plain JSON, version 2, not encrypted.
+- Details and gates: [Phase 8 plan](docs/PERSONAL_PROFILE_PHASE8_PLAN.md), [verification report](docs/PERSONAL_PROFILE_PHASE8_REPORT.md).
+
 ## [0.8.0-rc.1] — Candidate baseline, Windows functional review recorded (2026-11-18)
 
 - Native response preferences in supported Harness Agent Loop steps; style, language, traits and behavioral presets read committed settings.
@@ -10,6 +17,7 @@ All notable changes are documented here.
 - Offline real Harness rc.3 integration tests, Windows/Linux Node 22/24 matrix and packaging checks.
 - Version-dependent tests now derive expected UI versions from the manifest; source lockfile checks run before packaging and extracted-artifact checks remain independent of source-only files.
 - Owner-reported Windows functional results and actual rollback to 0.7.2 recorded in [Phase 7 Desktop acceptance](docs/PERSONAL_PROFILE_PHASE7_WINDOWS_ACCEPTANCE.md). Remaining checks, including actual outgoing-request evidence, are explicitly open.
+- Phase 7D response-preference wording: the selected language is followed even when the user writes in another language (explicit requests still win), and Creative, Grill-Me and low-warmth instructions are stronger. The changes were benchmarked on local models with held-out checks. Code Reviewer and Humanizer are unchanged. Details: [Phase 7D plan](docs/PERSONAL_PROFILE_PHASE7D_PLAN.md).
 - No stable update offer until remaining acceptance gates are resolved and a stable release is explicitly approved. Structured disclosure remains deferred to [Phase 8](docs/PERSONAL_PROFILE_PHASE8_PLAN.md).
 
 ## [0.7.2] — Released
