@@ -27,8 +27,11 @@ export async function apply(ctx) {
   const home = join(dirname(verifiedHome), fixtureRootName)
   await mkdir(home, { recursive: true })
   if (await realpath(home) !== home) throw new Error('Direct Chat fixture home is redirected')
+  // Host-owned files (grant manifest, metrics, diagnostics) stay outside the child-writable storage.
+  const state = join(dirname(verifiedHome), `${fixtureRootName}.host`)
+  await mkdir(state, { recursive: true })
 
-  const measure = (kind, metrics) => appendFile(join(home, 'metrics.jsonl'),
+  const measure = (kind, metrics) => appendFile(join(state, 'metrics.jsonl'),
     `${JSON.stringify({ kind, at: Date.now(), ...metrics })}\n`)
   const peers = new Map()
   let opening = 0
@@ -50,7 +53,7 @@ export async function apply(ctx) {
     start = (async () => {
       const begun = performance.now()
       // Always confined. A launch that cannot establish the AppContainer exits without a companion.
-      const { proc, port, exited } = startCompanion({ node, runtime, home,
+      const { proc, port, exited } = startCompanion({ node, runtime, home, state,
         diagnostics: process.env.ABINADWAN_D2_DIAGNOSTICS === '1' })
       const flows = streamTable()
       const activeSamples = new Map()

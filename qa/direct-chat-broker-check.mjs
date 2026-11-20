@@ -3,6 +3,7 @@
 // streams without an owner lease and beyond its concurrency cap. Needs ABINADWAN_TEST_RUNTIME (with koffi)
 // and ABINADWAN_TEST_NODE. All files stay in a scratch folder under node_modules/.direct-chat-confined.
 import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
 import { cp, mkdir, mkdtemp, readFile, realpath, rm } from 'node:fs/promises'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -34,6 +35,9 @@ test('the parent broker admits provider streams only under a live lease and at m
     for (const dispose of disposers.reverse()) await dispose()
     for (const key of Object.keys(process.env)) if (!(key in saved)) delete process.env[key]
     Object.assign(process.env, saved)
+    const cleanup = spawnSync(node, [join(app, 'cleanup-appcontainer.mjs'), runtime, '--state',
+      join(root, '.package-check-dsh', '.direct-chat-d2-broker.host')], { encoding: 'utf8', windowsHide: true, timeout: 60_000 })
+    assert.equal(cleanup.status, 0, cleanup.stderr)
     await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 })
   })
   const hanging = () => ({ [Symbol.asyncIterator]() { return this }, next: () => new Promise(() => {}), async return() { return { done: true } } })
@@ -70,7 +74,7 @@ test('the parent broker admits provider streams only under a live lease and at m
   assert.equal(concurrent.filter(value => value === 'refused').length, 2)
   // The refused pre-lease request never reached the provider; admission is rechecked after preparation.
   assert.ok(prepared.length >= 2 && prepared.length <= 4, `prepared ${prepared.length}`)
-  const metrics = await readFile(join(root, '.package-check-dsh', '.direct-chat-d2-broker', 'metrics.jsonl'), 'utf8')
+  const metrics = await readFile(join(root, '.package-check-dsh', '.direct-chat-d2-broker.host', 'metrics.jsonl'), 'utf8')
   assert.match(metrics, /"kind":"startup"/)
   assert.equal((await call('close', { peer })).status, 204)
 })
