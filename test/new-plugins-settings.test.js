@@ -30,7 +30,7 @@ test('independent Host rows default off and resolve English product metadata and
   }
 })
 
-test('only Conversation Lifecycle owns a native Settings section and disposes it independently', async () => {
+test('Direct Chat and Conversation Lifecycle own independent Settings sections and dispose them separately', async () => {
   const fixture = await clientHarness({ modelDirectories: {} })
   try {
     assert.equal(fixture.entries('settings.section').length, 0)
@@ -39,15 +39,23 @@ test('only Conversation Lifecycle owns a native Settings section and disposes it
     }))]
     fixture.setRows(rows)
     await fixture.changed()
-    const [section] = fixture.entries('settings.section')
-    assert.deepEqual(fixture.entries('settings.section').map(entry => entry.options.id), ['abinadwan-conversation-lifecycle'])
-    assert.deepEqual(fixture.entries('settings.section.icon').map(entry => entry.options.id), [section.options.id])
+    const ids = fixture.entries('settings.section').map(entry => entry.options.id).sort()
+    assert.deepEqual(ids, ['abinadwan-conversation-lifecycle', 'abinadwan-direct-chat'])
+    assert.deepEqual(fixture.entries('settings.section.icon').map(entry => entry.options.id).sort(), ids)
+    assert.deepEqual(fixture.entries('sidebar.panellist').map(entry => entry.options.id), ['abinadwan-direct-chat-view'])
+    assert.equal(fixture.entries('main').filter(entry => entry.options.key === 'abinadwan-direct-chat-view').length, 1)
     assert.equal(fixture.entries('conversation.input.right').length, 1)
     assert.equal(fixture.entries('conversation.composer.dock').length, 0)
     fixture.setRows(rows.map(row => row.moduleName === `${base}/conversation-lifecycle` ? { ...row, enabled: false } : row))
     await fixture.changed()
+    assert.deepEqual(fixture.entries('settings.section').map(entry => entry.options.id), ['abinadwan-direct-chat'])
+    fixture.setRows(rows.map(row => row.moduleName === `${base}/direct-chat` || row.moduleName === `${base}/conversation-lifecycle`
+      ? { ...row, enabled: false } : row))
+    await fixture.changed()
     assert.equal(fixture.entries('settings.section').length, 0)
     assert.equal(fixture.entries('settings.section.icon').length, 0)
+    assert.equal(fixture.entries('sidebar.panellist').length, 0)
+    assert.equal(fixture.entries('main').filter(entry => entry.options.key === 'abinadwan-direct-chat-view').length, 0)
     assert.equal(fixture.entries('conversation.input.right').length, 1)
     fixture.setRows(rows.map(row => ({ ...row, enabled: false })))
     await fixture.changed()

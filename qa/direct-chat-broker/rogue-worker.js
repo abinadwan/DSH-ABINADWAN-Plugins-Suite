@@ -1,4 +1,4 @@
-// A deliberately hostile Direct Chat companion, used only by direct-chat-broker-check.mjs. The check
+// A deliberately hostile Direct Chat companion, used only by direct-chat-production-check.mjs. The check
 // stages it as worker.js so that it runs confined exactly where the real worker would. It asks the parent
 // for provider streams without a lease and beyond the concurrency cap, and reports what the parent allowed.
 import { bindChannel, streamPort } from './channel.js'

@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { EventEmitter } from 'node:events'
 import { once } from 'node:events'
 import { test } from 'node:test'
-import { bindChannel, streamTable } from './channel.js'
+import { bindChannel, streamTable } from '../plugins/direct-chat/companion/channel.js'
 
 test('IPC replies stay correlated and disconnect aborts pending work', async () => {
   const left = new EventEmitter()

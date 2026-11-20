@@ -7,8 +7,8 @@ import { pathToFileURL } from 'node:url'
 import { randomUUID } from 'node:crypto'
 import { bindChannel, streamPort, streamTable } from './channel.js'
 
-const stdio = process.env.ABINADWAN_D2_TRANSPORT === 'stdio'
-if (!(stdio || process.connected) || !process.env.ABINADWAN_D2_RUNTIME || !process.env.DSH_HOME
+const stdio = process.env.ABINADWAN_DIRECT_CHAT_TRANSPORT === 'stdio'
+if (!(stdio || process.connected) || !process.env.ABINADWAN_DIRECT_CHAT_RUNTIME || !process.env.DSH_HOME
   || Object.keys(process.env).some(name => /^(DEEPSEEK_|.*_(API_KEY|TOKEN|SECRET|PASSWORD)$)/i.test(name))) process.exit(1)
 
 // The companion never starts processes. Fail before libuv, which spins on pipe creation inside an
@@ -49,7 +49,7 @@ if (stdio) {
   for (const level of ['log', 'info', 'debug']) console[level] = console.error
 }
 const home = process.env.DSH_HOME
-const resolve = createRequire(join(process.env.ABINADWAN_D2_RUNTIME, 'package.json')).resolve
+const resolve = createRequire(join(process.env.ABINADWAN_DIRECT_CHAT_RUNTIME, 'package.json')).resolve
 const names = ['cordis', 'dsh-llm', 'dsh-session', 'dsh-session-projection', 'dsh-system-prompt', 'dsh-tools',
   'dsh-tool-executor-native', 'dsh-agent', 'dsh-agent-loop', 'dsh-session-persistence-jsonl',
   'dsh-typert-registry', 'dsh-api-gateway', 'dsh-api-remote-access', 'dsh-storage', 'dsh-storage-json',
@@ -62,7 +62,7 @@ const [{ Context }, { default: Llm, LlmAdapter }, Sessions, Projections, Prompt,
   import(pathToFileURL(resolve(`@deepseek-ai/${name}`)).href)))
 
 const ctx = new Context()
-if (process.env.ABINADWAN_D2_DIAGNOSTICS === '1') {
+if (process.env.ABINADWAN_DIRECT_CHAT_DIAGNOSTICS === '1') {
   ctx.on('internal/error', error => console.error('[Direct Chat companion] internal error', error))
   ctx.on('internal/warn', (...args) => console.error('[Direct Chat companion] warning', ...args))
   process.on('unhandledRejection', error => console.error('[Direct Chat companion] unhandled rejection', error))
@@ -131,7 +131,7 @@ async function start() {
   const global = { kind: 'global' }
   const allow = { kind: 'allow' }
   const deny = { kind: 'deny', reason: 'direct-chat-text-only' }
-  ctx.remoteAccess.registerPolicy('direct-chat-fixture', { bindings(principal) {
+  ctx.remoteAccess.registerPolicy('direct-chat', { bindings(principal) {
     if (!peers.has(principal.id)) return []
     return [{ role: { name: 'catalog', resource: 'global', actions: globalCalls }, resource: global }, {
       role: { name: 'create', resource: 'global', actions: ['session/create'] }, resource: global,
@@ -175,7 +175,7 @@ async function handle(operation, data) {
   if (operation === 'ready' || operation === 'stats') return metrics()
   if (operation === 'open') {
     if (peers.has(data.peer)) throw new Error('Duplicate Direct Chat peer')
-    const peer = ctx.connection.createPeer({ principal: { kind: 'direct-chat-fixture', id: data.peer }, interactions: 'answer' })
+    const peer = ctx.connection.createPeer({ principal: { kind: 'direct-chat', id: data.peer }, interactions: 'answer' })
     peers.set(data.peer, { peer, streams: streamTable() })
     return true
   }

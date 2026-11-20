@@ -19,8 +19,11 @@ const parent = join(repository, 'node_modules', '.direct-chat-confined')
 async function scratch(t) {
   await mkdir(parent, { recursive: true })
   const root = await mkdtemp(join(parent, 'check-'))
-  const app = join(root, 'app')
-  await cp(join(repository, 'qa', 'direct-chat-desktop'), app, { recursive: true })
+  // Same layout as the production runtime copy: companion files in one folder beside the Host modules.
+  const app = join(root, 'companion')
+  await cp(join(repository, 'plugins', 'direct-chat', 'companion'), app, { recursive: true })
+  await cp(join(repository, 'plugins', 'direct-chat', 'host'), join(root, 'host'), { recursive: true })
+  await cp(join(repository, 'qa', 'direct-chat-desktop', 'confinement-probe.mjs'), join(app, 'confinement-probe.mjs'))
   const home = join(root, 'home')
   await mkdir(home)
   const state = join(root, 'host-state')
@@ -29,13 +32,13 @@ async function scratch(t) {
     const states = (await readdir(root, { withFileTypes: true })).filter(entry => entry.isDirectory()
       && existsSync(join(root, entry.name, 'appcontainer-grants.json'))).map(entry => join(root, entry.name))
     if (states.length) {
-      const cleanup = spawnSync(node, [join(app, 'cleanup-appcontainer.mjs'), runtime, '--state', ...states],
+      const cleanup = spawnSync(node, [join(app, 'cleanup.mjs'), runtime, '--state', ...states],
         { encoding: 'utf8', windowsHide: true, timeout: 60_000 })
       if (cleanup.status !== 0) console.error(`AppContainer cleanup failed: ${cleanup.stderr}`)
     }
     await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }).catch(() => {})
   })
-  const { startCompanion, CONFINEMENT_FAILED } = await import(pathToFileURL(join(app, 'companion-process.js')).href)
+  const { startCompanion, CONFINEMENT_FAILED } = await import(pathToFileURL(join(root, 'host', 'companion-process.js')).href)
   const { bindChannel } = await import(pathToFileURL(join(app, 'channel.js')).href)
   return { root, app, home, state, startCompanion, CONFINEMENT_FAILED, bindChannel }
 }
@@ -123,7 +126,7 @@ function broker() {
 
 async function companion(context, home) {
   const fake = broker()
-  const started = context.startCompanion({ node, runtime, home, state: context.state, diagnostics: true })
+  const started = context.startCompanion({ node, runtime, app: context.app, read: [dirname(node), runtime, context.app], home, state: context.state, diagnostics: true })
   const link = context.bindChannel(started.port, fake.dispatch)
   const metrics = await link.request('ready')
   const peer = crypto.randomUUID()
@@ -197,7 +200,7 @@ test('the confined companion streams, persists native JSONL, restarts, and stays
 
 test('confinement failure never starts an unconfined companion', async t => {
   const context = await scratch(t)
-  const started = context.startCompanion({ node, runtime: resolve(context.root, 'missing-runtime'), home: context.home, state: context.state })
+  const started = context.startCompanion({ node, runtime: resolve(context.root, 'missing-runtime'), app: context.app, read: [dirname(node), context.app], home: context.home, state: context.state })
   const link = context.bindChannel(started.port, () => { throw new Error('unexpected') })
   await assert.rejects(link.request('ready'))
   assert.deepEqual(await started.exited, [context.CONFINEMENT_FAILED, null])
@@ -249,7 +252,7 @@ test('each storage root has its own AppContainer identity, and every grant is re
   assert.deepEqual(recorded.map(entry => entry.rights).sort(), ['M', 'RX', 'RX', 'RX'])
   assert.ok(recorded.every(entry => entry.sid === sid(firstRun) && entry.profile === first.profile))
   assert.ok(acl(first.home).includes(sid(firstRun)))
-  const cleanup = spawnSync(node, [join(app, 'cleanup-appcontainer.mjs'), runtime, '--state', first.state, second.state],
+  const cleanup = spawnSync(node, [join(app, 'cleanup.mjs'), runtime, '--state', first.state, second.state],
     { encoding: 'utf8', windowsHide: true, timeout: 60_000 })
   assert.equal(cleanup.status, 0, cleanup.stderr)
   assert.match(cleanup.stdout, new RegExp(`deleted AppContainer profile ${first.profile}`))

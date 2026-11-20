@@ -240,7 +240,7 @@ export async function clientHarness(options = {}) {
     fetch: options.fetch || (() => { throw new Error('unexpected network request') }),
     navigator: options.navigator,
     document: options.document,
-    AbortSignal, URL,
+    AbortSignal, URL, TextDecoder, Blob,
   })
   const plugin = loaded.factory(name => {
     const react = options.React || ReactStub

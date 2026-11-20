@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Direct Chat",
-    "description": "Start a conversation without selecting a Workspace. Safe session creation is still in development. Part of the ABINADWAN Plugins Suite."
+    "description": "Chat with your configured model without a Workspace. Each chat runs in a confined process with its own history and storage folder. Part of the ABINADWAN Plugins Suite."
   }
 }

@@ -1823,6 +1823,619 @@ window.__ModuleLoader__.load({
           holdMs: 1800, onDone: () => setNotice(null) }) : null)
     }
 
+    // ---------------------------------------------------------------- Direct Chat
+    // A dedicated left-sidebar view with its own scoped renderer, Session Controller, chat history and model
+    // picker, all talking to the confined companion through owner-authenticated Host routes. The view never
+    // falls back to the Workspace Host: a broken carrier shows an error and a Retry button instead.
+    const DIRECT_CHAT_ID = 'abinadwan-direct-chat'
+    const DIRECT_CHAT_VIEW = 'abinadwan-direct-chat-view'
+    const directChatRoutes = '/api/abinadwan-direct-chat/'
+    const directChatIcon = ['M7.5 6.5h9a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-6l-5 3v-10a2 2 0 0 1 2-2Z', 'M9 10h6m-6 2.75h3.5']
+    const DIRECT_CHAT_TEXT_LIMIT = 256 * 1024
+    const DIRECT_CHAT_DELETE_ALL = 'DELETE ALL DIRECT CHATS'
+
+    function directChatPost(path, body, signal) {
+      return fetch(directChatRoutes + path, { method: 'POST', headers: { 'content-type': 'application/json' },
+        body: JSON.stringify(body ?? {}), signal, redirect: 'error', cache: 'no-store', credentials: 'same-origin' })
+    }
+
+    async function directChatCall(path, body, signal) {
+      const response = await directChatPost(path, body, signal)
+      const data = await response.json().catch(() => ({}))
+      if (!response.ok) throw new Error(data.message || 'Direct Chat is unavailable right now.')
+      return data
+    }
+
+    function formatBytes(bytes) {
+      if (!Number.isFinite(bytes)) return 'Unavailable'
+      const units = ['bytes', 'KB', 'MB', 'GB']
+      let value = bytes
+      let unit = 0
+      while (value >= 1024 && unit < units.length - 1) { value /= 1024; unit++ }
+      return unit === 0 ? `${value} bytes` : `${value.toFixed(value < 10 ? 1 : 0)} ${units[unit]}`
+    }
+
+    // Safe Markdown: parsed into React elements, never into HTML. No raw HTML, no images and no navigation;
+    // a link shows its text followed by its address, so nothing reaches a Host or a website on render.
+    const markdownCode = { fontFamily: 'var(--dsw-font-mono, ui-monospace, SFMono-Regular, Consolas, monospace)', fontSize: '0.92em' }
+    const markdownInline = /(`+)([\s\S]*?[^`])\1(?!`)|\*\*(?=\S)([\s\S]*?\S)\*\*|__(?=\S)([\s\S]*?\S)__|\*(?=[^\s*])([^*]*[^\s*])?\*|(?<!\w)_(?=[^\s_])([^_]*[^\s_])?_(?!\w)|\[([^\]\n]+)\]\(([^)\s]+)(?:\s+"[^"]*")?\)|!\[([^\]\n]*)\]\(([^)\s]+)\)/
+    function markdownSpans(text, key) {
+      const out = []
+      let rest = String(text)
+      let index = 0
+      while (rest) {
+        const match = rest.match(markdownInline)
+        if (!match) { out.push(rest); break }
+        if (match.index) out.push(rest.slice(0, match.index))
+        const id = `${key}.${index++}`
+        if (match[1]) out.push(h('code', { key: id, style: { ...markdownCode, padding: '1px 4px', borderRadius: 4,
+          background: 'rgba(128,128,128,.16)' } }, match[2]))
+        else if (match[3] !== undefined || match[4] !== undefined) out.push(h('strong', { key: id }, markdownSpans(match[3] ?? match[4], id)))
+        else if (match[5] !== undefined || match[6] !== undefined) out.push(h('em', { key: id }, markdownSpans(match[5] ?? match[6] ?? '', id)))
+        else if (match[7] !== undefined) out.push(h('span', { key: id }, markdownSpans(match[7], id),
+          h('span', { style: { opacity: .7, overflowWrap: 'anywhere' } }, ` (${match[8]})`)))
+        else out.push(h('span', { key: id, style: { opacity: .7 } }, `[Image: ${match[9] || 'untitled'}]`))
+        rest = rest.slice(match.index + match[0].length)
+      }
+      return out
+    }
+
+    const markdownItem = /^(\s*)([-*+]|\d{1,9}[.)])\s+(.*)$/
+    function markdownBlocks(source, depth = 0) {
+      const lines = String(source).replace(/\r\n?/g, '\n').split('\n')
+      const blocks = []
+      let i = 0
+      while (i < lines.length) {
+        const line = lines[i]
+        const fence = line.match(/^\s{0,3}(`{3,}|~{3,})\s*([\w+#.-]*)[^`]*$/)
+        if (fence) {
+          const close = new RegExp(`^\\s{0,3}\\${fence[1][0]}{${fence[1].length},}\\s*$`)
+          const body = []
+          for (i++; i < lines.length && !close.test(lines[i]); i++) body.push(lines[i])
+          i++
+          blocks.push({ type: 'code', language: fence[2], text: body.join('\n') })
+          continue
+        }
+        if (!line.trim()) { i++; continue }
+        const heading = line.match(/^\s{0,3}(#{1,6})\s+(.*?)\s*#*\s*$/)
+        if (heading) { blocks.push({ type: 'heading', level: heading[1].length, text: heading[2] }); i++; continue }
+        if (/^\s{0,3}([-*_])(\s*\1){2,}\s*$/.test(line)) { blocks.push({ type: 'rule' }); i++; continue }
+        if (/^\s{0,3}>/.test(line) && depth < 8) {
+          const body = []
+          while (i < lines.length && /^\s{0,3}>/.test(lines[i])) body.push(lines[i++].replace(/^\s{0,3}>\s?/, ''))
+          blocks.push({ type: 'quote', children: markdownBlocks(body.join('\n'), depth + 1) })
+          continue
+        }
+        const item = line.match(markdownItem)
+        if (item && depth < 8) {
+          const ordered = /\d/.test(item[2])
+          const items = []
+          while (i < lines.length) {
+            const next = lines[i].match(markdownItem)
+            if (next && /\d/.test(next[2]) === ordered && next[1].length <= item[1].length + 1) { items.push([next[3]]); i++ }
+            else if (items.length && lines[i].trim() && /^\s+\S/.test(lines[i])) items[items.length - 1].push(lines[i++].trim())
+            else break
+          }
+          blocks.push({ type: 'list', ordered, start: ordered ? Number.parseInt(item[2], 10) : 1,
+            items: items.map(parts => markdownBlocks(parts.join('\n'), depth + 1)) })
+          continue
+        }
+        const divider = /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)*\|?\s*$/
+        if (line.includes('|') && divider.test(lines[i + 1] ?? '')) {
+          const cells = row => row.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(cell => cell.trim())
+          const head = cells(line)
+          const rows = []
+          for (i += 2; i < lines.length && lines[i].includes('|') && lines[i].trim(); i++) rows.push(cells(lines[i]))
+          blocks.push({ type: 'table', head, rows })
+          continue
+        }
+        const paragraph = [line]
+        for (i++; i < lines.length && lines[i].trim() && !/^\s{0,3}(#{1,6}\s|>|`{3,}|~{3,})/.test(lines[i])
+          && !markdownItem.test(lines[i]); i++) paragraph.push(lines[i])
+        blocks.push({ type: 'paragraph', text: paragraph.join('\n') })
+      }
+      return blocks
+    }
+
+    function markdownElements(blocks, key) {
+      return blocks.map((block, index) => {
+        const id = `${key}.${index}`
+        if (block.type === 'code') return h('pre', { key: id, style: { ...markdownCode, margin: '8px 0', padding: '10px 12px',
+          borderRadius: 8, background: 'rgba(128,128,128,.12)', overflowX: 'auto', whiteSpace: 'pre' } },
+        h('code', { 'data-language': block.language || undefined }, block.text))
+        if (block.type === 'heading') return h('div', { key: id, role: 'heading', 'aria-level': block.level,
+          style: { fontWeight: 650, fontSize: `${Math.max(1, 1.35 - block.level * .08)}em`, margin: '12px 0 6px' } },
+        markdownSpans(block.text, id))
+        if (block.type === 'rule') return h('hr', { key: id, style: { border: 0, borderTop: '1px solid rgba(128,128,128,.35)' } })
+        if (block.type === 'quote') return h('blockquote', { key: id, style: { margin: '8px 0', paddingInlineStart: 12,
+          borderInlineStart: '3px solid rgba(128,128,128,.4)', opacity: .9 } }, markdownElements(block.children, id))
+        if (block.type === 'list') return h(block.ordered ? 'ol' : 'ul', { key: id, start: block.ordered ? block.start : undefined,
+          style: { margin: '6px 0', paddingInlineStart: 22 } },
+        block.items.map((children, item) => h('li', { key: `${id}.${item}` }, markdownElements(children, `${id}.${item}`))))
+        if (block.type === 'table') return h('div', { key: id, style: { overflowX: 'auto', margin: '8px 0' } },
+          h('table', { style: { borderCollapse: 'collapse', fontSize: '0.95em' } },
+            h('thead', null, h('tr', null, block.head.map((cell, column) => h('th', { key: column, style: {
+              textAlign: 'start', padding: '4px 8px', borderBottom: '1px solid rgba(128,128,128,.4)' } }, markdownSpans(cell, `${id}.h${column}`))))),
+            h('tbody', null, block.rows.map((row, line) => h('tr', { key: line }, row.map((cell, column) => h('td', { key: column,
+              style: { padding: '4px 8px', borderBottom: '1px solid rgba(128,128,128,.2)' } }, markdownSpans(cell, `${id}.${line}.${column}`))))))))
+        const parts = block.text.split('\n')
+        return h('p', { key: id, style: { margin: '6px 0' } }, parts.flatMap((part, line) => line
+          ? [h('br', { key: `${id}.br${line}` }), ...markdownSpans(part, `${id}.${line}`)] : markdownSpans(part, `${id}.${line}`)))
+      })
+    }
+
+    function SafeMarkdown({ text }) {
+      const blocks = React.useMemo(() => markdownBlocks(text), [text])
+      return h('div', { dir: 'auto', style: { overflowWrap: 'anywhere', lineHeight: 1.6 } }, markdownElements(blocks, 'md'))
+    }
+
+    /** A text file becomes quoted text in the message; anything else is refused before it leaves the page. */
+    async function directChatTextFile(file) {
+      if (file.size > DIRECT_CHAT_TEXT_LIMIT) throw new Error('Text files over 256 KB are not supported in Direct Chat.')
+      let text
+      try { text = new TextDecoder('utf-8', { fatal: true }).decode(await file.arrayBuffer()) }
+      catch { throw new Error('Only UTF-8 text files can be added to Direct Chat.') }
+      if (text.includes('\u0000')) throw new Error('Only text files can be added to Direct Chat.')
+      const name = String(file.name || 'file.txt').replace(/[\r\n`]/g, ' ').slice(0, 120)
+      const longest = Math.max(2, ...(text.match(/`+/g) ?? []).map(run => run.length))
+      const fence = '`'.repeat(longest + 1)
+      return `Attached file: ${name}\n${fence}\n${text}\n${fence}`
+    }
+
+    function directChatModules() {
+      return {
+        Context: require('@deepseek-ai/cordis').Context,
+        Registry: require('@deepseek-ai/dsh-typert-registry'),
+        installConnection: require('@deepseek-ai/dsh-client-connection').installConnection,
+        Gateway: require('@deepseek-ai/dsh-api-gateway/client'),
+        Remotes: require('@deepseek-ai/dsh-api-remotes'),
+        Sessions: require('@deepseek-ai/dsh-api-session-controller'),
+        LocaleRuntime: require('@deepseek-ai/dsh-client-locale').LocaleRuntime,
+        Renderer: require('@deepseek-ai/dsh-client-ui-renderer'),
+        UiSession: require('@deepseek-ai/dsh-client-ui-session'),
+        Conversation: require('@deepseek-ai/dsh-client-ui-conversation'),
+        Chat: require('@deepseek-ai/dsh-client-ui-chat'),
+        Models: require('@deepseek-ai/dsh-client-ui-model-selection'),
+      }
+    }
+
+    // Created on first use: the boundary is needed only once the Direct Chat view mounts.
+    let directChatBoundary
+    function DirectChatBoundary(props) {
+      directChatBoundary ??= class extends React.Component {
+        constructor(boundaryProps) { super(boundaryProps); this.state = { error: null } }
+        static getDerivedStateFromError(error) { return { error } }
+        render() {
+          return this.state.error ? h('p', { role: 'alert', style: { padding: 20 } },
+            `The Direct Chat view could not be shown. ${this.state.error.message}`) : this.props.children
+        }
+      }
+      return h(directChatBoundary, props)
+    }
+
+    async function* directChatStream(peer, endpoint, payload, signal, reconnect) {
+      const response = await directChatPost('stream', { peer, endpoint, payload }, signal)
+      if (response.status === 410) reconnect()
+      if (!response.ok || !response.body) throw new Error('Direct Chat stream unavailable')
+      const reader = response.body.pipeThrough(new TextDecoderStream()).getReader()
+      let pending = ''
+      try {
+        for (;;) {
+          const { done, value } = await reader.read()
+          if (done) break
+          pending += value
+          let newline
+          while ((newline = pending.indexOf('\n')) !== -1) {
+            const item = JSON.parse(pending.slice(0, newline))
+            pending = pending.slice(newline + 1)
+            if (item.error) throw new Error('Direct Chat stream ended')
+            yield item.value
+          }
+        }
+        if (pending) throw new Error('Incomplete Direct Chat frame')
+      } finally {
+        await reader.cancel().catch(() => {})
+        reader.releaseLock()
+      }
+    }
+
+    function DirectChatHistory({ root, SessionProvider, renderSlot, selection, onDeleted }) {
+      const summary = React.useSyncExternalStore(root.sessions.list.subscribe, root.sessions.list.getSnapshot)
+      const [reference, setReference] = React.useState(null)
+      const [error, setError] = React.useState('')
+      const [busy, setBusy] = React.useState(false)
+      const [confirming, setConfirming] = React.useState(null)
+      const retained = React.useRef(new Set())
+      const mounted = React.useRef(false)
+      React.useEffect(() => {
+        mounted.current = true
+        if (summary.ids.includes(selection.current)) void perform(() => select(selection.current))
+        return () => {
+          mounted.current = false
+          for (const owned of retained.current) owned.release()
+        }
+      }, [])
+      React.useEffect(() => () => {
+        if (reference && retained.current.delete(reference)) reference.release()
+      }, [reference])
+
+      async function select(id) {
+        if (!mounted.current) return
+        const owned = root.sessions.retain(id, { source: 'mainView' })
+        retained.current.add(owned)
+        selection.current = id
+        setReference(owned)
+        await owned.ready
+      }
+
+      async function perform(action) {
+        setBusy(true)
+        setError('')
+        try { await action() }
+        catch (cause) { if (mounted.current) setError(String(cause?.message ?? cause)) }
+        finally { if (mounted.current) setBusy(false) }
+      }
+
+      async function remove(id) {
+        await perform(async () => {
+          await directChatCall('delete', { ids: [id] })
+          if (selection.current === id) selection.current = null
+          onDeleted()
+        })
+      }
+
+      const titleOf = (id, index) => summary.byId[id]?.title || summary.byId[id]?.displayTitle || `Chat ${summary.ids.length - index}`
+      return h('div', { style: { display: 'flex', width: '100%', height: '100%', minHeight: 0 } },
+        h('nav', { 'aria-label': 'Direct Chat history', style: { display: 'flex', flexDirection: 'column', gap: 6, padding: 12,
+          width: 232, flex: '0 0 232px', overflow: 'auto', borderInlineEnd: '1px solid var(--dsw-alias-border-l3, rgba(128,128,128,.3))' } },
+        h('h2', { style: { fontSize: 15, fontWeight: 600, margin: '4px 4px 6px' } }, 'Direct Chat'),
+        h(Button, { disabled: busy, onClick: () => perform(async () => select(await root.sessions.create({}))) }, 'New Chat'),
+        summary.ids.length === 0 ? h('p', { style: { ...lifecycleMuted, margin: '6px 4px' } }, 'No chats yet.') : null,
+        ...summary.ids.map((id, index) => confirming === id
+          ? h('div', { key: id, role: 'group', 'aria-label': 'Confirm deletion', style: { display: 'grid', gap: 6, padding: 6,
+            border: lifecycleRule, borderRadius: 8 } },
+          h('span', { style: { fontSize: 12 } }, h('bdi', null, titleOf(id, index)), ' will be deleted permanently.'),
+          h('div', { style: lifecycleActions },
+            h(Button, { size: 'sm', variant: 'primary', disabled: busy, onClick: () => { setConfirming(null); void remove(id) } }, 'Delete'),
+            h(Button, { size: 'sm', disabled: busy, onClick: () => setConfirming(null) }, 'Cancel')))
+          : h('div', { key: id, style: { display: 'flex', alignItems: 'center', gap: 4 } },
+            h(Button, { disabled: busy, style: { flex: 1, minWidth: 0, justifyContent: 'flex-start' },
+              'aria-current': reference?.sessionId === id ? 'true' : undefined, onClick: () => perform(() => select(id)) },
+            h('bdi', { style: { overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, titleOf(id, index))),
+            h(Button, { size: 'sm', variant: 'ghost', disabled: busy, 'aria-label': `Delete ${titleOf(id, index)}`,
+              title: 'Delete chat', onClick: () => setConfirming(id) }, suiteGlyph(['M5 7h14M10 11v6M14 11v6M6 7l1 12a1 1 0 0 0 1 1h8a1 1 0 0 0 1-1l1-12M9 7V5a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2'], 15)))),
+        error && h('p', { role: 'alert', style: { fontSize: 12, margin: 4 } }, error)),
+        h('div', { style: { flex: 1, minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column' } }, reference
+          ? h(SessionProvider, { session: reference }, renderSlot('direct-chat.content', {}))
+          : h('div', { style: { margin: 'auto', textAlign: 'center', padding: 24 } },
+            h('p', { style: { margin: '0 0 12px', fontSize: 15 } }, 'Chat without a Workspace.'),
+            h('p', { style: { ...lifecycleMuted, margin: 0 } }, 'Choose a chat or start a new one. Direct Chat has no tools and cannot read your files.'))))
+    }
+
+    async function directChatBoot(modules, root, peer, selection, reconnect, lifetime) {
+      const { Registry, installConnection, Gateway, Remotes, Renderer, LocaleRuntime, Sessions, UiSession, Conversation, Chat, Models } = modules
+      async function load(plugin) { await root.plugin(plugin.default ?? plugin).await() }
+      const scoped = signal => signal ? AbortSignal.any([signal, lifetime]) : lifetime
+      const deny = () => { throw new Error('This action is unavailable in Direct Chat') }
+      const idle = { subscribe: () => () => {}, getSnapshot: () => false }
+      const form = { ...idle, getSnapshot: () => ({ value: undefined }), set: async () => {} }
+      const workspaceSnapshot = Object.freeze({ items: [], phase: 'ready' })
+      const visible = new Set(['session/prompt', 'session/follow', 'session/events', 'session/selectModel', 'session/cancel'])
+      // Text files become quoted text when the message is sent. The receipts never leave this page.
+      const staged = new Map()
+      const refuse = message => ({ ok: false, error: { code: 'direct-chat/attachment', message, details: {} } })
+      const fileUpload = {
+        async upload(_sessionId, data, name) {
+          try {
+            const file = data instanceof Blob ? data : new Blob([data])
+            const text = await directChatTextFile(Object.assign(file, { name: name ?? file.name }))
+            const receiptId = `direct-chat-text-${crypto.randomUUID()}`
+            staged.set(receiptId, text)
+            return { ok: true, value: { receiptId, file: { attachmentId: receiptId, name: name || 'file.txt', bytes: file.size } } }
+          } catch (error) { return refuse(error.message) }
+        },
+        uploadImage: async () => refuse('Images are not available in Direct Chat.'),
+      }
+      const inline = payload => {
+        const request = payload?.payload?.args?.request
+        if (payload?.method !== 'session/prompt' || !Array.isArray(request?.content)) return payload
+        const content = request.content.map(block => block?.type === 'file' && staged.has(block.receiptId)
+          ? { type: 'text', text: staged.get(block.receiptId) } : block)
+        return { ...payload, payload: { ...payload.payload, args: { ...payload.payload.args, request: { ...request, content } } } }
+      }
+      installConnection(root, { interactions: 'answer', transport: {
+        async fetch(path, init) {
+          const endpoint = String(path).replace(/^api\//, '')
+          const response = await directChatPost('rpc', { peer, endpoint, payload: inline(JSON.parse(init.body)) }, scoped(init.signal))
+          if (response.status === 410) reconnect()
+          return response
+        },
+        openStream: (endpoint, payload, signal) => directChatStream(peer, endpoint, payload, scoped(signal), reconnect),
+        // Without a factory, Connection sockets resolve against the Desktop document's Workspace Host.
+        createWebSocket: deny,
+      } })
+      for (const plugin of [Registry, Gateway, Remotes, Renderer]) await load(plugin)
+      await load({ inject: ['slots'], apply(ctx) {
+        const locale = new LocaleRuntime(ctx, undefined, { languages: ['en'], preference: 'en' })
+        ctx.provide('locale', locale)
+        ctx.slots.installLocale(locale)
+        ctx.provide('configForms', { get: () => form, developerTools: { enabled: idle } })
+        ctx.provide('uiWorkspace', { openWorkspace: deny, openSession: deny })
+        ctx.provide('sidebarRight', { openResource: deny, openTab: deny })
+        ctx.provide('fileDrag', { actions: { start: deny } })
+        ctx.provide('fileUpload', fileUpload)
+        ctx.provide('commandUi', { register: () => () => {}, popupFor: () => undefined })
+        ctx.provide('remoteAccess', { source: (kind, _id, action) => ({ ...idle,
+          getSnapshot: () => kind === 'session' && visible.has(action) }) })
+        ctx.slots.provideRoot({
+          hooks: { workspaces: { ...idle, getSnapshot: () => workspaceSnapshot } },
+          keyedHooks: { remoteAccess: () => idle },
+          props: { useContextMenu: () => ({ getTriggerProps: () => ({}) }) },
+        })
+        ctx.slots.register({ name: 'root', children: {
+          main: { kind: 'keyed', scope: 'root' },
+          'direct-chat.content': { kind: 'single', scope: 'session' },
+        } }, props => h(DirectChatBoundary, null, h(DirectChatHistory, { ...props, root, selection, onDeleted: reconnect })))
+        ctx.slots.register({ name: 'direct-chat.content' }, ({ renderFactorySlot }) => renderFactorySlot(
+          'conversation.content', { variant: 'embedded', phase: 'active', hero: false },
+          { slots: { views: ({ renderSlot }) => renderSlot('conversation.session', { view: 'chat' }) } },
+        ))
+      } })
+      for (const plugin of [Sessions, UiSession, Conversation, Chat, Models]) await load(plugin)
+      // The stock Markdown delegate resolves media against the Desktop document's Host. Direct Chat renders its
+      // own safe Markdown, and shows reasoning folded away.
+      root.effect(() => root.slots.register({ name: 'conversation.chat.node', key: 'assistant-step', priority: -1 },
+        ({ node, groupPart }) => {
+          const blocks = node.data.blocks ?? []
+          if (groupPart === 'reasoning') {
+            const thought = blocks.filter(block => block.kind !== 'text' && typeof block.text === 'string').map(block => block.text).join('\n')
+            return thought ? h('details', { style: { margin: '4px 0', opacity: .8 } }, h('summary', null, 'Reasoning'),
+              h(SafeMarkdown, { text: thought })) : null
+          }
+          return h(SafeMarkdown, { text: blocks.filter(block => block.kind === 'text').map(block => block.text).join('\n') })
+        }))
+      // Compaction summaries use the same Host-resolving delegate. The companion has no compaction service.
+      for (const key of ['compaction', 'manual-compaction']) {
+        root.effect(() => root.slots.register({ name: 'conversation.chat.node', key, priority: -1 }, () => null))
+      }
+      await root.sessions.refresh()
+    }
+
+    function DirectChatPanel() {
+      const ref = React.useRef(null)
+      const selection = React.useRef(null)
+      const [generation, setGeneration] = React.useState(0)
+      const [failed, setFailed] = React.useState(false)
+      const [status, setStatus] = React.useState('Starting Direct Chat…')
+      React.useEffect(() => {
+        setFailed(false)
+        setStatus('Starting Direct Chat…')
+        let modules
+        try { modules = directChatModules() } catch {
+          setFailed(true)
+          setStatus('This Desktop version does not provide the components Direct Chat needs.')
+          return undefined
+        }
+        const root = new modules.Context()
+        const lifetime = new AbortController()
+        let peer
+        let unmount
+        let reconnecting = false
+        function revoke() {
+          if (!peer) return
+          const closedPeer = peer
+          peer = undefined
+          void directChatPost('close', { peer: closedPeer }).catch(() => {})
+        }
+        function reconnect() {
+          if (reconnecting || lifetime.signal.aborted) return
+          reconnecting = true
+          setGeneration(value => value + 1)
+        }
+        const ready = (async () => {
+          const opened = await directChatCall('open', {}, lifetime.signal)
+          peer = opened.peer
+          lifetime.signal.throwIfAborted()
+          await directChatBoot(modules, root, peer, selection, reconnect, lifetime.signal)
+          lifetime.signal.throwIfAborted()
+          unmount = root.uiRenderer.mount(ref.current)
+          setStatus('')
+        })().catch(error => {
+          revoke()
+          if (!lifetime.signal.aborted) {
+            setFailed(true)
+            setStatus(`Direct Chat could not open. ${error.message}`)
+          }
+        })
+        const heartbeat = setInterval(async () => {
+          if (!peer) return
+          try {
+            const response = await directChatPost('renew', { peer }, lifetime.signal)
+            if (response.status === 410) reconnect()
+          } catch { /* A broken transport never falls back to the Workspace Host. */ }
+        }, 20_000)
+        return () => {
+          clearInterval(heartbeat)
+          lifetime.abort()
+          revoke()
+          unmount?.()
+          void ready.then(async () => {
+            revoke()
+            await root.fiber.dispose()
+          }).catch(() => {})
+        }
+      }, [generation])
+      return h('section', { 'aria-label': 'Direct Chat', lang: 'en', dir: 'ltr',
+        style: { display: 'flex', flexDirection: 'column', width: '100%', height: '100%', minHeight: 0 } },
+      status && h('div', { role: failed ? 'alert' : 'status', style: { padding: 20, display: 'grid', gap: 10, justifyItems: 'start' } },
+        status, failed && h(Button, { onClick: () => setGeneration(value => value + 1) }, 'Retry')),
+      h('div', { ref, style: { flex: 1, minHeight: 0, display: status ? 'none' : 'flex' } }))
+    }
+
+    function DirectChatSettings() {
+      const [state, setState] = React.useState(null)
+      const [error, setError] = React.useState('')
+      const [notice, setNotice] = React.useState('')
+      const [busy, setBusy] = React.useState(false)
+      const [chats, setChats] = React.useState([])
+      const [folder, setFolder] = React.useState('')
+      const [mode, setMode] = React.useState('migrate')
+      const [pending, setPending] = React.useState(null)
+      const [retention, setRetention] = React.useState(null)
+      const [confirmText, setConfirmText] = React.useState('')
+      const mounted = React.useRef(true)
+      React.useEffect(() => { mounted.current = true; void refresh(); return () => { mounted.current = false } }, [])
+
+      async function refresh() {
+        try {
+          const [next, list] = await Promise.all([directChatCall('status'), directChatCall('chats').catch(() => ({ chats: [] }))])
+          if (!mounted.current) return
+          setState(next)
+          setChats(list.chats ?? [])
+          setError('')
+        } catch (cause) { if (mounted.current) setError(cause.message) }
+      }
+
+      async function act(work, done) {
+        setBusy(true)
+        setError('')
+        setNotice('')
+        try {
+          const result = await work()
+          if (mounted.current && done) setNotice(done(result))
+          setPending(null)
+        } catch (cause) { if (mounted.current) setError(cause.message) }
+        finally {
+          if (mounted.current) setBusy(false)
+          await refresh()
+        }
+      }
+
+      const storage = state?.storage
+      const phaseLabel = { idle: 'Ready, not running', preparing: 'Preparing', starting: 'Starting', running: 'Running',
+        maintenance: 'Updating storage', failed: 'Unavailable' }
+      const stats = state?.available ? [
+        ['Status', phaseLabel[state.phase] ?? state.phase],
+        ['Chats', storage?.error ? 'Unavailable' : String(storage?.chats ?? 0)],
+        ['Storage used', storage?.error ? 'Unavailable' : formatBytes(storage?.bytes)],
+        ['Runtime copy', state.runtime ? formatBytes(state.runtime.bytes) : 'Not prepared yet'],
+      ] : []
+      const days = retention ?? (state?.retention?.days ? String(state.retention.days) : 'forever')
+      return h('section', { lang: 'en', dir: 'ltr', style: { padding: '8px 16px 20px', display: 'grid', gap: 16, minWidth: 0 } },
+        h('header', null, h('h1', { style: { margin: '0 0 4px', fontSize: 18, lineHeight: 1.3 } }, 'Direct Chat'),
+          h('p', { style: { ...lifecycleMuted, margin: 0 } }, 'Part of the ABINADWAN Plugins Suite.')),
+        error ? h('p', { role: 'alert', style: { margin: 0, fontSize: 13 } }, error) : null,
+        notice ? h('p', { role: 'status', style: { margin: 0, fontSize: 13 } }, notice) : null,
+        !state ? h('p', { role: 'status', style: lifecycleMuted }, error ? '' : 'Loading…') : !state.available
+          ? h('p', { style: lifecycleMuted }, state.error || 'Direct Chat is unavailable on this system.') : h(React.Fragment, null,
+            h(LifecycleGroup, { title: 'Overview' },
+              h('dl', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: 8, margin: 0 } },
+                ...stats.map(([label, value]) => h('div', { key: label, style: { border: lifecycleRule, borderRadius: 8,
+                  padding: '8px 10px', background: 'var(--dsw-alias-settings-card-fill, Canvas)' } },
+                h('dt', { style: lifecycleMuted }, label), h('dd', { style: { margin: '3px 0 0', fontSize: 14, fontWeight: 600 } }, value)))),
+              state.error ? h('p', { role: 'alert', style: { margin: 0, fontSize: 13 } }, state.error) : null,
+              h('p', { style: { ...lifecycleMuted, margin: 0 } },
+                'Each chat runs in a separate confined process with no network, tools or file access outside its storage folder.')),
+            h(LifecycleGroup, { title: 'Storage location' },
+              h('div', { style: { display: 'grid', gap: 4 } },
+                h('span', { style: lifecycleMuted }, storage?.isDefault ? 'Default folder' : 'Custom folder'),
+                h('code', { dir: 'ltr', style: { ...markdownCode, overflowWrap: 'anywhere' } }, storage?.path)),
+              storage?.error ? h('p', { role: 'alert', style: { margin: 0, fontSize: 13 } }, storage.error) : null,
+              storage?.previous ? h('small', { style: lifecycleMuted }, 'The previous folder was left unchanged: ',
+                h('bdi', { dir: 'ltr' }, storage.previous)) : null,
+              h('label', { style: lifecycleLabel }, 'New storage folder',
+                h('input', { style: lifecycleSelect, value: folder, disabled: busy, placeholder: 'D:\\Chats\\Direct Chat', dir: 'ltr',
+                  onChange: event => setFolder(event.target.value) })),
+              h('label', { style: lifecycleLabel }, 'Existing chats',
+                h('select', { style: lifecycleSelect, value: mode, disabled: busy, onChange: event => setMode(event.target.value) },
+                  h('option', { value: 'migrate' }, 'Copy my chats to the new folder and verify them'),
+                  h('option', { value: 'switch' }, 'Use the new folder as it is'))),
+              h('small', { style: lifecycleMuted }, 'The folder must be empty or already hold Direct Chat storage. Your current folder is never changed or deleted.'),
+              pending?.kind === 'storage' ? h('div', { style: lifecycleActions },
+                h('span', { style: lifecycleMuted }, 'Open Direct Chat windows reconnect after the change.'),
+                h(Button, { size: 'sm', variant: 'primary', disabled: busy, onClick: () => act(() => directChatCall('storage', pending.body),
+                  result => `Direct Chat now uses ${result.path}.`) }, 'Confirm change'),
+                h(Button, { size: 'sm', disabled: busy, onClick: () => setPending(null) }, 'Cancel'))
+                : h('div', { style: lifecycleActions },
+                  h(Button, { size: 'sm', variant: 'outline', disabled: busy || !folder.trim(),
+                    onClick: () => setPending({ kind: 'storage', body: { mode, path: folder.trim() } }) }, 'Change folder'),
+                  storage && !storage.isDefault ? h(Button, { size: 'sm', variant: 'outline', disabled: busy,
+                    onClick: () => setPending({ kind: 'storage', body: { mode: 'default' } }) }, 'Use default folder') : null)),
+            h(LifecycleGroup, { title: 'Retention' },
+              h('label', { style: lifecycleLabel }, 'Delete chats with no activity for',
+                h('select', { style: lifecycleSelect, value: days, disabled: busy, onChange: async event => {
+                  const value = event.target.value
+                  setRetention(value)
+                  if (value === 'forever') { setPending({ kind: 'retention', days: null, candidates: 0 }); return }
+                  try {
+                    const preview = await directChatCall('retention-preview', { days: Number(value) })
+                    setPending({ kind: 'retention', days: Number(value), candidates: preview.candidates.length })
+                  } catch (cause) { setError(cause.message) }
+                } }, h('option', { value: 'forever' }, 'Keep forever'),
+                ...(state.retention?.choices ?? []).map(choice => h('option', { key: choice, value: String(choice) }, `${choice} days`)))),
+              pending?.kind === 'retention' ? h('div', { style: lifecycleActions },
+                h('span', { style: lifecycleMuted }, pending.days ? `${pending.candidates} chat${pending.candidates === 1 ? '' : 's'} would be deleted now. Deletion runs each time Direct Chat starts.` : 'Chats will be kept until you delete them.'),
+                h(Button, { size: 'sm', variant: 'primary', disabled: busy, onClick: () => act(() => directChatCall('retention', { days: pending.days }),
+                  () => { setRetention(null); return 'Retention policy saved.' }) }, 'Save policy'),
+                h(Button, { size: 'sm', disabled: busy, onClick: () => { setPending(null); setRetention(null) } }, 'Cancel'))
+                : state.retention?.days ? h('div', { style: lifecycleActions },
+                  h('span', { style: lifecycleMuted }, `${state.retention.candidates} chat${state.retention.candidates === 1 ? '' : 's'} currently past the limit.`),
+                  h(Button, { size: 'sm', variant: 'outline', disabled: busy || !state.retention.candidates,
+                    onClick: () => setPending({ kind: 'retention-run' }) }, 'Apply now')) : null,
+              pending?.kind === 'retention-run' ? h('div', { style: lifecycleActions },
+                h('span', { style: lifecycleMuted }, 'Delete every chat past the limit permanently?'),
+                h(Button, { size: 'sm', variant: 'primary', disabled: busy, onClick: () => act(() => directChatCall('retention-run'),
+                  result => result.error ? `Retention stopped: ${result.error}` : `${result.deleted ?? 0} chats deleted.`) }, 'Delete'),
+                h(Button, { size: 'sm', disabled: busy, onClick: () => setPending(null) }, 'Cancel')) : null,
+              state.retention?.last?.error ? h('small', { role: 'alert', style: lifecycleMuted }, `Last run stopped: ${state.retention.last.error}`) : null),
+            h(LifecycleGroup, { title: 'Chats' },
+              chats.length ? h('ul', { style: { listStyle: 'none', padding: 0, margin: 0, maxBlockSize: 240, overflow: 'auto' } },
+                ...chats.map(chat => h('li', { key: chat.id, style: { ...lifecycleActions, minHeight: 34, justifyContent: 'space-between' } },
+                  h('span', { style: { minWidth: 0, display: 'grid' } },
+                    h('bdi', { style: { fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, chat.preview || 'Empty chat'),
+                    h('small', { style: lifecycleMuted }, `${new Date(chat.lastActivity).toLocaleString('en')} · ${formatBytes(chat.bytes)}`)),
+                  pending?.kind === 'delete' && pending.id === chat.id ? h('span', { style: lifecycleActions },
+                    h(Button, { size: 'sm', variant: 'primary', disabled: busy, onClick: () => act(() => directChatCall('delete', { ids: [chat.id] }),
+                      () => 'Chat deleted.') }, 'Delete permanently'),
+                    h(Button, { size: 'sm', disabled: busy, onClick: () => setPending(null) }, 'Cancel'))
+                    : h(Button, { size: 'sm', variant: 'outline', disabled: busy, 'aria-label': `Delete ${chat.preview || 'chat'}`,
+                      onClick: () => setPending({ kind: 'delete', id: chat.id }) }, 'Delete'))))
+                : h('p', { style: { ...lifecycleMuted, margin: 0 } }, 'No Direct Chat history.'),
+              h('label', { style: lifecycleLabel }, `To delete every Direct Chat, type ${DIRECT_CHAT_DELETE_ALL}`,
+                h('input', { style: lifecycleSelect, value: confirmText, disabled: busy || !chats.length, autoComplete: 'off',
+                  onChange: event => setConfirmText(event.target.value) })),
+              h('div', { style: lifecycleActions },
+                h(Button, { size: 'sm', variant: 'primary', disabled: busy || confirmText !== DIRECT_CHAT_DELETE_ALL,
+                  onClick: () => act(() => directChatCall('delete-all', { confirmation: confirmText }),
+                    () => { setConfirmText(''); return 'All Direct Chats were deleted.' }) }, 'Delete All Direct Chats'))),
+            h(LifecycleGroup, { title: 'System access' },
+              h('p', { style: { ...lifecycleMuted, margin: 0 } },
+                'Direct Chat registers a Windows AppContainer profile and grants it access only to its runtime copy and storage folder. Turning Direct Chat off removes them. You can also remove them now; your chats are kept.'),
+              pending?.kind === 'access' ? h('div', { style: lifecycleActions },
+                h(Button, { size: 'sm', variant: 'primary', disabled: busy, onClick: () => act(() => directChatCall('remove-access'),
+                  result => result.ok ? 'System access removed.' : `Removal incomplete: ${result.detail}`) }, 'Remove access'),
+                h(Button, { size: 'sm', disabled: busy, onClick: () => setPending(null) }, 'Cancel'))
+                : h('div', { style: lifecycleActions }, h(Button, { size: 'sm', variant: 'outline', disabled: busy,
+                  onClick: () => setPending({ kind: 'access' }) }, 'Remove system access'))),
+            h(LifecycleGroup, { title: 'Capabilities' },
+              h('ul', { style: { listStyle: 'none', padding: 0, margin: 0, display: 'grid', gap: 6 } },
+                ...(state.capabilities ?? []).map(item => h('li', { key: item.id, style: { fontSize: 13 } },
+                  h('strong', null, item.status === 'available' ? 'Available' : 'Unavailable'), ' · ', item.detail))))))
+    }
+
+    const directChatPlugin = {
+      inject: ['slots'],
+      apply(ctx) {
+        ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: DIRECT_CHAT_VIEW }, DirectChatPanel))
+        ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({ name: 'sidebar.panellist', id: DIRECT_CHAT_VIEW,
+          label: 'Direct Chat', order: 5 }, ({ size }) => suiteGlyph(directChatIcon, size)))
+        ctx.slots.inject('settings.section', () => ctx.slots.register({ name: 'settings.section',
+          id: DIRECT_CHAT_ID, label: 'Direct Chat', order: 44 }, DirectChatSettings))
+        ctx.slots.inject('settings.section.icon', () => ctx.slots.register({ name: 'settings.section.icon', id: DIRECT_CHAT_ID },
+          ({ size }) => suiteGlyph(directChatIcon, size)))
+      },
+    }
+
     const reasoningComposerPlugin = {
       inject: ['slots', 'remote', 'remote.settings', 'sessions', 'modelDirectories'],
       apply(ctx) {
@@ -1852,6 +2465,8 @@ window.__ModuleLoader__.load({
     }
 
     return {
+      // Pure Direct Chat helpers, exposed for the package tests only.
+      directChat: { markdownBlocks, SafeMarkdown, textFile: directChatTextFile },
       // `remote.pluginManager` is its own Cordis service (one per Remote
       // namespace). It must be injected here: Cordis 4 throws "cannot get
       // property without inject" when an un-injected namespace is read.
@@ -1897,6 +2512,7 @@ window.__ModuleLoader__.load({
           const components = [
             [TYPE + '/environment-context', environmentPlugin],
             [TYPE + '/personal-profile', profilePlugin],
+            [TYPE + '/direct-chat', directChatPlugin],
             [TYPE + '/conversation-lifecycle', lifecycleSettingsPlugin],
             [TYPE + '/adaptive-reasoning', reasoningComposerPlugin],
           ]

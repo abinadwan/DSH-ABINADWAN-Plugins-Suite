@@ -69,7 +69,7 @@ export function bindChannel(port, dispatch) {
     let reply
     try { reply = { reply: frame.id, value: await dispatch(frame.operation, frame.data, lifetime.signal) } }
     catch (error) {
-      if (process.env.ABINADWAN_D2_DIAGNOSTICS === '1') console.error('[Direct Chat fixture]', frame.operation, error)
+      if (process.env.ABINADWAN_DIRECT_CHAT_DIAGNOSTICS === '1') console.error('[Direct Chat]', frame.operation, error)
       reply = { reply: frame.id, error: true }
     }
     try { send(reply) }

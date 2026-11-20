@@ -1,10 +1,11 @@
-// Windows AppContainer confinement for the Direct Chat companion (QA fixture).
+// Windows AppContainer confinement for the Direct Chat companion.
 // Bindings use the Harness runtime's own koffi dependency. No administrator rights are needed:
 // the profile is per user, and access grants are added only to directories the user owns.
 import { spawnSync } from 'node:child_process'
 import { createRequire } from 'node:module'
 import { join } from 'node:path'
 
+// The former shared QA profile, kept only so cleanup can remove it.
 export const profileName = 'abinadwan.direct-chat.qa'
 const S_OK = 0
 const E_ALREADY_EXISTS = 0x800700b7 | 0
@@ -100,7 +101,7 @@ export function bind(runtime) {
 /** Create or reuse the per-user profile and return its package SID. */
 export function ensureProfile(api, name = profileName) {
   const out = [null]
-  let hr = api.CreateAppContainerProfile(name, 'ABINADWAN Direct Chat (QA)', 'Confined Direct Chat companion', null, 0, out)
+  let hr = api.CreateAppContainerProfile(name, 'ABINADWAN Direct Chat', 'Confined Direct Chat companion', null, 0, out)
   if (hr === E_ALREADY_EXISTS) hr = api.DeriveAppContainerSidFromAppContainerName(name, out)
   if (hr !== S_OK) throw new Error(`AppContainer profile unavailable (0x${(hr >>> 0).toString(16)})`)
   const text = [null]
@@ -141,7 +142,7 @@ export function grant(path, sid, rights) {
   return true
 }
 
-/** Remove every ACE for the package SID from a tree. Used by the QA cleanup. */
+/** Remove every ACE for the package SID from a tree. Used by cleanup and stale-grant reconciliation. */
 export function revoke(path, sid) {
   const result = spawnSync(icacls(), [path, '/remove:g', `*${sid}`, '/T', '/Q', '/C'], { encoding: 'utf8', windowsHide: true })
   if (result.status !== 0) throw new Error(`Cannot revoke on ${path}: ${result.stdout}${result.stderr}`)
