@@ -23,6 +23,12 @@ const JOB_OBJECT_LIMIT_JOB_MEMORY = 0x200
 const JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION = 0x400
 const JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE = 0x2000
 const JobObjectExtendedLimitInformation = 9
+const JobObjectBasicUIRestrictions = 4
+// Every JOB_OBJECT_UILIMIT_* class: foreign USER handles, clipboard, system parameters, display
+// settings, global atoms, desktop switching and logoff.
+const JOB_OBJECT_UILIMIT_ALL = 0xff
+const DESKTOP_ALL_ACCESS = 0x01ff | 0x000f0000
+const SDDL_REVISION_1 = 1
 const INFINITE = 0xffffffff
 
 export function bind(runtime) {
@@ -57,9 +63,15 @@ export function bind(runtime) {
     BasicLimitInformation: BasicLimit, IoInfo: IoCounters, ProcessMemoryLimit: 'size_t',
     JobMemoryLimit: 'size_t', PeakProcessMemoryUsed: 'size_t', PeakJobMemoryUsed: 'size_t',
   })
+  const SecurityAttributes = koffi.struct('SECURITY_ATTRIBUTES', { nLength: 'uint32', lpSecurityDescriptor: 'void *', bInheritHandle: 'int32' })
+  const user32 = koffi.load('user32.dll')
   void SidAndAttributes
   return {
-    koffi, StartupInfoEx, ProcessInformation, SecurityCapabilities, ExtendedLimit,
+    koffi, StartupInfoEx, ProcessInformation, SecurityCapabilities, ExtendedLimit, SecurityAttributes,
+    SetJobUiRestrictions: kernel32.func('bool __stdcall SetInformationJobObject(void *, int32, _In_ uint32 *, uint32)'),
+    ConvertStringSecurityDescriptorToSecurityDescriptorW: advapi32.func('bool __stdcall ConvertStringSecurityDescriptorToSecurityDescriptorW(str16, uint32, _Out_ void **, void *)'),
+    CreateDesktopW: user32.func('void * __stdcall CreateDesktopW(str16, void *, void *, uint32, uint32, SECURITY_ATTRIBUTES *)'),
+    CloseDesktop: user32.func('bool __stdcall CloseDesktop(void *)'),
     CreateAppContainerProfile: userenv.func('int32 __stdcall CreateAppContainerProfile(str16, str16, str16, void *, uint32, _Out_ void **)'),
     DeriveAppContainerSidFromAppContainerName: userenv.func('int32 __stdcall DeriveAppContainerSidFromAppContainerName(str16, _Out_ void **)'),
     DeleteAppContainerProfile: userenv.func('int32 __stdcall DeleteAppContainerProfile(str16)'),
@@ -143,8 +155,11 @@ function quote(arg) {
 /**
  * Start `exe args` in the AppContainer with this process's standard handles as its only inherited handles.
  * The child cannot create processes, is killed when the returned job closes, and receives `env` only.
+ * It runs on a private desktop that only its package SID and the owner can open, and its job blocks the
+ * clipboard, foreign USER handles and global UI state, so it cannot read the user's screen, windows or clipboard.
  */
-export function launch(api, { exe, args, cwd, env, appContainerSid, lpac, capabilities = [], jobMemoryLimit }) {
+export function launch(api, { exe, args, cwd, env, appContainerSid, packageSid, lpac, capabilities = [], jobMemoryLimit }) {
+  if (!/^S-1-15-2(-\d+){7}$/.test(packageSid ?? '')) throw new Error('Confined launch requires the package SID')
   const { koffi } = api
   const handles = []
   for (const kind of [-10, -11, -12]) {
@@ -184,44 +199,71 @@ export function launch(api, { exe, args, cwd, env, appContainerSid, lpac, capabi
 
     const block = Buffer.from(Object.entries(env).map(([key, value]) => `${key}=${value}\0`).join('') + '\0', 'utf16le')
     const commandLine = Buffer.from([exe, ...args].map(quote).join(' ') + '\0', 'utf16le')
+    const desktop = privateDesktop(api, packageSid)
+    const desktopName = Buffer.from(`WinSta0\\${desktop.name}\0`, 'utf16le')
     const info = {
-      StartupInfo: { cb: koffi.sizeof(api.StartupInfoEx), dwFlags: STARTF_USESTDHANDLES,
+      StartupInfo: { cb: koffi.sizeof(api.StartupInfoEx), dwFlags: STARTF_USESTDHANDLES, lpDesktop: desktopName,
         hStdInput: stdin, hStdOutput: stdout, hStdError: stderr },
       lpAttributeList: list,
     }
     const created = {}
     const job = api.CreateJobObjectW(null, null)
-    if (!job) throw new Error('Job creation failed')
+    if (!job) { api.CloseDesktop(desktop.handle); throw new Error('Job creation failed') }
+    const fail = message => {
+      api.CloseHandle(job)
+      api.CloseDesktop(desktop.handle)
+      throw new Error(message)
+    }
     const limits = {
       BasicLimitInformation: { LimitFlags: JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE | JOB_OBJECT_LIMIT_ACTIVE_PROCESS
         | JOB_OBJECT_LIMIT_DIE_ON_UNHANDLED_EXCEPTION | JOB_OBJECT_LIMIT_JOB_MEMORY, ActiveProcessLimit: 1 },
       JobMemoryLimit: jobMemoryLimit,
     }
     if (!api.SetInformationJobObject(job, JobObjectExtendedLimitInformation, limits, koffi.sizeof(api.ExtendedLimit))) {
-      api.CloseHandle(job)
-      throw new Error(`Job limits failed (${api.GetLastError()})`)
+      fail(`Job limits failed (${api.GetLastError()})`)
+    }
+    if (!api.SetJobUiRestrictions(job, JobObjectBasicUIRestrictions, [JOB_OBJECT_UILIMIT_ALL], 4)) {
+      fail(`Job UI restrictions failed (${api.GetLastError()})`)
     }
     if (!api.CreateProcessW(exe, commandLine, null, null, true,
       EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED | CREATE_UNICODE_ENVIRONMENT | DETACHED_PROCESS,
       block, cwd, info, created)) {
-      const error = api.GetLastError()
-      api.CloseHandle(job)
-      throw new Error(`Confined process creation failed (${error})`)
+      fail(`Confined process creation failed (${api.GetLastError()})`)
     }
     if (!api.AssignProcessToJobObject(job, created.hProcess)) {
       const error = api.GetLastError()
       // The suspended process never ran. Terminating it here is the only safe outcome.
       api.TerminateProcess(created.hProcess, 1)
-      api.CloseHandle(job)
       api.CloseHandle(created.hThread)
       api.CloseHandle(created.hProcess)
-      throw new Error(`Job assignment failed (${error})`)
+      fail(`Job assignment failed (${error})`)
     }
     api.ResumeThread(created.hThread)
     api.CloseHandle(created.hThread)
-    return { job, process: created.hProcess, pid: created.dwProcessId }
+    return { job, desktop: desktop.handle, process: created.hProcess, pid: created.dwProcessId }
   } finally {
     api.DeleteProcThreadAttributeList(list)
+  }
+}
+
+/**
+ * Create a desktop in the interactive window station whose DACL admits only the owner and the
+ * package SID, with a low mandatory label so the low-integrity child can attach to it.
+ */
+function privateDesktop(api, packageSid) {
+  const name = `abinadwan-direct-chat-${process.pid}-${Date.now().toString(36)}`
+  const descriptor = [null]
+  if (!api.ConvertStringSecurityDescriptorToSecurityDescriptorW(
+    `D:P(A;;GA;;;OW)(A;;GA;;;${packageSid})S:(ML;;NW;;;LW)`, SDDL_REVISION_1, descriptor, null)) {
+    throw new Error(`Desktop security descriptor failed (${api.GetLastError()})`)
+  }
+  try {
+    const handle = api.CreateDesktopW(name, null, null, 0, DESKTOP_ALL_ACCESS,
+      { nLength: api.koffi.sizeof(api.SecurityAttributes), lpSecurityDescriptor: descriptor[0], bInheritHandle: 0 })
+    if (!handle) throw new Error(`Private desktop creation failed (${api.GetLastError()})`)
+    return { name, handle }
+  } finally {
+    api.LocalFree(descriptor[0])
   }
 }
 

@@ -56,6 +56,9 @@ test('the LPAC companion reaches only its runtime and storage, with no network o
   assert.match(result.stderr, /lpac=true/)
   const outcome = JSON.parse(result.stdout)
   for (const name of ['readRuntime', 'writeHome', 'readHome', 'koffi']) assert.equal(outcome[name].ok, true, name)
+  for (const name of ['deniedJunction', 'deniedHardlink', 'deniedSymlink', 'deniedScreen', 'deniedWindows', 'deniedClipboard']) {
+    assert.ok(outcome[name], `${name} was probed`)
+  }
   for (const [name, value] of Object.entries(outcome)) {
     if (/^denied/.test(name)) assert.equal(value.ok, false, `${name} must be refused`)
   }
@@ -64,6 +67,7 @@ test('the LPAC companion reaches only its runtime and storage, with no network o
   assert.equal(outcome.spawn.ok, false)
   assert.deepEqual(outcome.env.value, ['HOME', 'LOCALAPPDATA', 'SystemRoot', 'TEMP', 'TMP', 'USERPROFILE', 'WINDIR'])
   assert.deepEqual(await readdir(denied), ['canary.txt'])
+  assert.deepEqual((await readdir(home)).filter(name => name.startsWith('planted-')), [], 'no link reaches outside storage')
   for (const directory of [home, repository]) {
     assert.ok(!(await readdir(directory)).includes('escaped.txt'))
     assert.ok(!(await readdir(directory)).includes('direct-chat-escape.txt'))

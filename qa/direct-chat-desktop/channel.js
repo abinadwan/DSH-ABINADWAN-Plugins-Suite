@@ -94,6 +94,7 @@ export function bindChannel(port, dispatch) {
 export function streamTable() {
   const streams = new Map()
   return {
+    get size() { return streams.size },
     open(id, source, controller) {
       if (streams.has(id)) throw new Error('Duplicate stream')
       streams.set(id, { iterator: source[Symbol.asyncIterator](), controller, pulling: false })

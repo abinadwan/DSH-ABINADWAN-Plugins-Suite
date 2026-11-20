@@ -8,6 +8,7 @@ export const name = 'abinadwan-direct-chat-desktop-fixture'
 export const inject = ['connection', 'llm', 'agentDefaultModel']
 const prefix = '/api/abinadwan-direct-chat-fixture/'
 const peerLeaseMs = 90_000
+const maxModelStreams = 2
 
 class UnknownPeer extends Error {}
 
@@ -79,8 +80,13 @@ export async function apply(ctx) {
             const text = content.map(({ text }) => ({ type: 'text', text }))
             return { role, content: text, ...(role === 'assistant' ? { source: { kind: 'model', provider, model } } : {}) }
           })
+          // Provider calls spend the owner's credentials: only while an owner window holds a live lease,
+          // and never more than a turn's worth at once, whatever the companion asks for.
+          const admitted = () => [...peers.values()].some(until => until > Date.now()) && flows.size < maxModelStreams
+          if (!admitted()) throw new Error('Direct Chat model call not admitted')
           const controller = new AbortController()
           const prepared = await ctx.llm.prepareCall({ provider, model, reasoningEffort }, signal)
+          if (!admitted()) throw new Error('Direct Chat model call not admitted')
           flows.open(id, prepared.stream({ ...prepared.config, messages: history,
             signal: AbortSignal.any([signal, controller.signal]) }), controller)
           activeSamples.set(id, sample('active-start', id))
