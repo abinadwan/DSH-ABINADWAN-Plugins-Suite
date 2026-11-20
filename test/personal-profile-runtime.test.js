@@ -244,18 +244,24 @@ test('Host shares only saved v4 checked fields, and never promotes legacy policy
     const stored = disclosureRecord()
     const fiber = ctx.plugin(profile, { record: stored })
     await fiber.await()
-    const section=ctx.systemPrompt.sections.get(DISCLOSURE_SECTION_NAME)
-    assert.ok(section)
-    assert.equal(section.text(selection()),profileDisclosure(stored))
-    assert.equal(section.text({}),'')
+    // A fiber update may replace the registry section and its config closure.
+    // Always inspect the active registered section, as the native registry does.
+    const section=()=>{
+      const active=ctx.systemPrompt.sections.get(DISCLOSURE_SECTION_NAME)
+      assert.ok(active,'disclosure section remains registered')
+      assert.equal(ctx.systemPrompt.sections.size,2,'no duplicate or leaked sections')
+      return active
+    }
+    assert.equal(section().text(selection()),profileDisclosure(stored))
+    assert.equal(section().text({}),'')
     for (const version of [2,3]) {
       await fiber.update({record:{...stored,version,allowPersonalInformation:true,allowCloud:true}})
-      assert.equal(section.text(selection()),'')
+      assert.equal(section().text(selection()),'')
     }
     await fiber.update({record:{...stored,policies:{preferredName:'allow',nationality:'private',gender:'private'}}})
-    assert.match(section.text(selection()),/SYNTHETIC_P8_NAME/)
-    assert.doesNotMatch(section.text(selection()),/SYNTHETIC_P8_NATIONALITY|female/)
+    assert.match(section().text(selection()),/SYNTHETIC_P8_NAME/)
+    assert.doesNotMatch(section().text(selection()),/SYNTHETIC_P8_NATIONALITY|female/)
     await fiber.update({record:profile.emptyRecord()})
-    assert.equal(section.text(selection()),'')
+    assert.equal(section().text(selection()),'')
   } finally { await ctx.fiber.dispose() }
 })
