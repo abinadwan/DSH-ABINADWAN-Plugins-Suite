@@ -2039,7 +2039,7 @@ window.__ModuleLoader__.load({
       }
     }
 
-    function DirectChatHistory({ root, SessionProvider, renderSlot, selection, onDeleted }) {
+    function DirectChatHistory({ root, SessionProvider, renderSlot, selection, onDeleted, storageKey }) {
       const summary = React.useSyncExternalStore(root.sessions.list.subscribe, root.sessions.list.getSnapshot)
       const [reference, setReference] = React.useState(null)
       const [error, setError] = React.useState('')
@@ -2078,7 +2078,7 @@ window.__ModuleLoader__.load({
 
       async function remove(id) {
         await perform(async () => {
-          await directChatCall('delete', { ids: [id] })
+          await directChatCall('delete', { ids: [id], storageKey })
           if (selection.current === id) selection.current = null
           onDeleted()
         })
@@ -2198,7 +2198,7 @@ window.__ModuleLoader__.load({
         suiteGlyph(['M8.5 12.5l5.8-5.8a2.5 2.5 0 0 1 3.5 3.5l-7.4 7.4a4 4 0 0 1-5.7-5.7L11.5 5'], 15)))
     }
 
-    async function directChatBoot(modules, root, peer, selection, reconnect, lifetime) {
+    async function directChatBoot(modules, root, { peer, storageKey }, selection, reconnect, lifetime) {
       const { Registry, installConnection, Gateway, Remotes, Renderer, LocaleRuntime, Sessions, UiSession, Conversation, Chat, Models } = modules
       async function load(plugin) { await root.plugin(plugin.default ?? plugin).await() }
       const scoped = signal => signal ? AbortSignal.any([signal, lifetime]) : lifetime
@@ -2248,7 +2248,7 @@ window.__ModuleLoader__.load({
         ctx.slots.register({ name: 'root', children: {
           main: { kind: 'keyed', scope: 'root' },
           'direct-chat.content': { kind: 'single', scope: 'session' },
-        } }, props => h(DirectChatBoundary, null, h(DirectChatHistory, { ...props, root, selection, onDeleted: reconnect })))
+        } }, props => h(DirectChatBoundary, null, h(DirectChatHistory, { ...props, root, selection, storageKey, onDeleted: reconnect })))
         ctx.slots.register({ name: 'direct-chat.content' }, ({ renderFactorySlot }) => renderFactorySlot(
           'conversation.content', { variant: 'embedded', phase: 'active', hero: false },
           { slots: { views: ({ renderSlot }) => renderSlot('conversation.session', { view: 'chat' }) } },
@@ -2312,7 +2312,7 @@ window.__ModuleLoader__.load({
           const opened = await directChatCall('open', {}, lifetime.signal)
           peer = opened.peer
           lifetime.signal.throwIfAborted()
-          await directChatBoot(modules, root, peer, selection, reconnect, lifetime.signal)
+          await directChatBoot(modules, root, opened, selection, reconnect, lifetime.signal)
           lifetime.signal.throwIfAborted()
           unmount = root.uiRenderer.mount(ref.current)
           setStatus('')
@@ -2358,7 +2358,7 @@ window.__ModuleLoader__.load({
       const [mode, setMode] = React.useState('migrate')
       const [pending, setPending] = React.useState(null)
       const [retention, setRetention] = React.useState(null)
-      const [confirmText, setConfirmText] = React.useState('')
+      const [confirmation, setConfirmation] = React.useState(null)
       const mounted = React.useRef(true)
       React.useEffect(() => { mounted.current = true; void refresh(); return () => { mounted.current = false } }, [])
 
@@ -2367,7 +2367,7 @@ window.__ModuleLoader__.load({
           const [next, list] = await Promise.all([directChatCall('status'), directChatCall('chats').catch(() => ({ chats: [] }))])
           if (!mounted.current) return
           setState(next)
-          setChats(list.chats ?? [])
+          setChats(list.storageKey === next.storage?.key ? list.chats ?? [] : [])
           setError('')
         } catch (cause) { if (mounted.current) setError(cause.message) }
       }
@@ -2388,6 +2388,7 @@ window.__ModuleLoader__.load({
       }
 
       const storage = state?.storage
+      const confirmText = confirmation?.storageKey === storage?.key ? confirmation?.text ?? '' : ''
       const phaseLabel = { idle: 'Ready, not running', preparing: 'Preparing', starting: 'Starting', running: 'Running',
         maintenance: 'Updating storage', failed: 'Unavailable' }
       const stats = state?.available ? [
@@ -2411,13 +2412,13 @@ window.__ModuleLoader__.load({
                 h('dt', { style: lifecycleMuted }, label), h('dd', { style: { margin: '3px 0 0', fontSize: 14, fontWeight: 600 } }, value)))),
               state.error ? h('p', { role: 'alert', style: { margin: 0, fontSize: 13 } }, state.error) : null,
               h('p', { style: { ...lifecycleMuted, margin: 0 } },
-                'Each chat runs in a separate confined process with no network, tools or file access outside its storage folder.')),
+                'Direct Chat shares one confined process for the active storage folder. The process has no network or tools. It can read its runtime copy and write to that storage folder.')),
             h(LifecycleGroup, { title: 'Storage location' },
               h('div', { style: { display: 'grid', gap: 4 } },
                 h('span', { style: lifecycleMuted }, storage?.isDefault ? 'Default folder' : 'Custom folder'),
                 h('code', { dir: 'ltr', style: { ...markdownCode, overflowWrap: 'anywhere' } }, storage?.path)),
               storage?.error ? h('p', { role: 'alert', style: { margin: 0, fontSize: 13 } }, storage.error) : null,
-              storage?.previous ? h('small', { style: lifecycleMuted }, 'The previous folder was left unchanged: ',
+              storage?.previous ? h('small', { style: lifecycleMuted }, 'Previous storage folder kept: ',
                 h('bdi', { dir: 'ltr' }, storage.previous)) : null,
               h('label', { style: lifecycleLabel }, 'New storage folder',
                 h('input', { style: lifecycleSelect, value: folder, disabled: busy, placeholder: 'D:\\Chats\\Direct Chat', dir: 'ltr',
@@ -2426,7 +2427,7 @@ window.__ModuleLoader__.load({
                 h('select', { style: lifecycleSelect, value: mode, disabled: busy, onChange: event => setMode(event.target.value) },
                   h('option', { value: 'migrate' }, 'Copy my chats to the new folder and verify them'),
                   h('option', { value: 'switch' }, 'Use the new folder as it is'))),
-              h('small', { style: lifecycleMuted }, 'The folder must be empty or already hold Direct Chat storage. Your current folder is never changed or deleted.'),
+              h('small', { style: lifecycleMuted }, 'Choose an empty folder for migration or switch to a verified Direct Chat folder. Switching and migration keep the previous folder and its chats.'),
               pending?.kind === 'storage' ? h('div', { style: lifecycleActions },
                 h('span', { style: lifecycleMuted }, 'Open Direct Chat windows reconnect after the change.'),
                 h(Button, { size: 'sm', variant: 'primary', disabled: busy, onClick: () => act(() => directChatCall('storage', pending.body),
@@ -2434,9 +2435,9 @@ window.__ModuleLoader__.load({
                 h(Button, { size: 'sm', disabled: busy, onClick: () => setPending(null) }, 'Cancel'))
                 : h('div', { style: lifecycleActions },
                   h(Button, { size: 'sm', variant: 'outline', disabled: busy || !folder.trim(),
-                    onClick: () => setPending({ kind: 'storage', body: { mode, path: folder.trim() } }) }, 'Change folder'),
+                    onClick: () => setPending({ kind: 'storage', body: { mode, path: folder.trim(), storageKey: storage?.key } }) }, 'Change folder'),
                   storage && !storage.isDefault ? h(Button, { size: 'sm', variant: 'outline', disabled: busy,
-                    onClick: () => setPending({ kind: 'storage', body: { mode: 'default' } }) }, 'Use default folder') : null)),
+                    onClick: () => setPending({ kind: 'storage', body: { mode: 'default', storageKey: storage?.key } }) }, 'Use default folder') : null)),
             h(LifecycleGroup, { title: 'Retention' },
               h('label', { style: lifecycleLabel }, 'Delete chats with no activity for',
                 h('select', { style: lifecycleSelect, value: days, disabled: busy, onChange: async event => {
@@ -2457,10 +2458,10 @@ window.__ModuleLoader__.load({
                 : state.retention?.days ? h('div', { style: lifecycleActions },
                   h('span', { style: lifecycleMuted }, `${state.retention.candidates} chat${state.retention.candidates === 1 ? '' : 's'} currently past the limit.`),
                   h(Button, { size: 'sm', variant: 'outline', disabled: busy || !state.retention.candidates,
-                    onClick: () => setPending({ kind: 'retention-run' }) }, 'Apply now')) : null,
+                    onClick: () => setPending({ kind: 'retention-run', storageKey: storage?.key }) }, 'Apply now')) : null,
               pending?.kind === 'retention-run' ? h('div', { style: lifecycleActions },
                 h('span', { style: lifecycleMuted }, 'Delete every chat past the limit permanently?'),
-                h(Button, { size: 'sm', variant: 'primary', disabled: busy, onClick: () => act(() => directChatCall('retention-run'),
+                h(Button, { size: 'sm', variant: 'primary', disabled: busy, onClick: () => act(() => directChatCall('retention-run', { storageKey: pending.storageKey }),
                   result => result.error ? `Retention stopped: ${result.error}` : `${result.deleted ?? 0} chats deleted.`) }, 'Delete'),
                 h(Button, { size: 'sm', disabled: busy, onClick: () => setPending(null) }, 'Cancel')) : null,
               state.retention?.last?.error ? h('small', { role: 'alert', style: lifecycleMuted }, `Last run stopped: ${state.retention.last.error}`) : null),
@@ -2471,22 +2472,22 @@ window.__ModuleLoader__.load({
                     h('bdi', { style: { fontSize: 13, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' } }, chat.preview || 'Empty chat'),
                     h('small', { style: lifecycleMuted }, `${new Date(chat.lastActivity).toLocaleString('en')} · ${formatBytes(chat.bytes)}`)),
                   pending?.kind === 'delete' && pending.id === chat.id ? h('span', { style: lifecycleActions },
-                    h(Button, { size: 'sm', variant: 'primary', disabled: busy, onClick: () => act(() => directChatCall('delete', { ids: [chat.id] }),
+                    h(Button, { size: 'sm', variant: 'primary', disabled: busy, onClick: () => act(() => directChatCall('delete', { ids: [chat.id], storageKey: pending.storageKey }),
                       () => 'Chat deleted.') }, 'Delete permanently'),
                     h(Button, { size: 'sm', disabled: busy, onClick: () => setPending(null) }, 'Cancel'))
                     : h(Button, { size: 'sm', variant: 'outline', disabled: busy, 'aria-label': `Delete ${chat.preview || 'chat'}`,
-                      onClick: () => setPending({ kind: 'delete', id: chat.id }) }, 'Delete'))))
+                      onClick: () => setPending({ kind: 'delete', id: chat.id, storageKey: storage?.key }) }, 'Delete'))))
                 : h('p', { style: { ...lifecycleMuted, margin: 0 } }, 'No Direct Chat history.'),
-              h('label', { style: lifecycleLabel }, `To delete every Direct Chat, type ${DIRECT_CHAT_DELETE_ALL}`,
+              h('label', { style: lifecycleLabel }, `To delete all chats in the active storage folder, type ${DIRECT_CHAT_DELETE_ALL}`,
                 h('input', { style: lifecycleSelect, value: confirmText, disabled: busy || !chats.length, autoComplete: 'off',
-                  onChange: event => setConfirmText(event.target.value) })),
+                  onChange: event => setConfirmation({ text: event.target.value, storageKey: storage?.key }) })),
               h('div', { style: lifecycleActions },
                 h(Button, { size: 'sm', variant: 'primary', disabled: busy || confirmText !== DIRECT_CHAT_DELETE_ALL,
-                  onClick: () => act(() => directChatCall('delete-all', { confirmation: confirmText }),
-                    () => { setConfirmText(''); return 'All Direct Chats were deleted.' }) }, 'Delete All Direct Chats'))),
+                  onClick: () => act(() => directChatCall('delete-all', { confirmation: confirmText, storageKey: confirmation.storageKey }),
+                    () => { setConfirmation(null); return 'All chats in the active storage folder were deleted.' }) }, 'Delete All Direct Chats'))),
             h(LifecycleGroup, { title: 'System access' },
               h('p', { style: { ...lifecycleMuted, margin: 0 } },
-                'Direct Chat registers a Windows AppContainer profile and grants it access only to its runtime copy and storage folder. Turning Direct Chat off removes them. You can also remove them now; your chats are kept.'),
+                'Direct Chat grants its Windows AppContainer access to its runtime copy and storage folder. Turn off Direct Chat or remove system access here to withdraw those grants and keep your chats. Failed cleanup can be retried here.'),
               pending?.kind === 'access' ? h('div', { style: lifecycleActions },
                 h(Button, { size: 'sm', variant: 'primary', disabled: busy, onClick: () => act(() => directChatCall('remove-access'),
                   result => result.ok ? 'System access removed.' : `Removal incomplete: ${result.detail}`) }, 'Remove access'),

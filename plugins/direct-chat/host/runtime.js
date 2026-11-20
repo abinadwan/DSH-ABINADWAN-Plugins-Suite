@@ -10,7 +10,7 @@ import { fileURLToPath } from 'node:url'
 
 const FORMAT = 1
 const companion = fileURLToPath(new URL('../companion/', import.meta.url))
-export const COMPANION_FILES = ['worker.js', 'channel.js', 'launcher.mjs', 'appcontainer.js', 'grants.js', 'cleanup.mjs']
+export const COMPANION_FILES = ['worker.js', 'channel.js', 'launcher.mjs', 'appcontainer.js', 'grants.js', 'cleanup.mjs', 'storage-lease.js']
 // The packages worker.js imports, plus koffi for the launcher's Win32 bindings.
 export const ROOT_PACKAGES = ['cordis', 'dsh-llm', 'dsh-session', 'dsh-session-projection', 'dsh-system-prompt',
   'dsh-tools', 'dsh-tool-executor-native', 'dsh-agent', 'dsh-agent-loop', 'dsh-session-persistence-jsonl',

@@ -34,7 +34,7 @@ async function scratch(t) {
     if (states.length) {
       const cleanup = spawnSync(node, [join(app, 'cleanup.mjs'), runtime, '--state', ...states],
         { encoding: 'utf8', windowsHide: true, timeout: 60_000 })
-      if (cleanup.status !== 0) console.error(`AppContainer cleanup failed: ${cleanup.stderr}`)
+      assert.equal(cleanup.status, 0, 'AppContainer cleanup failed; fixture was kept: ' + cleanup.stderr)
     }
     await rm(root, { recursive: true, force: true, maxRetries: 10, retryDelay: 200 }).catch(() => {})
   })
@@ -128,7 +128,11 @@ async function companion(context, home) {
   const fake = broker()
   const started = context.startCompanion({ node, runtime, app: context.app, read: [dirname(node), runtime, context.app], home, state: context.state, diagnostics: true })
   const link = context.bindChannel(started.port, fake.dispatch)
-  const metrics = await link.request('ready')
+  const metrics = await link.request('ready').catch(async error => {
+    await started.exited
+    const log = await readFile(join(context.state, 'diagnostics.log'), 'utf8').catch(() => '')
+    throw new Error(log.trim() || error.message, { cause: error })
+  })
   const peer = crypto.randomUUID()
   await link.request('open', { peer })
   async function rpc(endpoint, request) {
@@ -228,7 +232,7 @@ test('each storage root has its own AppContainer identity, and every grant is re
     const state = join(root, `${name}-state`)
     await mkdir(home)
     await mkdir(state)
-    roots.push({ home, state, profile: grants.profileNameFor(home) })
+    roots.push({ home, state, profile: grants.profileNameFor(home, state) })
   }
   const [first, second] = roots
   assert.notEqual(first.profile, second.profile)
@@ -262,6 +266,30 @@ test('each storage root has its own AppContainer identity, and every grant is re
     assert.ok(!listed.includes(sid(firstRun)) && !listed.includes(sid(secondRun)), `no grant remains on ${path}`)
   }
   assert.deepEqual(grants.readManifest(first.state).grants, [])
+})
+
+
+test('Windows storage leases pin path identity across independent processes', async t => {
+  const { root, home } = await scratch(t)
+  const { bindStorage } = await import('../plugins/direct-chat/companion/storage-lease.js')
+  const io = bindStorage(runtime)
+  const middle = join(root, 'parent')
+  const locked = join(middle, 'storage')
+  await mkdir(locked, { recursive: true })
+  const rename = (from, to) => spawnSync(node, ['--input-type=module', '--eval',
+    'import { renameSync } from "node:fs"; renameSync(process.argv[1], process.argv[2])', from, to],
+  { encoding: 'utf8', windowsHide: true, timeout: 5000 })
+  const owned = io.claim(locked)
+  const duplicate = io.receive(io.transfer([owned]))
+  owned.close()
+  try {
+    assert.notEqual(rename(locked, join(middle, 'moved')).status, 0, 'another process cannot rename the root')
+    assert.notEqual(rename(middle, join(root, 'parent-moved')).status, 0, 'another process cannot rename an ancestor')
+    assert.throws(() => io.claim(locked), /in use by another process/)
+  } finally { duplicate.close() }
+  const result = rename(locked, join(middle, 'moved'))
+  assert.equal(result.status, 0, result.stderr)
+  assert.ok(existsSync(home))
 })
 
 test('the grant guard refuses system, profile and application folders without touching them', async t => {

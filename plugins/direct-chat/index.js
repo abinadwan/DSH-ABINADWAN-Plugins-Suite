@@ -4,15 +4,16 @@
 // unavailable. Routes are owner-authenticated Host routes; chat traffic additionally needs an expiring lease.
 import { spawn } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
-import { appendFile, readFile, rm, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { appendFile, lstat, readFile, rm, writeFile } from 'node:fs/promises'
+import { dirname, join } from 'node:path'
 import { bindChannel, streamTable } from './companion/channel.js'
-import { profileNameFor } from './companion/grants.js'
+import { profileNameFor, readManifest } from './companion/grants.js'
+import { bindStorage, folderIdentity, samePath } from './companion/storage-lease.js'
 import { CONFINEMENT_FAILED, startCompanion } from './host/companion-process.js'
-import { RuntimeUnavailable, currentRuntime, provisionRuntime } from './host/runtime.js'
+import { RuntimeUnavailable, currentRuntime, hostSources, provisionRuntime } from './host/runtime.js'
 import {
-  RETENTION_DAYS, StorageRefused, dataPaths, deleteAll, deleteChats, ensureDataFolders, inventory, migrateStorage,
-  prepareEmptyRoot, readSettings, retentionCandidates, storageRoot, usage, validateStorageRoot, writeSettings,
+  QUARANTINE, RETENTION_DAYS, StorageRefused, dataPaths, deleteAll, deleteChats, ensureDataFolders, inside, inventory, migrateStorage,
+  openStorage, prepareEmptyRoot, readSettings, readStorage, retentionCandidates, storageRoot, usage, writeSettings,
 } from './host/storage.js'
 
 export const name = 'abinadwan-direct-chat'
@@ -71,7 +72,6 @@ export async function apply(ctx) {
 
   const paths = dataPaths()
   ensureDataFolders(paths)
-  let settings = readSettings(paths.state)
   const peers = new Map()
   let phase = 'idle'
   let lastError = ''
@@ -100,6 +100,51 @@ export async function apply(ctx) {
     return child
   }
 
+  const storageApi = () => bindStorage(dirname(hostSources().modules))
+
+  function ownState() {
+    const io = storageApi()
+    return { io, state: io.claim(paths.state) }
+  }
+
+  async function ownStorage(expectedKey) {
+    const owned = ownState()
+    let root
+    try {
+      const settings = readSettings(paths.state)
+      const home = storageRoot(paths, settings)
+      root = await openStorage(home, paths, { io: owned.io, expected: settings.rootId, expectedKey })
+      if (!root.marker) {
+        if (!samePath(home, paths.defaultStorage)) throw new StorageRefused('Direct Chat storage identity cannot be verified.')
+        root.marker = prepareEmptyRoot(root.path, owned.io)
+      }
+      if (!settings.rootId) {
+        settings.rootId = root.marker.id
+        writeSettings(paths.state, settings, owned.io)
+      }
+      return { ...owned, settings, root, close() { root.lease.close(); owned.state.close() } }
+    } catch (error) {
+      root?.lease.close()
+      owned.state.close()
+      throw error
+    }
+  }
+
+  async function withState(task) {
+    const owned = ownState()
+    try { return await task(owned) } finally { owned.state.close() }
+  }
+
+  async function withStorage(task, expectedKey) {
+    const owned = await ownStorage(expectedKey)
+    try { return await task(owned) } finally { owned.close() }
+  }
+
+  async function inspectStorage(read) {
+    const settings = readSettings(paths.state)
+    return readStorage(storageRoot(paths, settings), paths, storageApi(), settings.rootId, read)
+  }
+
   async function launch() {
     if (stop) await stop
     if (disposed) throw new Unavailable('Direct Chat is turned off.')
@@ -109,13 +154,28 @@ export async function apply(ctx) {
       const begun = performance.now()
       phase = 'preparing'
       lastError = ''
-      const snapshot = await provisionRuntime(paths.runtime)
-      await applyRetention()
-      const home = storageRoot(paths, settings)
-      phase = 'starting'
-      // Always confined. A launch that cannot establish the AppContainer exits without a companion.
-      const { proc, port, exited } = startCompanion({ node: snapshot.node, runtime: snapshot.runtime, app: snapshot.app,
-        read: [snapshot.root], home, state: paths.state, diagnostics })
+      const owned = await ownStorage()
+      const { io, root, state } = owned
+      let started
+      try {
+        const snapshot = await provisionRuntime(paths.runtime)
+        const profile = profileNameFor(root.path, paths.state)
+        if (readManifest(paths.state).profiles.some(name => name !== profile)) {
+          const cleanup = await revokeAccess(owned, profile, [root])
+          if (!cleanup.ok) throw new Unavailable('Previous Direct Chat access needs cleanup. ' + cleanup.detail)
+        }
+        await applyRetention(owned)
+        phase = 'starting'
+        // The launcher and child retain kernel ownership even if this Host terminates.
+        started = startCompanion({ node: snapshot.node, runtime: snapshot.runtime, app: snapshot.app,
+          read: [snapshot.root], home: root.path, state: paths.state, diagnostics,
+          ownership: io.transfer([state, root.lease]) })
+      } catch (error) {
+        owned.close()
+        throw error
+      }
+      const { proc, port, exited } = started
+      void exited.then(() => owned.close())
       const flows = streamTable()
       let modelCatalog
       const link = bindChannel(port, async (operation, data, signal) => {
@@ -159,7 +219,7 @@ export async function apply(ctx) {
         if (operation === 'model-close') { await flows.close(data.id); return true }
         throw new Error('Unknown Direct Chat worker operation')
       })
-      const instance = { link, proc, port, exited, flows }
+      const instance = { link, proc, port, exited, flows, storageKey: root.marker.key }
       void exited.then(([code, signal]) => {
         if (child === instance) { child = undefined; peers.clear(); phase = 'idle' }
         void flows.dispose()
@@ -209,7 +269,10 @@ export async function apply(ctx) {
       }
     })()
     try { await stop }
-    finally { stop = undefined }
+    finally {
+      stop = undefined
+      if (phase === 'running') phase = 'idle'
+    }
   }
 
   function scheduleIdle() {
@@ -238,39 +301,51 @@ export async function apply(ctx) {
     return run
   }
 
-  async function applyRetention() {
+  async function applyRetention({ root, settings, io }) {
     if (!settings.retentionDays) return
-    const home = storageRoot(paths, settings)
+    let deleted = 0
     try {
-      const candidates = await retentionCandidates(home, settings.retentionDays)
-      const result = candidates.length ? await deleteChats(home, candidates.map(chat => chat.id)) : { deleted: [] }
-      lastRetention = { at: Date.now(), deleted: result.deleted.length }
-      if (result.deleted.length) void trail(`retention deleted ${result.deleted.length}`)
+      const candidates = await retentionCandidates(root.path, settings.retentionDays, Date.now(), io)
+      for (let offset = 0; offset < candidates.length; offset += 1000) {
+        const result = await deleteChats(root.path, candidates.slice(offset, offset + 1000).map(chat => chat.id), io)
+        deleted += result.deleted.length
+      }
+      lastRetention = { at: Date.now(), deleted }
+      if (deleted) void trail('retention deleted ' + deleted)
     } catch (error) {
-      lastRetention = { at: Date.now(), deleted: 0, error: error instanceof StorageRefused ? error.message : 'Retention failed' }
+      lastRetention = { at: Date.now(), deleted, error: error instanceof StorageRefused ? error.message : 'Retention failed' }
+      // A verified rollback can leave references that legitimately block retention. Only unresolved recovery
+      // or lost root identity prevents normal chat startup.
+      await readStorage(root.path, paths, io, root.marker.id, () => {})
     }
   }
 
   /** Revoke every recorded grant (optionally keeping one profile's) and delete those AppContainer profiles. */
-  async function revokeAccess(keepProfile) {
-    let snapshot = await currentRuntime(paths.runtime)
-    if (!snapshot) {
-      try { snapshot = await provisionRuntime(paths.runtime) }
-      catch { return { ok: false, detail: 'Cleanup needs the Direct Chat runtime copy.' } }
-    }
+  async function revokeAccess({ io, state }, keepProfile, roots = []) {
+    if (!readManifest(paths.state).profiles.some(profile => profile !== keepProfile)) return { ok: true }
+    let snapshot
+    try { snapshot = await provisionRuntime(paths.runtime) }
+    catch { return { ok: false, detail: 'Cleanup needs the current Direct Chat runtime.' } }
     const args = [join(snapshot.app, 'cleanup.mjs'), snapshot.runtime, '--state', paths.state,
       ...(keepProfile ? ['--keep-profile', keepProfile] : [])]
+    const ownership = Buffer.from(JSON.stringify({ transfer: io.transfer([state, ...roots.map(root => root.lease)]),
+      roots: roots.map(root => root.path) })).toString('base64url')
+    const guarded = ['SystemRoot', 'WINDIR', 'USERPROFILE', 'ProgramFiles', 'ProgramFiles(x86)', 'ProgramData', 'LOCALAPPDATA', 'APPDATA']
+    const env = Object.fromEntries(guarded.filter(key => process.env[key]).map(key => [key, process.env[key]]))
     const cleanup = spawn(snapshot.node, args, { windowsHide: true, stdio: ['ignore', 'ignore', 'pipe'],
-      env: { SystemRoot: process.env.SystemRoot, WINDIR: process.env.WINDIR } })
+      env: { ...env, ABINADWAN_DIRECT_CHAT_CLEANUP_OWNERSHIP: ownership } })
     let stderr = ''
     cleanup.stderr.on('data', chunk => { stderr = (stderr + chunk).slice(-2000) })
-    const [code] = await new Promise(done => cleanup.once('exit', (...result) => done(result)))
+    const code = await new Promise(done => {
+      cleanup.once('exit', done)
+      cleanup.once('error', error => { stderr = error.message; done(null) })
+    })
     return code === 0 ? { ok: true } : { ok: false, detail: stderr.trim() || `Cleanup exited with ${code}` }
   }
 
   /** Withdraw every grant, delete the profiles and the runtime copy. Chats stay in their storage folder. */
-  async function removeSystemAccess() {
-    const result = await revokeAccess()
+  async function removeSystemAccess(owned) {
+    const result = await revokeAccess(owned)
     if (!result.ok) return result
     await rm(paths.runtime, { recursive: true, force: true, maxRetries: 5, retryDelay: 100 })
     ensureDataFolders(paths)
@@ -278,19 +353,29 @@ export async function apply(ctx) {
   }
 
   async function status() {
+    const settings = readSettings(paths.state)
     const home = storageRoot(paths, settings)
     const runtime = await currentRuntime(paths.runtime)
     let chats = []
     let space = { bytes: 0, files: 0 }
     let storageError = ''
+    let storageKey
+    let candidates = []
     try {
-      chats = await inventory(home)
-      space = await usage(home)
+      const io = storageApi()
+      await readStorage(home, paths, io, settings.rootId, async path => {
+        storageKey = folderIdentity(path)
+        chats = await inventory(path, io)
+        space = await usage(path, io)
+        if (settings.retentionDays) {
+          const cutoff = Date.now() - settings.retentionDays * 86_400_000
+          candidates = chats.filter(chat => chat.lastActivity < cutoff)
+        }
+      })
     } catch (error) { storageError = error instanceof StorageRefused ? error.message : 'The storage folder is unavailable.' }
-    const candidates = settings.retentionDays ? await retentionCandidates(home, settings.retentionDays).catch(() => []) : []
     return {
       available: true, phase, error: lastError, windows: peers.size,
-      storage: { path: home, isDefault: home === paths.defaultStorage, defaultPath: paths.defaultStorage,
+      storage: { path: home, key: storageKey, isDefault: home === paths.defaultStorage, defaultPath: paths.defaultStorage,
         previous: settings.previousStorage, chats: chats.length, bytes: space.bytes, error: storageError },
       runtime: runtime ? { path: runtime.root, bytes: runtime.info.bytes, files: runtime.info.files } : null,
       startup: lastStartup ? { ms: lastStartup.startupMs, rss: lastStartup.rss } : null,
@@ -313,7 +398,7 @@ export async function apply(ctx) {
         if (signal.aborted) { await instance.link.request('revoke', { peer }); signal.throwIfAborted() }
         if (child !== instance || disposed || maintenance) throw new UnknownPeer()
         peers.set(peer, Date.now() + peerLeaseMs)
-        return json({ peer })
+        return json({ peer, storageKey: instance.storageKey })
       } finally { opening--; scheduleIdle() }
     },
     async close(data) {
@@ -365,59 +450,85 @@ export async function apply(ctx) {
   // Settings, storage, deletion and access management.
   Object.assign(routes, {
     status: async () => json(await status()),
-    chats: async () => json({ chats: await inventory(storageRoot(paths, settings)) }),
-    delete: async data => json(await maintain(() => deleteChats(storageRoot(paths, settings), data.ids))),
+    chats: async () => json(await inspectStorage(async path => ({
+      storageKey: folderIdentity(path), chats: await inventory(path, storageApi()),
+    }))),
+    delete: async data => json(await maintain(() =>
+      withStorage(({ root, io }) => deleteChats(root.path, data.ids, io), data.storageKey))),
     async 'delete-all'(data) {
       if (data.confirmation !== DELETE_ALL_CONFIRMATION) throw new StorageRefused('Type the confirmation exactly to delete all chats')
-      return json(await maintain(async () => {
-        const result = await deleteAll(storageRoot(paths, settings))
+      return json(await maintain(() => withStorage(async ({ root, io }) => {
+        const result = await deleteAll(root.path, io)
         void trail('deleted all chats')
         return result
-      }))
+      }, data.storageKey)))
     },
     async storage(data) {
-      return json(await maintain(async () => {
-        const current = storageRoot(paths, settings)
-        let next
-        if (data.mode === 'default') {
-          next = paths.defaultStorage
-          if (next === current) throw new StorageRefused('The default folder is already in use')
-        } else {
-          if (!['migrate', 'switch'].includes(data.mode)) throw new StorageRefused('Choose how to change the storage folder')
-          const target = await validateStorageRoot(data.path, paths)
-          if (target.path.toLowerCase() === current.toLowerCase()) throw new StorageRefused('This is already the storage folder')
-          if (data.mode === 'migrate') {
-            if (target.kind !== 'empty') throw new StorageRefused('Migration needs an empty folder')
-            await migrateStorage(current, target.path)
-          } else if (target.kind === 'empty') prepareEmptyRoot(target.path)
-          next = target.path
+      return json(await maintain(() => withStorage(async owned => {
+        const { root, settings, io } = owned
+        if (!['default', 'migrate', 'switch'].includes(data.mode)) throw new StorageRefused('Choose how to change the storage folder')
+        const nextPath = data.mode === 'default' ? paths.defaultStorage : data.path
+        if (typeof nextPath === 'string' && (inside(nextPath, root.path) || inside(root.path, nextPath))) {
+          throw new StorageRefused('Choose a storage folder separate from the active Direct Chat root.')
         }
-        settings = { ...settings, storage: next === paths.defaultStorage ? null : next, previousStorage: current }
-        writeSettings(paths.state, settings)
-        void trail(`storage ${data.mode}`)
-        // The previous root's identity no longer needs any access. Its files stay where they are.
-        const revoked = await revokeAccess(profileNameFor(next))
-        return { path: next, previous: current, accessRevoked: revoked.ok }
-      }))
+        let pending = settings.pendingMigration
+        if (pending && (data.mode !== 'migrate' || typeof nextPath !== 'string' || !samePath(nextPath, pending.path))) {
+          throw new StorageRefused('Retry the pending migration to ' + pending.path + ' before changing storage again.')
+        }
+        const target = await openStorage(nextPath, paths, { io, create: data.mode !== 'default', pending })
+        try {
+          let marker = target.marker
+          if (data.mode === 'migrate' && !marker) {
+            if (!pending) {
+              pending = { path: target.path, id: randomUUID(), sourceId: root.marker.id, key: folderIdentity(target.path) }
+              writeSettings(paths.state, { ...settings, pendingMigration: pending }, io)
+            }
+            try {
+              const copied = await migrateStorage(root.path, target.path, io, pending.id)
+              marker = { id: copied.id }
+            } catch (error) {
+              // Clear the intent only when there is no journal left to recover.
+              const needsRecovery = await lstat(join(target.path, QUARANTINE)).then(() => true, failure => failure.code !== 'ENOENT')
+              if (!needsRecovery) writeSettings(paths.state, { ...settings, pendingMigration: undefined }, io)
+              throw error
+            }
+          } else if (data.mode === 'migrate' && marker.id !== pending?.id) {
+            throw new StorageRefused('Migration needs an empty folder. Use an existing Direct Chat folder by switching to it.')
+          } else if (!marker) marker = prepareEmptyRoot(target.path, io)
+          const storage = samePath(target.path, paths.defaultStorage) ? null : target.path
+          writeSettings(paths.state, { ...settings, storage, rootId: marker.id, previousStorage: root.path, pendingMigration: undefined }, io)
+          void trail('storage ' + data.mode)
+          const revoked = await revokeAccess(owned, profileNameFor(target.path, paths.state), [root, target])
+          return { path: target.path, previous: root.path, accessRevoked: revoked.ok }
+        } finally { target.lease.close() }
+      }, data.storageKey)))
     },
     async retention(data) {
       const days = data.days === null ? null : Number(data.days)
       if (days !== null && !RETENTION_DAYS.includes(days)) throw new StorageRefused('Unsupported retention period')
-      settings = { ...settings, retentionDays: days }
-      writeSettings(paths.state, settings)
+      if (child && !maintenance) {
+        // A running companion already holds the Host state reservation.
+        const settings = readSettings(paths.state)
+        writeSettings(paths.state, { ...settings, retentionDays: days }, storageApi())
+      } else {
+        await maintain(() => withState(({ io }) => writeSettings(paths.state, { ...readSettings(paths.state), retentionDays: days }, io)))
+      }
       return json({ days })
     },
     async 'retention-preview'(data) {
       const days = Number(data.days)
       if (!RETENTION_DAYS.includes(days)) throw new StorageRefused('Unsupported retention period')
-      return json({ candidates: await retentionCandidates(storageRoot(paths, settings), days) })
+      return json({ candidates: await inspectStorage(path => retentionCandidates(path, days, Date.now(), storageApi())) })
     },
-    'retention-run': async () => json(await maintain(async () => { await applyRetention(); return lastRetention ?? {} })),
-    'remove-access': async () => json(await maintain(async () => {
-      const result = await removeSystemAccess()
-      void trail(`system access removed ok=${result.ok}`)
+    'retention-run': async data => json(await maintain(() => withStorage(async owned => {
+      await applyRetention(owned)
+      return lastRetention ?? {}
+    }, data.storageKey))),
+    'remove-access': async () => json(await maintain(() => withState(async owned => {
+      const result = await removeSystemAccess(owned)
+      void trail('system access removed ok=' + result.ok)
       return result
-    })),
+    }))),
   })
   register()
 
@@ -437,7 +548,7 @@ export async function apply(ctx) {
       // AppContainer profile and runtime copy. Chats stay in their storage folder. A Host shutdown or package
       // reload unloads an ancestor first and keeps access, so the next start stays fast.
       if (removedWhileHostRuns(ctx)) {
-        const result = await removeSystemAccess().catch(() => ({ ok: false }))
+        const result = await withState(removeSystemAccess).catch(() => ({ ok: false }))
         await trail(`disabled; system access removed ok=${result.ok}`)
       } else await trail('stopped with the Host')
     }

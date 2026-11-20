@@ -67,7 +67,7 @@ test('Delete All needs the exact typed confirmation and a single chat needs a se
   const { div, calls } = await settingsPage(t)
   const deleteAll = button(div, 'Delete All Direct Chats')
   assert.equal(deleteAll.disabled, true)
-  const input = [...div.querySelectorAll('input')].find(item => item.closest('label')?.textContent.includes('To delete every Direct Chat'))
+  const input = [...div.querySelectorAll('input')].find(item => item.closest('label')?.textContent.includes('To delete all chats in the active storage folder'))
   const setValue = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set
   await act(async () => { setValue.call(input, 'delete all direct chats'); input.dispatchEvent(new window.Event('input', { bubbles: true })) })
   assert.equal(button(div, 'Delete All Direct Chats').disabled, true)

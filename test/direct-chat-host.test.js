@@ -1,15 +1,19 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
-import { existsSync } from 'node:fs'
-import { mkdir, mkdtemp, readFile, readdir, realpath, rm, symlink, utimes, writeFile } from 'node:fs/promises'
+import { existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs'
+import { spawn } from 'node:child_process'
+import { once } from 'node:events'
+import { mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, symlink, utimes, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { dirname, join } from 'node:path'
 import test from 'node:test'
+import { folderIdentity } from '../plugins/direct-chat/companion/storage-lease.js'
+import { cleanupRecorded, profileNameFor, readManifest, writeManifest } from '../plugins/direct-chat/companion/grants.js'
 import { removedWhileHostRuns } from '../plugins/direct-chat/index.js'
 import { packageClosure, provisionRuntime, ROOT_PACKAGES } from '../plugins/direct-chat/host/runtime.js'
 import {
-  MARKER, StorageRefused, dataPaths, deleteAll, deleteChats, ensureDataFolders, inventory, migrateStorage,
-  readSettings, retentionCandidates, validateStorageRoot, writeSettings,
+  MARKER, QUARANTINE, StorageRefused, dataPaths, deleteAll, deleteChats, ensureDataFolders, inventory, migrateStorage,
+  openStorage, prepareEmptyRoot, readSettings, retentionCandidates, writeSettings,
 } from '../plugins/direct-chat/host/storage.js'
 
 async function scratch(t) {
@@ -38,12 +42,14 @@ test('plugin folders live under the Harness home and settings round-trip atomica
   const paths = dataPaths({ DSH_HOME: join(root, 'home') })
   assert.equal(paths.root, join(root, 'home', 'abinadwan-direct-chat'))
   ensureDataFolders(paths)
+  assert.equal((await openStorage(paths.defaultStorage, paths)).kind, 'empty')
+  prepareEmptyRoot(paths.defaultStorage)
   assert.ok(existsSync(join(paths.defaultStorage, MARKER)))
   assert.deepEqual(readSettings(paths.state), { storage: null, retentionDays: null, previousStorage: null })
   writeSettings(paths.state, { storage: join(root, 'custom'), retentionDays: 30, previousStorage: null })
   assert.equal(readSettings(paths.state).retentionDays, 30)
   writeSettings(paths.state, { storage: 'relative/path', retentionDays: 12, previousStorage: null })
-  assert.deepEqual(readSettings(paths.state), { storage: null, retentionDays: null, previousStorage: null })
+  assert.throws(() => readSettings(paths.state), StorageRefused)
 })
 
 test('a custom storage folder must be empty or Direct Chat storage, outside Harness and system folders', async t => {
@@ -51,21 +57,25 @@ test('a custom storage folder must be empty or Direct Chat storage, outside Harn
   const env = { ...process.env, DSH_HOME: join(root, 'home'), DSH_AGENTS_HOME: join(root, 'agents') }
   const paths = dataPaths(env)
   ensureDataFolders(paths)
-  assert.deepEqual(await validateStorageRoot(join(root, 'fresh'), paths, env), { path: join(root, 'fresh'), kind: 'empty' })
+  const fresh = await openStorage(join(root, 'fresh'), paths, { env, create: true })
+  assert.equal(fresh.kind, 'empty')
+  assert.equal(fresh.path, join(root, 'fresh'))
+  prepareEmptyRoot(paths.defaultStorage)
   await mkdir(join(root, 'busy'))
   await writeFile(join(root, 'busy', 'notes.txt'), 'unrelated user file')
-  await assert.rejects(validateStorageRoot(join(root, 'busy'), paths, env), /empty folder or an existing Direct Chat/)
-  await assert.rejects(validateStorageRoot(join(root, 'home', 'sessions'), paths, env), /outside the Harness home/)
+  await assert.rejects(openStorage(join(root, 'busy'), paths, { env, create: true }), /empty folder or an existing Direct Chat/)
+  await assert.rejects(openStorage(join(root, 'home', 'sessions'), paths, { env, create: true }), /outside the Harness home/)
   await mkdir(join(root, 'agents'))
-  await assert.rejects(validateStorageRoot(join(root, 'agents', 'x'), paths, env), /outside the Harness home and agent/)
-  await assert.rejects(validateStorageRoot(join(paths.state, 'inner'), paths, env), StorageRefused)
-  await assert.rejects(validateStorageRoot('relative', paths, env), /absolute/)
-  assert.equal((await validateStorageRoot(paths.defaultStorage, paths, env)).kind, 'direct-chat')
-  await assert.rejects(validateStorageRoot(join(root, 'missing', 'leaf'), paths, env), /parent folder/)
+  await assert.rejects(openStorage(join(root, 'agents', 'x'), paths, { env, create: true }), /outside the Harness home and agent/)
+  await assert.rejects(openStorage(join(paths.state, 'inner'), paths, { env, create: true }), StorageRefused)
+  await assert.rejects(openStorage('relative', paths, { env, create: true }), /absolute/)
+  assert.equal((await openStorage(paths.defaultStorage, paths, { env, create: true })).kind, 'direct-chat')
+  await assert.rejects(openStorage(join(root, 'missing', 'leaf'), paths, { env, create: true }), /parent folder/)
 })
 
 test('deleting one chat removes only its folder after a byte scan of the rest of the root', async t => {
   const storage = await scratch(t)
+  prepareEmptyRoot(storage)
   const keep = id()
   const drop = id()
   await chat(storage, keep, 'Keep this synthetic chat')
@@ -84,6 +94,7 @@ test('deleting one chat removes only its folder after a byte scan of the rest of
 
 test('a chat identifier found anywhere else in the root blocks deletion and restores the chat', async t => {
   const storage = await scratch(t)
+  prepareEmptyRoot(storage)
   const target = id()
   const folder = await chat(storage, target, 'Synthetic chat with a residue elsewhere')
   await chat(storage, id(), 'Other chat')
@@ -97,7 +108,7 @@ test('a chat identifier found anywhere else in the root blocks deletion and rest
 
 test('Delete All empties the exclusive root but keeps the folder and its marker', async t => {
   const storage = await scratch(t)
-  await writeFile(join(storage, MARKER), 'marker')
+  prepareEmptyRoot(storage)
   await chat(storage, id(), 'one')
   await chat(storage, id(), 'two')
   await writeFile(join(storage, 'search.sqlite'), 'synthetic index')
@@ -209,4 +220,178 @@ test('linked layouts resolve each package once, survive cycles and nest conflict
   assert.equal(paths['node_modules/koffi/node_modules/conflict'], '2.0.0')
   assert.equal(paths['node_modules/cycle-b/node_modules/conflict'], undefined)
   assert.equal(closure.length, ROOT_PACKAGES.length + 4)
+})
+
+test('a storage marker copied into another directory does not authorize that directory', async t => {
+  const root = await scratch(t)
+  const env = { ...process.env, DSH_HOME: join(root, 'home') }
+  const paths = dataPaths(env)
+  ensureDataFolders(paths)
+  prepareEmptyRoot(paths.defaultStorage)
+  await mkdir(join(root, 'other'))
+  const target = join(root, 'other')
+  await writeFile(join(target, MARKER), await readFile(join(paths.defaultStorage, MARKER)))
+  await writeFile(join(target, 'owner-notes.txt'), 'Preserve this synthetic file')
+  await assert.rejects(openStorage(target, paths, { env, create: true }), StorageRefused)
+  assert.equal(await readFile(join(target, 'owner-notes.txt'), 'utf8'), 'Preserve this synthetic file')
+})
+
+test('unrecognized quarantine data remains intact and prevents Delete All', async t => {
+  const storage = await scratch(t)
+  prepareEmptyRoot(storage)
+  const quarantine = join(storage, '.deleting-interrupted')
+  await mkdir(quarantine)
+  const saved = join(quarantine, 'previous-chat.jsonl')
+  await writeFile(saved, 'preserve this interrupted deletion')
+  await assert.rejects(deleteAll(storage), StorageRefused)
+  assert.equal(await readFile(saved, 'utf8'), 'preserve this interrupted deletion')
+})
+
+test('failed rollback preserves both the quarantined chat and the replacement until recovery can retry', async t => {
+  const root = await scratch(t)
+  const paths = dataPaths({ DSH_HOME: join(root, 'synthetic-home') })
+  const storage = join(root, 'storage')
+  await mkdir(storage)
+  const marker = prepareEmptyRoot(storage)
+  const target = id()
+  const folder = await chat(storage, target, 'Original data to recover')
+  await mkdir(join(storage, 'metadata'))
+  await writeFile(join(storage, 'metadata', 'ref.txt'), target)
+  const io = { check() {}, move(from, to) {
+    renameSync(from, to)
+    if (from === folder) {
+      mkdirSync(folder)
+      writeFileSync(join(folder, 'replacement.txt'), 'Keep the replacement too')
+    }
+  } }
+  await assert.rejects(deleteChats(storage, [target], io), /Quarantined data was preserved/)
+  const saved = join(storage, QUARANTINE, '0', 'session.v4.jsonl')
+  assert.match(await readFile(saved, 'utf8'), /Original data to recover/)
+  assert.equal(await readFile(join(folder, 'replacement.txt'), 'utf8'), 'Keep the replacement too')
+  await assert.rejects(openStorage(storage, paths, { expected: marker.id }), /Conflicting Direct Chat recovery data/)
+  const replacement = join(root, 'replacement')
+  await rename(folder, replacement)
+  await openStorage(storage, paths, { expected: marker.id })
+  assert.match(await readFile(join(folder, 'session.v4.jsonl'), 'utf8'), /Original data to recover/)
+  assert.equal(await readFile(join(replacement, 'replacement.txt'), 'utf8'), 'Keep the replacement too')
+  assert.equal(existsSync(join(storage, QUARANTINE)), false)
+})
+
+test('a new Host rolls back quarantine left by a process killed during a deletion', { timeout: 15000 }, async t => {
+  const root = await scratch(t)
+  const paths = dataPaths({ DSH_HOME: join(root, 'synthetic-home') })
+  const storage = join(root, 'storage')
+  await mkdir(storage)
+  const marker = prepareEmptyRoot(storage)
+  const target = id()
+  const folder = await chat(storage, target, 'Survives Host termination')
+  const plugin = new URL('../plugins/direct-chat/host/storage.js', import.meta.url).href
+  const childCode = [
+    'import { renameSync, writeSync } from "node:fs"',
+    'import { deleteChats } from ' + JSON.stringify(plugin),
+    'const [root, target] = process.argv.slice(1)',
+    'await deleteChats(root, [target], { check() {}, move(from, to) {',
+    '  renameSync(from, to)',
+    '  if (from.includes(target)) {',
+    '    writeSync(1, "moved")',
+    '    Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0)',
+    '  }',
+    '} })',
+  ].join('\n')
+  const worker = spawn(process.execPath, ['--input-type=module', '--eval', childCode, storage, target],
+    { windowsHide: true, stdio: ['ignore', 'pipe', 'inherit'] })
+  const exited = once(worker, 'exit')
+  try {
+    const moved = once(worker.stdout, 'data').then(([chunk]) => chunk.toString())
+    assert.equal(await Promise.race([moved, exited]), 'moved')
+    assert.equal(existsSync(folder), false)
+    assert.match(await readFile(join(storage, QUARANTINE, '0', 'session.v4.jsonl'), 'utf8'), /Survives Host/)
+  } finally {
+    worker.kill()
+    await exited
+  }
+  await openStorage(storage, paths, { expected: marker.id })
+  assert.match(await readFile(join(folder, 'session.v4.jsonl'), 'utf8'), /Survives Host termination/)
+  assert.equal(existsSync(join(storage, QUARANTINE)), false)
+})
+
+test('restart finishes a committed purge without touching another directory', async t => {
+  const root = await scratch(t)
+  const paths = dataPaths({ DSH_HOME: join(root, 'synthetic-home') })
+  const storage = join(root, 'storage')
+  await mkdir(storage)
+  const marker = prepareEmptyRoot(storage)
+  const target = id()
+  const folder = await chat(storage, target, 'Committed deletion')
+  const keep = await chat(storage, id(), 'Unrelated chat')
+  const q = join(storage, QUARANTINE)
+  await mkdir(q)
+  await writeFile(join(q, 'committed.json'), JSON.stringify({ version: 1, kind: 'delete', key: folderIdentity(storage),
+    id: marker.id, paths: [['sessions', '--synthetic-root--', target]] }))
+  await rename(folder, join(q, '0'))
+  await openStorage(storage, paths, { expected: marker.id })
+  assert.equal(existsSync(folder), false)
+  assert.equal(existsSync(q), false)
+  assert.match(await readFile(join(keep, 'session.v4.jsonl'), 'utf8'), /Unrelated chat/)
+})
+
+test('ACL and profile removal failures each persist the information needed for retry', async t => {
+  const state = await scratch(t)
+  const profile = profileNameFor(state)
+  const grant = { path: join(state, 'synthetic-storage'), sid: 'S-1-15-2-1-2-3-4-5-6-7', profile, rights: 'M' }
+  writeManifest(state, { profiles: [profile], grants: [grant] })
+  const denied = () => { throw new Error('simulated Windows denial') }
+  assert.equal(cleanupRecorded(state, { revoke: denied, remove: () => assert.fail('grant not removed') }).length, 1)
+  assert.deepEqual(readManifest(state), { profiles: [profile], grants: [grant] })
+  assert.equal(cleanupRecorded(state, { revoke() {}, remove: denied }).length, 1)
+  assert.deepEqual(readManifest(state), { profiles: [profile], grants: [] })
+  assert.equal(cleanupRecorded(state, { revoke: () => assert.fail('grant already removed'), remove() {} }).length, 0)
+  assert.deepEqual(readManifest(state), { profiles: [], grants: [] })
+})
+
+test('a profile registered before ACL provisioning is still cleaned after startup fails', async t => {
+  const state = await scratch(t)
+  const profile = profileNameFor(state)
+  writeManifest(state, { profiles: [profile], grants: [] })
+  const removed = []
+  assert.deepEqual(cleanupRecorded(state, { revoke: () => assert.fail('no ACL was applied'), remove: name => removed.push(name) }), [])
+  assert.deepEqual(removed, [profile])
+  assert.deepEqual(readManifest(state), { profiles: [], grants: [] })
+})
+
+test('an unregistered migration journal in a selected folder cannot authorize recovery or delete files', async t => {
+  const root = await scratch(t)
+  const paths = dataPaths({ DSH_HOME: join(root, 'synthetic-home') })
+  const storage = join(root, 'storage')
+  const q = join(storage, QUARANTINE)
+  await mkdir(q, { recursive: true })
+  const id = randomUUID()
+  await writeFile(join(q, 'prepared.json'), JSON.stringify({ version: 1, kind: 'migration', key: folderIdentity(storage),
+    id, paths: [['metadata']] }))
+  await writeFile(join(q, '0'), 'Synthetic owner data')
+  await assert.rejects(openStorage(storage, paths, { create: true }), /Unregistered Direct Chat recovery/)
+  assert.equal(await readFile(join(q, '0'), 'utf8'), 'Synthetic owner data')
+  assert.equal(existsSync(join(storage, MARKER)), false)
+})
+
+test('a registered interrupted migration finishes publication and retains the source', async t => {
+  const root = await scratch(t)
+  const paths = dataPaths({ DSH_HOME: join(root, 'synthetic-home') })
+  const source = join(root, 'previous')
+  const target = join(root, 'storage')
+  await mkdir(source)
+  const sourceId = prepareEmptyRoot(source).id
+  const oldChat = await chat(source, id(), 'Previous copy')
+  const q = join(target, QUARANTINE)
+  await mkdir(q, { recursive: true })
+  const pending = { id: randomUUID(), sourceId, path: target, key: folderIdentity(target) }
+  await writeFile(join(q, 'committed.json'), JSON.stringify({ version: 1, kind: 'migration', key: pending.key,
+    id: pending.id, paths: [['metadata']] }))
+  await mkdir(join(q, '0'))
+  await writeFile(join(q, '0', 'synthetic.json'), 'Verified copy')
+  await writeFile(join(q, 'marker.tmp'), 'Interrupted marker publication')
+  assert.equal((await openStorage(target, paths, { create: true, pending })).marker.id, pending.id)
+  assert.equal(await readFile(join(target, 'metadata', 'synthetic.json'), 'utf8'), 'Verified copy')
+  assert.match(await readFile(join(oldChat, 'session.v4.jsonl'), 'utf8'), /Previous copy/)
+  assert.equal(existsSync(q), false)
 })

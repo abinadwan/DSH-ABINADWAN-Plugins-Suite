@@ -7,7 +7,7 @@ import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
 import { randomUUID } from 'node:crypto'
 import { existsSync } from 'node:fs'
-import { copyFile, cp, mkdir, mkdtemp, readFile, readdir, realpath, rm, utimes } from 'node:fs/promises'
+import { copyFile, cp, mkdir, mkdtemp, readFile, readdir, realpath, rename, rm, rmdir, symlink, utimes, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import test from 'node:test'
 import { fileURLToPath, pathToFileURL } from 'node:url'
@@ -214,11 +214,45 @@ test('production Direct Chat: carrier refusals, chats, deletion, migration, rete
   assert.equal(changed.json().path, moved)
   assert.equal(changed.json().accessRevoked, true)
   assert.equal((await call('status')).json().storage.path, moved)
+  const stale = await call('delete-all', { confirmation: 'DELETE ALL DIRECT CHATS', storageKey: status.storage.key })
+  assert.equal(stale.status, 409, stale.body)
+  assert.match(stale.json().message, /storage changed/)
   peer = await open()
   assert.equal((await prompt(peer, bravo, 'bravo after migration')).status, 200)
   await waitFor(async () => (await readFile((await transcripts(moved))[0].file, 'utf8')).includes('bravo after migration'),
     'the moved chat accepting a prompt in the new root')
   assert.doesNotMatch(await readFile(left[0].file, 'utf8'), /bravo after migration/, 'the previous root is left unchanged')
+  // A distinct Host process with a distinct Harness home still cannot operate on the active root.
+  const otherCode = [
+    'import { apply } from ' + JSON.stringify(plugin),
+    'import { dataPaths, ensureDataFolders, writeSettings } from ' + JSON.stringify(new URL('../plugins/direct-chat/host/storage.js', import.meta.url).href),
+    'const routes = new Map(), disposers = []',
+    'const paths = dataPaths()',
+    'ensureDataFolders(paths)',
+    'writeSettings(paths.state, { storage: process.argv[1], previousStorage: null, retentionDays: 7 })',
+    'await apply({ fiber: { uid: 1 }, effect(fn) { disposers.push(fn()) }, connection: { fetch: { register({ path, fetch }) { routes.set(path, fetch) } } } })',
+    'const responses = {}',
+    'for (const [route, data] of Object.entries({ open: {}, "delete-all": { confirmation: "DELETE ALL DIRECT CHATS" },',
+    '  "retention-run": {}, storage: { mode: "migrate", path: process.argv[2] } })) {',
+    '  const response = await routes.get("/api/abinadwan-direct-chat/" + route)(new Request("http://localhost",',
+    '    { method: "POST", body: JSON.stringify(data) }))',
+    '  responses[route] = { status: response.status, message: (await response.json()).message }',
+    '}',
+    'console.log(JSON.stringify(responses))',
+    'for (const dispose of disposers.reverse()) await dispose?.()',
+  ].join('\n')
+  const other = spawnSync(node, ['--input-type=module', '--eval', otherCode, moved, join(root, 'occupied-migration')],
+    { encoding: 'utf8', windowsHide: true, timeout: 30_000,
+      env: { ...process.env, DSH_HOME: join(root, 'independent-host'), ABINADWAN_DIRECT_CHAT_DIAGNOSTICS: '0' } })
+  assert.equal(other.status, 0, other.stderr)
+  const refused = JSON.parse(other.stdout)
+  assert.deepEqual(Object.keys(refused), ['open', 'delete-all', 'retention-run', 'storage'])
+  for (const response of Object.values(refused)) {
+    assert.equal(response.status, 409)
+    assert.match(response.message, /in use by another process/)
+  }
+  assert.equal(existsSync(join(root, 'occupied-migration')), false)
+  assert.match(await readFile((await transcripts(moved))[0].file, 'utf8'), /bravo after migration/)
   const manifest = JSON.parse(await readFile(join(paths.state, 'appcontainer-grants.json'), 'utf8'))
   assert.equal(new Set(manifest.grants.map(entry => entry.profile)).size, 1, 'only the current root identity holds grants')
   assert.ok(manifest.grants.some(entry => entry.path === moved && entry.rights === 'M'))
@@ -239,11 +273,57 @@ test('production Direct Chat: carrier refusals, chats, deletion, migration, rete
 
   // Delete All needs the exact confirmation and empties the root but keeps its marker.
   peer = await open()
-  await create(peer)
+  const startupId = await create(peer)
+  assert.equal((await prompt(peer, startupId, 'synthetic startup retention candidate')).status, 200)
+  let startup
+  await waitFor(async () => {
+    startup = (await transcripts(moved)).find(file => file.id === startupId)
+    return startup && (await readFile(startup.file, 'utf8')).includes('synthetic startup retention candidate')
+  }, 'the startup-retention transcript')
+  await call('close', { peer })
+  await waitFor(async () => (await call('status')).json().phase === 'idle', 'the companion shutting down')
+  await utimes(startup.file, old, old)
+  peer = await open()
+  assert.deepEqual(await transcripts(moved), [], 'startup retention applied after exclusive admission')
+
+  const outside = join(root, 'outside')
+  await mkdir(outside)
+  await writeFile(join(outside, 'untouched.txt'), 'synthetic outside canary')
+  const redirected = join(root, 'redirected')
+  await symlink(outside, redirected, 'junction')
+  assert.equal((await call('storage', { mode: 'migrate', path: redirected })).status, 409)
+  assert.equal(await readFile(join(outside, 'untouched.txt'), 'utf8'), 'synthetic outside canary')
+  const nested = await call('storage', { mode: 'switch', path: join(moved, 'nested') })
+  assert.equal(nested.status, 409)
+  assert.equal(existsSync(join(moved, 'nested')), false)
+  peer = await open()
+  for (const text of ['synthetic concurrent deletion A', 'synthetic concurrent deletion B']) {
+    assert.equal((await prompt(peer, await create(peer), text)).status, 200)
+  }
+  await waitFor(async () => (await transcripts(moved)).length === 2, 'both chats before concurrent deletion')
   assert.equal((await call('delete-all', { confirmation: 'delete all' })).status, 409)
-  const wiped = await call('delete-all', { confirmation: 'DELETE ALL DIRECT CHATS' })
+  const [wiped, secondWipe] = await Promise.all([
+    call('delete-all', { confirmation: 'DELETE ALL DIRECT CHATS' }),
+    call('delete-all', { confirmation: 'DELETE ALL DIRECT CHATS' }),
+  ])
   assert.equal(wiped.status, 200, wiped.body)
-  assert.deepEqual(await readdir(moved), ['.abinadwan-direct-chat-storage'])
+  assert.equal(secondWipe.status, 200, secondWipe.body)
+  assert.deepEqual(await readdir(moved), ['.abinadwan-direct-chat-lease', '.abinadwan-direct-chat-storage'])
+
+  // Simulate an inaccessible grant target with a redirected root. Cleanup preserves the manifest and can retry.
+  const parked = join(root, 'parked-storage')
+  await rename(moved, parked)
+  await symlink(outside, moved, 'junction')
+  assert.equal((await call('open')).status, 409, 'startup retention refuses a redirected root')
+  const incomplete = await call('remove-access')
+  assert.equal(incomplete.status, 200, incomplete.body)
+  assert.equal(incomplete.json().ok, false)
+  const retainedGrant = JSON.parse(await readFile(join(paths.state, 'appcontainer-grants.json'), 'utf8'))
+  assert.ok(retainedGrant.grants.some(grant => grant.path === moved && grant.rights === 'M'))
+  assert.ok(retainedGrant.profiles.length)
+  assert.equal(await readFile(join(outside, 'untouched.txt'), 'utf8'), 'synthetic outside canary')
+  await rmdir(moved)
+  await rename(parked, moved)
 
   // Removing system access withdraws every grant and the runtime copy; turning Direct Chat off does the same.
   const access = await call('remove-access')

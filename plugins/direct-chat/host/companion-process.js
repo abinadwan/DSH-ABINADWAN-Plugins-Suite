@@ -4,6 +4,7 @@ import { appendFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
 import { streamPort } from '../companion/channel.js'
 import { assertStateFolder, profileNameFor } from '../companion/grants.js'
+import { samePath } from '../companion/storage-lease.js'
 
 export const CONFINEMENT_FAILED = 86
 
@@ -16,17 +17,17 @@ export const CONFINEMENT_FAILED = 86
  * `home` that holds the grant manifest and diagnostics, so the parent never writes into child-writable
  * storage. There is no unconfined fallback: if confinement fails the launcher exits with CONFINEMENT_FAILED.
  */
-export function startCompanion({ node, runtime, app, read, home, state, diagnostics, lpac = true,
+export function startCompanion({ node, runtime, app, read, home, state, diagnostics, ownership, lpac = true,
   jobMemoryLimit = 1024 * 1024 * 1024 }) {
   // The confined worker trusts that every ancestor of `home` is a real directory (see worker.js).
-  if (!lstatSync(home).isDirectory() || realpathSync.native(home) !== resolve(home)) {
+  if (!lstatSync(home).isDirectory() || !samePath(realpathSync.native(home), resolve(home))) {
     throw new Error('Direct Chat storage must be an existing canonical directory without reparse points')
   }
   const hostState = assertStateFolder(state, resolve(home))
   const { SystemRoot, WINDIR } = process.env
   const config = {
     runtime, exe: node, cwd: home, lpac, capabilities: lpac ? ['registryRead'] : [], jobMemoryLimit,
-    profile: profileNameFor(home), state: hostState, read, write: [home],
+    profile: profileNameFor(home, hostState), state: hostState, read, write: [home], ownership,
     args: ['--preserve-symlinks', '--preserve-symlinks-main', join(app, 'worker.js')],
     env: {
       SystemRoot, WINDIR, LOCALAPPDATA: home, DSH_HOME: home, HOME: home, USERPROFILE: home, TMP: home, TEMP: home,
@@ -45,6 +46,9 @@ export function startCompanion({ node, runtime, app, read, home, state, diagnost
     if (diagnostics) void appendFile(join(hostState, 'diagnostics.log'), chunk).catch(() => {})
   })
   const port = streamPort(proc.stdout, proc.stdin)
-  const exited = new Promise(resolve => proc.once('exit', (code, signal) => resolve([code, signal])))
+  const exited = new Promise(resolve => {
+    proc.once('exit', (code, signal) => resolve([code, signal]))
+    proc.once('error', () => resolve([CONFINEMENT_FAILED, null]))
+  })
   return { proc, port, exited }
 }

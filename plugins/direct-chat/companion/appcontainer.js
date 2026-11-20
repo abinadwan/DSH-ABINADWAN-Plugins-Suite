@@ -10,6 +10,7 @@ export const profileName = 'abinadwan.direct-chat.qa'
 const S_OK = 0
 const E_ALREADY_EXISTS = 0x800700b7 | 0
 const PROC_THREAD_ATTRIBUTE_HANDLE_LIST = 0x00020002
+const PROC_THREAD_ATTRIBUTE_JOB_LIST = 0x0002000d
 const PROC_THREAD_ATTRIBUTE_SECURITY_CAPABILITIES = 0x00020009
 const PROC_THREAD_ATTRIBUTE_CHILD_PROCESS_POLICY = 0x0002000e
 const PROC_THREAD_ATTRIBUTE_ALL_APPLICATION_PACKAGES_POLICY = 0x0002000f
@@ -88,8 +89,6 @@ export function bind(runtime) {
     CreateProcessW: kernel32.func('bool __stdcall CreateProcessW(str16, void *, void *, void *, bool, uint32, void *, str16, STARTUPINFOEXW *, _Out_ PROCESS_INFORMATION *)'),
     CreateJobObjectW: kernel32.func('void * __stdcall CreateJobObjectW(void *, void *)'),
     SetInformationJobObject: kernel32.func('bool __stdcall SetInformationJobObject(void *, int32, JOBOBJECT_EXTENDED_LIMIT_INFORMATION *, uint32)'),
-    AssignProcessToJobObject: kernel32.func('bool __stdcall AssignProcessToJobObject(void *, void *)'),
-    TerminateProcess: kernel32.func('bool __stdcall TerminateProcess(void *, uint32)'),
     ResumeThread: kernel32.func('uint32 __stdcall ResumeThread(void *)'),
     WaitForSingleObject: kernel32.func('uint32 __stdcall WaitForSingleObject(void *, uint32)'),
     GetExitCodeProcess: kernel32.func('bool __stdcall GetExitCodeProcess(void *, _Out_ uint32 *)'),
@@ -104,11 +103,23 @@ export function ensureProfile(api, name = profileName) {
   let hr = api.CreateAppContainerProfile(name, 'ABINADWAN Direct Chat', 'Confined Direct Chat companion', null, 0, out)
   if (hr === E_ALREADY_EXISTS) hr = api.DeriveAppContainerSidFromAppContainerName(name, out)
   if (hr !== S_OK) throw new Error(`AppContainer profile unavailable (0x${(hr >>> 0).toString(16)})`)
+  try { return { pointer: out[0], sid: sidText(api, out[0]) } }
+  catch (error) { api.FreeSid(out[0]); throw error }
+}
+
+function sidText(api, pointer) {
   const text = [null]
-  if (!api.ConvertSidToStringSidW(out[0], text)) throw new Error('AppContainer SID conversion failed')
-  const sid = api.koffi.decode(text[0], 'char16_t', -1)
-  api.LocalFree(text[0])
-  return { pointer: out[0], sid }
+  if (!api.ConvertSidToStringSidW(pointer, text)) throw new Error('AppContainer SID conversion failed')
+  try { return api.koffi.decode(text[0], 'char16_t', -1) }
+  finally { api.LocalFree(text[0]) }
+}
+
+export function profileSid(api, name) {
+  const pointer = [null]
+  if (api.DeriveAppContainerSidFromAppContainerName(name, pointer) !== S_OK) {
+    throw new Error('Could not derive the AppContainer SID')
+  }
+  try { return sidText(api, pointer[0]) } finally { api.FreeSid(pointer[0]) }
 }
 
 /** Resolve named capabilities (for example `registryRead`) to SID_AND_ATTRIBUTES entries. */
@@ -126,7 +137,9 @@ export function capabilitySids(api, names) {
 
 export function deleteProfile(api, name = profileName) {
   const hr = api.DeleteAppContainerProfile(name)
-  if (hr !== S_OK) throw new Error(`AppContainer profile removal failed (0x${(hr >>> 0).toString(16)})`)
+  if (hr !== S_OK && ![0x80070002, 0x80070490].includes(hr >>> 0)) {
+    throw new Error(`AppContainer profile removal failed (0x${(hr >>> 0).toString(16)})`)
+  }
 }
 
 const icacls = () => join(process.env.SystemRoot ?? 'C:\\Windows', 'System32', 'icacls.exe')
@@ -154,12 +167,12 @@ function quote(arg) {
 }
 
 /**
- * Start `exe args` in the AppContainer with this process's standard handles as its only inherited handles.
+ * Start `exe args` in the AppContainer with standard handles and passive storage reservations as its only inherited handles.
  * The child cannot create processes, is killed when the returned job closes, and receives `env` only.
  * It runs on a private desktop that only its package SID and the owner can open, and its job blocks the
  * clipboard, foreign USER handles and global UI state, so it cannot read the user's screen, windows or clipboard.
  */
-export function launch(api, { exe, args, cwd, env, appContainerSid, packageSid, lpac, capabilities = [], jobMemoryLimit }) {
+export function launch(api, { exe, args, cwd, env, appContainerSid, packageSid, lpac, capabilities = [], jobMemoryLimit, ownershipHandles = [] }) {
   if (!/^S-1-15-2(-\d+){7}$/.test(packageSid ?? '')) throw new Error('Confined launch requires the package SID')
   const { koffi } = api
   const handles = []
@@ -169,8 +182,9 @@ export function launch(api, { exe, args, cwd, env, appContainerSid, packageSid, 
     if (!handles.some(existing => koffi.address(existing) === koffi.address(handle))) handles.push(handle)
     if (!api.SetHandleInformation(handle, HANDLE_FLAG_INHERIT, HANDLE_FLAG_INHERIT)) throw new Error('Handle inheritance failed')
   }
+  handles.push(...ownershipHandles)
   const [stdin, stdout, stderr] = [-10, -11, -12].map(kind => api.GetStdHandle(kind))
-  const attributes = 4
+  const attributes = 5
   const size = [0]
   api.InitializeProcThreadAttributeList(null, attributes, 0, size)
   const list = Buffer.alloc(size[0])
@@ -226,21 +240,22 @@ export function launch(api, { exe, args, cwd, env, appContainerSid, packageSid, 
     if (!api.SetJobUiRestrictions(job, JobObjectBasicUIRestrictions, [JOB_OBJECT_UILIMIT_ALL], 4)) {
       fail(`Job UI restrictions failed (${api.GetLastError()})`)
     }
+    // Associate the job at creation. A killed launcher cannot strand a suspended child with live leases.
+    const jobList = koffi.alloc('void *', 1)
+    koffi.encode(jobList, koffi.array('void *', 1), [job])
+    try { update(PROC_THREAD_ATTRIBUTE_JOB_LIST, jobList, koffi.sizeof('void *')) }
+    catch (error) { fail(error.message) }
     if (!api.CreateProcessW(exe, commandLine, null, null, true,
       EXTENDED_STARTUPINFO_PRESENT | CREATE_SUSPENDED | CREATE_UNICODE_ENVIRONMENT | DETACHED_PROCESS,
       block, cwd, info, created)) {
-      fail(`Confined process creation failed (${api.GetLastError()})`)
+      fail('Confined process creation failed (' + api.GetLastError() + ')')
     }
-    if (!api.AssignProcessToJobObject(job, created.hProcess)) {
-      const error = api.GetLastError()
-      // The suspended process never ran. Terminating it here is the only safe outcome.
-      api.TerminateProcess(created.hProcess, 1)
-      api.CloseHandle(created.hThread)
-      api.CloseHandle(created.hProcess)
-      fail(`Job assignment failed (${error})`)
-    }
-    api.ResumeThread(created.hThread)
+    const resumed = api.ResumeThread(created.hThread)
     api.CloseHandle(created.hThread)
+    if (resumed === 0xffffffff) {
+      api.CloseHandle(created.hProcess)
+      fail('Confined process could not start')
+    }
     return { job, desktop: desktop.handle, desktopName: desktop.name, process: created.hProcess, pid: created.dwProcessId }
   } finally {
     api.DeleteProcThreadAttributeList(list)
