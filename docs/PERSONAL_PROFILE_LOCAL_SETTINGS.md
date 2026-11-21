@@ -4,7 +4,7 @@ My Profile is optional and disabled by default. The page appears under **Setting
 
 ## Interface language
 
-English is the default My Profile UI language for a new current-version record. Users can switch to Arabic from the page's language dropdown and save the selection; the Arabic interface uses RTL direction. Existing stored language choices and legacy record migrations are preserved. This does not change the model response language or the global Harness interface.
+New v4 profiles default to `locale: 'auto'`, **Follow DSH**. The browser page reads and subscribes to DSH's public Locale snapshot (with a safe English fallback if unavailable); switching the Host language re-renders My Profile only while Follow DSH is selected. The user can independently select English, Arabic, Chinese, Spanish, French, German or Japanese and save the selection; Arabic uses RTL. Changing My Profile's language does not call `ctx.locale.setLocale` or change DSH itself, and does not alter the separate model response-language preference. Existing saved `ar`/`en` remain explicit overrides, and legacy records migrate without losing their language. A version 4 backup retains `auto` and the five added locales; existing manual English/Arabic settings retain v2 export compatibility.
 
 ## My Information
 
