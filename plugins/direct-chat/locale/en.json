@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Direct Chat",
-    "description": "Chat with your configured model without a Workspace. Each chat runs in a confined process with its own history and storage folder. Part of the ABINADWAN Plugins Suite."
+    "description": "Experimental Direct Chat using native DSH sessions. Sending messages still requires a registered Workspace. Tool use is blocked by policy, not process isolation."
   }
 }
