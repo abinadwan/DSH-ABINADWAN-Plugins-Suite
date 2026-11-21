@@ -28,6 +28,10 @@ async function mount(t,{transport=mockSettings(),access=()=>true}={}){
   await app.changed();await app.changed()
   const panel=app.slots.records.get(panelId)
   assert.ok(panel)
+  assert.equal(panel.options.name,'settings.section')
+  assert.equal(panel.options.label,'My Profile')
+  assert.ok(app.entries('settings.section.icon').some(row=>row.options.id===panelId))
+  assert.equal(app.entries('sidebar.panellist').some(row=>row.options.id===panelId),false)
   const previous={document:globalThis.document,window:globalThis.window,act:globalThis.IS_REACT_ACT_ENVIRONMENT}
   const dom=new JSDOM('<!doctype html><div id="root"></div>',{url:'http://localhost/'})
   globalThis.document=dom.window.document;globalThis.window=dom.window;globalThis.IS_REACT_ACT_ENVIRONMENT=true
