@@ -2,6 +2,10 @@
 
 My Profile is optional and disabled by default. The page appears under **Settings → My Profile**, not the main sidebar. It uses one native settings record across Workspaces of the active Harness Profile.
 
+## Interface language
+
+English is the default My Profile UI language for a new current-version record. Users can switch to Arabic from the page's language dropdown and save the selection; the Arabic interface uses RTL direction. Existing stored language choices and legacy record migrations are preserved. This does not change the model response language or the global Harness interface.
+
 ## My Information
 
 Preferred name, nationality and gender are on one page, each beside an independent “Available to agent” checkbox. Checked, nonempty fields are included in supported top-level native agent prompts after an explicit, revision-checked Save. Unchecked fields remain stored but are not freshly injected. The same choice applies to every configured model/provider, including cloud providers. New fields default to private. No global sharing switch, cloud distinction or Ask First flow remains. Empty text and unspecified gender are not sent.
