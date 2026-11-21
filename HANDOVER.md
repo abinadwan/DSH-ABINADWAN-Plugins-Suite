@@ -1,6 +1,6 @@
 # ABINADWAN Plugins Suite development handover
 
-> **Current development note (feature/direct-chat-hidden-workspace-phase2):** Direct Chat was replaced with native DSH Sessions in PR #24, then this feature branch added a temporary Workspace bridge to address the blank composer gate. The historical Windows LPAC companion descriptions below do **not** describe the active implementation. Desktop send/receive, hidden Workspace behavior, migration and permanent deletion remain unverified. Keep Direct Chat Off; do not merge this phase into `develop` or release without acceptance.
+> **Current development note (feature/direct-chat-hidden-workspace-phase2):** Direct Chat was replaced with native DSH Sessions in PR #24. This branch now groups **independent Session histories** under **one permanent Workspace named Direct Chat** and no longer creates a new Workspace per chat. The historical Windows LPAC companion details below are not the active implementation. The sessions share one filesystem cwd, so tool-security review and real Windows Desktop history isolation remain acceptance gates. Existing per-chat directories and registrations are preserved. A separate Direct Chat/Projects sidebar layout, migration, and permanent deletion are not implemented. Keep the component Off; do not merge or release before acceptance.
 
 ## Baseline and workflow
 

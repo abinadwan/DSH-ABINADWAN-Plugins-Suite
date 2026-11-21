@@ -1,35 +1,40 @@
-# Direct Chat Phase 2 — Desktop acceptance plan
+# Direct Chat Phase 2 — one Workspace and isolated chat histories
 
-Target branch: `feature/direct-chat-hidden-workspace-phase2`. Parent: `develop` after PR #24.
+**Feature branch:** `feature/direct-chat-hidden-workspace-phase2`. Based on `develop` after PR #24.
 
-## Technical boundary
+## Intent and verified contracts
 
-DSH's blank native composer requires a registered Workspace. The Phase 1 implementation created and flushed a Session with only an unregistered `cwd`, so the UI displayed **Choose a workspace to start**. Phase 2 uses documented Client calls `workspaces.create({ path })` and `uiWorkspace.connectWorkspace(workspaceId)`, then removes only the Workspace registration once the first prompt is accepted. This is an experiment based on the publicly documented Workspace contract and the projectless-session pattern.
+The user wants one stable DSH Workspace labelled **Direct Chat**, not an automatically created Workspace called `session-*` on each click. Each conversation must have its **own Session ID, messages, and independent agent context**, with no transcript forwarding between sessions. User-created Workspaces should remain separate and unchanged.
 
-**Not solved:** the public Workspace record has no `hidden` property. The temporary Workspace can be visible before the first send; it does not currently meet the strict requirement for an invisible internal Workspace. Do not claim otherwise. Removing the registration can move the Session under Ungrouped. An abandoned blank chat can leave a temporary visible registration. No cleanup process runs on restart yet, because deleting user data or silently archiving sessions requires further review.
+The Host always returns the same canonical path `<active profile>/abinadwan-direct-chat-data/Direct Chat`. The Client uses the public idempotent `workspaces.create({ path })` method and `uiWorkspace.connectWorkspace(workspaceId)`. The latter intentionally **reuses only a still-blank Session**; after the prompt is accepted, a new call creates a different native Session. DSH stores Session logs independently. The plugin does not fork from previous chats, import chat histories, or install cross-session memory.
 
-## Tests to perform in disposable Windows DSH Desktop profile
+**Security boundary:** DSH's Workspace registration accounts only Sessions whose cwd matches its canonical Workspace directory. Therefore a single Workspace means **one shared filesystem cwd**. Separate conversation logs are not equivalent to filesystem/process isolation, and no high-assurance guarantee that other plugins or Agent presets cannot access shared files is made. The plugin's tool-denial pre-execute/guard hooks need actual Desktop testing. The old LPAC sandbox is not present.
 
-1. Install exact feature-branch commit using a pinned SHA, confirm Source matches it. The component stays Off initially.
-2. Enable Direct Chat and click its footer button. Confirm no Workspace picker is presented, the native composer becomes enabled and an independent temporary Workspace is registered.
-3. Send `Hello` using a test model/account. Confirm a native model reply appears. Stop testing if any tool starts, if there is a request for file-system access, or if the session immediately asks to choose Workspace.
-4. Confirm the temporary Workspace registration disappears **after** the first accepted prompt, without deleting the Session or its log; the conversation should appear in Ungrouped.
-5. Create a second Direct Chat. Confirm its session directory differs from the first and the first conversation remains intact.
-6. Restart Desktop; confirm both non-blank conversations can be opened and continued. Check that existing normal Workspaces and their sessions are unchanged.
-7. Abandon a blank Direct Chat without sending. Record whether its temporary Workspace remains visible across navigation/restart. Do not delete test records until inspected.
-8. Attempt a harmless built-in tool call in a disposable test profile to verify denial. A passing unit guard test does not prove that every native Desktop execution path is restricted.
-9. Disable Direct Chat; confirm its button disappears and normal Workspace sessions remain functional.
+The separate top-level sidebar layout **Direct Chat** / **Projects** is not implemented; this patch shows Direct Chat as a Workspace within DSH's native Workspaces browser. Do not claim otherwise.
 
-## Acceptance gate
+Previous per-chat `session-*` directories and Workspace registrations from the temporary-Workspace version are intentionally preserved. They are **not** auto-migrated, renamed, detached, or deleted.
 
-Do **not** merge this feature branch into `develop` or claim production readiness until the Windows Desktop integration tests, clean storage/restart behavior, incomplete chat recovery, and tool/security review pass. A truly hidden Workspace may require a supported DSH upstream feature or a noninvasive UI extension; do not patch private DSH internal stores or write Workspace database files directly.
+## Acceptance checklist (disposable Windows Desktop profile)
 
-## Upstream source references
+1. Verify the installed plugin is pinned to the tested feature commit and is initially Off.
+2. Enable it and click Direct Chat three times **without sending**. Confirm only a single Workspace titled `Direct Chat` exists; no new `session-*` directories appear. The same blank Session should reopen.
+3. Send `Hello` and receive a model response. Reopen Direct Chat. Confirm a **new Session ID** appears under that same Workspace with an empty message history.
+4. Have the second Session discuss an unrelated topic. Confirm no text from the first Session appears in the new agent input or generated answer, beyond normal global model/profile instructions.
+5. Return to Session 1 and verify its messages remain intact; restart Desktop and verify both Sessions resume from their own histories.
+6. Verify existing user Projects and pre-existing experimental `session-*` registrations stay untouched. Do not delete those directories as part of this acceptance test.
+7. Use harmless fixture files to audit attempts at shell, file and workspace tools while Direct Chat is selected; the authorization hooks must deny them.
+8. Disable Direct Chat. Its footer action must disappear, but its Workspace and native conversations must remain intact.
 
-- [DeepSeek Harness Workspace Controller](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/api/workspace-controller/README.md)
-- [DeepSeek Harness Workspace model](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/workspace/workspace/src/types.ts)
-- [Projectless-session lifecycle reference](https://github.com/jarvisluk/dsh-projectless-session/blob/main/README.md)
+## Remaining work before merge
 
-## History
+- Real Desktop acceptance for session history separation, restart, and security.
+- True independent per-chat filesystem isolation is not part of this single-Workspace architecture; redesign if required.
+- Dedicated Direct Chat vs Projects top-level sidebar grouping.
+- Safe handling of existing experimental records, including optional migration and user-approved deletion.
+- Permanent conversation deletion and retention UI.
 
-Phase 1 previous CI success, source checks, and limited native Desktop failure evidence: [Direct Chat Phase 1](DIRECT_CHAT_GLOBAL_CHAT_PHASE1.md). The original LPAC companion remains in repository history before PR #24; it is not in this code path.
+## Upstream contracts
+
+- [Workspace registration and membership](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/workspace/workspace/README.md)
+- [Session Controller client](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/api/session-controller/src/client/sessions/service.ts)
+- [UiWorkspace navigation](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/client/ui-workspace/src/client/navigation.ts)
