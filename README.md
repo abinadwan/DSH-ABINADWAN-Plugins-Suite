@@ -27,7 +27,7 @@ One installation supplies six independently toggleable DSH components. The packa
 
 ## My Profile (0.8.0-rc.1 candidate)
 
-My Profile opens in **English by default** for a new profile; the user can switch to **Arabic** in the page's Interface language control and explicitly Save the selection. Existing saved UI language choices remain unchanged. This is separate from the model response-language preference.
+**My Profile follows the active DSH interface language by default**. Its **Interface language** dropdown offers **Follow DSH** or an independent override in English, Arabic, Chinese, Spanish, French, German or Japanese. The page updates when DSH changes language in Follow DSH mode; a manual choice applies only to this plugin and is saved only after **Save changes**. Existing saved language selections remain intact. This is independent of the model's **Response language** setting.
 
 One unified profile per active Harness Profile: optional preferred name, nationality and gender with independent Available to agent checkboxes on the same page. Unchecked fields are private; saved checked, nonempty fields enter supported native agent prompts for any configured model/provider. Agent Instructions, response language, traits, presets and custom text remain available. Explicit Save uses native Harness settings with a revision check. Legacy records preserve information and preferences but start with all sharing choices unchecked.
 
