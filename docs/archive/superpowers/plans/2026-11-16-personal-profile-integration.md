@@ -1,6 +1,6 @@
 # Phase 6A implementation plan
 
-> **Superseded (historical record).** Version 0.7.0 replaced this design with native Harness settings; see [the current design](../../PERSONAL_PROFILE_LOCAL_SETTINGS.md). Nothing described here is in the runtime or the package.
+> **Superseded (historical record).** Version 0.7.0 replaced this design with native Harness settings; see [the current design](../../../PERSONAL_PROFILE_LOCAL_SETTINGS.md). Nothing described here is in the runtime or the package.
 
 Goal: synthetic Host boundary QA; live component stays disabled and read-only.
 Architecture: extend the existing encrypted profile payload with versioned canonical-ID permissions; add an internal access gate with independently resolved Host identity. No Harness adapter is asserted or registered.
