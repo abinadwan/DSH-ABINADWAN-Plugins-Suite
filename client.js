@@ -1846,7 +1846,214 @@ window.__ModuleLoader__.load({
       const check = {display:'flex',gap:10,alignItems:'start',margin:'12px 0'}
       const cell = {padding:'6px 8px',borderBottom:'1px solid rgba(128,128,128,.25)',textAlign:'start',verticalAlign:'top',overflowWrap:'anywhere'}
       const sections = ['information','instructions','backup','privacy']
-      const localLabel = item => item[rtl?1:2]
+      const localChoiceLabels = {
+        "zh": {
+          "styles": {
+            "default": "默认",
+            "professional": "专业",
+            "friendly": "友好",
+            "candid": "直率",
+            "creative": "创意",
+            "efficient": "高效",
+            "critical": "批判分析",
+            "technical": "技术"
+          },
+          "traits": {
+            "warmth": "亲切度",
+            "enthusiasm": "热情度",
+            "structure": "标题与列表",
+            "emoji": "表情符号",
+            "detail": "详细程度",
+            "critical": "批判性思维"
+          },
+          "presets": {
+            "critical": "批判性思维",
+            "no-fluff": "不说废话",
+            "grill-me": "深入追问",
+            "evidence": "证据优先",
+            "steps": "分步说明",
+            "action": "行动导向",
+            "code": "代码审查",
+            "humanizer": "自然表达"
+          },
+          "presetDescriptions": {
+            "critical": "质疑薄弱假设，不盲目赞同。",
+            "no-fluff": "避免赘述和不必要的恭维。",
+            "grill-me": "在复杂决策中核实关键需求与风险。",
+            "evidence": "区分证据、假设与不确定性，并在适当时引用可靠来源。",
+            "steps": "将复杂任务分解为可执行步骤。",
+            "action": "优先提供实用解决方案和下一步行动。",
+            "code": "检查代码质量、安全性、性能和测试覆盖率。",
+            "humanizer": "修改文字时保持事实、引文和不确定性，并使表达自然。"
+          }
+        },
+        "es": {
+          "styles": {
+            "default": "Predeterminado",
+            "professional": "Profesional",
+            "friendly": "Amable",
+            "candid": "Directo",
+            "creative": "Creativo",
+            "efficient": "Eficiente",
+            "critical": "Analítico",
+            "technical": "Técnico"
+          },
+          "traits": {
+            "warmth": "Cercanía",
+            "enthusiasm": "Entusiasmo",
+            "structure": "Títulos y listas",
+            "emoji": "Emojis",
+            "detail": "Detalle",
+            "critical": "Pensamiento crítico"
+          },
+          "presets": {
+            "critical": "Pensamiento crítico",
+            "no-fluff": "Sin relleno",
+            "grill-me": "Preguntas clave",
+            "evidence": "Primero la evidencia",
+            "steps": "Paso a paso",
+            "action": "Orientado a la acción",
+            "code": "Revisión de código",
+            "humanizer": "Redacción natural"
+          },
+          "presetDescriptions": {
+            "critical": "Cuestiona los supuestos débiles en vez de aceptarlos automáticamente.",
+            "no-fluff": "Evita el relleno y los halagos innecesarios.",
+            "grill-me": "Aclara los requisitos y los riesgos importantes antes de decidir.",
+            "evidence": "Distingue evidencia, supuestos e incertidumbre; cita fuentes fiables cuando corresponda.",
+            "steps": "Divide tareas complejas en pasos prácticos.",
+            "action": "Prioriza soluciones útiles y próximos pasos concretos.",
+            "code": "Evalúa la calidad, seguridad, rendimiento y pruebas del código.",
+            "humanizer": "Al editar, conserva los hechos, las citas y la incertidumbre con una redacción natural."
+          }
+        },
+        "fr": {
+          "styles": {
+            "default": "Par défaut",
+            "professional": "Professionnel",
+            "friendly": "Amical",
+            "candid": "Direct",
+            "creative": "Créatif",
+            "efficient": "Efficace",
+            "critical": "Analytique",
+            "technical": "Technique"
+          },
+          "traits": {
+            "warmth": "Chaleur",
+            "enthusiasm": "Enthousiasme",
+            "structure": "Titres et listes",
+            "emoji": "Émojis",
+            "detail": "Détail",
+            "critical": "Esprit critique"
+          },
+          "presets": {
+            "critical": "Esprit critique",
+            "no-fluff": "Sans remplissage",
+            "grill-me": "Questions ciblées",
+            "evidence": "Preuves d’abord",
+            "steps": "Étape par étape",
+            "action": "Orienté action",
+            "code": "Revue de code",
+            "humanizer": "Rédaction naturelle"
+          },
+          "presetDescriptions": {
+            "critical": "Remet en question les hypothèses fragiles au lieu d’acquiescer automatiquement.",
+            "no-fluff": "Évite le remplissage et les compliments inutiles.",
+            "grill-me": "Clarifie les exigences et les risques importants avant une décision.",
+            "evidence": "Distingue les faits, les hypothèses et l’incertitude ; cite des sources fiables si nécessaire.",
+            "steps": "Décompose les tâches complexes en étapes concrètes.",
+            "action": "Privilégie les solutions utiles et les prochaines actions.",
+            "code": "Évalue la qualité, la sécurité, la performance et les tests du code.",
+            "humanizer": "Préserve les faits, les citations et l’incertitude lors de la reformulation naturelle."
+          }
+        },
+        "de": {
+          "styles": {
+            "default": "Standard",
+            "professional": "Professionell",
+            "friendly": "Freundlich",
+            "candid": "Direkt",
+            "creative": "Kreativ",
+            "efficient": "Effizient",
+            "critical": "Analytisch",
+            "technical": "Technisch"
+          },
+          "traits": {
+            "warmth": "Wärme",
+            "enthusiasm": "Begeisterung",
+            "structure": "Überschriften und Listen",
+            "emoji": "Emojis",
+            "detail": "Detailgrad",
+            "critical": "Kritisches Denken"
+          },
+          "presets": {
+            "critical": "Kritisches Denken",
+            "no-fluff": "Ohne Füllwörter",
+            "grill-me": "Gezielte Rückfragen",
+            "evidence": "Belege zuerst",
+            "steps": "Schritt für Schritt",
+            "action": "Handlungsorientiert",
+            "code": "Codeprüfung",
+            "humanizer": "Natürlicher Stil"
+          },
+          "presetDescriptions": {
+            "critical": "Schwache Annahmen prüfen statt automatisch zuzustimmen.",
+            "no-fluff": "Überflüssige Füllwörter und Komplimente vermeiden.",
+            "grill-me": "Vor Entscheidungen wichtige Anforderungen und Risiken klären.",
+            "evidence": "Belege, Annahmen und Unsicherheit unterscheiden; gegebenenfalls zuverlässige Quellen nennen.",
+            "steps": "Komplexe Aufgaben in praktische Schritte zerlegen.",
+            "action": "Praktische Lösungen und nächste Schritte priorisieren.",
+            "code": "Codequalität, Sicherheit, Leistung und Testabdeckung bewerten.",
+            "humanizer": "Beim Überarbeiten Fakten, Zitate und Unsicherheit bewahren und natürlich formulieren."
+          }
+        },
+        "ja": {
+          "styles": {
+            "default": "標準",
+            "professional": "プロフェッショナル",
+            "friendly": "親しみやすい",
+            "candid": "率直",
+            "creative": "創造的",
+            "efficient": "効率重視",
+            "critical": "批判的分析",
+            "technical": "技術的"
+          },
+          "traits": {
+            "warmth": "親しみやすさ",
+            "enthusiasm": "熱意",
+            "structure": "見出しと箇条書き",
+            "emoji": "絵文字",
+            "detail": "詳細さ",
+            "critical": "批判的思考"
+          },
+          "presets": {
+            "critical": "批判的思考",
+            "no-fluff": "無駄を省く",
+            "grill-me": "要件を深掘り",
+            "evidence": "根拠を優先",
+            "steps": "段階的に説明",
+            "action": "実行重視",
+            "code": "コードレビュー",
+            "humanizer": "自然な文章"
+          },
+          "presetDescriptions": {
+            "critical": "弱い前提を検討し、無条件には同意しません。",
+            "no-fluff": "冗長な表現や不要な褒め言葉を避けます。",
+            "grill-me": "複雑な判断の前に要件と主要なリスクを確認します。",
+            "evidence": "根拠・仮定・不確実性を区別し、必要に応じて信頼できる出典を示します。",
+            "steps": "複雑な作業を実行可能な手順に分けます。",
+            "action": "実用的な解決策と次の行動を優先します。",
+            "code": "コードの品質、安全性、性能、テスト範囲を確認します。",
+            "humanizer": "文章の編集では事実、引用、不確実性を維持し自然な表現にします。"
+          }
+        }
+      }
+      const localLabel = item => {
+        if(!item)return ''
+        const group=PROFILE_STYLES.includes(item)?'styles':PROFILE_TRAITS.includes(item)?'traits':PROFILE_PRESETS.includes(item)?'presets':'languages'
+        return localChoiceLabels[language]?.[group]?.[item[0]] || item[rtl?1:2]
+      }
+      const localPresetDescription = item => localChoiceLabels[language]?.presetDescriptions?.[item[0]] || item[rtl?3:4]
       const policyLabel = v => t({private:'private',ask_first:'ask',allow:'allow'}[v])
       const genderLabel = v => v ? t(v) : t('missing')
       function card(title, ...children) {
