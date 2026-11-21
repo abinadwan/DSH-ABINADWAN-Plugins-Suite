@@ -6,7 +6,7 @@ The Direct Chat button beside the native top New Session control opens a native 
 
 **Critical limit:** this isolates *conversation history*, not the underlying filesystem. All new Direct Chat Sessions share the same Workspace `cwd`, because DSH Workspace membership requires that path. The existing pre-execute and dispatch tool-denial guards remain, but they are policy guards, **not a Windows LPAC or process/filesystem sandbox**. They also cover older per-chat paths. No claims of high-assurance isolation or cross-plugin confidentiality are made.
 
-This version shows **Direct Chat** under the standard DSH Workspaces browser. The separate **Direct Chat** and **Projects** top-level sidebar sections are a later UI change and are not yet implemented. The component stays Off by default. Native Windows Desktop send/receive, restart, guard coverage, and history independence need acceptance testing before merging to `develop`.
+This version shows **Direct Chat** under the standard DSH Workspaces browser. The separate **Direct Chat** and **Projects** top-level sidebar sections are a later UI change and are not yet implemented. The component stays Off by default. Owner-reported Windows Desktop tests passed the top-button, single-Workspace, distinct native Sessions, persistence after restart, no impact on prior Projects, and a comparative Terminal policy-denial check. Deeper Host-level request isolation and exhaustive tool-boundary validation were explicitly deferred, not passed. Phase 2 was merged into `develop` in [PR #25](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/25); no stable release is implied.
 
 ## Sidebar placement
 
