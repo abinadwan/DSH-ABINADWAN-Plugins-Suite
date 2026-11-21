@@ -112,7 +112,7 @@ test('pinned Git install: Update now verifies, asks for confirmation, then deleg
     },
   })
   assert.equal(seen.length, 1, 'startup only reads the latest release')
-  assert.match(view.text(), /Update available: v0\.8\.0/)
+  assert.match(view.text(), /Update available: v1\.0\.1/)
   await view.click('[data-update-now]')
   assert.equal(installed.length, 0, 'preparation never installs')
   assert.deepEqual(seen.map(x => x.url), [RELEASE, COMMIT, RAW])
@@ -130,7 +130,7 @@ test('pinned Git install: Update now verifies, asks for confirmation, then deleg
   await view.click('[data-confirm-update]')
   assert.deepEqual(JSON.parse(JSON.stringify(installed)),
     [[pkg.name, '1.0.1', { spec: 'github:abinadwan/DSH-ABINADWAN-Plugins-Suite#' + SHA }]])
-  assert.match(view.text(), /Host applied the update to v0\.8\.0; restart Harness to finish\./)
+  assert.match(view.text(), /Host applied the update to v1\.0\.1; restart Harness to finish\./)
 })
 
 test('unpinned Git install (the real Windows case) shows an actionable migration and never updates', async t => {
