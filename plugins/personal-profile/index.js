@@ -17,7 +17,7 @@ const fields=['preferredName','nationality','gender']
 export const emptyPreferences=()=>({style:'default',responseLanguage:'auto',traits:Object.fromEntries(traits.map(k=>[k,1])),presets:[],custom:''})
 export const emptyPolicies=()=>Object.fromEntries(fields.map(k=>[k,'private']))
 export const emptyInformation=()=>({preferredName:'',nationality:'',gender:''})
-export const emptyRecord=()=>({version:RECORD_VERSION,locale:'en',information:emptyInformation(),
+export const emptyRecord=()=>({version:RECORD_VERSION,locale:'auto',information:emptyInformation(),
   preferences:emptyPreferences(),policies:emptyPolicies()})
 /** v0.7.0/0.7.1 record shape. Used only to read and migrate stored data. */
 export const emptyLegacyRecord=()=>({version:1,locale:'ar',information:emptyInformation(),
@@ -32,7 +32,7 @@ const policies=(legacy=false)=>z.object(Object.fromEntries(fields.map(k=>[k,choi
 const information=()=>z.object({preferredName:z.string().max(128).default(''),nationality:z.string().max(128).default(''),
   gender:choice(['','male','female','unspecified'],'')}).default(emptyInformation())
 const unified=version=>z.object({
-  version:z.const(version).required(),locale:choice(['ar','en'],version===RECORD_VERSION?'en':'ar'),
+  version:z.const(version).required(),locale:choice(version===RECORD_VERSION?['auto','en','ar','zh','es','fr','de','ja']:['ar','en'],version===RECORD_VERSION?'auto':'ar'),
   information:information(),preferences:preferences(true),policies:policies(version!==RECORD_VERSION),
   ...(version===RECORD_VERSION?{}:{allowPersonalInformation:z.boolean().default(false),allowCloud:z.boolean().default(false)}),
 })
