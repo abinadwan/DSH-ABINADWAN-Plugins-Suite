@@ -18,7 +18,9 @@ export const copy = x => JSON.parse(JSON.stringify(x))
  * `settings/conflict` refusal for a stale revision, and the namespace view
  * (`{ns, value, revision}`) answered after a committed write.
  */
-export function mockSettings(initial = emptyRecord()) {
+export function mockSettings(initial = { ...emptyRecord(), locale: 'ar' }) {
+  // Historical UI regression fixtures exercise RTL Arabic explicitly.
+  // New-profile English defaults use mockSettings(emptyRecord()) in dedicated tests.
   let record = copy(initial), revision = 0, conflict = false
   const calls = [], describes = []
   const view = () => ({ ns: namespace, value: { record: copy(record) }, revision })
