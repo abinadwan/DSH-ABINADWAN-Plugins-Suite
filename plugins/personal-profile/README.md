@@ -4,7 +4,9 @@ My Profile is optional and disabled by default. Its editor is available under **
 
 ## Interface language
 
-New profiles open in **English** by default. The user can select **العربية** from the Interface language dropdown; switching changes My Profile labels and text direction immediately, and pressing **Save** persists the choice. Existing saved Arabic or English preferences, including imported or migrated records, are honored. This interface setting does not change the separate response-language preference, which remains Automatic by default.
+New profiles use **Follow DSH** by default: My Profile reads the active DSH locale through the supported client locale service and updates while it changes. The **Interface language** dropdown also offers independent English, Arabic, Chinese, Spanish, French, German and Japanese selections; choosing an override does **not** change DSH's locale. Arabic uses RTL; all other supported selections use LTR. Save stores only the plugin's preference. Existing saved `ar`/`en` choices, including imported or migrated records, are respected as explicit overrides. The model **Response language** is a separate preference and remains Automatic by default.
+
+**Backup compatibility:** English/Arabic overrides still export the backwards-compatible v2 JSON format. `Follow DSH` and additional interface languages export v4 so their preference round-trips without silently turning an automatic choice into a manual language. Both formats import in the new version. Older versions cannot read v4; archive a historical v2 backup or Harness configuration before downgrading.
 
 ## My Information
 
