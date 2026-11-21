@@ -759,7 +759,7 @@ window.__ModuleLoader__.load({
     const PROFILE_CUSTOM_MAX = 8192
     const privatePolicies = () => Object.fromEntries(PERSONAL_FIELDS.map(key=>[key,'private']))
     const emptyInformation = () => ({preferredName:'',nationality:'',gender:''})
-    const emptyProfileRecord = () => ({version:PROFILE_VERSION,locale:'en',information:emptyInformation(),
+    const emptyProfileRecord = () => ({version:PROFILE_VERSION,locale:'auto',information:emptyInformation(),
       preferences:neutralProfilePreferences(),policies:privatePolicies()})
     // Payload guard for the serialized record (UTF-16 units) and for restore
     // text/files. Large enough for any v1 record with many Workspace rows.
@@ -809,7 +809,7 @@ window.__ModuleLoader__.load({
       const keys=['version','locale','information','preferences','policies']
       if(legacy)keys.push('allowPersonalInformation','allowCloud')
       profileCheck(profileKeys(value,keys))
-      profileCheck(['ar','en'].includes(value.locale)&&(!legacy||(typeof value.allowPersonalInformation==='boolean'&&typeof value.allowCloud==='boolean')))
+      profileCheck((value.version===PROFILE_VERSION?['auto','en','ar','zh','es','fr','de','ja']:['ar','en']).includes(value.locale)&&(!legacy||(typeof value.allowPersonalInformation==='boolean'&&typeof value.allowCloud==='boolean')))
       return {version:value.version,locale:value.locale,information:decodeInformation(value.information),
         preferences:decodePreferences(value.preferences),policies:decodePolicies(value.policies,legacy),
         ...(legacy?{allowPersonalInformation:value.allowPersonalInformation,allowCloud:value.allowCloud}:{})}
@@ -923,7 +923,7 @@ window.__ModuleLoader__.load({
         reader.readAsText(file)
       })
     }
-    function PersonalProfilePage({settings,connectionSource,useRemoteAccess}) {
+    function PersonalProfilePage({settings,connectionSource,localeSource,useRemoteAccess}) {
       const canRead=typeof useRemoteAccess==='function' ? useRemoteAccess('settings/describe') : false
       const canWrite=typeof useRemoteAccess==='function' ? useRemoteAccess('settings/replace') : false
       const generation=React.useSyncExternalStore(connectionSource.subscribe,connectionSource.getSnapshot,connectionSource.getSnapshot)
@@ -1013,7 +1013,10 @@ window.__ModuleLoader__.load({
         }catch{if(id===request.current&&lifetimeValid(g))setStatus('failed')}
         finally{if(id===request.current)inFlight.current=false}
       }
-      const language=record.locale,values=record.information,preferences=record.preferences
+      const hostSnapshot=React.useSyncExternalStore(localeSource.subscribe,localeSource.getSnapshot,localeSource.getSnapshot)
+      const hostLanguage=hostSnapshot?.active || 'en'
+      const language=record.locale==='auto'?hostLanguage:record.locale
+      const values=record.information,preferences=record.preferences
       const busy=status==='loading'||status==='saving'
       const editable=canRead&&canWrite&&revision!==null&&!busy&&generation===connectionSource.getSnapshot()
       const dirty=saved!==null&&!sameJson(record,saved)
@@ -1209,7 +1212,7 @@ window.__ModuleLoader__.load({
           ['preferredName',t('preferredName'),r.information.preferredName||t('empty')],
           ['nationality',t('nationality'),r.information.nationality||t('empty')],
           ['gender',t('gender'),genderLabel(r.information.gender)],
-          ['locale',t('interfaceLanguage'),r.locale==='ar'?'العربية':'English'],
+          ['locale',t('interfaceLanguage'),r.locale==='auto'?'Follow DSH':(r.locale==='ar'?'العربية':r.locale==='en'?'English':r.locale.toUpperCase())],
           ['style',t('styleTone'),localLabel(PROFILE_STYLES.find(i=>i[0]===p.style))],
           ['responseLanguage',t('responseLanguage'),localLabel(PROFILE_LANGUAGES.find(i=>i[0]===p.responseLanguage))],
           ['traits',t('characteristics'),traits.length?traits.join(rtl?'، ':', '):t('neutral')],
@@ -1452,14 +1455,14 @@ window.__ModuleLoader__.load({
             alignItems:'center',justifyContent:'space-between'}},
             h('div',null,h('h1',{style:{margin:'0 0 4px',fontSize:'clamp(22px,3vw,32px)'}},t('title')),
               h('p',{style:{margin:'0 0 12px',opacity:.7}},t('subtitle'))),
-            h('fieldset',{disabled:!editable,style:{width:145,border:0,padding:0,margin:0}},dropdown('language',t('language'),language,
-              [['en','English'],['ar','العربية']],setLanguage))),
+            h('fieldset',{disabled:!editable,style:{width:145,border:0,padding:0,margin:0}},dropdown('language',t('language'),record.locale,
+              [['auto','Follow DSH'],['en','English'],['ar','العربية'],['zh','中文'],['es','Español'],['fr','Français'],['de','Deutsch'],['ja','日本語']],setLanguage))),
           notice,
           upgradeCard,
           h('div',{style:{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center',marginBottom:12}},
             h('button',{id:'pp-save',type:'button',style:btn,'aria-describedby':upgradePending?'pp-upgrade-note':undefined,disabled:!editable||!dirty||status==='conflict'||status==='failed'||migrationBlocked,onClick:save},t('save')),
             h('button',{id:'pp-reload',type:'button',style:btn,disabled:busy||!canRead,onClick:requestReload},t('reload')),
-            h('button',{id:'pp-reset',type:'button',style:btn,disabled:!editable,onClick:()=>{setRecord({...emptyProfileRecord(),locale:language});setRestoreText('');clearRestore();setExportView(false)}},t('reset'))),
+            h('button',{id:'pp-reset',type:'button',style:btn,disabled:!editable,onClick:()=>{setRecord({...emptyProfileRecord(),locale:record.locale});setRestoreText('');clearRestore();setExportView(false)}},t('reset'))),
           h('p',{id:'pp-save-status',role:'status'},t(status)+(dirty&&status!=='migration'?' '+t('dirty'):'')),
           confirmReload?h('div',{id:'pp-reload-prompt',role:'alert',style:{padding:'12px 15px',marginBottom:12,
             border:'1px solid rgba(208,58,52,.6)',borderRadius:10,background:'rgba(208,58,52,.08)'}},
@@ -1524,8 +1527,16 @@ window.__ModuleLoader__.load({
         const connectionSource={getSnapshot:()=>generation,subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn)}}
         ctx.on('connection/reset',()=>{generation++;for(const fn of [...listeners])fn()})
         const settings=ctx.remote.settings
+        // The optional public DSH Locale service drives the UI only while the
+        // profile preference is 'auto'. Never write to DSH's locale preference.
+        const hostLocale = typeof ctx.get === 'function' ? ctx.get('locale') : undefined
+        const fallbackLocale = Object.freeze({active:'en',revision:0})
+        const localeSource = hostLocale && typeof hostLocale.getSnapshot==='function' &&
+          typeof hostLocale.subscribe==='function'
+          ? {getSnapshot:()=>hostLocale.getSnapshot(),subscribe:fn=>hostLocale.subscribe(fn)}
+          : {getSnapshot:()=>fallbackLocale,subscribe:()=>()=>{}}
         function ProfileSlot(props) {
-          const page=h(PersonalProfilePage,{settings,connectionSource,useRemoteAccess:props?.useRemoteAccess})
+          const page=h(PersonalProfilePage,{settings,connectionSource,localeSource,useRemoteAccess:props?.useRemoteAccess})
           return ProfileErrorBoundary?h(ProfileErrorBoundary,null,page):page
         }
         // Native Settings navigation replaces the global sidebar entry. Keep
