@@ -1992,39 +1992,60 @@ window.__ModuleLoader__.load({
           'aria-label': busy ? 'Opening Direct Chat' : label, 'aria-busy': busy,
           title: label, style: { display: 'inline-flex', gap: 7, alignItems: 'center',
             cursor: busy ? 'wait' : 'pointer', border: 0, borderRadius: 8,
-            padding: '8px 10px', color: 'inherit', background: 'transparent', font: 'inherit' } },
-          suiteGlyph(['M6 4h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7l-5 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z'], 16),
+            padding: '8px 10px', color: 'inherit', background: 'transparent', font: 'inherit',
+            width: '100%', justifyContent: 'center' } },
+          suiteGlyph(['M6 4h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7l-5 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1-2-2Z'], 16),
           wide ? h('span', null, label) : null),
         status === 'failed' ? h('div', { role: 'alert', style: { fontSize: 12, padding: 8 } },
-          'Unable to open Direct Chat. Session creation may have succeeded; check recent sessions before retrying.') : null)
+          'Unable to open Direct Chat. Check the Workspace list before retrying.') : null)
+    }
+    // Official DSH New Session HOC: mounts immediately beneath the native
+    // New Session control, above global Plugins and Workspace/Projects rows.
+    function DirectChatTopAction({ children, wide, useRemoteAccess, startChat }) {
+      return h('div', { 'data-abinadwan-direct-chat-top': '',
+        style: { display: 'flex', flexDirection: 'column', gap: 4, width: '100%' } },
+        children,
+        h(DirectChatButton, { wide, useRemoteAccess, startChat }))
     }
     const directChatPlugin = {
-      inject: ['slots', 'sessions', 'uiWorkspace', 'layout'],
+      inject: ['slots', 'sessions', 'workspaces', 'uiWorkspace', 'layout'],
       apply(ctx) {
         const lifetime = new AbortController()
         ctx.effect(() => () => lifetime.abort(), 'direct-chat: abort pending navigation')
         async function startChat() {
           const navigation = AbortSignal.any([ctx.layout.beginNavigation(), lifetime.signal])
-          try {
-            const response = await fetch('/api/abinadwan-direct-chat/create', {
-              method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
-              signal: AbortSignal.any([navigation, AbortSignal.timeout(15000)]),
-            })
-            if (!response.ok) throw new Error('Native session creation returned HTTP ' + response.status)
-            const result = await response.json()
-            if (typeof result.sessionId !== 'string' || !result.sessionId) {
-              throw new Error('Native session creation did not return a session ID')
-            }
-            await ctx.sessions.refresh()
-            if (!navigation.aborted) ctx.uiWorkspace.openSession(result.sessionId)
-          } catch (error) {
-            if (!navigation.aborted) throw error
+          const response = await fetch('/api/abinadwan-direct-chat/prepare', {
+            method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
+            signal: AbortSignal.any([navigation, AbortSignal.timeout(15000)]),
+          })
+          if (!response.ok) throw new Error('Direct Chat Workspace preparation returned HTTP ' + response.status)
+          const result = await response.json()
+          if (typeof result.path !== 'string' || !result.path) {
+            throw new Error('Direct Chat Workspace preparation returned no path')
           }
+          if (navigation.aborted) return
+          // Workspace creation is idempotent for this one canonical path.
+          // Conversation history and agent continuation are scoped by Session ID.
+          const workspace = await ctx.workspaces.create({ path: result.path })
+          if (typeof workspace?.workspaceId !== 'string' || !workspace.workspaceId) {
+            throw new Error('DSH did not return a Workspace identity')
+          }
+          if (workspace.title !== 'Direct Chat') {
+            await ctx.workspaces.rename(workspace.workspaceId, 'Direct Chat')
+          }
+          if (navigation.aborted) return
+          // Native DSH reuses a still-empty draft, otherwise creates an
+          // independent Session; no prior chat transcript is carried over.
+          const sessionId = await ctx.uiWorkspace.connectWorkspace(workspace.workspaceId)
+          if (typeof sessionId !== 'string' || !sessionId) {
+            throw new Error('DSH did not return a native Session identity')
+          }
+          if (!navigation.aborted) ctx.uiWorkspace.openSession(sessionId)
         }
-        ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
-          name: 'sidebar.footer.action', id: DIRECT_CHAT_ID, order: 5,
+        ctx.slots.inject('sidebar.session.action', () => ctx.slots.register({
+          name: 'sidebar.session.action', id: DIRECT_CHAT_ID,
           inject: () => ({ startChat }),
-        }, DirectChatButton))
+        }, DirectChatTopAction))
       },
     }
 

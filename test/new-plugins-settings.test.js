@@ -30,7 +30,7 @@ test('independent Host rows default off and resolve English product metadata and
   }
 })
 
-test('Direct Chat replaces the old settings UI with a native sidebar action while Lifecycle stays isolated', async () => {
+test('Direct Chat replaces the old settings UI with a top New Session action while Lifecycle stays isolated', async () => {
   const fixture = await clientHarness({ modelDirectories: {} })
   try {
     const rows = [...fixture.rows(), ...Object.keys(names).map(id => ({
@@ -38,12 +38,12 @@ test('Direct Chat replaces the old settings UI with a native sidebar action whil
     }))]
     fixture.setRows(rows)
     await fixture.changed()
-    assert.ok(fixture.entries('sidebar.footer.action').some(row => row.options.id === 'abinadwan-direct-chat'))
+    assert.ok(fixture.entries('sidebar.session.action').some(row => row.options.id === 'abinadwan-direct-chat'))
     assert.deepEqual(fixture.entries('settings.section').map(row => row.options.id), ['abinadwan-conversation-lifecycle'])
     assert.equal(fixture.entries('conversation.input.right').length, 1)
     fixture.setRows(rows.map(row => row.moduleName === `${base}/direct-chat` ? { ...row, enabled: false } : row))
     await fixture.changed()
-    assert.equal(fixture.entries('sidebar.footer.action').length, 0)
+    assert.equal(fixture.entries('sidebar.session.action').length, 0)
     assert.deepEqual(fixture.entries('settings.section').map(row => row.options.id), ['abinadwan-conversation-lifecycle'])
   } finally { await fixture.dispose() }
 })

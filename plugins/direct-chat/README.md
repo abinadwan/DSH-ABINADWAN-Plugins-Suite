@@ -1,16 +1,13 @@
-# Direct Chat — Global Chat replacement (experimental)
+# Direct Chat — one persistent Workspace with separate chat Sessions
 
-This component keeps the suite identity \`abinadwan-direct-chat\` and imports the Codex Global Chat PoC architecture:
-- a button in the native \`sidebar.footer.action\` slot;
-- a Host-owned, authenticated \`/api/abinadwan-direct-chat/create\` route;
-- native \`sessionController.create({ cwd })\` plus \`sessionPersistence.flush()\`;
-- tool denial at \`tools/pre-execute\` and \`tools.guard\` for the dedicated profile path.
+The Direct Chat button beside the native top New Session control opens a native DSH Session under one permanent Workspace titled **Direct Chat**. Each non-blank conversation gets a different Session ID, its own log and its own agent continuation. The plugin does not fork previous Sessions, paste old transcripts into new chats or install cross-session memory/retrieval. The DSH native composer reuses an unsubmitted blank draft; after the first message, the next click creates another Session.
 
-## Status and limits
-This replacement deliberately **does not** import the speculative GPT-OSS \`ui-conversation\`, preset, or \`hidden: true\` Cordis rows. They were not verified against the installed Host. The Codex \`hiddenWorkspace.ts\` and \`HiddenWorkspaceProvider.tsx\` are not usable production modules and are not shipped.
+**No more `session-*` Workspace per click.** The Host always returns the same profile-scoped directory: `<profile>/abinadwan-direct-chat-data/Direct Chat`. Workspace registration is idempotent by canonical path. Earlier `session-*` Workspace registrations and directories are deliberately left untouched; no automatic migration or deletion occurs.
 
-**Not yet solved:** the native Desktop Workspace gate may prevent the composer from opening when the session's cwd has no registered Workspace. A folder under the profile is NOT the same as a registered hidden Workspace. A truly hidden, persistent internal Workspace must be implemented and verified against actual DSH Desktop. Creating a native session alone does not pass acceptance.
+**Critical limit:** this isolates *conversation history*, not the underlying filesystem. All new Direct Chat Sessions share the same Workspace `cwd`, because DSH Workspace membership requires that path. The existing pre-execute and dispatch tool-denial guards remain, but they are policy guards, **not a Windows LPAC or process/filesystem sandbox**. They also cover older per-chat paths. No claims of high-assurance isolation or cross-plugin confidentiality are made.
 
-**Not included yet:** permanent deletion of DSH-managed Sessions, workspace hiding, post-restart Desktop smoke validation, and independent update/uninstall checks. These remain follow-up stages. Do not use the old companion/LPAC security tests as evidence for this implementation.
+This version shows **Direct Chat** under the standard DSH Workspaces browser. The separate **Direct Chat** and **Projects** top-level sidebar sections are a later UI change and are not yet implemented. The component stays Off by default. Native Windows Desktop send/receive, restart, guard coverage, and history independence need acceptance testing before merging to `develop`.
 
-The previous Windows LPAC companion implementation is preserved in Git history on \`develop\`. This branch deliberately removes that code; do not consider its isolation guarantees transferred to the native-session approach. The component stays disabled by default. Do not merge into \`develop\` or release without owner approval and the Desktop acceptance gates.
+## Sidebar placement
+
+The button is now mounted via DSH's public `sidebar.session.action` HOC immediately below the native New Session button, **above Plugins and the Workspace browser**, without replacing DSH's New Session control. It does not render at the footer. DSH exposes no public arbitrary header row seat; this is the highest supported native control region. The full Direct Chat / Projects separate-session-tree split is still a distinct phase.

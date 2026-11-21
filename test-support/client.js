@@ -223,8 +223,16 @@ export async function clientHarness(options = {}) {
   })
   ctx.provide('sessions', { list: sessions, refresh: options.refresh || (async () => {}), subagentAddress: () => undefined,
     binding: id => options.sessionBinding?.(id) })
-  ctx.provide('workspaces', { list: workspaces })
-  ctx.provide('uiWorkspace', { openSession: id => options.onOpenSession?.(id) })
+  ctx.provide('workspaces', {
+    list: workspaces,
+    create: input => options.onWorkspaceCreate?.(input) ?? { workspaceId: 'direct-workspace', path: input.path, title: 'Direct Chat' },
+    rename: (id, title) => options.onWorkspaceRename?.(id, title) ?? Promise.resolve({ workspaceId: id, title }),
+    delete: id => options.onWorkspaceDelete?.(id) ?? Promise.resolve(),
+  })
+  ctx.provide('uiWorkspace', {
+    openSession: id => options.onOpenSession?.(id),
+    connectWorkspace: id => options.onConnectWorkspace?.(id) ?? Promise.resolve('session-direct-1'),
+  })
   ctx.provide('layout', { beginNavigation: () => new AbortController().signal })
   if (options.modelDirectories) ctx.provide('modelDirectories', options.modelDirectories)
   ctx.provide('sidebarRight', {

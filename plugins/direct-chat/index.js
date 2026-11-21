@@ -1,73 +1,69 @@
-// Direct Chat: host adapter from the Codex Global Chat proof of concept.
-// Sessions and history remain native DSH records. No separate chat database.
-// This is experimental; an internal Workspace registration and desktop composer
-// gate still require acceptance testing before the component can ship enabled.
+// One permanent DSH Workspace; every non-blank chat is a distinct native Session.
+// Session history isolation does not constitute process or filesystem isolation.
 import { lstat, mkdir, realpath } from 'node:fs/promises'
-import { isAbsolute, join, normalize } from 'node:path'
+import { isAbsolute, join, normalize, sep } from 'node:path'
 
 export const name = 'abinadwan-direct-chat'
-export const inject = ['profileContext', 'connection', 'sessionController', 'sessionPersistence', 'tools']
+export const inject = ['profileContext', 'connection', 'tools']
 
-const route = '/api/abinadwan-direct-chat/create'
+const route = '/api/abinadwan-direct-chat/prepare'
 const directoryName = 'abinadwan-direct-chat-data'
+const workspaceName = 'Direct Chat'
 
 function pathKey(path) {
   if (typeof path !== 'string' || !isAbsolute(path)) return undefined
   const normalized = normalize(path)
   return process.platform === 'win32' ? normalized.toLowerCase() : normalized
 }
-
-function directChatDenial(cwd) {
+function isDirectChatCwd(cwd, roots) {
   const key = pathKey(cwd)
-  return ({ agent }) => key !== undefined && pathKey(agent?.session?.header.cwd) === key
+  if (key === undefined) return false
+  return [...roots].some(root => root !== undefined && (key === root || key.startsWith(root + sep)))
+}
+function denyTools(roots) {
+  return ({ agent }) => isDirectChatCwd(agent?.session?.header.cwd, roots)
     ? { reason: 'Direct chats do not run tools.', info: { name: 'DirectChatPolicy', code: 'DIRECT_CHAT_TOOL_DENIED' } }
     : undefined
 }
-
-async function ensureChatDirectory(profileDir, cwd) {
-  // Refuse a symlink/junction substituting the dedicated profile directory.
-  const parent = await realpath(profileDir)
-  await mkdir(cwd, { recursive: true })
-  const entry = await lstat(cwd)
-  const canonical = await realpath(cwd)
-  if (!entry.isDirectory() || entry.isSymbolicLink() || pathKey(canonical) !== pathKey(join(parent, directoryName))) {
-    throw new Error('The Direct Chat data directory is not a dedicated profile directory.')
+async function checkedDirectory(path) {
+  await mkdir(path, { recursive: true })
+  const [stat, canonical] = await Promise.all([lstat(path), realpath(path)])
+  if (!stat.isDirectory() || stat.isSymbolicLink() || pathKey(canonical) !== pathKey(path)) {
+    throw new Error('The Direct Chat directory is not a dedicated profile-owned directory.')
   }
+  return canonical
 }
-
+async function prepareWorkspace(profileDir, roots) {
+  const profile = await realpath(profileDir)
+  const dataRoot = await checkedDirectory(join(profile, directoryName))
+  // Guard both existing legacy session-* paths and the new permanent Workspace.
+  roots.add(pathKey(dataRoot))
+  return checkedDirectory(join(dataRoot, workspaceName))
+}
 export function apply(ctx) {
   const profileDir = ctx.profileContext.dir
   if (!profileDir || !isAbsolute(profileDir)) throw new Error('Direct Chat requires a persistent DSH profile.')
-  const cwd = join(profileDir, directoryName)
-  const deny = directChatDenial(cwd)
-
-  // Reject before approval and again at actual tool dispatch.
+  const roots = new Set([pathKey(join(profileDir, directoryName))])
+  const deny = denyTools(roots)
   ctx.on('tools/pre-execute', (exec, next) => {
     const denial = deny(exec)
     return denial === undefined ? next() : Promise.resolve({ kind: 'deny', ...denial })
   }, { prepend: true })
-  ctx.effect(() => ctx.tools.guard(deny), 'direct-chat: deny tools in native chat sessions')
-
+  ctx.effect(() => ctx.tools.guard(deny), 'direct-chat: deny tools for all Direct Chat Sessions')
   ctx.effect(() => ctx.connection.fetch.register({
-    path: route,
-    methods: ['POST'],
-    requestBody: 'buffered',
+    path: route, methods: ['POST'], requestBody: 'buffered',
     async fetch(request) {
       if (request.headers.get('content-type') !== 'application/json' || await request.text() !== '{}') {
         return Response.json({ code: 'DIRECT_CHAT_BAD_REQUEST' }, { status: 400 })
       }
       try {
         request.signal.throwIfAborted()
-        await ensureChatDirectory(profileDir, cwd)
-        request.signal.throwIfAborted()
-        const { sessionId } = await ctx.sessionController.create({ cwd })
-        // Persist blank sessions before informing the browser.
-        await ctx.sessionPersistence.flush()
-        return Response.json({ sessionId }, { headers: { 'cache-control': 'no-store' } })
+        const path = await prepareWorkspace(profileDir, roots)
+        return Response.json({ path }, { headers: { 'cache-control': 'no-store' } })
       } catch (error) {
-        ctx.logger.warn('Direct Chat: native session creation or durability check failed: %s', String(error))
-        return Response.json({ code: 'DIRECT_CHAT_CREATE_UNCERTAIN' }, { status: 500 })
+        ctx.logger.warn('Direct Chat: permanent Workspace preparation failed: %s', String(error))
+        return Response.json({ code: 'DIRECT_CHAT_PREPARE_FAILED' }, { status: 500 })
       }
     },
-  }), 'direct-chat: create native chat session')
+  }), 'direct-chat: prepare one permanent native Workspace')
 }
