@@ -2,14 +2,16 @@
 
 All notable changes are documented here.
 
-## [1.0.0] — Development baseline, **unreleased** (2026-11-21)
+## [1.0.0] — Released (2026-11-22)
 
-- Bumped the development package, lockfile and client-displayed version to **1.0.0**. This is **not** a stable GitHub Release, `main` promotion or automatic update of installed copies.
+- Promoted the six-component suite through [PR #31](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/31) into `main` and published [GitHub Release v1.0.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.0). Package, lockfile and client-displayed version are **1.0.0**. Publication does **not** automatically update installed Desktop copies.
 - Updated the root README and `docs/DETAIL.md` to describe all six active components and their known limitations. Added the missing three icon previews for Direct Chat, Chat Control and Adaptive Reasoning; updated artwork provenance.
 - Audited all 43 previously present `docs/**/*.md` files; no unrelated files were found. Retained superseded project-specific design/acceptance evidence, added `docs/README.md` to distinguish current guidance from historical records, and corrected contradictory profile backup and Direct Chat acceptance wording.
 - Version-dependent release-checker test fixtures now use a synthetic version greater than 1.0.0. CI still tests the packed artifact; no component runtime feature was added or enabled as part of the documentation pass.
 
-### Earlier development changes integrated into this baseline
+- **Release caveat:** the 4/4 Windows/Linux Node 22/24 CI matrix passed, but Direct Chat deep Host request/tool authorization, filesystem isolation and My Profile multilingual live Desktop acceptance remain **deferred/not independently proven**. The release does not imply sandbox-level isolation or cleared security gates.
+
+### Earlier development changes integrated into this release
 
 - My Profile interface languages (2026-11-21): new v4 profiles default to **Follow DSH** (`auto`), subscribing to the DSH Locale service; users may override the plugin interface independently in English, Arabic, Chinese, Spanish, French, German or Japanese and Save. Existing saved `en`/`ar` are retained. Automatic and added locale modes export v4 backups to round-trip correctly; explicit English/Arabic still export compatible v2. Response language remains separate. Regression tests cover Host switching, manual overrides, seven locales, and export format.
 - Settings navigation cleanup (2026-11-21): **Personal Profile → My Profile**, moving its editor from the main left sidebar to native **Settings** via `settings.section` and `settings.section.icon`; **Conversation Lifecycle → Chat Control** in Settings, its page heading and the plugin/component metadata. Stable Host module IDs, storage namespaces, existing saved records, access defaults, and enablement are unchanged. Export compatibility for newly added language modes is described above. Coverage: Settings visibility/disposal, metadata names, profile renderer and existing behavior. [Change record](docs/SETTINGS_NAVIGATION_NAMES_2026_11_21.md).
