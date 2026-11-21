@@ -4,6 +4,7 @@ All notable changes are documented here.
 
 ## [Unreleased] — Unified development baseline
 
+- Settings navigation cleanup (2026-11-21): **Personal Profile → My Profile**, moving its editor from the main left sidebar to native **Settings** via `settings.section` and `settings.section.icon`; **Conversation Lifecycle → Chat Control** in Settings, its page heading and the plugin/component metadata. Stable Host module IDs, storage namespaces, saved records, backup format, access defaults, and enablement are unchanged. Coverage: Settings visibility/disposal, metadata names, profile renderer and existing behavior. [Change record](docs/SETTINGS_NAVIGATION_NAMES_2026_11_21.md).
 - Direct Chat verifies exclusive Windows root ownership and recovers interrupted deletion and migration. Failed ACL and AppContainer cleanup retains records for retry.
 - Personal Profile simplification candidate: one My Information page with three independent Available to agent checkboxes, no Ask First or global/cloud switches; v4 native settings, backwards-compatible v2 JSON, legacy choices start private, and consent-reviewed imports. Checked saved fields enter supported native agent prompts. Recognizable unauthorized replay remains gated. Desktop acceptance pending.
 - Adaptive Reasoning keeps manual effort and a single Host. Temporary effort and unsupported subagent policies stay unavailable on Harness rc.3 and rc.5.
