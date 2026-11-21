@@ -230,6 +230,7 @@ export async function clientHarness(options = {}) {
     } },
     openTab: kind => { if (kind !== 'environment-dashboard') throw new Error('wrong tab'); opened++ },
   })
+  if (options.locale) ctx.provide('locale', options.locale)
   runInNewContext(readFileSync(new URL('../client.js', import.meta.url), 'utf8'), {
     window: { __ModuleLoader__: { load: mod => { loaded = mod } } },
     setTimeout: callback => { timers.set(++timerId, callback); return timerId },
