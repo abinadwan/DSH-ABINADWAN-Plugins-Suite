@@ -759,7 +759,7 @@ window.__ModuleLoader__.load({
     const PROFILE_CUSTOM_MAX = 8192
     const privatePolicies = () => Object.fromEntries(PERSONAL_FIELDS.map(key=>[key,'private']))
     const emptyInformation = () => ({preferredName:'',nationality:'',gender:''})
-    const emptyProfileRecord = () => ({version:PROFILE_VERSION,locale:'ar',information:emptyInformation(),
+    const emptyProfileRecord = () => ({version:PROFILE_VERSION,locale:'en',information:emptyInformation(),
       preferences:neutralProfilePreferences(),policies:privatePolicies()})
     // Payload guard for the serialized record (UTF-16 units) and for restore
     // text/files. Large enough for any v1 record with many Workspace rows.
@@ -1453,7 +1453,7 @@ window.__ModuleLoader__.load({
             h('div',null,h('h1',{style:{margin:'0 0 4px',fontSize:'clamp(22px,3vw,32px)'}},t('title')),
               h('p',{style:{margin:'0 0 12px',opacity:.7}},t('subtitle'))),
             h('fieldset',{disabled:!editable,style:{width:145,border:0,padding:0,margin:0}},dropdown('language',t('language'),language,
-              [['ar','العربية'],['en','English']],setLanguage))),
+              [['en','English'],['ar','العربية']],setLanguage))),
           notice,
           upgradeCard,
           h('div',{style:{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center',marginBottom:12}},
