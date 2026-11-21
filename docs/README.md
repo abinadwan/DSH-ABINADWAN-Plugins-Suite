@@ -1,6 +1,6 @@
 # Documentation index — ABINADWAN Plugins Suite
 
-**Development baseline: v1.0.0 on `develop`; not a published GitHub Release.**
+**Source baseline: v1.0.0 on `develop` (development, not a published stable release).**
 
 ## Where to start
 
@@ -11,9 +11,9 @@
 
 ## Documentation audit — 2026-11-21
 
-All **43 pre-existing Markdown files in `docs/`** were inspected for relevance, status and local file references. **None was unrelated to this repository:** even the obsolete Personal Profile encrypted-storage proposals and QA-only Direct Chat companion experiments are project history. They were **retained deliberately** instead of deleting audit/security evidence; old design files were already labeled superseded in many cases and are not shipped in the npm package. This index makes the current vs historical boundary explicit. The current documents and navigation/acceptance records were corrected where they contradicted current code.
+The earlier audit examined **43 existing Markdown files** under `docs/` (before adding this index). All were related to the repository; none warranted permanent deletion. A later organization pass moved **15 superseded research and planning records** to [`archive/`](archive/README.md) without losing their contents or Git history. [`research/`](research/README.md) retains four useful technical reference reports plus original desktop-contract evidence JSON. The archives are **historical**, not instructions for the current implementation.
 
-**Scope of this pass:** documentation and displayed version metadata, not functional changes to the six components. The package is now tagged **v1.0.0 in source only**; it does not publish GitHub Releases or change the installed user version. See [current version and release caveats](DETAIL.md#installation-and-updates).
+**Current documentation policy:** the root README focuses on the technology and installation; [DETAIL.md](DETAIL.md) is the single detailed reference for all six component features and limitations. Version **v1.0.0** is source metadata only, not publication. Historical reports retain their original version and test evidence.
 
 ## Current reader-facing documentation
 
@@ -60,38 +60,39 @@ Version numbers and branch names below identify **historical baselines**, not th
 | [PERSONAL_PROFILE_PHASE8_PLAN.md](PERSONAL_PROFILE_PHASE8_PLAN.md) | Owner-approved simplified disclosure decisions |
 | [PERSONAL_PROFILE_PHASE8_REPORT.md](PERSONAL_PROFILE_PHASE8_REPORT.md) | Earlier branch verification; not unconditional release approval |
 
-## Research and implementation evidence for other components
+## Active technical research and evidence (historical baselines)
 
-Source history and design limitations, not a second installed plugin. The Direct Chat Phase 2 record includes the owner-accepted Windows functional findings and deliberately deferred deep isolation checks.
+Research items listed here are historical source/Host baselines that may still inform future engineering. **Only the currently implemented behavior in [DETAIL.md](DETAIL.md) is authoritative.** The Direct Chat Phase 2 acceptance record preserves owner-approved Windows behavior with deliberately deferred deep Host isolation checks.
 
 | File | Reason to keep |
 | --- | --- |
 | [research/ADAPTIVE_REASONING_HANDOVER.md](research/ADAPTIVE_REASONING_HANDOVER.md) | Original adaptive reasoning implementation and limitations |
-| [research/DIRECT_CHAT_GLOBAL_CHAT_PHASE1.md](research/DIRECT_CHAT_GLOBAL_CHAT_PHASE1.md) | First native Direct Chat replacement checks |
+| [research/new-plugins-desktop-evidence.json](research/new-plugins-desktop-evidence.json) | Original 2026-11-18 read-only DSH Desktop/SDK contract inventory (data, not current runtime assurance) |
+| [archive/research/DIRECT_CHAT_GLOBAL_CHAT_PHASE1.md](archive/research/DIRECT_CHAT_GLOBAL_CHAT_PHASE1.md) | First native Direct Chat replacement checks |
 | [research/DIRECT_CHAT_PHASE2_DESKTOP_ACCEPTANCE.md](research/DIRECT_CHAT_PHASE2_DESKTOP_ACCEPTANCE.md) | Owner-accepted Phase 2 and open security boundaries |
 | [research/NEW_PLUGINS_PHASE_A.md](research/NEW_PLUGINS_PHASE_A.md) | Initial feasibility/DSH contract research |
-| [research/NEW_PLUGINS_PHASE_C.md](research/NEW_PLUGINS_PHASE_C.md) | Delete/retention feasibility research |
-| [research/NEW_PLUGINS_PHASE_C_CONTINUATION.md](research/NEW_PLUGINS_PHASE_C_CONTINUATION.md) | Native Settings and Desktop contracts |
-| [research/NEW_PLUGINS_PHASE_C_UI_CORRECTION.md](research/NEW_PLUGINS_PHASE_C_UI_CORRECTION.md) | Historical UI correction/screenshots |
-| [research/NEW_PLUGINS_PHASE_D.md](research/NEW_PLUGINS_PHASE_D.md) | Core functionality design and evidence |
-| [research/NEW_PLUGINS_PHASE_D2.md](research/NEW_PLUGINS_PHASE_D2.md) | Old QA-only Direct Chat companion prototype |
-| [research/NEW_PLUGINS_PHASE_D3.md](research/NEW_PLUGINS_PHASE_D3.md) | Old companion/LPAC work, not current architecture |
+| [archive/research/NEW_PLUGINS_PHASE_C.md](archive/research/NEW_PLUGINS_PHASE_C.md) | Delete/retention feasibility research |
+| [archive/research/NEW_PLUGINS_PHASE_C_CONTINUATION.md](archive/research/NEW_PLUGINS_PHASE_C_CONTINUATION.md) | Native Settings and Desktop contracts |
+| [archive/research/NEW_PLUGINS_PHASE_C_UI_CORRECTION.md](archive/research/NEW_PLUGINS_PHASE_C_UI_CORRECTION.md) | Historical UI correction/screenshots |
+| [archive/research/NEW_PLUGINS_PHASE_D.md](archive/research/NEW_PLUGINS_PHASE_D.md) | Core functionality design and evidence |
+| [archive/research/NEW_PLUGINS_PHASE_D2.md](archive/research/NEW_PLUGINS_PHASE_D2.md) | Old QA-only Direct Chat companion prototype |
+| [archive/research/NEW_PLUGINS_PHASE_D3.md](archive/research/NEW_PLUGINS_PHASE_D3.md) | Old companion/LPAC work, not current architecture |
 | [research/SUITE_AUTO_UPDATE_FEASIBILITY.md](research/SUITE_AUTO_UPDATE_FEASIBILITY.md) | Future unattended updates only; current update-now flow is in DETAIL.md |
 
-## Archived implementation plans
+## Superseded research, QA prototypes and implementation plans
 
-These early implementation plans are project-related but superseded. Do not follow their commands without comparing against the current source and product requirements.
+These superseded research reports and implementation plans are project-related, but have been relocated into `docs/archive`. Do not follow their commands or use their experimental capability claims without comparing with the current source, Host and requirements.
 
 | File | Reason to keep |
 | --- | --- |
-| [superpowers/plans/2026-11-16-personal-profile-consent.md](superpowers/plans/2026-11-16-personal-profile-consent.md) | Historical consent plan |
-| [superpowers/plans/2026-11-16-personal-profile-instructions.md](superpowers/plans/2026-11-16-personal-profile-instructions.md) | Historical instructions plan |
-| [superpowers/plans/2026-11-16-personal-profile-integration.md](superpowers/plans/2026-11-16-personal-profile-integration.md) | Historical integration plan |
-| [superpowers/plans/2026-11-16-personal-profile-phase1.md](superpowers/plans/2026-11-16-personal-profile-phase1.md) | Historical Phase 1 plan |
-| [superpowers/plans/2026-11-16-personal-profile-storage.md](superpowers/plans/2026-11-16-personal-profile-storage.md) | Historical storage plan |
-| [superpowers/plans/2026-11-16-personal-profile-ui.md](superpowers/plans/2026-11-16-personal-profile-ui.md) | Historical UI plan |
-| [superpowers/plans/2026-11-18-new-plugins.md](superpowers/plans/2026-11-18-new-plugins.md) | Historic new-plugin implementation plan |
-| [superpowers/specs/2026-11-18-new-plugins-design.md](superpowers/specs/2026-11-18-new-plugins-design.md) | Historic conditional Phase B specification |
+| [archive/superpowers/plans/2026-11-16-personal-profile-consent.md](archive/superpowers/plans/2026-11-16-personal-profile-consent.md) | Historical consent plan |
+| [superpowers/plans/2026-11-16-personal-profile-instructions.md](archive/superpowers/plans/2026-11-16-personal-profile-instructions.md) | Historical instructions plan |
+| [superpowers/plans/2026-11-16-personal-profile-integration.md](archive/superpowers/plans/2026-11-16-personal-profile-integration.md) | Historical integration plan |
+| [superpowers/plans/2026-11-16-personal-profile-phase1.md](archive/superpowers/plans/2026-11-16-personal-profile-phase1.md) | Historical Phase 1 plan |
+| [superpowers/plans/2026-11-16-personal-profile-storage.md](archive/superpowers/plans/2026-11-16-personal-profile-storage.md) | Historical storage plan |
+| [superpowers/plans/2026-11-16-personal-profile-ui.md](archive/superpowers/plans/2026-11-16-personal-profile-ui.md) | Historical UI plan |
+| [superpowers/plans/2026-11-18-new-plugins.md](archive/superpowers/plans/2026-11-18-new-plugins.md) | Historic new-plugin implementation plan |
+| [superpowers/specs/2026-11-18-new-plugins-design.md](archive/superpowers/specs/2026-11-18-new-plugins-design.md) | Historic conditional Phase B specification |
 
 ## Rules for maintaining this directory
 
@@ -101,4 +102,4 @@ These early implementation plans are project-related but superseded. Do not foll
 4. Preserve prior Desktop/security evidence even if the old implementation was removed. Label it historical and link the current architecture instead of silently erasing risk decisions.
 5. Confirm relative Markdown links and all seven component/suite icon files exist. Do not reference missing release SHAs or claim a stable v1.0.0 GitHub Release until one is published and accepted.
 
-Documentation/packaging checks run in the repository CI alongside `npm test` and `npm run check:package`.
+Documentation/packaging checks run in repository CI alongside `npm test` and `npm run check:package`. The archived files are not published as runtime capabilities. Read [research classification](research/README.md) and [archive README](archive/README.md) before using an old design.

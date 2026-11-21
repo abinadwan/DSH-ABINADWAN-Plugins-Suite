@@ -1,6 +1,6 @@
 # Personal Profile consent implementation plan
 
-> **Superseded (historical record).** Version 0.7.0 replaced this design with native Harness settings; see [the current design](../../PERSONAL_PROFILE_LOCAL_SETTINGS.md). Nothing described here is in the runtime or the package.
+> **Superseded (historical record).** Version 0.7.0 replaced this design with native Harness settings; see [the current design](../../../PERSONAL_PROFILE_LOCAL_SETTINGS.md). Nothing described here is in the runtime or the package.
 
 Goal: implement the user's Phase 2 specification on the exact Phase 1 commit.
 Architecture: an internal consent facade owns a Phase 1 core. Separate opaque

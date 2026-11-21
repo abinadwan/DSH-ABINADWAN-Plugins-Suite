@@ -79,7 +79,7 @@ Enabling the component registers the runtime Skill `abinadwan-humanizer` through
 
 **Not implemented:** a production deletion worker, automatic scheduled retention, permanent conversation deletion or bulk data removal. Previewing a cleanup must not be presented as a real cleanup. DSH's session persistence and deletion authority remain separate; no automatic destructive action is enabled.
 
-[Lifecycle implementation history](research/NEW_PLUGINS_PHASE_C_CONTINUATION.md) · [Settings navigation record](SETTINGS_NAVIGATION_NAMES_2026_11_21.md)
+[Lifecycle implementation history](archive/research/NEW_PLUGINS_PHASE_C_CONTINUATION.md) · [Settings navigation record](SETTINGS_NAVIGATION_NAMES_2026_11_21.md)
 
 ## Adaptive Reasoning
 

@@ -1,6 +1,6 @@
 # Phase D3: companion confinement, upstream review and message-bound effort
 
-> **Historical QA-only prototype.** The LPAC/AppContainer companion investigated here was superseded by the single-Workspace native Direct Chat merged in PR #25. It does not describe the current v1.0.0 development package. [Current capability and limits](../DETAIL.md#direct-chat).
+> **Historical QA-only prototype.** The LPAC/AppContainer companion investigated here was superseded by the single-Workspace native Direct Chat merged in PR #25. It does not describe the current v1.0.0 development package. [Current capability and limits](../../DETAIL.md#direct-chat).
 
 All work is on `integration/suite-v0.8`. Nothing is pushed. The product package is unchanged (60 published files). Direct Chat stays QA-only.
 
@@ -66,7 +66,7 @@ Isolated Windows Desktop `0.2.2-rc.3` ran with the confined fixture:
 - Killing the confined child produced an `exit` record with `requested:false`. The panel reconnected to a new confined child (startup 299 ms), and a new chat completed a turn.
 - Desktop **Exit** with the panel open disposed the worker and exited with 0.
 - All four synthetic Workspace transcript hashes were unchanged.
-- Screenshots: [confined turn](../assets/integration-v0.8/direct-chat-appcontainer-turn.jpg) · [after a forced child exit](../assets/integration-v0.8/direct-chat-appcontainer-recovered.jpg)
+- Screenshots: [confined turn](../../assets/integration-v0.8/direct-chat-appcontainer-turn.jpg) · [after a forced child exit](../../assets/integration-v0.8/direct-chat-appcontainer-recovered.jpg)
 
 | Measure (rc.3, Windows) | Unconfined fork (D2) | AppContainer LPAC |
 |---|---:|---:|
@@ -106,7 +106,7 @@ Isolated Windows Desktop `0.2.2-rc.3` ran the hardened fixture with a new synthe
 - A turn completed through the broker under the live lease. The loopback provider received one authenticated text-only request: `deepseek-flash`, effort `high`, 0 tools.
 - Leaving the panel revoked the lease. Idle shutdown ran `flows-disposed` → `worker-disposed`, and the child exited with code 0 (`requested: true`, `confinementFailed: false`).
 - Desktop **Exit** closed the app, and no companion process remained.
-- Screenshot: [confined turn on the private desktop](../assets/integration-v0.8/direct-chat-private-desktop-turn.jpg)
+- Screenshot: [confined turn on the private desktop](../../assets/integration-v0.8/direct-chat-private-desktop-turn.jpg)
 
 A second isolated Desktop run used the per-root identity and the same storage root:
 

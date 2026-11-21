@@ -21,13 +21,13 @@ This update supersedes the combined Settings and bilingual UI decisions in the [
 
 The packed suite was staged in the existing unpackaged Windows `0.2.2-rc.3` fixture from upstream tag `38a6a5c`. Electron user data, Harness home, the synthetic Workspace, and the loopback provider were isolated. The fixture's Arabic language registration tested English plugin output without changing the Suite or Harness language registry. Signed installer and published Hub behavior remain outside this run.
 
-- [Conversation Lifecycle Settings in light mode](../assets/new-plugins/desktop-ui-correction/lifecycle-light.jpg)
-- [Conversation Lifecycle Settings in dark mode](../assets/new-plugins/desktop-ui-correction/lifecycle-dark.jpg)
-- [Cleanup preview and execution status](../assets/new-plugins/desktop-ui-correction/lifecycle-cleanup-preview.jpg)
-- [Narrow Settings with keyboard focus on global retention](../assets/new-plugins/desktop-ui-correction/lifecycle-narrow.jpg)
-- [Compact reasoning control beside the model selector](../assets/new-plugins/desktop-ui-correction/reasoning-composer.jpg)
-- [Expanded reasoning menu](../assets/new-plugins/desktop-ui-correction/reasoning-menu.jpg)
-- [English names and descriptions with the original icons](../assets/new-plugins/desktop-ui-correction/plugins-english.jpg)
+- [Conversation Lifecycle Settings in light mode](../../assets/new-plugins/desktop-ui-correction/lifecycle-light.jpg)
+- [Conversation Lifecycle Settings in dark mode](../../assets/new-plugins/desktop-ui-correction/lifecycle-dark.jpg)
+- [Cleanup preview and execution status](../../assets/new-plugins/desktop-ui-correction/lifecycle-cleanup-preview.jpg)
+- [Narrow Settings with keyboard focus on global retention](../../assets/new-plugins/desktop-ui-correction/lifecycle-narrow.jpg)
+- [Compact reasoning control beside the model selector](../../assets/new-plugins/desktop-ui-correction/reasoning-composer.jpg)
+- [Expanded reasoning menu](../../assets/new-plugins/desktop-ui-correction/reasoning-menu.jpg)
+- [English names and descriptions with the original icons](../../assets/new-plugins/desktop-ui-correction/plugins-english.jpg)
 
 The native DeepSeek Messages adapter sent the following values to the synthetic loopback server for `deepseek-official / deepseek-flash`. These are the conversation requests, excluding the auxiliary title call.
 

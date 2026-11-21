@@ -16,4 +16,4 @@ Each `assets/png/` folder contains transparent RGBA variants at 32, 64, 128, 256
 
 The sheets use simulated theme surfaces. After registration, check native disabled, selected, forced-color and RTL views on Desktop. The glyphs are nondirectional. Surrounding labels and layout follow the application locale. Use `currentColor` for native glyphs and accessible labels for icon-only controls.
 
-The artwork is original to this suite under its MIT license. The renderer uses Sharp 0.35.5 and librsvg 2.63.2 from the pinned local Windows Desktop runtime extraction. Contact sheet labels also depend on Windows Segoe UI. See the [Phase C reproduction steps](research/NEW_PLUGINS_PHASE_C.md#reproduce-the-isolated-checks).
+The artwork is original to this suite under its MIT license. The renderer uses Sharp 0.35.5 and librsvg 2.63.2 from the pinned local Windows Desktop runtime extraction. Contact sheet labels also depend on Windows Segoe UI. See the [Phase C reproduction steps](archive/research/NEW_PLUGINS_PHASE_C.md#reproduce-the-isolated-checks).

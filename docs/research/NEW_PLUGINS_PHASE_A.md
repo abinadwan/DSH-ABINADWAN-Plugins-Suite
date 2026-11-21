@@ -1,10 +1,12 @@
 # New plugins — Phase A discovery and feasibility
 
-Review baseline: 2026-11-18, `feature/new-plugins`, `2c475f9`. Status: research completed; Phase B is a proposal awaiting owner review. No production implementation, installation, configuration changes, conversation cleanup, merge, or release was performed.
+**Historical source/SDK feasibility snapshot (2026-11-18).** The decisions and blockers below describe that pinned pre-integration branch, **not** the current v1.0.0 development suite. The current Direct Chat design is different and was later accepted into `develop` with deep Host isolation checks explicitly deferred; Chat Control still does not execute deletion. [Current component details](../DETAIL.md) · [Current research index](README.md).
 
-Read alongside [architecture](../superpowers/specs/2026-11-18-new-plugins-design.md), [implementation roadmap](../superpowers/plans/2026-11-18-new-plugins.md), and [packaged Desktop evidence](new-plugins-desktop-evidence.json).
+Review baseline: 2026-11-18, `feature/new-plugins`, `2c475f9`. Status at that time: research completed; Phase B was a proposal awaiting owner review. No production implementation, installation, configuration changes, conversation cleanup, merge, or release was performed **during that audit**.
 
-The [Phase C capability update](NEW_PLUGINS_PHASE_C.md) records the 2026-11-19 conditional approval, subsequent executable evidence, icon deliverable and revised gates. The matrix below remains the original static Phase A baseline.
+Read alongside [architecture](../archive/superpowers/specs/2026-11-18-new-plugins-design.md), [implementation roadmap](../archive/superpowers/plans/2026-11-18-new-plugins.md), and [packaged Desktop evidence](new-plugins-desktop-evidence.json).
+
+The [Phase C capability update](../archive/research/NEW_PLUGINS_PHASE_C.md) records the 2026-11-19 conditional approval, subsequent executable evidence, icon deliverable and revised gates. The matrix below remains the original static Phase A baseline.
 
 ## Decision
 

@@ -1,6 +1,6 @@
 # New plugins Phase C capability update
 
-2026-11-19. The owner approved gated execution on `feature/new-plugins`. The verified Windows Desktop build is `0.2.2-rc.3`, commit `6b729fedde0c8fd03af7afdf5a711aa64fe87c3b`. Only synthetic fixture data was used. The [Phase A audit](NEW_PLUGINS_PHASE_A.md) retains the static matrix and the 18 pinned reference comparisons.
+2026-11-19. The owner approved gated execution on `feature/new-plugins`. The verified Windows Desktop build is `0.2.2-rc.3`, commit `6b729fedde0c8fd03af7afdf5a711aa64fe87c3b`. Only synthetic fixture data was used. The [Phase A audit](../../research/NEW_PLUGINS_PHASE_A.md) retains the static matrix and the 18 pinned reference comparisons.
 
 See the [continuation matrix](NEW_PLUGINS_PHASE_C_CONTINUATION.md) for the implemented Settings, lifecycle previews and reasoning controls, plus the later Direct Chat and offline-deletion findings.
 
@@ -18,7 +18,7 @@ See the [continuation matrix](NEW_PLUGINS_PHASE_C_CONTINUATION.md) for the imple
 
 ## Safe deletion feasibility
 
-The five reviewed competing plugins demonstrate variations of physical removal, registry cleanup, private retirement, polling, activity checks and recycle/trash. Their concrete approaches and failure modes are recorded in the [Phase A comparison](NEW_PLUGINS_PHASE_A.md#conversation-lifecycle). The present investigation used native package contracts directly and independently implemented only synthetic probes.
+The five reviewed competing plugins demonstrate variations of physical removal, registry cleanup, private retirement, polling, activity checks and recycle/trash. Their concrete approaches and failure modes are recorded in the [Phase A comparison](../../research/NEW_PLUGINS_PHASE_A.md#conversation-lifecycle). The present investigation used native package contracts directly and independently implemented only synthetic probes.
 
 | Candidate | Findings and decision |
 |---|---|

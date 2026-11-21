@@ -37,7 +37,7 @@ Use synthetic inputs and isolated Harness roots. Run package checks from PowerSh
 
 The integrated Windows baseline passed **220/220** source tests and **220/220** extracted-package tests on both Node 24.21.0 and 26.10.0. The package has **73** files and excludes QA, tests and Desktop captures. The offline native suites passed **38/38** on each of Harness rc.3 and rc.5 with Node 24.21.0. A synthetic Profile export was also checked against the v2 browser decoder and native schema from main.
 
-Historical evidence remains in [Direct Chat Phase D3](docs/research/NEW_PLUGINS_PHASE_D3.md), the [Phase 8 plan and branch verification](docs/PERSONAL_PROFILE_PHASE8_REPORT.md), and the [Adaptive Reasoning branch handover](docs/research/ADAPTIVE_REASONING_HANDOVER.md).
+Historical evidence remains in [Direct Chat Phase D3](docs/archive/research/NEW_PLUGINS_PHASE_D3.md), the [Phase 8 plan and branch verification](docs/PERSONAL_PROFILE_PHASE8_REPORT.md), and the [Adaptive Reasoning branch handover](docs/research/ADAPTIVE_REASONING_HANDOVER.md).
 
 ## v1.0.0 completion order
 

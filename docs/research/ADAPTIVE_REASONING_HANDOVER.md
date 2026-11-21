@@ -1,6 +1,6 @@
 # Adaptive Reasoning: Completion Handover
 
-> This report records the original Adaptive Reasoning branch. The unified baseline gates temporary effort and unsupported subagent policies on rc.3 and rc.5. [Current development handover](../../HANDOVER.md)
+> **Historical experimental branch, not current product status.** The “production-ready” labels below apply only to the original local Adaptive Reasoning experiment and its tests; the shipped v1.0.0 development suite exposes supported **manual** reasoning effort and process-local statistics. Adaptive classification, temporary one-message overrides and experimental subagent policy are **not enabled**. Live Windows Desktop validation claimed as blocked below remains blocked for that historical experiment. [Current implementation and limitations](../DETAIL.md#adaptive-reasoning) · [Development handover](../../HANDOVER.md)
 
 Branch `feature/adaptive-reasoning-completion`, rebased on local `integration/suite-v0.8` at `656eedc` (it contains `687a936`). Local commits only. Nothing is pushed, merged or released.
 
