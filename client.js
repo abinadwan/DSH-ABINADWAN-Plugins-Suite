@@ -1082,7 +1082,7 @@ window.__ModuleLoader__.load({
         tooLarge:'الإعدادات أكبر من الحد المسموح للحفظ. لم يُحفظ شيء، وبقيت تعديلاتك في المسودة.',
         reconnected:'أُعيد الاتصال. بقيت مسودتك في الصفحة: يمكنك الحفظ (يتحقق Harness من الإصدار) أو إعادة التحميل.',
         discardWarning:'لديك تغييرات غير محفوظة ستُفقد عند إعادة التحميل. للاحتفاظ بها انسخ نسخة JSON أولًا من «النسخ والاستعادة».',
-        discardConfirm:'تجاهل التغييرات وإعادة التحميل',discardCancel:'متابعة التعديل',
+        discardConfirm:'تجاهل التغييرات وإعادة التحميل',discardCancel:'متابعة التعديل',followDsh:'اتباع لغة DSH',
       }
       const en = {
         information:'My Information',instructions:'Agent Instructions',access:'Access Control',backup:'Backup & Restore',privacy:'Privacy & Security',title:'My Profile',
@@ -1137,7 +1137,7 @@ window.__ModuleLoader__.load({
         tooLarge:'Settings are too large to save. Nothing was saved; your edits remain in the draft.',
         reconnected:'Connection was reset. Your draft is kept on this page: you can Save (Harness checks the revision) or Reload.',
         discardWarning:'You have unsaved changes that Reload will discard. To keep them, first export a JSON backup from Backup & Restore.',
-        discardConfirm:'Discard changes and reload',discardCancel:'Keep editing',
+        discardConfirm:'Discard changes and reload',discardCancel:'Keep editing',followDsh:'Follow DSH',
       }
       const es = {
         "information": "Mis datos",
@@ -1829,7 +1829,8 @@ window.__ModuleLoader__.load({
         "discardCancel": "編集を続ける",
         "followDsh": "DSH の言語に合わせる"
       }
-      const t = key => (language === 'ar' ? ar : en)[key] || key
+      const uiDictionaries={ar,en,es,fr,de,zh,ja}
+      const t = key => (uiDictionaries[language]||en)[key] || en[key] || key
       const rtl = language === 'ar'
       const surface = { border:'1px solid rgba(128,128,128,.3)', borderRadius:13,
         padding:20, background:'rgba(128,128,128,.045)', marginBottom:16 }
@@ -1908,7 +1909,7 @@ window.__ModuleLoader__.load({
           ['preferredName',t('preferredName'),r.information.preferredName||t('empty')],
           ['nationality',t('nationality'),r.information.nationality||t('empty')],
           ['gender',t('gender'),genderLabel(r.information.gender)],
-          ['locale',t('interfaceLanguage'),r.locale==='auto'?'Follow DSH':(r.locale==='ar'?'العربية':r.locale==='en'?'English':r.locale.toUpperCase())],
+          ['locale',t('interfaceLanguage'),r.locale==='auto'?t('followDsh'):(r.locale==='ar'?'العربية':r.locale==='en'?'English':r.locale.toUpperCase())],
           ['style',t('styleTone'),localLabel(PROFILE_STYLES.find(i=>i[0]===p.style))],
           ['responseLanguage',t('responseLanguage'),localLabel(PROFILE_LANGUAGES.find(i=>i[0]===p.responseLanguage))],
           ['traits',t('characteristics'),traits.length?traits.join(rtl?'، ':', '):t('neutral')],
@@ -2152,7 +2153,7 @@ window.__ModuleLoader__.load({
             h('div',null,h('h1',{style:{margin:'0 0 4px',fontSize:'clamp(22px,3vw,32px)'}},t('title')),
               h('p',{style:{margin:'0 0 12px',opacity:.7}},t('subtitle'))),
             h('fieldset',{disabled:!editable,style:{width:145,border:0,padding:0,margin:0}},dropdown('language',t('language'),record.locale,
-              [['auto','Follow DSH'],['en','English'],['ar','العربية'],['zh','中文'],['es','Español'],['fr','Français'],['de','Deutsch'],['ja','日本語']],setLanguage))),
+              [['auto',t('followDsh')],['en','English'],['ar','العربية'],['zh','中文'],['es','Español'],['fr','Français'],['de','Deutsch'],['ja','日本語']],setLanguage))),
           notice,
           upgradeCard,
           h('div',{style:{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center',marginBottom:12}},
