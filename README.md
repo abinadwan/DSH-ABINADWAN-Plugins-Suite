@@ -32,6 +32,12 @@ One unified profile per active Harness Profile: optional preferred name, nationa
 
 The 0.8.0-rc.1 candidate is the tested development baseline; **0.7.2 remains the published stable release**. On 2026-11-18 the owner exercised the RC on Windows Desktop, including persistence, custom-text consent, backup/restore, component disable/re-enable, Humanizer, Environment & Context, and actual rollback to 0.7.2. [CI run 195](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/44293922599) passed. Desktop request-level privacy evidence and remaining matrix checks are still open; behavioral non-disclosure is not proof of request exclusion. Positive structured disclosure is deliberately blocked and belongs to [Phase 8](docs/PERSONAL_PROFILE_PHASE8_PLAN.md). No stable release is implied by merging the RC branch.
 
+## Bundled Arabic UI locale
+
+The suite browser carrier registers **العربية (Arabic)** in the native **Settings → General → Language** picker automatically when this suite is active. Arabic is **not selected automatically**; the current interface language remains unchanged until the user chooses it. No independent Component toggle, external Arabic plugin install, language-setting mutation, or agent response-language coupling is involved.
+
+The bundle carries 3,307 translated UI strings across 60 DSH namespaces, drawn from [SMSMy/dsh-arabic](https://github.com/SMSMy/dsh-arabic) v0.4.6 under the MIT license. See [third-party notices](THIRD_PARTY_NOTICES.md). Untranslated UI strings use the native English fallback. Other locale packs may already own Arabic strings; conflicting registrations are left untouched. The registration is disposed when the suite's browser carrier is unloaded. Translation here does **not** install the source plugin's optional typography, bidi/RTL text-direction layer or any automatic LLM translation; evaluate RTL rendering on Desktop separately.
+
 ## Environment & Context
 
 The native right-side session inspector opens once when a session becomes visible and can be reopened from the conversation header.
