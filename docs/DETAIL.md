@@ -24,7 +24,7 @@ Disabled by default. When enabled, a **Personal Profile** page in the left sideb
 
 ## Direct Chat (one Workspace, independently persisted Sessions; Phase 2 experimental)
 
-Disabled by default. Every click on the Direct Chat footer button prepares the **same** profile-owned `abinadwan-direct-chat-data/Direct Chat` path. DSH registers or resolves its one persistent Workspace, then opens a native Session. A still-blank Session may be reused; after the first user prompt, the next Direct Chat conversation has its own Session ID, history, and Agent continuation. This plugin does not feed one Session's transcript or automatically shared chat memory into another. No more `session-*` Workspace folder is created per click.
+Disabled by default. Every click on the Direct Chat action beside the top New Session control prepares the **same** profile-owned `abinadwan-direct-chat-data/Direct Chat` path. DSH registers or resolves its one persistent Workspace, then opens a native Session. A still-blank Session may be reused; after the first user prompt, the next Direct Chat conversation has its own Session ID, history, and Agent continuation. This plugin does not feed one Session's transcript or automatically shared chat memory into another. No more `session-*` Workspace folder is created per click.
 
 **Important limits:** DSH Workspace membership uses a single shared directory, so this design isolates *conversation histories*, not filesystem access. Host tool-denial policy remains, but the old Windows LPAC companion process isolation and independent storage/deletion features do not apply. Previous experimental `session-*` directories and Workspace registrations are left untouched, without automatic migration or cleanup. Direct Chat currently appears as one named row in DSH's built-in Workspaces browser; the proposed separate **Direct Chat / Projects** sections are not yet implemented. Desktop send/receive, cold restart, tool security, deletion and privacy acceptance are outstanding. See [implementation status](../plugins/direct-chat/README.md) and [Phase 2 Desktop acceptance](research/DIRECT_CHAT_PHASE2_DESKTOP_ACCEPTANCE.md).
 
@@ -52,3 +52,7 @@ dsh plugin --profile desktop add github:abinadwan/DSH-ABINADWAN-Plugins-Suite#RE
 Restart Harness, enable the suite and use the switches in Components. [Full documentation](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite) · [Report an issue](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/issues)
 
 MIT-licensed, independent community project.
+
+### Top sidebar navigation (Phase 2)
+
+Direct Chat now uses the public `sidebar.session.action` HOC and appears immediately beneath New Session, above Plugins and Workspaces; the default New Session control remains available. No duplicate footer action is registered. The proposed visual split into Direct Chat and Projects session groups is not yet implemented.

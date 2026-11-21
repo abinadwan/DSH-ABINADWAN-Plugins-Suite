@@ -6,10 +6,17 @@ function active(app) {
   app.setRows([...app.rows(), { moduleName: base + '/direct-chat', enabled: true, fiberPhase: 'active' }])
 }
 function button(app) {
-  const entry = app.entries('sidebar.footer.action').find(row => row.options.id === 'abinadwan-direct-chat')
-  assert.ok(entry)
-  const node = entry.component({ ...entry.options.inject(), wide: true, useRemoteAccess: () => true })
+  const entry = app.entries('sidebar.session.action').find(row => row.options.id === 'abinadwan-direct-chat')
+  assert.ok(entry, 'Direct Chat must register beside the top New Session control')
+  const preservedNewSession = { type: 'button', props: { 'aria-label': 'New Session' }, children: [] }
+  const container = entry.component({ ...entry.options.inject(), wide: true,
+    useRemoteAccess: () => true, children: preservedNewSession })
+  assert.equal(container.props['data-abinadwan-direct-chat-top'], '')
+  assert.equal(container.children[0], preservedNewSession, 'native New Session button must remain unchanged')
+  const directChatElement = container.children[1]
+  const node = directChatElement.type(directChatElement.props)
   assert.equal(node.children[0].type, 'button')
+  assert.equal(node.children[0].props['aria-label'], 'Direct Chat')
   return node.children[0]
 }
 
@@ -49,7 +56,7 @@ test('Direct Chat reuses one Workspace but distinct completed conversations have
   app.setRows(app.rows().map(row => row.moduleName === base + '/direct-chat'
     ? { ...row, enabled: false, fiberPhase: null } : row))
   await app.changed()
-  assert.equal(app.entries('sidebar.footer.action').length, 0)
+  assert.equal(app.entries('sidebar.session.action').length, 0)
 })
 
 test('an already-registered Workspace is renamed only when its title differs', async t => {
@@ -82,4 +89,13 @@ test('registration failure cannot delete user Workspaces or existing chat histor
   await button(app).props.onClick()
   assert.equal(warnings.length, 1)
   assert.deepEqual(deleted, [])
+})
+
+test('Direct Chat top action is not duplicated in the bottom footer', async t => {
+  const app = await clientHarness()
+  t.after(() => app.dispose())
+  active(app)
+  await app.changed()
+  assert.equal(app.entries('sidebar.footer.action').filter(row => row.options.id === 'abinadwan-direct-chat').length, 0)
+  assert.equal(app.entries('sidebar.session.action').filter(row => row.options.id === 'abinadwan-direct-chat').length, 1)
 })

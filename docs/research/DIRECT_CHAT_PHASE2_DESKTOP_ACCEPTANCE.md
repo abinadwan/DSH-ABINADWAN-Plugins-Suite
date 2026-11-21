@@ -17,7 +17,7 @@ Previous per-chat `session-*` directories and Workspace registrations from the t
 ## Acceptance checklist (disposable Windows Desktop profile)
 
 1. Verify the installed plugin is pinned to the tested feature commit and is initially Off.
-2. Enable it and click Direct Chat three times **without sending**. Confirm only a single Workspace titled `Direct Chat` exists; no new `session-*` directories appear. The same blank Session should reopen.
+2. Confirm the Direct Chat action appears directly beneath New Session, **not at the bottom**. Enable it and click Direct Chat three times **without sending**. Confirm only a single Workspace titled `Direct Chat` exists; no new `session-*` directories appear. The same blank Session should reopen.
 3. Send `Hello` and receive a model response. Reopen Direct Chat. Confirm a **new Session ID** appears under that same Workspace with an empty message history.
 4. Have the second Session discuss an unrelated topic. Confirm no text from the first Session appears in the new agent input or generated answer, beyond normal global model/profile instructions.
 5. Return to Session 1 and verify its messages remain intact; restart Desktop and verify both Sessions resume from their own histories.
@@ -38,3 +38,7 @@ Previous per-chat `session-*` directories and Workspace registrations from the t
 - [Workspace registration and membership](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/workspace/workspace/README.md)
 - [Session Controller client](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/api/session-controller/src/client/sessions/service.ts)
 - [UiWorkspace navigation](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/client/ui-workspace/src/client/navigation.ts)
+
+## Top-button placement check
+
+The only supported slot directly near the top New Session control is the public `sidebar.session.action` HOC; it wraps and preserves DSH's native New Session element, then renders the Direct Chat action underneath. This is above the global Plugins/Projects navigation area, not a private DOM patch. Ensure the collapsed sidebar renders both controls and the footer has no Direct Chat duplicate.
