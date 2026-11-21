@@ -196,7 +196,7 @@ export async function clientHarness(options = {}) {
   // DSH's public Locale snapshot: the default test Host is Arabic so existing
   // RTL regressions remain realistic; tests can opt into English or switch live.
   const hostLocale = observable({active:options.hostLocale || 'ar',revision:0})
-  ctx.provide('locale', {
+  ctx.provide('locale', options.locale || {
     getSnapshot: () => hostLocale.getSnapshot(),
     getLocale: () => hostLocale.getSnapshot(),
     subscribe: notify => hostLocale.subscribe(notify),
