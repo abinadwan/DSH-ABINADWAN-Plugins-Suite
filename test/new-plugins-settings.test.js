@@ -10,9 +10,17 @@ import { base, clientHarness, observable, ok, refused } from '../test-support/cl
 
 const names = {
   'direct-chat': 'Direct Chat',
-  'conversation-lifecycle': 'Conversation Lifecycle',
+  'conversation-lifecycle': 'Chat Control',
   'adaptive-reasoning': 'Adaptive Reasoning',
 }
+
+test('My Profile package metadata uses the compact title without changing its internal module', () => {
+  const root = new URL('../package.json', import.meta.url)
+  const meta = readPluginMeta(`${base}/personal-profile`, root.href)
+  assert.equal(meta.error, undefined)
+  assert.equal(meta.title.en, 'My Profile')
+  assert.equal(meta.title.ar, 'My Profile')
+})
 
 test('independent Host rows default off and resolve English product metadata and original icons', () => {
   const root = new URL('../package.json', import.meta.url)
@@ -40,11 +48,32 @@ test('Direct Chat replaces the old settings UI with a top New Session action whi
     await fixture.changed()
     assert.ok(fixture.entries('sidebar.session.action').some(row => row.options.id === 'abinadwan-direct-chat'))
     assert.deepEqual(fixture.entries('settings.section').map(row => row.options.id), ['abinadwan-conversation-lifecycle'])
+    assert.equal(fixture.entries('settings.section')[0].options.label, 'Chat Control')
     assert.equal(fixture.entries('conversation.input.right').length, 1)
     fixture.setRows(rows.map(row => row.moduleName === `${base}/direct-chat` ? { ...row, enabled: false } : row))
     await fixture.changed()
     assert.equal(fixture.entries('sidebar.session.action').length, 0)
     assert.deepEqual(fixture.entries('settings.section').map(row => row.options.id), ['abinadwan-conversation-lifecycle'])
+  } finally { await fixture.dispose() }
+})
+
+test('My Profile is a Settings section with its own icon and no global sidebar action', async () => {
+  const fixture = await clientHarness()
+  const id = `${base}/personal-profile-page`
+  try {
+    const enabled = [...fixture.rows(), { moduleName: `${base}/personal-profile`, enabled: true, fiberPhase: 'active' }]
+    fixture.setRows(enabled)
+    await fixture.changed()
+    const profile = fixture.entries('settings.section').find(row => row.options.id === id)
+    assert.ok(profile, 'My Profile must be visible in Settings')
+    assert.equal(profile.options.label, 'My Profile')
+    assert.ok(fixture.entries('settings.section.icon').some(row => row.options.id === id))
+    assert.ok(!fixture.entries('sidebar.panellist').some(row => row.options.id === id))
+    assert.ok(!fixture.entries('main').some(row => row.options.key === id))
+    fixture.setRows(enabled.map(row => row.moduleName === `${base}/personal-profile` ? { ...row, enabled: false } : row))
+    await fixture.changed()
+    assert.ok(!fixture.entries('settings.section').some(row => row.options.id === id), 'disabling removes Settings entry')
+    assert.ok(!fixture.entries('settings.section.icon').some(row => row.options.id === id))
   } finally { await fixture.dispose() }
 })
 

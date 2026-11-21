@@ -4,6 +4,7 @@
 // docs/PERSONAL_PROFILE_V072_CHANGE_RECORD.md (section 13). Fictional data only.
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import { act } from 'react'
 import { readFileSync } from 'node:fs'
 import { isVolatile } from '@deepseek-ai/cosmokit'
 import { ok, refused } from '../test-support/client.js'
@@ -15,7 +16,9 @@ const UNAVAILABLE = /غير متاحة/, INVALID = /غير صالحة/, MIGRATIO
 const REVIEW = 'مراجعة النسخة'
 const policies = (v = 'private') => ({ preferredName: v, nationality: v, gender: v })
 const fictional = () => {
-  const record = emptyRecord()
+  // Historical regression tests deliberately exercise Arabic RTL; the actual
+  // product default is now English and is covered by the dedicated test below.
+  const record = { ...emptyRecord(), locale: 'ar' }
   record.information = { preferredName: 'Fictional Tester', nationality: 'Testland', gender: 'unspecified' }
   return record
 }
@@ -29,6 +32,91 @@ const legacyWith = mutate => {
   return r
 }
 const resolved = config => { const v = Config(config).record; return JSON.parse(JSON.stringify(isVolatile(v) ? v.get() : v)) }
+
+test('My Profile follows DSH locale by default, supports independent override and persists it', async t => {
+  const fresh = emptyRecord()
+  assert.equal(fresh.locale, 'auto', 'new Host records follow DSH by default')
+  assert.equal(resolved({}).locale, 'auto', 'Host schema uses the same default')
+  const transport = mockSettings(fresh)
+  const view = await mountProfile(t, { transport, hostLocale: 'en' })
+  const panel = view.d.querySelector('[data-personal-profile-panel]')
+  assert.equal(view.byId('language').value, 'auto')
+  assert.equal(panel.getAttribute('lang'), 'en')
+  assert.equal(panel.getAttribute('dir'), 'ltr')
+  assert.match(panel.textContent, /Interface language/)
+  await act(async () => { view.app.hostLocale.set({active:'ar',revision:1}); await view.settle() })
+  assert.equal(view.byId('language').value, 'auto', 'DSH follow mode stays selected')
+  assert.equal(panel.getAttribute('lang'), 'ar')
+  assert.equal(panel.getAttribute('dir'), 'rtl')
+  await view.select('language', 'en')
+  assert.equal(panel.getAttribute('lang'), 'en')
+  assert.equal(transport.calls.length, 0, 'language selection is not silently saved')
+  await act(async () => { view.app.hostLocale.set({active:'ar',revision:2}); await view.settle() })
+  assert.equal(panel.getAttribute('lang'), 'en', 'independent override ignores DSH language')
+  await view.click('save')
+  assert.equal(transport.record.locale, 'en', 'explicit Save persists the independent override')
+  await view.click('reload')
+  assert.equal(view.byId('language').value, 'en')
+  await view.select('language', 'auto')
+  assert.equal(panel.getAttribute('lang'), 'ar', 'returning to Follow DSH restores the active DSH language')
+  await view.click('save')
+  assert.equal(transport.record.locale, 'auto', 'Follow DSH choice also persists after Save')
+  assert.deepEqual(Array.from(view.byId('language').options, x=>x.value),
+    ['auto','en','ar','zh','es','fr','de','ja'])
+})
+
+test('Follow DSH reacts to all seven supported UI locales; overrides stay local', async t => {
+  const view = await mountProfile(t, { transport: mockSettings(emptyRecord()), hostLocale: 'es' })
+  const panel = view.d.querySelector('[data-personal-profile-panel]')
+  const titles = { en: 'My Profile', ar: 'الملف الشخصي', zh: '我的资料',
+    es: 'Mi perfil', fr: 'Mon profil', de: 'Mein Profil', ja: 'マイプロフィール' }
+  for (const [index, [id, title]] of Object.entries(titles).entries()) {
+    await act(async () => {
+      view.app.hostLocale.set({ active: id, revision: index + 2 })
+      await view.settle()
+    })
+    assert.equal(view.byId('language').value, 'auto')
+    assert.equal(panel.getAttribute('lang'), id)
+    assert.equal(panel.getAttribute('dir'), id === 'ar' ? 'rtl' : 'ltr')
+    assert.equal(view.d.querySelector('[data-personal-profile-panel] h1').textContent, title)
+  }
+  assert.equal(view.byId('response-language'), null, 'response language is on its own tab')
+  await view.select('language', 'ja')
+  assert.equal(panel.getAttribute('lang'), 'ja')
+  await act(async () => { view.app.hostLocale.set({ active: 'ar', revision: 20 }); await view.settle() })
+  assert.equal(panel.getAttribute('lang'), 'ja', 'manual My Profile locale does not follow later DSH switches')
+  assert.equal(view.transport.calls.length, 0, 'changing UI language does not modify DSH or save implicitly')
+  await view.click('tab-instructions')
+  assert.equal(view.byId('response-language').value, 'auto', 'UI language does not change model response language')
+})
+
+test('new UI language modes round-trip through backup without losing Follow DSH', async t => {
+  const transport = mockSettings(emptyRecord())
+  const view = await mountProfile(t, { transport, hostLocale: 'fr' })
+  await view.click('tab-backup')
+  await view.click('export-view')
+  let backup = JSON.parse(view.byId('export-json').value)
+  assert.equal(backup.version, 4, 'Follow DSH needs version 4 backup to preserve auto mode')
+  assert.equal(backup.locale, 'auto')
+  await view.click('tab-information')
+  await view.select('language', 'de')
+  await view.click('save')
+  await view.click('tab-backup')
+  await view.click('export-view')
+  await view.click('export-view')
+  backup = JSON.parse(view.byId('export-json').value)
+  assert.equal(backup.version, 4)
+  assert.equal(backup.locale, 'de')
+  await view.click('tab-information')
+  await view.select('language', 'en')
+  await view.click('save')
+  await view.click('tab-backup')
+  await view.click('export-view')
+  await view.click('export-view')
+  backup = JSON.parse(view.byId('export-json').value)
+  assert.equal(backup.version, 2, 'explicit English/Arabic overrides retain backwards-compatible v2 backup')
+  assert.equal(backup.locale, 'en')
+})
 
 // ---------- Native settings read contract ----------
 

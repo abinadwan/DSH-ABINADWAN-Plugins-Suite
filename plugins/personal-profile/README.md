@@ -1,6 +1,12 @@
-# Personal Profile — simplified development candidate
+# My Profile (Personal Profile) — simplified development candidate
 
-Personal Profile is optional and disabled by default. It uses one native settings record across Workspaces of the active Harness Profile.
+My Profile is optional and disabled by default. Its editor is available under **Settings → My Profile**, not the main sidebar. It uses one native settings record across Workspaces of the active Harness Profile.
+
+## Interface language
+
+New profiles use **Follow DSH** by default: My Profile reads the active DSH locale through the supported client locale service and updates while it changes. The **Interface language** dropdown also offers independent English, Arabic, Chinese, Spanish, French, German and Japanese selections; choosing an override does **not** change DSH's locale. Arabic uses RTL; all other supported selections use LTR. Save stores only the plugin's preference. Existing saved `ar`/`en` choices, including imported or migrated records, are respected as explicit overrides. The model **Response language** is a separate preference and remains Automatic by default.
+
+**Backup compatibility:** English/Arabic overrides still export the backwards-compatible v2 JSON format. `Follow DSH` and additional interface languages export v4 so their preference round-trips without silently turning an automatic choice into a manual language. Both formats import in the new version. Older versions cannot read v4; archive a historical v2 backup or Harness configuration before downgrading.
 
 ## My Information
 

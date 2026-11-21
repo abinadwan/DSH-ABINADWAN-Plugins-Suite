@@ -16,11 +16,11 @@ Enabled by default. A read-only right-side session inspector for workspace conte
 
 Enabled by default. Registers the runtime Skill **abinadwan-humanizer**. Ask the agent to use Humanizer to edit supplied text for clarity, tone or a requested language. Its instructions preserve facts and author voice and prohibit detection-evasion promises. Loaded Skill content follows the normal DSH model context and conversation lifetime.
 
-## Personal Profile
+## My Profile
 
 <img src="../plugins/personal-profile/icon.png" width="64" alt="Amber ID and gear"/>
 
-Disabled by default. When enabled, a **Personal Profile** page in the left sidebar edits one unified profile: optional preferred name, nationality and gender, response preferences (eight personalities, Automatic plus seven response languages, six characteristics, eight behavior presets, custom instructions) with an effective-instructions preview, and one access policy per field. **Save** writes through the native Harness settings of the active Profile and is confirmed only after Harness accepts it. Settings from 0.7.1 are migrated after review and explicit confirmation. Backup & Restore downloads, copies or shows the complete JSON (including permissions) and imports a plain JSON file or pasted JSON. Review & Merge preserves omitted settings. Replace All and permission import require separate confirmation. My Information places one Available to agent checkbox beside each field; there are no general or cloud switches. Supported native steps receive only saved checked, nonempty fields, response preferences and explicitly authorized custom text. Unchecked fields are not freshly injected. The native v4 record reads old versions without activating old field choices. Desktop acceptance remains open.
+Disabled by default. When enabled, **Settings → My Profile** (formerly Personal Profile) edits one unified profile: optional preferred name, nationality and gender, response preferences (eight personalities, Automatic plus seven response languages, six characteristics, eight behavior presets, custom instructions) with an effective-instructions preview, and one access policy per field. **Save** writes through the native Harness settings of the active Profile and is confirmed only after Harness accepts it. Settings from 0.7.1 are migrated after review and explicit confirmation. Backup & Restore downloads, copies or shows the complete JSON (including permissions) and imports a plain JSON file or pasted JSON. Review & Merge preserves omitted settings. Replace All and permission import require separate confirmation. My Information places one Available to agent checkbox beside each field; there are no general or cloud switches. Supported native steps receive only saved checked, nonempty fields, response preferences and explicitly authorized custom text. Unchecked fields are not freshly injected. The native v4 record reads old versions without activating old field choices. Desktop acceptance remains open.
 
 ## Direct Chat (one Workspace, independently persisted Sessions; Phase 2 experimental)
 
@@ -28,9 +28,9 @@ Disabled by default. Every click on the Direct Chat action beside the top New Se
 
 **Important limits:** DSH Workspace membership uses a single shared directory, so this design isolates *conversation histories*, not filesystem access. Host tool-denial policy remains, but the old Windows LPAC companion process isolation and independent storage/deletion features do not apply. Previous experimental `session-*` directories and Workspace registrations are left untouched, without automatic migration or cleanup. Direct Chat currently appears as one named row in DSH's built-in Workspaces browser; the proposed separate **Direct Chat / Projects** sections are not yet implemented. Desktop send/receive, cold restart, tool security, deletion and privacy acceptance are outstanding. See [implementation status](../plugins/direct-chat/README.md) and [Phase 2 Desktop acceptance](research/DIRECT_CHAT_PHASE2_DESKTOP_ACCEPTANCE.md).
 
-## Conversation Lifecycle
+## Chat Control
 
-Disabled by default. Native Settings lists Workspace conversations, stores protection and retention preferences, and previews cleanup. Workspace deletion and automatic retention remain gated.
+Disabled by default. **Settings → Chat Control** (formerly Conversation Lifecycle) lists Workspace conversations, stores protection and retention preferences, and previews cleanup. The component keeps its original internal id and saved settings namespace. Workspace deletion and automatic retention remain gated.
 
 ## Adaptive Reasoning
 

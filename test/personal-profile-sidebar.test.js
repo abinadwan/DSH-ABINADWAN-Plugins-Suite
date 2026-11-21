@@ -11,7 +11,7 @@ const namespace='abinadwan-personal-profile'
 const panelId=base+'/personal-profile-page'
 const copy=x=>JSON.parse(JSON.stringify(x))
 function mockSettings(){
-  let record=emptyRecord(), revision=0, calls=[], conflict=false
+  let record={...emptyRecord(),locale:'ar'}, revision=0, calls=[], conflict=false
   const view=()=>({ns:namespace,value:{record:copy(record)},revision})
   return {calls,view,conflict:()=>{conflict=true;revision++},describe:async()=>ok({writable:true,namespaces:[view()]}),
     replace:async(ns,value,expected)=>{
@@ -28,6 +28,10 @@ async function mount(t,{transport=mockSettings(),access=()=>true}={}){
   await app.changed();await app.changed()
   const panel=app.slots.records.get(panelId)
   assert.ok(panel)
+  assert.equal(panel.options.name,'settings.section')
+  assert.equal(panel.options.label,'My Profile')
+  assert.ok(app.entries('settings.section.icon').some(row=>row.options.id===panelId))
+  assert.equal(app.entries('sidebar.panellist').some(row=>row.options.id===panelId),false)
   const previous={document:globalThis.document,window:globalThis.window,act:globalThis.IS_REACT_ACT_ENVIRONMENT}
   const dom=new JSDOM('<!doctype html><div id="root"></div>',{url:'http://localhost/'})
   globalThis.document=dom.window.document;globalThis.window=dom.window;globalThis.IS_REACT_ACT_ENVIRONMENT=true

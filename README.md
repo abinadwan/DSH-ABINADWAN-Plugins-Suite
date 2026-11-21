@@ -20,12 +20,14 @@ One installation supplies six independently toggleable DSH components. The packa
 | --- | --- | --- | --- |
 | <img src="plugins/environment-context/icon.png" width="32" alt="Teal monitor"/> **Environment & Context** | Read-only session inspector | On | [Plugin details](plugins/environment-context/README.md) |
 | <img src="plugins/humanizer/icon.png" width="32" alt="Purple feather"/> **Humanizer** | Runtime writing Skill | On | [Usage and scope](plugins/humanizer/README.md) |
-| <img src="plugins/personal-profile/icon.png" width="32" alt="Amber ID and gear"/> **Personal Profile** | Native response preferences (RC) | Host Off | [Local settings and acceptance](plugins/personal-profile/README.md) |
+| <img src="plugins/personal-profile/icon.png" width="32" alt="Amber ID and gear"/> **My Profile** *(formerly Personal Profile)* | Native response preferences (RC) | Host Off | [Local settings and acceptance](plugins/personal-profile/README.md) |
 | **Direct Chat** | One persistent Workspace with independent native chat histories (Desktop validation pending) | Off | [Suite details](docs/DETAIL.md) |
-| **Conversation Lifecycle** | Workspace inventory, protection and retention preview | Off | [Suite details](docs/DETAIL.md) |
+| **Chat Control** *(formerly Conversation Lifecycle)* | Workspace inventory, protection and retention preview | Off | [Suite details](docs/DETAIL.md) |
 | **Adaptive Reasoning** | Manual session effort and local statistics | Off | [Suite details](docs/DETAIL.md) |
 
-## Personal Profile (0.8.0-rc.1 candidate)
+## My Profile (0.8.0-rc.1 candidate)
+
+**My Profile follows the active DSH interface language by default**. Its **Interface language** dropdown offers **Follow DSH** or an independent override in English, Arabic, Chinese, Spanish, French, German or Japanese. The page updates when DSH changes language in Follow DSH mode; a manual choice applies only to this plugin and is saved only after **Save changes**. Existing saved language selections remain intact. This is independent of the model's **Response language** setting.
 
 One unified profile per active Harness Profile: optional preferred name, nationality and gender with independent Available to agent checkboxes on the same page. Unchecked fields are private; saved checked, nonempty fields enter supported native agent prompts for any configured model/provider. Agent Instructions, response language, traits, presets and custom text remain available. Explicit Save uses native Harness settings with a revision check. Legacy records preserve information and preferences but start with all sharing choices unchecked.
 
@@ -34,6 +36,8 @@ One unified profile per active Harness Profile: optional preferred name, nationa
 ### Release status and next phase
 
 The 0.8.0-rc.1 candidate is the tested development baseline; **0.7.2 remains the published stable release**. On 2026-11-18 the owner exercised the RC on Windows Desktop, including persistence, custom-text consent, backup/restore, component disable/re-enable, Humanizer, Environment & Context, and actual rollback to 0.7.2. [CI run 195](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/44293922599) passed. Desktop request-level privacy evidence and remaining matrix checks are still open; behavioral non-disclosure is not proof of request exclusion. This feature branch proposes simplified field-level sharing; its packed Desktop acceptance remains open. No stable release is implied by merging the RC branch.
+
+**Settings navigation:** **My Profile** replaces the main-sidebar Personal Profile entry. **Chat Control** is the compact Settings and component-card label formerly shown as Conversation Lifecycle. Module paths, stored namespaces, enablement state, backups and the suite version remain unchanged. See the [navigation/rename change record](docs/SETTINGS_NAVIGATION_NAMES_2026_11_21.md).
 
 ## Environment & Context
 
@@ -70,7 +74,7 @@ For Harness Desktop, use the native Plugins UI and the active Desktop Profile; d
 github:abinadwan/DSH-ABINADWAN-Plugins-Suite#RELEASE_COMMIT_SHA
 ```
 
-Restart Harness completely, open **Plugins → ABINADWAN Plugins Suite**, enable the suite and inspect its six components. Toggle each independently. Personal Profile starts off. When enabled, open its native left-sidebar settings page. Open a normal conversation for Environment & Context and ask the agent to use Humanizer for an editing task.
+Restart Harness completely, open **Plugins → ABINADWAN Plugins Suite**, enable the suite and inspect its six components. Toggle each independently. Personal Profile starts off. When enabled, open **Settings → My Profile**; this page no longer appears under the main Plugins / More navigation. Open a normal conversation for Environment & Context and ask the agent to use Humanizer for an editing task.
 
 For non-Desktop installations, use the documented CLI workflow for the actual active profile. Upgrading from 0.4.0 keeps the `abinadwan-suite` group identity and the current inspector behavior. Existing user-layer disable overrides remain applicable. The package ships ready-to-run JavaScript and installs directly from GitHub. No build step is required. An immutable version can be installed by appending `#<full-commit-sha>` to the GitHub reference.
 

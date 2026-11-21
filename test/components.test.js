@@ -11,7 +11,7 @@ test('each component resolves its own Host entry, locale and artwork', async () 
   for (const [path, title] of [
     ['environment-context', 'Environment & Context'],
     ['humanizer', 'Humanizer'],
-    ['personal-profile', 'Personal Profile'],
+    ['personal-profile', 'My Profile'],
   ]) {
     assert.ok(pkg.exports[`./${path}`], `missing ${path} Host export`)
     const host = await import(`${base}/${path}`)

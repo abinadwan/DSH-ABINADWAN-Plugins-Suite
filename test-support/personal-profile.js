@@ -18,7 +18,9 @@ export const copy = x => JSON.parse(JSON.stringify(x))
  * `settings/conflict` refusal for a stale revision, and the namespace view
  * (`{ns, value, revision}`) answered after a committed write.
  */
-export function mockSettings(initial = emptyRecord()) {
+export function mockSettings(initial = { ...emptyRecord(), locale: 'ar' }) {
+  // Historical UI regression fixtures exercise RTL Arabic explicitly.
+  // New-profile English defaults use mockSettings(emptyRecord()) in dedicated tests.
   let record = copy(initial), revision = 0, conflict = false
   const calls = [], describes = []
   const view = () => ({ ns: namespace, value: { record: copy(record) }, revision })
@@ -47,14 +49,15 @@ export function deferred() {
 
 export const workspaceItems = [{ workspaceId: 'w1', title: 'Workspace A' }, { workspaceId: 'w2', title: 'Workspace B' }]
 
-export async function mountProfile(t, { transport = mockSettings(), access = () => true, items = workspaceItems, console: logger, fetch,
+export async function mountProfile(t, { transport = mockSettings(), access = () => true, items = workspaceItems, hostLocale = 'ar', console: logger, fetch,
   download = true, clipboard = true } = {}) {
-  const app = await clientHarness({ React, settings: transport, workspaceItems: items, console: logger, fetch })
+  const app = await clientHarness({ React, settings: transport, workspaceItems: items, hostLocale, console: logger, fetch })
   assert.equal(app.slots.records.has(panelId), false)
   app.setRows(withProfile(app.rows(), true))
   await app.changed(); await app.changed()
   const panel = app.slots.records.get(panelId)
   assert.ok(panel)
+  assert.equal(panel.options.name,'settings.section','My Profile must mount in Settings, not the global sidebar')
   const previous = { document: globalThis.document, window: globalThis.window, act: globalThis.IS_REACT_ACT_ENVIRONMENT }
   const dom = new JSDOM('<!doctype html><html lang="en"><head><title>Personal Profile</title></head><body><main id="root"></main></body></html>',
     { url: 'http://localhost/', runScripts: 'outside-only' })

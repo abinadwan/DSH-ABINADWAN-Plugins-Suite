@@ -63,7 +63,7 @@ test('P8 legacy backup: the Host reads the v2 record unchanged; with both switch
 })
 
 test('P8 legacy backup: default restore (merge) keeps preferences, resets permissions to Private and drops custom consent', async t => {
-  const transport = mockSettings(emptyRecord())
+  const transport = mockSettings({ ...emptyRecord(), locale: 'ar' })
   const view = await mountProfile(t, { transport })
   const backup = legacyAllowBackup({ sendCustom: true })
   await restore(view, backup)
@@ -80,7 +80,7 @@ test('P8 legacy backup: default restore (merge) keeps preferences, resets permis
 
 test('Explicitly reviewed permission restoration requires Save and does not retain obsolete switches', async t => {
   for (const strategy of ['merge', 'replace']) await t.test(strategy, async t => {
-    const transport = mockSettings(emptyRecord())
+    const transport = mockSettings({ ...emptyRecord(), locale: 'ar' })
     const view = await mountProfile(t, { transport })
     const backup = legacyAllowBackup({ switches: true })
     backup.policies.nationality='ask_first'
@@ -99,7 +99,7 @@ test('Explicitly reviewed permission restoration requires Save and does not reta
   })
 })
 test('P8 Replace All needs its own confirmation; the default merge keeps the current custom instructions', async t => {
-  const current = emptyRecord(); current.preferences.custom = 'Synthetic current paragraph'
+  const current = { ...emptyRecord(), locale: 'ar' }; current.preferences.custom = 'Synthetic current paragraph'
   const transport = mockSettings(current)
   const view = await mountProfile(t, { transport })
   await view.click('tab-backup')
@@ -124,7 +124,7 @@ test('P8 Replace All needs its own confirmation; the default merge keeps the cur
 })
 
 test('P8 backup import: malformed, unsupported or forged records are rejected with no draft change', async t => {
-  const transport = mockSettings(emptyRecord())
+  const transport = mockSettings({ ...emptyRecord(), locale: 'ar' })
   const view = await mountProfile(t, { transport })
   await view.click('tab-backup')
   for (const bad of [
@@ -216,7 +216,7 @@ test('P8 integration: the default merge keeps omitted settings and applies expli
 })
 
 test('P8 integration: a new paste or file clears every confirmation and restores the default strategy', async t => {
-  const view = await mountProfile(t, { transport: mockSettings(emptyRecord()) })
+  const view = await mountProfile(t, { transport: mockSettings({ ...emptyRecord(), locale: 'ar' }) })
   const first = JSON.stringify(legacyAllowBackup())
   const second = JSON.stringify({ ...legacyAllowBackup(), information: { preferredName: 'Second backup' } })
   await view.click('tab-backup')

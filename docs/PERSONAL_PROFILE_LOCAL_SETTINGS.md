@@ -1,6 +1,10 @@
-# Personal Profile — simplified development candidate
+# My Profile (Personal Profile) — simplified development candidate
 
-Personal Profile is optional and disabled by default. It uses one native settings record across Workspaces of the active Harness Profile.
+My Profile is optional and disabled by default. The page appears under **Settings → My Profile**, not the main sidebar. It uses one native settings record across Workspaces of the active Harness Profile.
+
+## Interface language
+
+New v4 profiles default to `locale: 'auto'`, **Follow DSH**. The browser page reads and subscribes to DSH's public Locale snapshot (with a safe English fallback if unavailable); switching the Host language re-renders My Profile only while Follow DSH is selected. The user can independently select English, Arabic, Chinese, Spanish, French, German or Japanese and save the selection; Arabic uses RTL. Changing My Profile's language does not call `ctx.locale.setLocale` or change DSH itself, and does not alter the separate model response-language preference. Existing saved `ar`/`en` remain explicit overrides, and legacy records migrate without losing their language. A version 4 backup retains `auto` and the five added locales; existing manual English/Arabic settings retain v2 export compatibility.
 
 ## My Information
 

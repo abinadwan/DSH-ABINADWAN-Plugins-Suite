@@ -1,8 +1,8 @@
-// Phase 6E regression: Personal Profile rendered a blank content area on
+// Phase 6E regression: the Personal Profile page rendered a blank content area on
 // Windows Desktop (Harness v0.2.2-rc.3). Verified cause: `ctx.workspaces.list`
 // is a `ClientWorkspaceModel` class instance whose `subscribe`/`getSnapshot`
 // read `this`; passing them unbound to useSyncExternalStore threw during
-// render, and the Host Slot boundary retired the `main` entry, leaving an empty
+// render, and the Host Slot boundary retired the then-`main` entry, leaving an empty
 // `<div data-slot-error="main">`. 0.7.2 removed the Workspace dependency
 // entirely; these tests keep the Host-style Slot boundary and prove the page
 // renders whatever the Workspace store does. Fictional data only.
@@ -21,7 +21,7 @@ class HostSlotBoundary extends React.Component {
   static getDerivedStateFromError() { return { failed: true } }
   componentDidCatch(error) { this.props.onCrash(error) }
   render() {
-    return this.state.failed ? React.createElement('div', { 'data-slot-error': 'main' }) : this.props.children
+    return this.state.failed ? React.createElement('div', { 'data-slot-error': 'settings.section' }) : this.props.children
   }
 }
 
@@ -31,7 +31,9 @@ async function mountInHostSlot(t, { transport = mockSettings(), access = () => t
   app.setRows(withProfile(app.rows(), true))
   await app.changed(); await app.changed()
   const entry = app.slots.records.get(panelId)
-  assert.ok(entry, 'main slot entry registered')
+  assert.ok(entry, 'Settings section entry registered')
+  assert.equal(entry.options.name,'settings.section')
+  assert.equal(entry.options.label,'My Profile')
   const dom = new JSDOM('<!doctype html><html><body><main id="root"></main></body></html>', { url: 'http://localhost/' })
   const previous = { document: globalThis.document, window: globalThis.window, act: globalThis.IS_REACT_ACT_ENVIRONMENT }
   globalThis.document = dom.window.document; globalThis.window = dom.window; globalThis.IS_REACT_ACT_ENVIRONMENT = true
@@ -59,7 +61,7 @@ test('the Host workspace list is a class instance whose methods need their recei
   assert.throws(() => subscribe(() => {}), TypeError)
 })
 
-test('Personal Profile renders inside a Host-style main Slot with the real Host Workspace class present', async t => {
+test('My Profile renders inside a Host-style Settings Slot with the real Host Workspace class present', async t => {
   const { d, crashes } = await mountInHostSlot(t)
   assert.deepEqual(crashes.map(String), [], 'no Slot entry crash')
   assert.equal(d.querySelector('[data-slot-error]'), null, 'content area is not blank')
@@ -92,7 +94,7 @@ test('missing access hook, denied access or an unavailable settings service show
       const { d, crashes } = await mountInHostSlot(t, options)
       assert.equal(crashes.length, 0, label)
       assert.equal(d.querySelector('[data-slot-error]'), null, 'not blank')
-      assert.match(d.getElementById('pp-save-status').textContent, /غير متاحة/, label)
+      assert.match(d.getElementById('pp-save-status').textContent, /غير متاحة|unavailable/, label)
       assert.equal(d.getElementById('pp-save').disabled, true)
     })
   }
@@ -113,6 +115,6 @@ test('a render failure inside the page shows a visible error instead of a blank 
   const alert = d.querySelector('[data-personal-profile-error]')
   assert.ok(alert, 'visible error panel')
   assert.equal(alert.getAttribute('role'), 'alert')
-  assert.match(alert.textContent, /Personal Profile/)
+  assert.match(alert.textContent, /My Profile/)
   assert.match(alert.textContent, /No settings were saved or changed/)
 })

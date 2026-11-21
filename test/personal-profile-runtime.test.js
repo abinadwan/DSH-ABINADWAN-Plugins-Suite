@@ -255,7 +255,7 @@ test('Host shares only saved v4 checked fields, and never promotes legacy policy
     assert.equal(section().text(selection()),profileDisclosure(stored))
     assert.equal(section().text({}),'')
     for (const version of [2,3]) {
-      await fiber.update({record:{...stored,version,allowPersonalInformation:true,allowCloud:true}})
+      await fiber.update({record:{...stored,version,locale:'en',allowPersonalInformation:true,allowCloud:true}})
       assert.equal(section().text(selection()),'')
     }
     await fiber.update({record:{...stored,policies:{preferredName:'allow',nationality:'private',gender:'private'}}})
