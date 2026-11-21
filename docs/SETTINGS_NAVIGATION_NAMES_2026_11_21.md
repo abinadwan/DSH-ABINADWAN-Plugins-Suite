@@ -48,7 +48,7 @@ Both renamed entries retain their current icons. No new top-level navigation, co
 | Lifecycle storage namespace | `abinadwan-conversation-lifecycle` |
 | Package identity | `@abinadwan/dsh-plugins-suite` |
 
-This is a **display name and navigation change only**. No settings schema, version, data shape, migration, configuration rewrite, backup format, permission default, or package module path has changed. Existing saved preferences, access policies, retention settings, and component enablement are retained.
+This feature combines **display/navigation changes** with an **additive interface-locale preference** in the existing v4 schema. Current-version `locale` now accepts `auto` and five additional overrides; the storage namespace, record version, saved user records, privacy defaults, retention settings, component enablement, and package module paths are unchanged. For preserving the new locale modes, v4 export is used when required; explicit `en`/`ar` retain v2 export compatibility. No automatic migration or configuration rewrite occurs.
 
 Do not rename a namespace or move/delete stored settings merely to match the shorter display title. In particular, no new `/chat-control` or `/my-profile` package export is introduced.
 
