@@ -1,6 +1,6 @@
 {
   "meta": {
     "title": "Direct Chat",
-    "description": "Experimental Direct Chat using native DSH sessions. Sending messages still requires a registered Workspace. Tool use is blocked by policy, not process isolation."
+    "description": "Experimental Direct Chat using native DSH sessions. Sending messages still requires a registered Workspace. Tool use is blocked by policy, not process isolation. Part of the ABINADWAN Plugins Suite."
   }
 }
