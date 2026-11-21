@@ -356,7 +356,7 @@ window.__ModuleLoader__.load({
     const MIGRATION_STEPS = [
       'Harness can update a Git-installed bundle in place only when it was installed from a spec pinned to a full 40-character commit. Nothing was changed.',
       'One-time migration (manual, at your discretion): note which components are switched on, Uninstall this bundle from this page, then use Add plugin with the pinned spec shown below, and switch the components back on.',
-      'Personal Profile settings are stored in this Harness Profile\'s configuration and uninstalling may remove them. If you use Personal Profile, first export a JSON backup from Personal Profile → Backup & Restore (it includes your saved access permissions and is not encrypted). If the pinned install fails, reinstall from the same spec or from the original source.',
+      'Personal Profile settings are stored in this Harness Profile\'s configuration and uninstalling may remove them. If you use My Profile, first export a JSON backup from My Profile → Backup & Restore (it includes your saved access permissions and is not encrypted). If the pinned install fails, reinstall from the same spec or from the original source.',
     ]
     // Installed-plugin detail page only; never run an installer in a React effect.
     function VersionUpdates({ installedVersion, pluginManager, useRemoteAccess }) {
@@ -1079,7 +1079,7 @@ window.__ModuleLoader__.load({
         discardConfirm:'تجاهل التغييرات وإعادة التحميل',discardCancel:'متابعة التعديل',
       }
       const en = {
-        information:'My Information',instructions:'Agent Instructions',access:'Access Control',backup:'Backup & Restore',privacy:'Privacy & Security',title:'Personal Profile',
+        information:'My Information',instructions:'Agent Instructions',access:'Access Control',backup:'Backup & Restore',privacy:'Privacy & Security',title:'My Profile',
         subtitle:'One unified profile in the active Harness Profile',warning:'Stored locally without plugin-level encryption. Do not enter passwords, keys or sensitive information. Saved response preferences are sent to the selected model and may remain in conversation history. Only saved, checked personal information is added to supported native model requests, including cloud models.',
         language:'Interface language',preferredName:'Preferred name',nationality:'Nationality',gender:'Gender',male:'Male',female:'Female',unspecified:'Prefer not to say',
         unified:'Unified preferences',unifiedHint:'Saved preferences apply at the next assembled step in supported native conversations, independent of Workspace. Some agent presets may override them.',
@@ -1489,18 +1489,18 @@ window.__ModuleLoader__.load({
       render(){
         if(!this.state.failed)return this.props.children
         return h('div',{'data-personal-profile-error':'',role:'alert',style:{padding:'max(var(--dsh-frame-top-clearance, 0px), 28px) clamp(18px,4vw,56px)',lineHeight:1.6}},
-          h('h1',{style:{fontSize:22,margin:'0 0 8px'}},'Personal Profile — الملف الشخصي'),
+          h('h1',{style:{fontSize:22,margin:'0 0 8px'}},'My Profile — الملف الشخصي'),
           h('p',{dir:'rtl',lang:'ar'},'تعذر عرض صفحة الملف الشخصي. لم يتم حفظ أو تغيير أي إعداد.'),
-          h('p',{lang:'en'},'Personal Profile could not be displayed. No settings were saved or changed.'),
+          h('p',{lang:'en'},'My Profile could not be displayed. No settings were saved or changed.'),
           h('button',{type:'button',onClick:()=>this.setState({failed:false}),style:{border:'1px solid rgba(128,128,128,.35)',borderRadius:8,padding:'9px 13px',font:'inherit',background:'rgba(128,128,128,.08)',color:'inherit',cursor:'pointer'}},'Retry — إعادة المحاولة'))
       }
     }:null
 
     function ProfileDraft() {
       return h('section',{'data-personal-profile-draft':'',style:{borderTop:border,padding:'20px 0'}},
-        h('h3',null,'Personal Profile — local settings'),
+        h('h3',null,'My Profile — local settings'),
         h('p',null,'One unified profile: Preferred name, Nationality, Gender, response preferences and optional Custom Instructions. All access is Private by default.'),
-        h('p',null,'Saved in the active Harness Profile without plugin-level encryption. Open Personal Profile to edit. Saved response preferences apply to supported native agent steps. Personal information sharing is disabled in this build.'))
+        h('p',null,'Saved in the active Harness Profile without plugin-level encryption. Open My Profile to edit. Saved response preferences apply to supported native agent steps. Personal information sharing is disabled in this build.'))
     }
     const PROFILE_MODULE = TYPE + '/personal-profile'
     /** The Host's own enablement of the Profile row on the subject page; false when it says Off. */
@@ -1510,7 +1510,7 @@ window.__ModuleLoader__.load({
         ? subject.pkg.rows.find(item => item?.moduleName === PROFILE_MODULE) : undefined
       return row === undefined ? true : row.enabled === true
     }
-    // Every Personal Profile surface lives in this child fiber, which the
+    // Every My Profile surface lives in this child fiber, which the
     // suite starts only while the Host row is enabled and active, and disposes
     // (unregistering each Slot entry) as soon as the row is switched Off.
     // No agent capabilities; all writes go through the native settings service.
@@ -1528,13 +1528,14 @@ window.__ModuleLoader__.load({
           const page=h(PersonalProfilePage,{settings,connectionSource,useRemoteAccess:props?.useRemoteAccess})
           return ProfileErrorBoundary?h(ProfileErrorBoundary,null,page):page
         }
-        ctx.slots.inject('main', () => ctx.slots.register({
-          name: 'main', key: PROFILE_PANEL_ID,
+        // Native Settings navigation replaces the global sidebar entry. Keep
+        // the stable panel id and Host namespace for existing saved profiles.
+        ctx.slots.inject('settings.section', () => ctx.slots.register({
+          name: 'settings.section', id: PROFILE_PANEL_ID, label: 'My Profile', order: 40,
         }, ProfileSlot))
-        ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
-          name: 'sidebar.panellist', id: PROFILE_PANEL_ID, order: 40,
-          label: () => 'Personal Profile',
-        }, ProfilePanelIcon))
+        ctx.slots.inject('settings.section.icon', () => ctx.slots.register({
+          name: 'settings.section.icon', id: PROFILE_PANEL_ID,
+        }, ({ size }) => h(ProfilePanelIcon, { size })))
         ctx.slots.inject('plugins.detail.section', () => ctx.slots.register({
           name: 'plugins.detail.section', id: 'abinadwan-profile-draft', order: 40,
         }, ({ subject }) => ((subject?.kind === 'bundle' && subject.pkg?.name === TYPE) ||
@@ -1726,7 +1727,7 @@ window.__ModuleLoader__.load({
         ['Storage usage', 'Unavailable'],
       ]
       return h('section', { lang: 'en', dir: 'ltr', style: { padding: '8px 16px 20px', display: 'grid', gap: 16, minWidth: 0 } },
-        h('header', null, h('h1', { style: { margin: '0 0 4px', fontSize: 18, lineHeight: 1.3 } }, 'Conversation Lifecycle'),
+        h('header', null, h('h1', { style: { margin: '0 0 4px', fontSize: 18, lineHeight: 1.3 } }, 'Chat Control'),
           h('p', { style: { ...lifecycleMuted, margin: 0 } }, 'Part of the ABINADWAN Plugins Suite.')),
         h(SuiteRecordStatus, { settings }),
         h(LifecycleGroup, { title: 'Overview' },
@@ -2071,7 +2072,7 @@ window.__ModuleLoader__.load({
           connection: suiteConnection(ctx) }
         const id = 'abinadwan-conversation-lifecycle'
         ctx.slots.inject('settings.section', () => ctx.slots.register({ name: 'settings.section',
-          id, label: 'Conversation Lifecycle', order: 45 }, props => h(WorkspaceLifecycle, { ...props, services })))
+          id, label: 'Chat Control', order: 45 }, props => h(WorkspaceLifecycle, { ...props, services })))
         ctx.slots.inject('settings.section.icon', () => ctx.slots.register({ name: 'settings.section.icon', id },
           ({ size }) => suiteGlyph(lifecycleIcon, size)))
       },
