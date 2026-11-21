@@ -49,9 +49,9 @@ export function deferred() {
 
 export const workspaceItems = [{ workspaceId: 'w1', title: 'Workspace A' }, { workspaceId: 'w2', title: 'Workspace B' }]
 
-export async function mountProfile(t, { transport = mockSettings(), access = () => true, items = workspaceItems, console: logger, fetch,
+export async function mountProfile(t, { transport = mockSettings(), access = () => true, items = workspaceItems, hostLocale = 'ar', console: logger, fetch,
   download = true, clipboard = true } = {}) {
-  const app = await clientHarness({ React, settings: transport, workspaceItems: items, console: logger, fetch })
+  const app = await clientHarness({ React, settings: transport, workspaceItems: items, hostLocale, console: logger, fetch })
   assert.equal(app.slots.records.has(panelId), false)
   app.setRows(withProfile(app.rows(), true))
   await app.changed(); await app.changed()
