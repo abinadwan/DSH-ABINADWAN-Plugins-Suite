@@ -1,6 +1,6 @@
 # ABINADWAN Plugins Suite — component details
 
-**Source version: v1.0.0 (development on `develop`, not a published stable release).** One community-maintained DSH bundle exposes six independently switchable components. The package's public identity remains `@abinadwan/dsh-plugins-suite`. The three recently added components are integrated; earlier exploratory prototypes and acceptance reports are historical evidence, not separate active plugins.
+**Published source release: [v1.0.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.0) (tagged from `main`).** One community-maintained DSH bundle exposes six independently switchable components. The package's public identity remains `@abinadwan/dsh-plugins-suite`. The three recently added components are integrated; earlier exploratory prototypes and acceptance reports are historical evidence, not separate active plugins.
 
 > **Release boundary:** A version bump, development branch merge, or successful CI run does not publish a GitHub Release or validate every Desktop security path. See [the releases page](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases) for actually published artifacts.
 
@@ -99,7 +99,7 @@ The supported installation identity is `@abinadwan/dsh-plugins-suite`. Select th
 github:abinadwan/DSH-ABINADWAN-Plugins-Suite#RELEASE_COMMIT_SHA
 ~~~
 
-For CLI installations, use the matching DSH `plugin --profile <name> add` workflow in the environment that runs that Profile. Back up My Profile and the Profile configuration before any replacement or migration. The `develop` source at **v1.0.0** is a development milestone, **not** an approved published stable release; updating a manifest alone does not make a version discoverable by the updater.
+For CLI installations, use the matching DSH `plugin --profile <name> add` workflow in the environment that runs that Profile. Back up My Profile and the Profile configuration before any replacement or migration. **v1.0.0 is published from `main`**; install using the full SHA of the official tag. Future commits on `develop` remain unpublished until separately released, and changing a manifest alone never makes a version discoverable by the updater.
 
 **Suite updates (GitHub Releases)** lives on the suite's Plugins detail page. It checks for a published, non-prerelease GitHub Release on startup and every 24 hours while loaded, with manual **Check again**. If a newer release exists, **Update now** verifies the tag, immutable target SHA and remote package manifest; it requires user confirmation and delegates to DSH's `pluginManager.updateBundle`. There is no unattended install. In-app update requires the existing Git installation to be pinned to a complete commit SHA; unpinned Git installations receive manual migration guidance. Updates may require a restart, and Host rollback is attempted but cannot be guaranteed to succeed in every failure mode.
 
@@ -110,7 +110,7 @@ The updater does **not** follow unreviewed `develop` commits, automatically repl
 - Development tests use the pinned DSH/Loader libraries and run `npm test` plus `npm run check:package` on Windows and Linux with Node 22/24. These tests do not replace real Desktop validation.
 - Historical documentation contains experimental LPAC companion processes, encrypted storage and per-Workspace profiles that were replaced. These **are not active capabilities**. Consult [documentation index](README.md) before interpreting old phase reports.
 - Accepted Windows Direct Chat behavioral tests do not establish high-assurance filesystem or request-level isolation; My Profile's final multilingual Settings smoke test and request-level privacy assessment remain separately tracked.
-- Changing package metadata to **v1.0.0** does not run an updater, migrate data, enable disabled components or publish to `main` / GitHub Releases.
+- Publication of **v1.0.0** does not automatically run an updater, migrate user data, enable disabled components, or change an existing Desktop installation. The release is explicitly owner-approved; outstanding Host/Desktop validation gates above remain outstanding.
 
 ## Support, license and provenance
 
