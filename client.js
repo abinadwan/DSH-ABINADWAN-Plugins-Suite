@@ -870,6 +870,9 @@ window.__ModuleLoader__.load({
       const base=emptyProfileRecord()
       const legacy=value.version!==PROFILE_VERSION
       const candidate={...overlayProfile(base,value),version:value.version,policies:{...base.policies,...value.policies}}
+      // v1-v3 backups cannot express 'auto'; an omitted locale is a valid
+      // sparse backup and must not inherit the current v4 default.
+      if(legacy&&!Object.hasOwn(value,'locale'))candidate.locale='ar'
       if(legacy){
         for(const key of ['allowPersonalInformation','allowCloud'])if(!Object.hasOwn(value,key))candidate[key]=false
       }
@@ -1014,7 +1017,7 @@ window.__ModuleLoader__.load({
         finally{if(id===request.current)inFlight.current=false}
       }
       const hostSnapshot=React.useSyncExternalStore(localeSource.subscribe,localeSource.getSnapshot,localeSource.getSnapshot)
-      const hostLanguage=hostSnapshot?.active || 'en'
+      const hostLanguage=['en','ar','zh','es','fr','de','ja'].includes(hostSnapshot?.active)?hostSnapshot.active:'en'
       const language=record.locale==='auto'?hostLanguage:record.locale
       const values=record.information,preferences=record.preferences
       const busy=status==='loading'||status==='saving'
@@ -1199,9 +1202,12 @@ window.__ModuleLoader__.load({
         border:'1px solid rgba(208,158,52,.7)', borderRadius:10,
         background:'rgba(208,158,52,.1)',fontSize:13,lineHeight:1.7} }, t('warning'))
       const backupStatus = backupMessage ? h('p',{id:'pp-backup-status',role:'status',style:{fontWeight:600}},t(backupMessage)) : null
-      const exportText = () => JSON.stringify(decodeProfile({
-        ...record,version:2,allowPersonalInformation:false,allowCloud:false,
-      }),null,2)
+      const exportText = () => JSON.stringify(
+        // Preserve existing v2 compatibility for en/ar overrides. Follow DSH
+        // and additional UI locales require v4 to round-trip without data loss.
+        record.locale==='ar'||record.locale==='en'
+          ? decodeProfile({...record,version:2,allowPersonalInformation:false,allowCloud:false})
+          : decodeProfile(record),null,2)
       const legacyText = () => JSON.stringify(legacy,null,2)
       // ---- Restore preview helpers (read-only rendering) ----
       const summarize = r => {
