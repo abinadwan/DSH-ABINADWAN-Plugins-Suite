@@ -196,10 +196,27 @@ export async function clientHarness(options = {}) {
   // DSH's public Locale snapshot: the default test Host is Arabic so existing
   // RTL regressions remain realistic; tests can opt into English or switch live.
   const hostLocale = observable({active:options.hostLocale || 'ar',revision:0})
+  // Model the native DSH locale catalog in addition to its observable snapshot.
+  // Other Component tests must not receive false missing-API warnings from a
+  // suite-wide language pack, and locale ownership must remain disposable.
+  const hostLanguages = new Map([['en', { id: 'en', label: 'English' }]])
+  const hostDictionaries = new Map()
   ctx.provide('locale', options.locale || {
     getSnapshot: () => hostLocale.getSnapshot(),
     getLocale: () => hostLocale.getSnapshot(),
     subscribe: notify => hostLocale.subscribe(notify),
+    addLanguage(language) {
+      if (hostLanguages.has(language.id)) throw new Error('language already occupied')
+      hostLanguages.set(language.id, language)
+      return () => { hostLanguages.delete(language.id) }
+    },
+    register(namespace, locale, dictionary) {
+      const key = locale + ':' + namespace
+      if (!hostLanguages.has(locale)) throw new Error('unregistered locale')
+      if (hostDictionaries.has(key)) throw new Error('dictionary already occupied')
+      hostDictionaries.set(key, dictionary)
+      return () => { hostDictionaries.delete(key) }
+    },
   })
   const timers = new Map()
   const intervals = new Map()
