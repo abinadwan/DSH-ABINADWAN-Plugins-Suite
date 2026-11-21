@@ -29,9 +29,9 @@ test('development source metadata, lockfile, client version and documentation ag
     assert.equal(lock.packages[''].version, packageJson.version)
   }
   assert.equal(client.match(/const INSTALLED_VERSION = '([^']+)'/)?.[1], packageJson.version)
-  assert.match(read('README.md'), /v1\.0\.0.*development|development.*v1\.0\.0/i)
-  assert.match(read('docs/DETAIL.md'), /v1\.0\.0.*development/i)
-  assert.match(read('docs/DETAIL.md'), /not a published stable release/i)
+  assert.match(read('README.md'), /v1\.0\.0.*release|release.*v1\.0\.0/i)
+  assert.match(read('docs/DETAIL.md'), /v1\.0\.0.*release/i)
+  assert.match(read('docs/DETAIL.md'), /GitHub Release/i)
 })
 
 test('README and DETAIL render locally bundled icons for all six components', () => {
