@@ -1,5 +1,7 @@
 # New Plugins Implementation Plan
 
+> **Historical design/plan (superseded).** It records the pre-integration Phase C approval and QA steps. The current six-component v1.0.0 development behavior is documented in [DETAIL](../../DETAIL.md); Direct Chat's old LPAC companion and automated deletion proposals are **not current product capabilities**.
+
 > **For agentic workers:** Use superpowers:executing-plans for the gated Phase C work approved on 2026-11-19. The explicit owner conditions apply to shared files and production deletion. See the [Phase C capability update](../../research/NEW_PLUGINS_PHASE_C.md) for observed outcomes.
 
 **Goal:** Deliver independent native Direct Chat, Workspace conversation lifecycle management and capability-backed reasoning controls without crossing data or permission boundaries.
