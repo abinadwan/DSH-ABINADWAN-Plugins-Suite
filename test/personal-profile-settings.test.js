@@ -65,6 +65,59 @@ test('My Profile follows DSH locale by default, supports independent override an
     ['auto','en','ar','zh','es','fr','de','ja'])
 })
 
+test('Follow DSH reacts to all seven supported UI locales; overrides stay local', async t => {
+  const view = await mountProfile(t, { transport: mockSettings(emptyRecord()), hostLocale: 'es' })
+  const panel = view.d.querySelector('[data-personal-profile-panel]')
+  const titles = { en: 'My Profile', ar: 'الملف الشخصي', zh: '我的资料',
+    es: 'Mi perfil', fr: 'Mon profil', de: 'Mein Profil', ja: 'マイプロフィール' }
+  for (const [index, [id, title]] of Object.entries(titles).entries()) {
+    await act(async () => {
+      view.app.hostLocale.set({ active: id, revision: index + 2 })
+      await view.settle()
+    })
+    assert.equal(view.byId('language').value, 'auto')
+    assert.equal(panel.getAttribute('lang'), id)
+    assert.equal(panel.getAttribute('dir'), id === 'ar' ? 'rtl' : 'ltr')
+    assert.equal(view.d.querySelector('[data-personal-profile-panel] h1').textContent, title)
+  }
+  assert.equal(view.byId('response-language').value, undefined, 'response language is on its own tab')
+  await view.select('language', 'ja')
+  assert.equal(panel.getAttribute('lang'), 'ja')
+  await act(async () => { view.app.hostLocale.set({ active: 'ar', revision: 20 }); await view.settle() })
+  assert.equal(panel.getAttribute('lang'), 'ja', 'manual My Profile locale does not follow later DSH switches')
+  assert.equal(view.transport.calls.length, 0, 'changing UI language does not modify DSH or save implicitly')
+  await view.click('tab-instructions')
+  assert.equal(view.byId('response-language').value, 'auto', 'UI language does not change model response language')
+})
+
+test('new UI language modes round-trip through backup without losing Follow DSH', async t => {
+  const transport = mockSettings(emptyRecord())
+  const view = await mountProfile(t, { transport, hostLocale: 'fr' })
+  await view.click('tab-backup')
+  await view.click('export-view')
+  let backup = JSON.parse(view.byId('export-json').value)
+  assert.equal(backup.version, 4, 'Follow DSH needs version 4 backup to preserve auto mode')
+  assert.equal(backup.locale, 'auto')
+  await view.click('tab-information')
+  await view.select('language', 'de')
+  await view.click('save')
+  await view.click('tab-backup')
+  await view.click('export-view')
+  await view.click('export-view')
+  backup = JSON.parse(view.byId('export-json').value)
+  assert.equal(backup.version, 4)
+  assert.equal(backup.locale, 'de')
+  await view.click('tab-information')
+  await view.select('language', 'en')
+  await view.click('save')
+  await view.click('tab-backup')
+  await view.click('export-view')
+  await view.click('export-view')
+  backup = JSON.parse(view.byId('export-json').value)
+  assert.equal(backup.version, 2, 'explicit English/Arabic overrides retain backwards-compatible v2 backup')
+  assert.equal(backup.locale, 'en')
+})
+
 // ---------- Native settings read contract ----------
 
 test('describe failures, missing namespace and malformed views fail closed without writing', async t => {
