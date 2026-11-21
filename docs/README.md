@@ -1,6 +1,6 @@
 # Documentation index — ABINADWAN Plugins Suite
 
-**Source baseline: v1.0.0 on `develop` (development, not a published stable release).**
+**Current published source release: [v1.0.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.0) on `main`.**
 
 ## Where to start
 
@@ -13,11 +13,11 @@
 
 The earlier audit examined **43 existing Markdown files** under `docs/` (before adding this index). All were related to the repository; none warranted permanent deletion. A later organization pass moved **15 superseded research and planning records** to [`archive/`](archive/README.md) without losing their contents or Git history. [`research/`](research/README.md) retains four useful technical reference reports plus original desktop-contract evidence JSON. The archives are **historical**, not instructions for the current implementation.
 
-**Current documentation policy:** the root README focuses on the technology and installation; [DETAIL.md](DETAIL.md) is the single detailed reference for all six component features and limitations. Version **v1.0.0** is source metadata only, not publication. Historical reports retain their original version and test evidence.
+**Current documentation policy:** the root README focuses on the technology and installation; [DETAIL.md](DETAIL.md) is the single detailed reference for all six component features and limitations. **v1.0.0** has been published from `main`; future `develop` commits are not releases unless separately tagged and published. Historical reports retain their original version and test evidence.
 
 ## Current reader-facing documentation
 
-These pages describe the present v1.0.0 development source or its current UI contracts.
+These pages describe the v1.0.0 released source and current UI contracts; unverified Desktop/Host security paths remain explicitly documented.
 
 | File | Reason to keep |
 | --- | --- |
@@ -100,6 +100,6 @@ These superseded research reports and implementation plans are project-related, 
 2. New historical QA reports must say which branch/commit/Host was actually tested and which gates remain open. Do not retroactively convert proposals into proof.
 3. Keep internal identifiers and persistent setting namespaces separate from the public labels **My Profile** and **Chat Control**.
 4. Preserve prior Desktop/security evidence even if the old implementation was removed. Label it historical and link the current architecture instead of silently erasing risk decisions.
-5. Confirm relative Markdown links and all seven component/suite icon files exist. Do not reference missing release SHAs or claim a stable v1.0.0 GitHub Release until one is published and accepted.
+5. Confirm relative Markdown links and all seven component/suite icon files exist. Refer to the published v1.0.0 release by its verified full commit SHA and disclose outstanding Host/Desktop security acceptance limits instead of assuming all validation gates passed.
 
 Documentation/packaging checks run in repository CI alongside `npm test` and `npm run check:package`. The archived files are not published as runtime capabilities. Read [research classification](research/README.md) and [archive README](archive/README.md) before using an old design.

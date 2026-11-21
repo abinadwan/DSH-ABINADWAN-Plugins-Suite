@@ -30,7 +30,7 @@ This directory preserves **15 superseded Markdown files** moved out of active [r
 ## Interpretation rules
 
 - Claims such as “production-ready,” “blocked” or “not merged” in these records apply **only to their recorded branch, Host version and date**.
-- **Current v1.0.0 development Direct Chat** uses one registered Workspace, native Sessions and Host tool denial—not the companion sandbox described in Phase D2/D3. Context and Host security audits remain deferred.
+- **v1.0.0 Direct Chat** uses one registered Workspace, native Sessions and Host tool denial—not the companion sandbox described in Phase D2/D3. Context and Host security audits remain deferred.
 - **Current My Profile** uses DSH Settings, optional sharing checkboxes and user-controlled UI-language selection; it does not use the encrypted persistence or old per-session consent ledger described in the abandoned plans.
 - **Current Chat Control** previews retention policy but does not execute permanent deletion; **Adaptive Reasoning** exposes supported manual effort, not the historical experimental automatic/next-message flow.
 - Screenshots, JSON and test reports are historical evidence only; they do not assert approval of newer DSH versions or stable production deployment.

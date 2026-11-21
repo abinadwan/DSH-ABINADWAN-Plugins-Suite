@@ -1,4 +1,4 @@
-# My Profile — current Settings and privacy contract (development v1.0.0)
+# My Profile — Settings and privacy contract (v1.0.0)
 
 My Profile is optional and disabled by default. The page appears under **Settings → My Profile**, not the main sidebar. It uses one native settings record across Workspaces of the active Harness Profile.
 
