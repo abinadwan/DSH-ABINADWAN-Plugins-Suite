@@ -16,6 +16,15 @@ Two UI changes are approved for the six-component ABINADWAN Plugins Suite:
 
 Both renamed entries retain their current icons. No new top-level navigation, component, or settings storage is created.
 
+## My Profile interface-language policy
+
+- **English** (`en`, left-to-right) is the default UI language for newly created v4 profile records; the Settings page initially opens in English for a fresh profile.
+- An explicit **Interface language** control offers **English** and **العربية**. Choosing Arabic immediately renders the UI in Arabic and right-to-left; the choice is only persisted after the user presses **Save**.
+- Existing stored `locale: 'ar'` or `locale: 'en'` values are respected as-is. Opening the new version, reconnecting, restoring a backup, or migrating legacy records must not silently overwrite a previously chosen locale.
+- Historical v1–v3 record defaults and backup-compatibility behavior remain unchanged; the new schema default applies only to newly created current-version records.
+- **Interface language is independent from Response language**; the latter retains its Automatic setting unless separately changed. No forced model response language, no global DSH locale change, and no new privacy permissions are introduced.
+
+
 ## Implementation
 
 - The browser `profilePlugin` now registers `settings.section` and `settings.section.icon` with label **My Profile**. It no longer registers `main` or `sidebar.panellist` slots for the editor.
