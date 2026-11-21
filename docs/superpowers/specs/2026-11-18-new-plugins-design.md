@@ -1,5 +1,7 @@
 # Direct Chat, Conversation Lifecycle and Adaptive Reasoning — Phase B design
 
+> **Historical Phase B specification.** The approved plan evolved: today's Direct Chat uses one shared Workspace with native Sessions and Host tool guards; Chat Control provides retention preview without deletion; Adaptive Reasoning supports manual effort, not automatic/message-only effort. See [current DETAIL](../../DETAIL.md).
+
 Status: **Conditionally approved for gated Phase C on 2026-11-19**. Baseline `feature/new-plugins` / `2c475f9`, suite `0.8.0-rc.1`. The owner approved the native architecture, separate plugins, shared domain, Settings and icon concepts, subject to the safe deletion, retention, storage and reasoning amendments below. See the [discovery and SDK evidence](../../research/NEW_PLUGINS_PHASE_A.md), [roadmap](../plans/2026-11-18-new-plugins.md) and [Phase C capability update](../../research/NEW_PLUGINS_PHASE_C.md).
 
 ## Intent and constraints

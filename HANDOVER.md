@@ -1,10 +1,10 @@
 # ABINADWAN Plugins Suite development handover
 
-> **Current development note (`feature/settings-my-profile-chat-control`, based on `develop` after PR #25):** Phase 2 Direct Chat was owner-accepted and merged into develop with acknowledged deferred deep isolation testing. This settings-only feature sets **Follow DSH** as My Profile's new-record language mode, with optional independent 7-language overrides, and renames the visible Personal Profile navigation to **My Profile** and moves it from the main sidebar into native Settings; the visible Conversation Lifecycle label becomes **Chat Control** in Settings and the component card. Stable plugin IDs, Host setting namespaces, existing saved records and permissions remain untouched; backup export uses v4 only when necessary to preserve Follow DSH/additional locale selections, while explicit en/ar retain v2 compatibility. The changes are not a stable release and need the normal package/CI plus Desktop Settings-navigation smoke checks. Historical LPAC companion claims later in this document describe an earlier baseline, not the active native Direct Chat design.
+> **Current `develop` baseline — v1.0.0 (unreleased development source, 2026-11-21):** Direct Chat Phase 2 was accepted and merged through PR #25 with deep Host/security isolation explicitly deferred. My Profile moved into native Settings and follows DSH language by default, with seven independently selectable UI languages; Conversation Lifecycle is displayed as Chat Control. Those changes merged through PR #26. This documentation pass adds the missing three icons, audits 43 project-related docs and aligns the version metadata. Neither merge nor CI constitutes a published stable release or full Windows Desktop/security sign-off. Archived LPAC companion and encrypted profile designs below describe historical work, **not** currently active features.
 
 ## Baseline and workflow
 
-**Development branch:** `develop`. **Target release:** v1.0.0. **Current candidate:** `0.8.0-rc.1`.
+**Development branch:** `develop`. **Current source version:** `1.0.0` (unreleased). **Last published stable release recorded before this documentation pass:** `0.7.2`. Future stable publication requires separate approval and a published release tag.
 
 This is the private, unified development baseline for all six components. Branch future work from `develop` and integrate it back into `develop`. The stable release will use one owner-approved pull request into `main` after the acceptance gates close.
 

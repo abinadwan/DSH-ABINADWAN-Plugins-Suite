@@ -1,5 +1,7 @@
 # Phase D3: companion confinement, upstream review and message-bound effort
 
+> **Historical QA-only prototype.** The LPAC/AppContainer companion investigated here was superseded by the single-Workspace native Direct Chat merged in PR #25. It does not describe the current v1.0.0 development package. [Current capability and limits](../DETAIL.md#direct-chat).
+
 All work is on `integration/suite-v0.8`. Nothing is pushed. The product package is unchanged (60 published files). Direct Chat stays QA-only.
 
 ## Outcome
