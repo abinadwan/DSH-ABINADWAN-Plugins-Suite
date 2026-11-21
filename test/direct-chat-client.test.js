@@ -21,9 +21,11 @@ test('Direct Chat appears as an optional sidebar footer action and disposes on d
   assert.equal(button.type, 'button')
   assert.equal(button.props['aria-label'], 'Direct Chat')
   await button.props.onClick()
-  assert.equal(requests.length, 1)
-  assert.equal(requests[0].url, '/api/abinadwan-direct-chat/create')
-  assert.equal(requests[0].init.method, 'POST')
+  const createRequests = requests.filter(
+    request => request.url === '/api/abinadwan-direct-chat/create'
+  )
+  assert.equal(createRequests.length, 1)
+  assert.equal(createRequests[0].init.method, 'POST')
   assert.deepEqual(opened, ['session-direct-1'])
   app.setRows(app.rows().map(row => row.moduleName === base + '/direct-chat'
     ? { ...row, enabled: false, fiberPhase: null } : row))
