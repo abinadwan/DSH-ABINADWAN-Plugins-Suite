@@ -1,6 +1,8 @@
 # New plugins — Phase A discovery and feasibility
 
-Review baseline: 2026-11-18, `feature/new-plugins`, `2c475f9`. Status: research completed; Phase B is a proposal awaiting owner review. No production implementation, installation, configuration changes, conversation cleanup, merge, or release was performed.
+**Historical source/SDK feasibility snapshot (2026-11-18).** The decisions and blockers below describe that pinned pre-integration branch, **not** the current v1.0.0 development suite. The current Direct Chat design is different and was later accepted into `develop` with deep Host isolation checks explicitly deferred; Chat Control still does not execute deletion. [Current component details](../DETAIL.md) · [Current research index](README.md).
+
+Review baseline: 2026-11-18, `feature/new-plugins`, `2c475f9`. Status at that time: research completed; Phase B was a proposal awaiting owner review. No production implementation, installation, configuration changes, conversation cleanup, merge, or release was performed **during that audit**.
 
 Read alongside [architecture](../archive/superpowers/specs/2026-11-18-new-plugins-design.md), [implementation roadmap](../archive/superpowers/plans/2026-11-18-new-plugins.md), and [packaged Desktop evidence](new-plugins-desktop-evidence.json).
 
