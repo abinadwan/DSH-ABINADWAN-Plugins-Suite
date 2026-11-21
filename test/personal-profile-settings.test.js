@@ -80,7 +80,7 @@ test('Follow DSH reacts to all seven supported UI locales; overrides stay local'
     assert.equal(panel.getAttribute('dir'), id === 'ar' ? 'rtl' : 'ltr')
     assert.equal(view.d.querySelector('[data-personal-profile-panel] h1').textContent, title)
   }
-  assert.equal(view.byId('response-language').value, undefined, 'response language is on its own tab')
+  assert.equal(view.byId('response-language'), null, 'response language is on its own tab')
   await view.select('language', 'ja')
   assert.equal(panel.getAttribute('lang'), 'ja')
   await act(async () => { view.app.hostLocale.set({ active: 'ar', revision: 20 }); await view.settle() })
