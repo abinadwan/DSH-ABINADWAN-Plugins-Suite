@@ -1099,7 +1099,7 @@ window.__ModuleLoader__.load({
         cloud:'Allow sharing personal information with cloud providers',accessHint:'Check the information you want to make available to the agent, then Save. Unchecked fields stay private. Your choices apply to all models and providers.',
         available:'Available to agent',sharedTitle:'Information available after Save',sharedNone:'Nothing is shared.',
         retention:'Earlier disclosures can remain with providers and in conversation history, Harness logs, summaries and branches. If a request carries a recognizable Profile details block no longer authorized, it is stopped. Start a new chat to continue.',
-        exportTitle:'Export backup',exportHint:'JSON backups are not encrypted. They include saved personal information, instructions and field permissions. English/Arabic overrides export legacy version 2 for compatibility; Follow DSH and other languages export version 4 to preserve that choice. Store securely and do not share.',
+        exportTitle:'Export backup',exportHint:'JSON backups are not encrypted. They include saved personal information, instructions and saved access permissions. English/Arabic overrides export legacy version 2 for compatibility; Follow DSH and other languages export version 4 to preserve that choice. Store securely and do not share.',
         download:'Download JSON file',copy:'Copy JSON',view:'View JSON',hideView:'Hide JSON',exportJson:'JSON backup',
         importTitle:'Import and restore',importHint:'Choose a JSON file or paste JSON, then review it. Nothing is saved until you press Save changes.',
         importFile:'Import JSON file',pasteJson:'Paste JSON manually',import:'Review backup',cancelRestore:'Cancel restore',
