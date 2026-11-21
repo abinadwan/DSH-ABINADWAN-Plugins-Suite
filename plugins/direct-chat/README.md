@@ -1,37 +1,9 @@
-# Direct Chat — native Workspace bridge (Phase 2 experimental)
+# Direct Chat — one persistent Workspace with separate chat Sessions
 
-This feature branch addresses the real DSH Desktop failure `Choose a workspace to start`. The previous native-only Session was persisted but could not start a turn, because DSH 0.2.x requires a registered Workspace for its blank-session composer.
+The Direct Chat footer opens a native DSH Session under one permanent Workspace titled **Direct Chat**. Each non-blank conversation gets a different Session ID, its own log and its own agent continuation. The plugin does not fork previous Sessions, paste old transcripts into new chats or install cross-session memory/retrieval. The DSH native composer reuses an unsubmitted blank draft; after the first message, the next click creates another Session.
 
-## New lifecycle
+**No more `session-*` Workspace per click.** The Host always returns the same profile-scoped directory: `<profile>/abinadwan-direct-chat-data/Direct Chat`. Workspace registration is idempotent by canonical path. Earlier `session-*` Workspace registrations and directories are deliberately left untouched; no automatic migration or deletion occurs.
 
-1. The authenticated Host route `/api/abinadwan-direct-chat/prepare` provisions a fresh, unique directory under the active profile's `abinadwan-direct-chat-data` root. It does **not** create a blank Session.
-2. The Client calls the documented `ctx.workspaces.create({ path })` to register the temporary Workspace.
-3. The Client calls `ctx.uiWorkspace.connectWorkspace(workspaceId)` and `openSession(sessionId)`. DSH owns the Session record, storage and native composer.
-4. While the Session is blank, its Workspace stays registered so the native composer can send the first message.
-5. When the Sessions list confirms `blank === false`, the Client calls `ctx.workspaces.delete(workspaceId)` to remove **only the registration**. DSH retains the Session, its log and directory, placing the conversation under Ungrouped. Do not delete its files as part of Workspace removal.
-6. A failed connection without a Session rolls back the temporary Workspace registration.
+**Critical limit:** this isolates *conversation history*, not the underlying filesystem. All new Direct Chat Sessions share the same Workspace `cwd`, because DSH Workspace membership requires that path. The existing pre-execute and dispatch tool-denial guards remain, but they are policy guards, **not a Windows LPAC or process/filesystem sandbox**. They also cover older per-chat paths. No claims of high-assurance isolation or cross-plugin confidentiality are made.
 
-This approach follows documented public DSH Workspace services and an independently published projectless-session proof of concept, but our Desktop version has **not** been tested yet.
-
-## Recovery for interrupted or repeated chats
-
-The Client reopens an already-registered **blank** Direct Chat on a subsequent button click instead of creating another temporary Workspace. It also reattaches lifecycle watchers to existing Direct Chat registrations after a restart. For a Session already confirmed non-blank, the plugin requests removal of its temporary Workspace registration; it does not remove DSH's Session, transcript or on-disk working directory. A blank, unsent chat is intentionally retained rather than silently deleted.
-
-**This does not hide the temporary Workspace while its chat is blank.** A new conversation with its own first message still uses a unique session directory, and DSH may list that directory until the first prompt is accepted.
-
-## Important limits
-
-- **Not a truly hidden Workspace.** The temporary registration may appear in the native Workspace browser until the first prompt has been accepted; it is then removed. DSH's public Workspace record has no supported `hidden` flag.
-- Blank Sessions abandoned before first send, including after app restart, need a reviewed recovery strategy. The current prototype does not automatically delete them, to avoid destroying user data.
-- Direct Chat history is retained in native DSH storage and appears under Ungrouped after detachment. A separate Direct Chat history UI and permanent deletion are future work.
-- Denying tools at `tools/pre-execute` and `tools.guard` is **not** a sandbox or Windows LPAC process boundary. Tools must be audited against actual DSH Desktop before user data is entrusted to this implementation.
-- The previous native-only PoC Session history is neither deleted nor migrated by this change.
-- The component remains disabled by default. Do not merge into `develop`, enable by default or publish as production until native Windows testing and security acceptance succeed.
-
-## Acceptance tests
-
-- Button creates a fresh directory and DSH-owned temporary Workspace; no Workspace picker is required.
-- Send a message using the real native composer and receive the model's reply.
-- After first accepted prompt, the temporary Workspace registration disappears while the Session continues under Ungrouped.
-- Resume after a full Desktop restart; inspect orphan blank Sessions and profile cleanup.
-- Re-test tool restrictions, file access, plugin disable/uninstall, and failure handling on Windows.
+This version shows **Direct Chat** under the standard DSH Workspaces browser. The separate **Direct Chat** and **Projects** top-level sidebar sections are a later UI change and are not yet implemented. The component stays Off by default. Native Windows Desktop send/receive, restart, guard coverage, and history independence need acceptance testing before merging to `develop`.

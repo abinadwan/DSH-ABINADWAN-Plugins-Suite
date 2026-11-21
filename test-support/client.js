@@ -225,7 +225,8 @@ export async function clientHarness(options = {}) {
     binding: id => options.sessionBinding?.(id) })
   ctx.provide('workspaces', {
     list: workspaces,
-    create: input => options.onWorkspaceCreate?.(input) ?? { workspaceId: 'direct-workspace', path: input.path },
+    create: input => options.onWorkspaceCreate?.(input) ?? { workspaceId: 'direct-workspace', path: input.path, title: 'Direct Chat' },
+    rename: (id, title) => options.onWorkspaceRename?.(id, title) ?? Promise.resolve({ workspaceId: id, title }),
     delete: id => options.onWorkspaceDelete?.(id) ?? Promise.resolve(),
   })
   ctx.provide('uiWorkspace', {

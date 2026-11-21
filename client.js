@@ -1993,116 +1993,45 @@ window.__ModuleLoader__.load({
           title: label, style: { display: 'inline-flex', gap: 7, alignItems: 'center',
             cursor: busy ? 'wait' : 'pointer', border: 0, borderRadius: 8,
             padding: '8px 10px', color: 'inherit', background: 'transparent', font: 'inherit' } },
-          suiteGlyph(['M6 4h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7l-5 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2Z'], 16),
+          suiteGlyph(['M6 4h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7l-5 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1-2-2Z'], 16),
           wide ? h('span', null, label) : null),
         status === 'failed' ? h('div', { role: 'alert', style: { fontSize: 12, padding: 8 } },
-          'Unable to open Direct Chat. Check for a pending temporary Workspace before retrying.') : null)
+          'Unable to open Direct Chat. Check the Workspace list before retrying.') : null)
     }
     const directChatPlugin = {
       inject: ['slots', 'sessions', 'workspaces', 'uiWorkspace', 'layout'],
       apply(ctx) {
         const lifetime = new AbortController()
         ctx.effect(() => () => lifetime.abort(), 'direct-chat: abort pending navigation')
-
-        // Only registrations made under our dedicated profile folder are candidates.
-        // These are not genuinely hidden Workspaces; they can still appear in DSH.
-        const managed = row => typeof row?.path === 'string'
-          && /(?:^|[\\/])abinadwan-direct-chat-data[\\/]session-[^\\/]+[\\/]?$/i.test(row.path)
-        const monitored = new Set()
-        const workspaceRows = () => ctx.workspaces.list.getSnapshot()?.items ?? []
-        const sessionRows = () => ctx.sessions.list.getSnapshot()?.byId ?? {}
-
-        // DSH 0.2 does not enable the blank composer for an unregistered cwd.
-        // Keep a temporary registration until the first prompt is accepted,
-        // then leave the conversation under Ungrouped without deleting its log.
-        function watchFirstPrompt(sessionId, workspaceId) {
-          let active = true
-          let unsubscribe = () => {}
-          const reconcile = () => {
-            if (!active || ctx.sessions.list.getSnapshot()?.byId?.[sessionId]?.blank !== false) return
-            active = false
-            unsubscribe()
-            void ctx.workspaces.delete(workspaceId).catch(error => {
-              console.warn('[abinadwan-direct-chat] Could not unregister temporary Workspace:', error)
-            })
-          }
-          unsubscribe = ctx.sessions.list.subscribe(reconcile)
-          reconcile()
-          return () => { active = false; unsubscribe() }
-        }
-        // Reattach the watcher after a Desktop restart or plugin reload.
-        // This unregisters previously completed sessions, but never deletes
-        // their native DSH history or files and never discards blank drafts.
-        function observe(sessionId, workspaceId) {
-          if (monitored.has(sessionId)) return
-          monitored.add(sessionId)
-          ctx.effect(() => {
-            const stop = watchFirstPrompt(sessionId, workspaceId)
-            return () => { monitored.delete(sessionId); stop() }
-          }, 'direct-chat: watch temporary Workspace ' + sessionId)
-        }
-        ctx.effect(() => {
-          const recover = () => {
-            if (ctx.workspaces.list.getSnapshot()?.phase !== 'ready' ||
-                ctx.sessions.list.getSnapshot()?.phase !== 'ready') return
-            const rows = sessionRows()
-            for (const row of workspaceRows()) {
-              if (!managed(row)) continue
-              for (const sessionId of row.sessionIds ?? []) {
-                if (rows[sessionId]) observe(sessionId, row.workspaceId)
-              }
-            }
-          }
-          const unsubscribeWorkspaces = ctx.workspaces.list.subscribe(recover)
-          const unsubscribeSessions = ctx.sessions.list.subscribe(recover)
-          recover()
-          return () => { unsubscribeWorkspaces(); unsubscribeSessions() }
-        }, 'direct-chat: recover temporary Workspace watchers')
-
         async function startChat() {
           const navigation = AbortSignal.any([ctx.layout.beginNavigation(), lifetime.signal])
-          // Reuse an unsubmitted draft instead of accumulating a new visible
-          // Workspace for every click on the Direct Chat footer button.
-          const rows = sessionRows()
-          const pending = workspaceRows().flatMap(row => managed(row)
-            ? (row.sessionIds ?? []).filter(id => rows[id]?.blank === true)
-                .map(sessionId => ({ sessionId, workspaceId: row.workspaceId }))
-            : [])[0]
-          if (pending) {
-            observe(pending.sessionId, pending.workspaceId)
-            if (!navigation.aborted) ctx.uiWorkspace.openSession(pending.sessionId)
-            return
-          }
           const response = await fetch('/api/abinadwan-direct-chat/prepare', {
             method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
             signal: AbortSignal.any([navigation, AbortSignal.timeout(15000)]),
           })
-          if (!response.ok) throw new Error('Direct Chat directory preparation returned HTTP ' + response.status)
+          if (!response.ok) throw new Error('Direct Chat Workspace preparation returned HTTP ' + response.status)
           const result = await response.json()
           if (typeof result.path !== 'string' || !result.path) {
-            throw new Error('Direct Chat directory preparation returned no path')
+            throw new Error('Direct Chat Workspace preparation returned no path')
           }
-          let workspaceId, sessionId
-          try {
-            const workspace = await ctx.workspaces.create({ path: result.path })
-            if (typeof workspace?.workspaceId !== 'string' || !workspace.workspaceId) {
-              throw new Error('DSH did not return a Workspace identity')
-            }
-            workspaceId = workspace.workspaceId
-            sessionId = await ctx.uiWorkspace.connectWorkspace(workspaceId)
-            if (typeof sessionId !== 'string' || !sessionId) {
-              throw new Error('DSH did not return a Session identity')
-            }
-            observe(sessionId, workspaceId)
-            if (!navigation.aborted) ctx.uiWorkspace.openSession(sessionId)
-          } catch (error) {
-            // Only roll back registration if no Session was returned; never
-            // risk stranding a live Session while handling a navigation error.
-            if (!sessionId && workspaceId) {
-              await ctx.workspaces.delete(workspaceId).catch(() => {})
-            }
-            if (!navigation.aborted) throw error
+          if (navigation.aborted) return
+          // Workspace creation is idempotent for this one canonical path.
+          // Conversation history and agent continuation are scoped by Session ID.
+          const workspace = await ctx.workspaces.create({ path: result.path })
+          if (typeof workspace?.workspaceId !== 'string' || !workspace.workspaceId) {
+            throw new Error('DSH did not return a Workspace identity')
           }
+          if (workspace.title !== 'Direct Chat') {
+            await ctx.workspaces.rename(workspace.workspaceId, 'Direct Chat')
+          }
+          if (navigation.aborted) return
+          // Native DSH reuses a still-empty draft, otherwise creates an
+          // independent Session; no prior chat transcript is carried over.
+          const sessionId = await ctx.uiWorkspace.connectWorkspace(workspace.workspaceId)
+          if (typeof sessionId !== 'string' || !sessionId) {
+            throw new Error('DSH did not return a native Session identity')
+          }
+          if (!navigation.aborted) ctx.uiWorkspace.openSession(sessionId)
         }
         ctx.slots.inject('sidebar.footer.action', () => ctx.slots.register({
           name: 'sidebar.footer.action', id: DIRECT_CHAT_ID, order: 5,

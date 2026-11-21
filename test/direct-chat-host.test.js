@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { lstat, mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
-import { join, relative } from 'node:path'
+import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import test from 'node:test'
 import * as plugin from '../plugins/direct-chat/index.js'
@@ -22,7 +22,7 @@ const request = (body = '{}') => new Request('http://localhost/api/abinadwan-dir
   method: 'POST', headers: { 'content-type': 'application/json' }, body,
 })
 
-test('prepare endpoint creates distinct native session directories without creating unusable Sessions', async t => {
+test('every prepare returns the SAME permanent Direct Chat Workspace path', async t => {
   const root = await mkdtemp(join(tmpdir(), 'suite-direct-chat-'))
   t.after(() => rm(root, { recursive: true, force: true }))
   const profile = join(root, 'profile')
@@ -31,49 +31,46 @@ test('prepare endpoint creates distinct native session directories without creat
   assert.equal(plugin.name, 'abinadwan-direct-chat')
   assert.equal(fx.handler.path, '/api/abinadwan-direct-chat/prepare')
   assert.equal((await fx.handler.fetch(request('{"cwd":"other"}'))).status, 400)
-  const first = await fx.handler.fetch(request())
-  const second = await fx.handler.fetch(request())
-  assert.equal(first.status, 200)
-  assert.equal(second.status, 200)
-  const a = (await first.json()).path
-  const b = (await second.json()).path
-  assert.notEqual(a, b)
-  const canonicalRoot = join(await realpath(profile), 'abinadwan-direct-chat-data')
-  assert.match(relative(canonicalRoot, a), /^session-/)
-  assert.match(relative(canonicalRoot, b), /^session-/)
-  assert.equal((await lstat(a)).isDirectory(), true)
-  assert.equal((await lstat(b)).isDirectory(), true)
+  const a = await fx.handler.fetch(request())
+  const b = await fx.handler.fetch(request())
+  assert.equal(a.status, 200)
+  assert.equal(b.status, 200)
+  const pathA = (await a.json()).path
+  const pathB = (await b.json()).path
+  assert.equal(pathA, pathB)
+  assert.equal(pathA, join(await realpath(profile), 'abinadwan-direct-chat-data', 'Direct Chat'))
+  assert.equal((await lstat(pathA)).isDirectory(), true)
 })
 
-test('tools are denied inside Direct Chat paths (including legacy root) but not sibling Workspaces', async t => {
+test('tool guard denies the new shared Directory AND previous experimental per-chat directories', async t => {
   const root = await mkdtemp(join(tmpdir(), 'suite-direct-chat-'))
   t.after(() => rm(root, { recursive: true, force: true }))
   const profile = join(root, 'profile')
   await mkdir(profile)
   const fx = fixture(profile)
   const direct = join(profile, 'abinadwan-direct-chat-data')
-  const child = join(direct, 'session-example')
-  for (const path of [direct, child]) {
-    const denial = fx.guard()({ agent: { session: { header: { cwd: path } } } })
-    assert.equal(denial.info.code, 'DIRECT_CHAT_TOOL_DENIED')
+  for (const cwd of [direct, join(direct, 'Direct Chat'), join(direct, 'session-legacy')]) {
+    assert.equal(fx.guard()({ agent: { session: { header: { cwd } } } }).info.code, 'DIRECT_CHAT_TOOL_DENIED')
   }
-  for (const path of [join(root,'workspace'), direct + '-other']) {
-    assert.equal(fx.guard()({ agent: { session: { header: { cwd: path } } } }), undefined)
-  }
-  let executed = false
-  const result = await fx.preExecute()({agent:{session:{header:{cwd:child}}}}, () => {
-    executed = true; return Promise.resolve({kind:'allow'})
+  assert.equal(fx.guard()({ agent: { session: { header: { cwd: join(root, 'user-project') } } } }), undefined)
+  assert.equal(fx.guard()({ agent: { session: { header: { cwd: direct + '-other' } } } }), undefined)
+  let called = false
+  const res = await fx.preExecute()({ agent: { session: { header: { cwd: join(direct, 'Direct Chat') } } } }, () => {
+    called = true; return Promise.resolve({ kind: 'allow' })
   })
-  assert.equal(result.kind,'deny')
-  assert.equal(executed,false)
+  assert.equal(res.kind, 'deny')
+  assert.equal(called, false)
 })
 
-test('a file or symlink cannot replace the managed profile data root', async t => {
+test('a file cannot replace the data root or permanent Workspace directory', async t => {
   const root = await mkdtemp(join(tmpdir(), 'suite-direct-chat-'))
   t.after(() => rm(root, { recursive: true, force: true }))
   const profile = join(root, 'profile')
   await mkdir(profile)
   await writeFile(join(profile, 'abinadwan-direct-chat-data'), 'occupied')
-  const fx = fixture(profile)
-  assert.equal((await fx.handler.fetch(request())).status, 500)
+  assert.equal((await fixture(profile).handler.fetch(request())).status, 500)
+  await rm(join(profile, 'abinadwan-direct-chat-data'))
+  await mkdir(join(profile, 'abinadwan-direct-chat-data'))
+  await writeFile(join(profile, 'abinadwan-direct-chat-data', 'Direct Chat'), 'occupied')
+  assert.equal((await fixture(profile).handler.fetch(request())).status, 500)
 })
