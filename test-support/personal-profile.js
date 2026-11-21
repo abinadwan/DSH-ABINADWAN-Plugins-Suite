@@ -55,6 +55,7 @@ export async function mountProfile(t, { transport = mockSettings(), access = () 
   await app.changed(); await app.changed()
   const panel = app.slots.records.get(panelId)
   assert.ok(panel)
+  assert.equal(panel.options.name,'settings.section','My Profile must mount in Settings, not the global sidebar')
   const previous = { document: globalThis.document, window: globalThis.window, act: globalThis.IS_REACT_ACT_ENVIRONMENT }
   const dom = new JSDOM('<!doctype html><html lang="en"><head><title>Personal Profile</title></head><body><main id="root"></main></body></html>',
     { url: 'http://localhost/', runScripts: 'outside-only' })
