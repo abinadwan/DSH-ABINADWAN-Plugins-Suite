@@ -11,11 +11,11 @@
 
 <p align="center">
   <a href="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/workflows/test.yml"><img alt="CI" src="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/workflows/test.yml/badge.svg" /></a>
-  <img alt="v1.0.0 development" src="https://img.shields.io/badge/development-v1.0.0-7b2246" />
+  <a href="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.0"><img alt="Release v1.0.0" src="https://img.shields.io/badge/release-v1.0.0-22c55e" /></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-22c55e" /></a>
 </p>
 
-> **Release status:** `v1.0.0` is the source version on `develop` (**development only**). It is not automatically a published stable release. For an approved stable installation, use the full commit SHA linked to an actual [GitHub Release](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases).
+> **Latest release: [v1.0.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.0).** The tagged source is published from `main` with the owner’s approval. Consult the release notes for the remaining Windows Desktop and Host-level security verification limits. For installation, use the full commit SHA shown by the published release rather than tracking `develop`.
 
 ## Overview
 
@@ -61,7 +61,7 @@ github:abinadwan/DSH-ABINADWAN-Plugins-Suite#RELEASE_COMMIT_SHA
 4. Complete the installation through the native Plugins UI, then **restart Harness** if requested.
 5. Open **Plugins → ABINADWAN Plugins Suite**, enable the bundle and select the components you want to activate.
 
-**Do not paste `RELEASE_COMMIT_SHA` literally.** Replace it with the exact verified commit from the release. The source-only `v1.0.0` change in `develop` is **not** an automatically published release. To test a development commit, use its reviewed full SHA in a disposable DSH Profile instead of upgrading your normal installation.
+**Do not paste `RELEASE_COMMIT_SHA` literally.** Replace it with the exact full commit SHA of the published [v1.0.0 Release](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.0). For later development commits, use a reviewed full SHA in a disposable DSH Profile rather than upgrading your normal installation.
 
 **Profile separation matters:** Desktop and CLI can use different DSH Profiles. Installing into a CLI Profile does not necessarily install into the Desktop Profile. Before replacing an existing installation, preserve its known-good revision, configuration and any relevant user backup.
 
