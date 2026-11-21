@@ -1,6 +1,6 @@
 # Plugin Suite update feasibility — DSH Desktop 0.2.2-rc.5
 
-**Status: research / design only. Unattended updating has NOT been enabled.**
+**Status: future unattended updater research only.** The source suite already provides a *manual, user-confirmed* GitHub Release update control for eligible pinned Git installs; this proposal for unattended, independently managed updates has **not** shipped. These findings are based on DSH Desktop 0.2.2-rc.5 and require fresh verification against future Desktop versions. [Current update behavior](../DETAIL.md#installation-and-updates).
 
 **Current built-in suite update behavior (as of development v1.0.0):** the Plugins detail page already checks *published stable GitHub Releases* at startup/every 24 hours and offers a user-confirmed **Update now** through DSH `pluginManager.updateBundle` for eligible full-SHA-pinned Git installs. This document's design-only status applies specifically to **unattended/independent updating**; it must not be read as claiming that the current manual update UI is absent. [Actual current flow](../DETAIL.md#installation-and-updates).
 
