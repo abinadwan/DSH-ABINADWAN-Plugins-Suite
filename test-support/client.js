@@ -221,9 +221,11 @@ export async function clientHarness(options = {}) {
     items: options.workspaceItems || [{ workspaceId: 'w', title: 'HomeBook', path: 'C:/Work/HomeBook', sessionIds: ['s1'] }],
     archivedSessionIds: options.archivedSessionIds ?? [], pinnedSessionIds: [], state: 'idle', phase: 'ready', error: null,
   })
-  ctx.provide('sessions', { list: sessions, subagentAddress: () => undefined,
+  ctx.provide('sessions', { list: sessions, refresh: options.refresh || (async () => {}), subagentAddress: () => undefined,
     binding: id => options.sessionBinding?.(id) })
   ctx.provide('workspaces', { list: workspaces })
+  ctx.provide('uiWorkspace', { openSession: id => options.onOpenSession?.(id) })
+  ctx.provide('layout', { beginNavigation: () => new AbortController().signal })
   if (options.modelDirectories) ctx.provide('modelDirectories', options.modelDirectories)
   ctx.provide('sidebarRight', {
     mounted: { getSnapshot: () => 's1', subscribe: listener => {
@@ -241,7 +243,7 @@ export async function clientHarness(options = {}) {
     fetch: options.fetch || (() => { throw new Error('unexpected network request') }),
     navigator: options.navigator,
     document: options.document,
-    AbortSignal, URL, TextDecoder, Blob, crypto: globalThis.crypto,
+    AbortController, AbortSignal, URL, TextDecoder, Blob, crypto: globalThis.crypto,
   })
   const plugin = loaded.factory(name => {
     const react = options.React || ReactStub

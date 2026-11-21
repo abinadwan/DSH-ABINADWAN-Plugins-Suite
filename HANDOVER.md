@@ -1,5 +1,7 @@
 # ABINADWAN Plugins Suite development handover
 
+> **Feature branch note (feature/direct-chat-global-chat-replacement):** The Direct Chat implementation in this branch is intentionally replaced with the Codex Global Chat native-session proof of concept. The Windows LPAC companion description below documents the original `develop` baseline only. Desktop acceptance, persistent hidden Workspace, migration, and permanent deletion are not complete for the replacement. Do not merge or release this branch as-is.
+
 ## Baseline and workflow
 
 **Development branch:** `develop`. **Target release:** v1.0.0. **Current candidate:** `0.8.0-rc.1`.

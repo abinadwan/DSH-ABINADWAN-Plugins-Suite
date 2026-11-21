@@ -30,36 +30,21 @@ test('independent Host rows default off and resolve English product metadata and
   }
 })
 
-test('Direct Chat and Conversation Lifecycle own independent Settings sections and dispose them separately', async () => {
+test('Direct Chat replaces the old settings UI with a native sidebar action while Lifecycle stays isolated', async () => {
   const fixture = await clientHarness({ modelDirectories: {} })
   try {
-    assert.equal(fixture.entries('settings.section').length, 0)
     const rows = [...fixture.rows(), ...Object.keys(names).map(id => ({
       moduleName: `${base}/${id}`, enabled: true, fiberPhase: 'active',
     }))]
     fixture.setRows(rows)
     await fixture.changed()
-    const ids = fixture.entries('settings.section').map(entry => entry.options.id).sort()
-    assert.deepEqual(ids, ['abinadwan-conversation-lifecycle', 'abinadwan-direct-chat'])
-    assert.deepEqual(fixture.entries('settings.section.icon').map(entry => entry.options.id).sort(), ids)
-    assert.deepEqual(fixture.entries('sidebar.panellist').map(entry => entry.options.id), ['abinadwan-direct-chat-view'])
-    assert.equal(fixture.entries('main').filter(entry => entry.options.key === 'abinadwan-direct-chat-view').length, 1)
+    assert.ok(fixture.entries('sidebar.footer.action').some(row => row.options.id === 'abinadwan-direct-chat'))
+    assert.deepEqual(fixture.entries('settings.section').map(row => row.options.id), ['abinadwan-conversation-lifecycle'])
     assert.equal(fixture.entries('conversation.input.right').length, 1)
-    assert.equal(fixture.entries('conversation.composer.dock').length, 0)
-    fixture.setRows(rows.map(row => row.moduleName === `${base}/conversation-lifecycle` ? { ...row, enabled: false } : row))
+    fixture.setRows(rows.map(row => row.moduleName === `${base}/direct-chat` ? { ...row, enabled: false } : row))
     await fixture.changed()
-    assert.deepEqual(fixture.entries('settings.section').map(entry => entry.options.id), ['abinadwan-direct-chat'])
-    fixture.setRows(rows.map(row => row.moduleName === `${base}/direct-chat` || row.moduleName === `${base}/conversation-lifecycle`
-      ? { ...row, enabled: false } : row))
-    await fixture.changed()
-    assert.equal(fixture.entries('settings.section').length, 0)
-    assert.equal(fixture.entries('settings.section.icon').length, 0)
-    assert.equal(fixture.entries('sidebar.panellist').length, 0)
-    assert.equal(fixture.entries('main').filter(entry => entry.options.key === 'abinadwan-direct-chat-view').length, 0)
-    assert.equal(fixture.entries('conversation.input.right').length, 1)
-    fixture.setRows(rows.map(row => ({ ...row, enabled: false })))
-    await fixture.changed()
-    assert.equal(fixture.entries('conversation.input.right').length, 0)
+    assert.equal(fixture.entries('sidebar.footer.action').length, 0)
+    assert.deepEqual(fixture.entries('settings.section').map(row => row.options.id), ['abinadwan-conversation-lifecycle'])
   } finally { await fixture.dispose() }
 })
 
