@@ -11,7 +11,7 @@ const namespace='abinadwan-personal-profile'
 const panelId=base+'/personal-profile-page'
 const copy=x=>JSON.parse(JSON.stringify(x))
 function mockSettings(){
-  let record=emptyRecord(), revision=0, calls=[], conflict=false
+  let record={...emptyRecord(),locale:'ar'}, revision=0, calls=[], conflict=false
   const view=()=>({ns:namespace,value:{record:copy(record)},revision})
   return {calls,view,conflict:()=>{conflict=true;revision++},describe:async()=>ok({writable:true,namespaces:[view()]}),
     replace:async(ns,value,expected)=>{
@@ -28,6 +28,10 @@ async function mount(t,{transport=mockSettings(),access=()=>true}={}){
   await app.changed();await app.changed()
   const panel=app.slots.records.get(panelId)
   assert.ok(panel)
+  assert.equal(panel.options.name,'settings.section')
+  assert.equal(panel.options.label,'My Profile')
+  assert.ok(app.entries('settings.section.icon').some(row=>row.options.id===panelId))
+  assert.equal(app.entries('sidebar.panellist').some(row=>row.options.id===panelId),false)
   const previous={document:globalThis.document,window:globalThis.window,act:globalThis.IS_REACT_ACT_ENVIRONMENT}
   const dom=new JSDOM('<!doctype html><div id="root"></div>',{url:'http://localhost/'})
   globalThis.document=dom.window.document;globalThis.window=dom.window;globalThis.IS_REACT_ACT_ENVIRONMENT=true
@@ -56,18 +60,18 @@ test('native page removes sensitive fields and lock controls; saves structured s
   await select('style','technical');await select('response-language','ja');await click('preset-evidence')
   assert.match(byId('effective-instructions').textContent,/Japanese/)
   for(const id of ['instructions-scope','mode','profile'])assert.equal(byId(id),null,'no Workspace scope controls')
-  await click('tab-access');await select('policy-gender','ask_first')
-  assert.equal(byId('opt-in').checked,false);assert.equal(byId('cloud').checked,false)
+  await click('tab-information');await click('policy-gender')
+  assert.equal(byId('opt-in'),null);assert.equal(byId('cloud'),null);assert.equal(byId('tab-access'),null)
   await click('save')
   assert.equal(transport.calls.length,1)
   assert.equal(transport.calls[0].expected,0)
   let record=transport.view().value.record
-  assert.equal(record.version,2)
+  assert.equal(record.version,4)
   assert.equal(record.information.gender,'female')
   assert.equal(record.preferences.responseLanguage,'ja')
-  assert.equal(record.policies.gender,'ask_first')
+  assert.equal(record.policies.gender,'allow')
   assert.equal(record.workspaces,undefined)
-  assert.equal(record.allowCloud,false)
+  assert.equal(record.allowCloud,undefined)
   assert.match(byId('save-status').textContent,/تم تأكيد الحفظ/)
   await click('reload');await click('tab-information')
   assert.equal(byId('gender').value,'female')
@@ -93,17 +97,17 @@ test('read or write access missing: no settings write',async t=>{
 // (the 0.7.0/0.7.1 export dropped them). Restoring them stays opt-in.
 test('backup text includes the draft permissions as set and never writes by itself',async t=>{
   const {byId,click,select,transport}=await mount(t)
-  await click('tab-access');await click('opt-in');await click('cloud');await select('policy-gender','allow')
+  await click('tab-information');await click('policy-gender')
   await click('tab-backup');await click('export-view')
   const data=JSON.parse(byId('export-json').value)
-  assert.equal(data.allowCloud,true);assert.equal(data.allowPersonalInformation,true)
+  assert.equal(data.allowCloud,false);assert.equal(data.allowPersonalInformation,false)
   assert.equal(data.policies.gender,'allow')
   assert.equal(data.workspaces,undefined)
   assert.equal(transport.calls.length,0)
 })
 test('Host schema declares only supported fields and version/lock agree',()=>{
   const pkg=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'))
-  assert.equal(pkg.version,'0.8.0-rc.1')
+  assert.equal(pkg.version,'1.0.0')
   if(existsSync(new URL('../package-lock.json',import.meta.url))){
     const lock=JSON.parse(readFileSync(new URL('../package-lock.json',import.meta.url),'utf8'))
     assert.equal(lock.version,pkg.version);assert.equal(lock.packages[''].version,pkg.version)

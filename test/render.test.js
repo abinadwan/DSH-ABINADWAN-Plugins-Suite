@@ -4,7 +4,7 @@ import * as React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { clientHarness, base } from '../test-support/client.js'
 
-test('real React renders the Environment and the native-settings Personal Profile summary', async t => {
+test('real React renders the Environment and the My Profile settings summary', async t => {
   const app = await clientHarness({ React })
   t.after(() => app.dispose())
   const body = app.slot('sidebar.right.pane.tab')
@@ -21,7 +21,7 @@ test('real React renders the Environment and the native-settings Personal Profil
   const draft = app.slots.records.get('abinadwan-profile-draft').component
   const render = subject => renderToStaticMarkup(React.createElement(draft, { subject }))
   const html = render({ kind: 'bundle', pkg: { name: base } })
-  assert.match(html, /Personal Profile — local settings/)
+  assert.match(html, /My Profile — local settings/)
   // Native local persistence, described accurately.
   assert.match(html, /Saved in the active Harness Profile/)
   // No misleading encryption claim: only the explicit disclaimer is allowed.
@@ -29,8 +29,8 @@ test('real React renders the Environment and the native-settings Personal Profil
   assert.doesNotMatch(html.replace('without plugin-level encryption', ''), /encrypt|DPAPI|Argon|protected|secure storage/i)
   // Default-private access policies.
   assert.match(html, /All access is Private by default/)
-  // No active agent injection or cloud disclosure.
-  assert.match(html, /structured personal information disclosure is not implemented/)
+  // Structured fields stay local.
+  assert.match(html, /Personal information sharing is disabled in this build/)
   assert.doesNotMatch(html, /design draft|preview only|synthetic/i)
   assert.doesNotMatch(html, /<(?:form|input|textarea|select)\b/)
   // The summary follows the Host row state and never renders for unrelated subjects.

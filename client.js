@@ -7,7 +7,12 @@ window.__ModuleLoader__.load({
   id: '@abinadwan/dsh-plugins-suite',
   factory(require) {
     const React = require('react')
+    const { Button, Checkbox, Menu, Modal, Toast } = require('@deepseek-ai/dsh-client-ui-primitives')
     const h = React.createElement
+    // Arabic UI dictionaries adapted from SMSMy/dsh-arabic v0.4.6 (MIT).
+    // Copyright (c) 2026 SMSMy. See THIRD_PARTY_NOTICES.md.
+    // Language selection is never changed during installation.
+    const ARABIC_UI_DICTIONARIES = {"agent-team":{"blocked":"محظور بسبب الاعتماديات","blockedBy":"محظور بواسطة","current":"المحادثة الحالية","empty":"لا توجد مهام مشتركة بعد. أنشئها من خلال المحادثة.","failure":"سجل فريق محفوظ غير صالح: {message}","loading":"جارٍ تحميل الفريق…","memberStatus.failed":"فشل","memberStatus.inactive":"غير نشط","memberStatus.provisioning":"قيد التهيئة","memberStatus.running":"قيد التشغيل","model":"الموديل","open":"فتح محادثة العضو","owner":"المالك","ready":"جاهز","roster":"الأعضاء","status.completed":"مكتمل","status.in_progress":"قيد التنفيذ","status.pending":"معلّق","task.collapse":"عرض أقل","task.expand":"عرض المزيد","tasks":"المهام المشتركة","trigger":"فريق الوكلاء","unavailable":"الفريق غير متاح","unowned":"بلا مالك","writeScopes":"نطاقات الكتابة"},"approval":{"allowOnce":"السماح مرة واحدة","detail.aria":"تفاصيل الموافقة","escalation":"الأداة {toolName} تطلب تنفيذًا بصلاحيات مرتفعة","reject":"رفض","waiting":"في انتظار الموافقة"},"chat":{"chat.deepDiving":"التفكير العميق جارٍ","chat.deepDivingFor":"⁦التفكير العميق جارٍ منذ {duration} ···⁩","chat.loadError":"فشل تحميل السجل: {message} ({code})","chat.loadOlder":"تحميل الأقدم","chat.loadingHistory":"جارٍ تحميل السجل…","chat.toBottom":"العودة إلى الأسفل","chat.turnNavigation.jump":"الانتقال إلى الدورة {turn}","chat.turnNavigation.jumpLoad":"تحميل الدورة {turn} والانتقال إليها","chat.turnNavigation.label":"التنقل بين الدورات","chat.turnNavigation.turn":"الدورة {turn}","clock.md":"{m}/{d}","clock.ymd":"{y}-{m}-{d}","command.done":"مكتمل","command.failed":"فشل الأمر","command.running":"قيد التشغيل…","command.title":"الأمر","duration.compactMinutes":"{minutes}د{seconds}ث","duration.compactSeconds":"{seconds}ث","duration.hourUnit":"س ","duration.milliseconds":"{milliseconds}م.ث","duration.minuteUnit":"د ","duration.secondUnit":"ث","fileOpen.title":"تعذّر فتح الملف","fileOpen.unknown":"تعذّر فتح هذا الملف","image.close":"إغلاق معاينة الصورة","image.dialog":"معاينة الصورة","image.failed":"معاينة الصورة غير متاحة","image.loading":"جارٍ تحميل الصورة…","image.open":"عرض الصورة كاملة","json.truncated":"… مقطوع، إجمالي {total} حرفًا","message.accountStopped":"أُوقفت المهمة","message.branch":"التفرّع إلى محادثة جديدة","message.branchUnavailable":"متاح فقط لآخر رسالة في دورة مكتملة","message.compaction":"تم ضغط السياق","message.compaction.commandTitle":"compact","message.compaction.completed":"تم ضغط {items} من عناصر السجل (~{tokens} توكن)","message.compaction.expand":"عرض ملخص الضغط","message.compaction.running":"جارٍ ضغط السياق…","message.compaction.unavailable":"ملخص الضغط غير متاح","message.context.catalog.more":"… {count} أخرى","message.context.catalog.replaced":"فهرس الاستبدال","message.context.instructions.added":"أُضيف","message.context.instructions.loaded":"حُمّل","message.context.instructions.removed":"أُزيل","message.context.instructions.updated":"حُدّث","message.context.recall.counts":"{retained} محتفظ بها · {omitted} محذوفة","message.context.recall.truncated":"مقطوع","message.context.relay.from":"من الجلسة {session}","message.context.snapshot.supersedes":"يلغي اللقطات السابقة","message.contextInjection":"حقن السياق","message.contextRecall":"استرجاع الجلسة","message.extraBlock":"كتلة محتوى إضافية","message.failure.accountSignInRequired":"سجّل الدخول إلى DeepSeek وتأكد من أن وجهة الطلب تدعم مصادقة الحساب.","message.failure.accountSignedOut":"توقف لأنك سجّلت الخروج من DeepSeek.","message.failure.auth":"مفتاح API غير صالح","message.failure.quota":"استُنفدت حصة الطلبات.","message.maxTokens":"تم بلوغ حد توكنات الإخراج","message.maxTokens.hint":"قُطع الرد؛ المخرجات السابقة محفوظة في المحادثة. أرسل \"continue\" ليواصل الموديل.","message.referenceSeparator":"، ","message.referenceSummary":"جلسة مُشار إليها · {labels}","message.retry.active":"إعادة محاولة طلب الموديل","message.retry.cancelled":"أُلغيت إعادة محاولة طلب الموديل","message.retry.delay":"تأخير إعادة المحاولة: ","message.retry.failure":"سبب الفشل: ","message.retry.scheduled":"في انتظار إعادة محاولة طلب الموديل","message.retry.started":"أُعيدت محاولة طلب الموديل","message.retry.status":"{label} ({retry}/{maximum}) · {seconds}ث","message.stepProcess.code":"جارٍ تشغيل الكود","message.stepProcess.comma":"، ","message.stepProcess.commands":"جارٍ تشغيل الأوامر","message.stepProcess.done.code":"تم تشغيل الكود","message.stepProcess.done.commands":"تم تشغيل الأوامر","message.stepProcess.done.edit":"تم تعديل الملفات","message.stepProcess.done.plan":"تم تحديث الخطة","message.stepProcess.done.questions":"طُرحت أسئلة","message.stepProcess.done.read":"تمت قراءة الملفات","message.stepProcess.done.readImage":"تمت قراءة الصور","message.stepProcess.done.search":"تم البحث في الكود","message.stepProcess.done.subagents":"تم تنسيق وكلاء فرعيين","message.stepProcess.done.thinking":"اكتمل التحليل","message.stepProcess.done.tools":"تم استدعاء الأدوات","message.stepProcess.done.webFetch":"تمت زيارة صفحات ويب","message.stepProcess.done.webSearch":"تم البحث في الويب","message.stepProcess.done.write":"تمت كتابة الملفات","message.stepProcess.edit":"جارٍ تعديل الملفات","message.stepProcess.joinTwo":"{first} و{second}","message.stepProcess.more":"{title}، إلخ.","message.stepProcess.plan":"جارٍ تحديث الخطة","message.stepProcess.prepare.code":"التحضير لتشغيل الكود","message.stepProcess.prepare.commands":"التحضير لتشغيل الأوامر","message.stepProcess.prepare.edit":"التحضير لتعديل الملفات","message.stepProcess.prepare.plan":"التحضير لتحديث الخطة","message.stepProcess.prepare.questions":"التحضير للأسئلة","message.stepProcess.prepare.read":"التحضير لقراءة الملفات","message.stepProcess.prepare.readImage":"التحضير لقراءة الصور","message.stepProcess.prepare.search":"التحضير للبحث في الكود","message.stepProcess.prepare.subagents":"التحضير لتنسيق الوكلاء الفرعيين","message.stepProcess.prepare.tools":"التحضير لاستدعاءات الأدوات","message.stepProcess.prepare.webFetch":"التحضير لزيارة صفحات الويب","message.stepProcess.prepare.webSearch":"التحضير للبحث في الويب","message.stepProcess.prepare.write":"التحضير لكتابة الملفات","message.stepProcess.questions":"في انتظار إجرائك","message.stepProcess.read":"جارٍ قراءة الملفات","message.stepProcess.readImage":"جارٍ قراءة الصور","message.stepProcess.search":"جارٍ البحث في الكود","message.stepProcess.sharedPrefix":"","message.stepProcess.subagents":"جارٍ تنسيق الوكلاء الفرعيين","message.stepProcess.thinking":"جارٍ تحليل الطلب","message.stepProcess.tools":"جارٍ استدعاء الأدوات","message.stepProcess.webFetch":"جارٍ زيارة صفحات الويب","message.stepProcess.webSearch":"جارٍ البحث في الويب","message.stepProcess.write":"جارٍ كتابة الملفات","message.stopped":"متوقف","message.systemPrompt":"موجّه النظام","message.systemPromptUpdate":"تحديث موجّه النظام","message.think":"تفكير","message.tokensPerSecond":"{tps} توكن/ث","message.toolAdded":"أُضيفت أداة: {name}","message.toolRemoved":"أُزيلت أداة: {name}","message.toolsAdded":"أُضيف: {names}","message.toolsAddedCount":"{count} مُضافة","message.toolsChanged":"{added} مُضافة، {removed} مُزالة","message.toolsRemoved":"أُزيل: {names}","message.toolsRemovedCount":"{count} مُزالة","message.toolsUpdated":"تم تحديث الأدوات","message.trigger.agent":"وردت رسالة مهمة","message.trigger.explanation":"هذا الإشعار هو ما أطلق هذا الرد.","message.trigger.github":"ورد حدث GitHub","message.trigger.goal":"متابعة الهدف","message.trigger.job":"تم تحديث مهمة خلفية","message.trigger.plugin":"تم تحديث حالة البلاقن","message.trigger.request":"طُلب التنفيذ","message.trigger.schedule":"مهمة أتمتة","message.trigger.subagent":"تم تحديث حالة مهمة فرعية","message.trigger.team":"وردت رسالة فريق","message.trigger.webhook":"ورد حدث خارجي","message.turnError":"فشلت هذه الدورة","message.turnProcess.failed":"فشل","message.turnProcess.messages.one":"{count} رسالة","message.turnProcess.messages.other":"{count} رسائل","message.turnProcess.separator":" · ","message.turnProcess.subagents.one":"{count} وكيل فرعي","message.turnProcess.subagents.other":"{count} وكلاء فرعيون","message.turnProcess.thoughtForAWhile":"فكّر لبعض الوقت","message.turnProcess.took":"اكتمل في ","message.turnProcess.toolCalls.one":"{count} استدعاء أداة","message.turnProcess.toolCalls.other":"{count} استدعاءات أدوات","message.turnProcess.worked":"مكتمل","message.turnUsage.cacheHit":"إصابة الكاش","message.turnUsage.cacheRead":"إدخال من الكاش","message.turnUsage.cacheWrite":"كتابة في الكاش","message.turnUsage.consumed":"الاستخدام {total}","message.turnUsage.count":"{count} توكن","message.turnUsage.input":"إدخال غير مخزّن","message.turnUsage.model":"المزوّد / الموديل","message.turnUsage.output":"الإخراج","message.turnUsage.reasoning":" ({tokens} استدلال)","message.turnUsage.title":"استخدام الدورة","message.unknownBlock":"كتلة محتوى غير معروفة","message.unknownSurface":"حدث سطح غير معروف: {type}","number.groupSeparator":",","row.failed":"فشل","row.running":"قيد التشغيل","settings.collapse.completion":"عند اكتمال الرد","settings.collapse.description":"اختر متى تُطوى تفاصيل العمل تلقائيًا","settings.collapse.nextInput":"عند وصول الرسالة التالية","settings.collapse.title":"متى تُطوى تفاصيل العمل","settings.links.description":"اختر مكان فتح روابط الويب","settings.links.newTab":"المتصفح الافتراضي","settings.links.sidebar":"الشريط الجانبي داخل التطبيق","settings.links.title":"فتح روابط المحادثة في","settings.performance.compact":"مختصر","settings.performance.description":"اختر مقدار معلومات الأداء والاستخدام المعروضة","settings.performance.detailed":"مفصّل","settings.performance.title":"الأداء والاستخدام","settings.transcript.compact":"مختصر","settings.transcript.description":"اختر مقدار التفاصيل المعروضة لاستدعاءات الأدوات","settings.transcript.detailed":"مفصّل","settings.transcript.standard":"قياسي","settings.transcript.title":"تفاصيل العمل","settings.transcript.verbose":"مطوّل","stats.cacheHit":"إصابة الذاكرة المؤقتة {percent}%","stats.counts":"{turns} دورة {steps} خطوة","stats.dialog.llmTime":"زمن LLM","stats.dialog.speed":"التوكنات في الثانية (TPS)","stats.dialog.title":"إحصاءات الجلسة","stats.dialog.toolTime":"زمن الأدوات","stats.dialog.ttft":"متوسط زمن أول توكن (TTFT)","stats.dialog.usageTitle":"استخدام التوكنات","view.chat":"محادثة"},"claude-code-mods":{"band":"تعديلات Claude Code","press.failed":"فشل الزر: {message}","press.stale":"هذا الزر كان يخص عرضًا سابقًا؛ حُدّث الشريط","pressing":"جارٍ العمل…"},"command":{"description.compact":"ضغط سجل المحادثة الأقدم","description.export":"تنزيل سجل هذه الجلسة كأرشيف ZIP","description.feedback":"تسجيل ملاحظات حول هذه الجلسة","description.goal":"تحديد هدف مهمة طويلة الأمد أو عرضه","description.permission":"تبديل إعداد الصلاحيات المسبق (وضع البيئة المعزولة + سياسة الموافقة)","description.plan":"الدخول إلى وضع الخطة أو الخروج منه","label.compact":"ضغط","label.export":"تصدير","label.feedback":"ملاحظات","label.goal":"هدف","label.permission":"صلاحية","label.plan":"خطة","listbox.aria":"نتائج /{command}","notice.attachmentsUnsupported":"/{command} لا يقبل المرفقات؛ أزلها أولًا","overlay.aria":"خيارات /{command}","search.aria":"تصفية الخيارات","search.placeholder":"بحث…","section.add":"إضافة","section.commands":"الأوامر","status.applying":"جارٍ التطبيق…","status.empty":"لا خيارات","status.loading":"جارٍ تحميل الخيارات…","token.compact":"compact","token.export":"export","token.feedback":"feedback","token.goal":"goal","token.permission":"permission","token.plan":"plan"},"common":{"back":"رجوع","brand.localBuild":"نسخة DSH المحلية","cancel":"إلغاء","close":"إغلاق","codeBlock.title":"كتلة كود","codeBlock.unwrap":"عدم لف الأسطر","codeBlock.wrap":"لف الأسطر","collapse":"طيّ","copied":"تم النسخ","copy":"نسخ","copy.compactJson":"نسخ JSON المضغوط","copy.failed":"فشل النسخ","copy.json":"نسخ JSON","copy.optionsHint":"{action}؛ انقر بزر الفأرة الأيمن لخيارات النسخ","copy.path":"نسخ مسار الخاصية","copy.prettyJson":"نسخ JSON المنسّق","copy.value":"نسخ القيمة","delete":"حذف","edit":"تعديل","expand":"توسيع","json.label":"JSON","language.title":"اللغة","load.failed":"فشل التحميل","loading":"جارٍ التحميل…","markdown.footnotes":"الحواشي","markdown.truncatedCharacters":"… تم الاقتطاع عند {total} حرفًا","more":"المزيد","next":"التالي","none":"لا شيء","number.million":"{value}M","number.thousand":"{value}K","ok":"موافق","previous":"السابق","retry":"إعادة المحاولة","save":"حفظ","search":"بحث","skip":"تخطٍّ","submit":"إرسال","submitting":"جارٍ الإرسال…","truncated":"مقطوع","unknown":"غير معروف","workspace.defaultName":"مساحة العمل الافتراضية"},"conversation":{"ask.answered":"{answered}/{total} تمت الإجابة","ask.cancelled":"ملغاة","ask.cancelledDetail":"أُلغيت هذه المجموعة من الأسئلة قبل إرسال الإجابات.","ask.closed":"مغلقة","ask.closedDetail":"هذا السؤال مغلق؛ نتيجته في المحادثة أدناه.","ask.interrupted":"مقاطعة","ask.interruptedDetail":"قُوطعت هذه المجموعة من الأسئلة قبل إرسال الإجابات.","ask.pending":"متابَعة؛ الإجابة لا تزال متاحة","ask.pendingDetail":"لا يزال بالإمكان الإجابة عن هذه الأسئلة المعلّقة من مربع الكتابة.","ask.reopen":"الإجابة","ask.review":"عرض الإجابات","ask.rowTitle":"طرح سؤال","ask.skipped":"بلا إجابة","ask.waiting":"في الانتظار","attachment.directoryDesktopOnly":"لا يمكن إضافة المجلدات إلا في تطبيق سطح المكتب؛ أضف الملفات فرادى في المتصفح","attachment.dropBlocked":"لا يمكن إضافة الملفات والصور الآن","attachment.dropDesc":"حد الصور: حتى {count} صورة، بحجم {size} لكل صورة","attachment.dropTitle":"اسحب الملفات أو الصور هنا لإضافتها","attachment.pathUnavailable":"تعذّر الحصول على مسار المجلد؛ اسحبه مرة أخرى","attachment.pathUnsupported":"يحتوي المسار على أحرف لا يمكن للإشارة حملها؛ أعد تسميته وحاول مجددًا","attachment.pending":"المرفقات المعلّقة","attachment.scrollLeft":"تمرير المرفقات لليسار","attachment.scrollRight":"تمرير المرفقات لليمين","bash.failed":"فشل","bash.running":"قيد التشغيل","bash.stopped":"متوقف","command.attachmentsUnsupported":"/{command} لا يقبل المرفقات؛ أزلها أولًا","context.aria":"{percent} من السياق مستخدم","context.messages":"الرسائل","context.system":"موجّه النظام","context.tools":"تعريفات الأدوات","context.used":"من السياق مستخدم","detail.agent.reply":"رد الوكيل","detail.agents.count":"{count} وكيل","detail.days":"{count} يوم","detail.empty":"لا نتائج","detail.event.neighbors":"الأحداث المحيطة","detail.field.agent":"معرّف الوكيل","detail.field.agents":"الوكلاء المُشغَّلون","detail.field.availability":"التوفر","detail.field.bestMatch":"أفضل تطابق","detail.field.callId":"معرّف الاستدعاء","detail.field.content":"المحتوى","detail.field.context":"السياق","detail.field.currentPackage":"الحزمة الحالية","detail.field.data":"البيانات","detail.field.dependencies":"الاعتماديات","detail.field.depth":"العمق","detail.field.diagnostics":"التشخيصات","detail.field.exitCode":"رمز الخروج","detail.field.id":"المعرّف","detail.field.inputSchema":"مخطط الإدخال","detail.field.job":"معرّف المهمة","detail.field.latestRun":"آخر تشغيل","detail.field.message":"الرسالة","detail.field.messageId":"معرّف الرسالة","detail.field.methods":"الطرق","detail.field.model":"الموديل","detail.field.nextPackage":"الحزمة التالية","detail.field.outputSchema":"مخطط الإخراج","detail.field.owner":"المالك","detail.field.packages":"الحزم","detail.field.parent":"الأصل","detail.field.pid":"معرّف العملية","detail.field.platform":"المنصة","detail.field.previousStatus":"الحالة السابقة","detail.field.processGroup":"مجموعة العمليات","detail.field.props":"الخصائص","detail.field.provider":"المزوّد","detail.field.ready":"جاهز","detail.field.registrations":"التسجيلات","detail.field.result":"النتيجة","detail.field.revision":"المراجعة","detail.field.role":"الدور","detail.field.root":"الجذر","detail.field.seq":"تسلسل الأحداث","detail.field.signal":"الإشارة","detail.field.source":"المصدر","detail.field.step":"الخطوة","detail.field.surface":"حالة السجل","detail.field.target":"الحدث الهدف","detail.field.task":"المهمة","detail.field.time":"الوقت","detail.field.turn":"الدورة","detail.field.type":"النوع","detail.field.warnings":"التحذيرات","detail.field.writeScopes":"نطاقات الكتابة","detail.goal.active":"نشط","detail.goal.blocked":"محظور","detail.goal.complete":"مكتمل","detail.goal.disarmed":"في انتظار المتابعة","detail.goal.empty":"لا هدف","detail.goal.paused":"متوقف مؤقتًا","detail.goal.reason":"العائق","detail.goal.rounds":"الجولات","detail.hours":"{count} س","detail.jobs.count":"{count} مهمة خلفية","detail.location":"السطر {line}، العمود {column}","detail.locations.count":"{count} موضع","detail.matches.capped":"تم بلوغ حد النتائج؛ ضيّق البحث للحصول على المزيد","detail.matches.count":"{count} تطابق","detail.minutes":"{count} د","detail.models.title":"الموديلات المتاحة","detail.moreInInspect":"{count} عنصرًا إضافيًا متاح في Inspect","detail.no":"لا","detail.none":"لا شيء","detail.output.lines":"الأسطر {begin}–{end} من {total}","detail.output.truncated":"الإخراج مقطوع","detail.plugins.count":"{count} بلاقن ديناميكي","detail.providers.count":"{count} مزوّد inspect","detail.ralph.limit":"تم بلوغ حد الجولات","detail.ralph.reportedBlocker":"أبلغ العامل عن عائق","detail.ralph.reportedComplete":"أبلغ العامل عن الإنجاز","detail.receipt.alreadyFinished":"منتهٍ بالفعل","detail.receipt.cancel":"طُلب الإلغاء","detail.receipt.closed":"مغلق","detail.receipt.closing":"جارٍ الإغلاق","detail.receipt.delivered":"تم تسليم الرسالة","detail.receipt.interrupt":"طُلب المقاطعة","detail.receipt.signal":"تم تسليم الإشارة","detail.receipt.started":"بدأ","detail.recordedResult":"النتيجة المسجّلة","detail.report.nextSteps":"العمل المتبقي","detail.schedule.count":"{count} تذكير","detail.schedule.cron":"Cron {expression} ({zone})","detail.schedule.daily":"كل يوم في {time} ({zone})","detail.schedule.deleted":"محذوف","detail.schedule.empty":"لا تذكيرات","detail.schedule.every":"كل {interval}","detail.schedule.frequency":"التكرار","detail.schedule.once":"مرة واحدة","detail.schedule.overdue":"متأخر، في انتظار استئناف الجلسة","detail.schedule.scheduled":"مجدول","detail.schedule.weekly":"أسبوعيًا في {days} عند {time} ({zone})","detail.schedule.when":"مجدول في","detail.seconds":"{count} ث","detail.state":"الحالة","detail.status.accepted":"مقبول","detail.status.completed":"مكتمل","detail.status.deleted":"محذوف","detail.status.exited":"خرج","detail.status.failed":"فشل","detail.status.idle":"خامل","detail.status.inactive":"غير نشط","detail.status.killed":"ملغى","detail.status.provisioning":"قيد التهيئة","detail.status.queued":"في قائمة الانتظار","detail.status.ready":"جاهز","detail.status.running":"قيد التشغيل","detail.tasks.count":"{count} مهمة فريق","detail.tasks.nextPage":"توجد مهام إضافية؛ المؤشر التالي هو {cursor}","detail.terminals.count":"{count} طرفية","detail.todo.completed":"مكتمل","detail.todo.empty":"قائمة المهام فارغة","detail.todo.in_progress":"قيد التنفيذ","detail.todo.pending":"معلّق","detail.trace.ancestors":"الجلسات الأصل","detail.trace.derived":"الأحداث المشتقة","detail.trace.descendants":"الجلسات الفرعية","detail.trace.replacedBy":"مستبدل بـ","detail.trace.replacementChain":"سلسلة الاستبدال","detail.trace.replaces":"الأحداث المستبدلة","detail.trace.sources":"الأحداث المصدر","detail.wait.changed":"تم رصد تغيير","detail.wait.noProgress":"لا وكلاء فرعيون نشطون","detail.wait.timeout":"انتهت مهلة الانتظار","detail.wait.title":"نشاط الوكلاء الفرعيين","detail.weekday.1":"الاثنين","detail.weekday.2":"الثلاثاء","detail.weekday.3":"الأربعاء","detail.weekday.4":"الخميس","detail.weekday.5":"الجمعة","detail.weekday.6":"السبت","detail.weekday.7":"الأحد","detail.weekday.join":"، ","detail.workflow.script":"نص سير العمل","detail.yes":"نعم","details.running":"قيد التشغيل…","diff.collapseAria":"طيّ الفروقات","diff.expandAria":"توسيع {count} سطر فروقات إضافي","diff.expandRest":"… {count} سطر إضافي","error.sessionInUse":"هذه الجلسة قيد الاستخدام بالفعل، ربما بواسطة نسخة DSH أخرى قيد التشغيل (مثل dsh web أو تطبيق سطح المكتب). أغلق نسخ DSH الأخرى قيد التشغيل وحاول مجددًا.","file.label":"ملف","file.notStaged":"لم يكتمل رفع الملف؛ أعد إضافته وحاول مجددًا","file.pending":"الملفات المعلّقة","file.remove":"إزالة الملف {name}","file.retry":"إعادة محاولة رفع {name}","file.sessionUnavailable":"الجلسة غير متاحة؛ لا يمكن رفع الملفات","file.stillUploading":"لا تزال الملفات قيد الرفع؛ أرسل بعد انتهائها","file.uploadFailed":"فشل الرفع؛ انقر لإعادة المحاولة","file.uploading":"جارٍ الرفع…","hero.chooseWorkspace":"اختر مساحة العمل","hero.headline":"إلى المجهول","hero.preview":"معاينة","hint.goal":"صف هدف مهمة طويلة الأمد","hint.goal.active":"الهدف نشط — تعديل / إيقاف مؤقت / متابعة / مسح","hint.plan":"صف مهمتك لإنشاء خطة","image.closePreview":"إغلاق معاينة الصورة الأصلية","image.dimensionTooLarge":"يجب ألا يتجاوز بُعدا الصورة {size}px؛ صغّرها وحاول مجددًا","image.fileTooLarge":"يجب أن تكون كل صورة أصغر من {size}","image.label":"صورة","image.loadFailed":"فشل تحميل الصورة؛ انقر لإعادة المحاولة","image.loading":"جارٍ تحميل الصورة…","image.modelUnsupported":"الموديل الحالي لا يدعم الصور؛ بدّل إلى موديل يدعمها","image.openOriginal":"عرض الأصل","image.openOriginalLabel":"{label}، انقر لعرض الأصل","image.original":"الصورة الأصلية","image.pending":"الصور المعلّقة","image.preview":"معاينة الصورة الأصلية","image.remove":"إزالة الصورة {name}","image.sendFailed":"فشل إرسال الصور ({reason})؛ أعد إضافتها وحاول مجددًا","image.tooMany":"يمكن أن تتضمن الرسالة حتى {count} صورة","image.tooManyPixels":"دقة الصورة مرتفعة جدًا؛ اضغطها وحاول مجددًا","image.totalTooLarge":"تتجاوز الصور {size} إجمالًا؛ أزل بعضها وحاول مجددًا","image.unsupportedType":"الصور المدعومة هي PNG وJPG وWebP وGIF فقط","input.commands":"أضف ملفات أو نفّذ أوامر","input.file":"ملف","input.send":"إرسال رسالة","input.send.queue":"إدراج الرسالة في قائمة الانتظار","input.send.steer":"توجيه الرسالة","input.stop":"إيقاف التوليد","placeholder.default":"اكتب رسالة أو نفّذ مهمة، / للأوامر، @ للملفات أو الجلسات","placeholder.hero":"صف ما تريد بناءه، / للأوامر، @ للملفات أو الجلسات","placeholder.parentOffline":"الجلسة الأصل غير متصلة؛ الإرسال غير متاح لكن يمكنك إيقاف التشغيل","placeholder.plan":"صف مهمتك لإنشاء خطة","placeholder.steerQueue":"Cmd/Ctrl+Enter يوجّه جميع الرسائل في قائمة الانتظار","placeholder.unavailable":"الجلسة غير متاحة","placeholder.workspace":"اختر مساحة عمل للبدء","queue.cancelEdit":"إلغاء التعديل","queue.count":"{n} رسالة في قائمة الانتظار","queue.edit":"تعديل رسالة في قائمة الانتظار","queue.edit.unsupported":"يحتوي على محتوى غير نصي؛ التعديل غير مدعوم بعد","queue.editFailed":"فشل التعديل: ربما بدأ إرسال هذه الرسالة بالفعل.","queue.file":"الملف {name} في قائمة الانتظار","queue.image":"صورة رسالة في قائمة الانتظار","queue.remove":"إزالة رسالة من قائمة الانتظار","queue.removeFailed":"فشلت الإزالة: ربما بدأ إرسال هذه الرسالة بالفعل.","queue.save":"حفظ رسالة في قائمة الانتظار","queue.sending":"جارٍ الإرسال…","queue.steer":"توجيه رسالة في قائمة الانتظار","queue.steer.unavailable":"التوجيه متاح فقط أثناء تشغيل الوكيل","queue.steerFailed":"فشل التوجيه. حاول مجددًا.","read.collapseAria":"طيّ المحتوى","read.expandAria":"توسيع {count} سطر إضافي","read.expandRest":"… {count} سطر إضافي","read.window":"عرض {shown} من {total} سطر","row.commandArguments":"وسائط الأمر","row.failed":"فشل","row.input":"إدخال","row.inspect":"فحص","row.output":"إخراج","row.preparing":"التحضير لاستدعاء أداة","row.running":"قيد التشغيل","row.stopped":"متوقف","search.collapseAria":"طيّ النتائج","search.expandAria":"توسيع {count} سطر نتائج إضافي","search.expandRest":"… {count} سطر إضافي","search.matches":"{shown} تطابق · {files} ملف","search.matches.truncated":"عرض {shown} من {total} تطابق · {files} ملف","search.noResults":"لا نتائج","search.paths":"{shown} مسار","search.paths.truncated":"عرض {shown} من {total} مسار","session.hierarchy":"التسلسل الهرمي للجلسات","settings.enter.description":"ما يفعله Enter وزر الإرسال أثناء تشغيل الوكيل؛ Cmd/Ctrl+Enter يستخدم السلوك الآخر","settings.enter.queue":"قائمة الانتظار","settings.enter.steer":"توجيه","settings.enter.title":"سلوك الإرسال أثناء الانشغال","shortcut.complementary":"استخدم إجراء قائمة الانتظار / التوجيه المكمّل","shortcut.mention":"فتح قائمة الإشارات","shortcut.newline":"سطر جديد","shortcut.slash":"فتح قائمة الأوامر","terminal.collapseAria":"طيّ الإخراج","terminal.commandLine":"سطر الأوامر {n}","terminal.done":"تم","terminal.exitCode":"رمز الخروج {code}","terminal.expandAria":"توسيع {n} سطر الإخراج المتبقية","terminal.expandRest":"… {n} سطرًا إضافيًا","terminal.failed":"فشل","terminal.noExitCode":"لا رمز خروج","terminal.noOutput":"لا إخراج","terminal.running":"قيد التشغيل","terminal.sendInput":"(إرسال إدخال)","terminal.session":"الطرفية {sessionId}","terminal.signal":"الإشارة {signal}","todo.completed":"{done}/{total} مكتمل","todo.diff.added":"{count} مُضاف","todo.diff.addedItem":"مُضاف","todo.diff.compare":"التغييرات منذ القائمة السابقة","todo.diff.initial":"القائمة الأولية","todo.diff.movedItem":"أُعيد ترتيبه","todo.diff.noChanges":"لا تغييرات في القائمة","todo.diff.removed":"{count} مُزال","todo.diff.removedItem":"مُزال","todo.diff.unavailable":"القائمة السابقة غير متاحة","todo.diff.unchanged":"{count} دون تغيير","todo.diff.updated":"{count} مُحدّث","todo.diff.updatedItem":"تغيّرت الحالة","todo.progress.active":"{active} قيد التنفيذ","todo.progress.done":"{done} مكتمل","todo.progress.pending":"{pending} معلّق","todo.rowTitle":"تحديث قائمة المهام","todo.status.completed":"مكتمل","todo.status.inProgress":"قيد التنفيذ","todo.status.pending":"معلّق","todo.title":"المهام","tool.autoReviewNotExecuted":"لم تُنفّذ الأداة. السبب: {reason}","tool.autoReviewReasonFallback":"لم تأذن المراجعة التلقائية بهذا الإجراء","tool.autoReviewRejected":"رفضتها المراجعة التلقائية","tool.preparing.content":"{kilobytes}KB","tool.title.bash":"Bash","tool.title.closeTerminal":"إغلاق الطرفية","tool.title.code":"كود","tool.title.createGoal":"إنشاء هدف","tool.title.createSchedule":"إنشاء تذكير","tool.title.createTeamTask":"إنشاء مهمة فريق","tool.title.deleteSchedule":"حذف تذكير","tool.title.edit":"تعديل","tool.title.findDefinition":"إيجاد تعريف","tool.title.findImplementation":"إيجاد تنفيذ","tool.title.findReferences":"إيجاد مراجع","tool.title.generic":"استدعاء أداة","tool.title.getGoal":"عرض الهدف","tool.title.getTeamTask":"قراءة مهمة فريق","tool.title.glob":"Glob","tool.title.grep":"Grep","tool.title.hoverSymbol":"فحص الرمز","tool.title.inspect":"استعلام بيئة Cordis","tool.title.inspectPlugins":"فحص البلاقن","tool.title.inspectProviders":"فحص المزوّدين","tool.title.interruptAgent":"مقاطعة الوكيل","tool.title.killJob":"إلغاء مهمة خلفية","tool.title.listAgents":"عرض الوكلاء الفرعيين","tool.title.listJobs":"عرض المهام الخلفية","tool.title.listModels":"عرض الموديلات","tool.title.listSchedules":"عرض التذكيرات","tool.title.listTeamTasks":"عرض مهام الفريق","tool.title.listTerminals":"عرض الطرفيات","tool.title.lsp":"استعلام رموز الكود","tool.title.openTerminal":"فتح الطرفية","tool.title.pwsh":"Pwsh","tool.title.queryRuntime":"استعلام بيئة التشغيل","tool.title.ralph":"تشغيل حلقة ralph","tool.title.read":"قراءة","tool.title.readEvent":"قراءة حدث","tool.title.readImage":"قراءة صورة","tool.title.readJob":"قراءة مخرجات المهمة","tool.title.readTerminal":"قراءة الطرفية","tool.title.removeCordis":"إزالة بلاقن Cordis","tool.title.runCordis":"تشغيل بلاقن Cordis","tool.title.search":"بحث","tool.title.searchEvents":"بحث في الأحداث","tool.title.searchSessions":"بحث في الجلسات","tool.title.sendMessage":"إرسال رسالة","tool.title.signalTerminal":"إرسال إشارة إلى الطرفية","tool.title.spawnTeammate":"إنشاء زميل فريق","tool.title.stopCordis":"إيقاف بلاقن Cordis","tool.title.subagent":"إنشاء وكيل فرعي","tool.title.traceEvent":"تتبع حدث","tool.title.traceSession":"تتبع جلسة","tool.title.updateGoal":"تحديث الهدف","tool.title.updateSchedule":"تحديث تذكير","tool.title.updateTeamTask":"تحديث مهمة فريق","tool.title.waitAgent":"انتظار وكيل فرعي","tool.title.webFetch":"جلب","tool.title.webSearch":"بحث","tool.title.workflow":"تشغيل سير عمل","tool.title.write":"كتابة","web.contentTruncated":"تم اقتطاع المحتوى","web.http":"HTTP","web.noResults":"لا توجد نتائج","web.sourcesTruncated":"تم اقتطاع قائمة المصادر"},"cordis":{"a11y.defining":"جارٍ تعريف البلاقن","a11y.failed":"فشل التعريف","a11y.preparing":"جارٍ تحضير استدعاء أداة Cordis","a11y.stopped":"تمت مقاطعة التعريف","action.approve":"السماح","action.approveOnce":"السماح بهذا الإصدار فقط","action.approvePlugin":"السماح بالإصدارات المستقبلية لهذا البلاقن","action.decline":"رفض","action.inspect":"فحص","action.remove":"إزالة","action.retry":"إعادة المحاولة","action.rollback":"تراجع","action.run":"تشغيل","action.stop":"إيقاف","body.clientCode":"العميل","body.copied":"تم النسخ","body.copy":"نسخ","body.hostCode":"المضيف","body.output":"النتيجة","body.source":"مصدر البلاقن","panel.approvals.aria":"موافقات Cordis","panel.current":"الحالي: {packageId}","panel.empty":"لم يتم تعريف أي بلاقن بعد","panel.group.current":"هذه الجلسة","panel.group.others":"جلسات أخرى","panel.hint":"توجد أدوات التشغيل في لوحة Cordis أعلى الإعدادات","panel.loading":"جارٍ القراءة…","panel.next":"التالي: {packageId}","panel.plugins.aria":"بلاقن Cordis","panel.readFailed":"فشلت قراءة قائمة البلاقن: {message}","panel.runningCount":"{count} قيد التشغيل","panel.title":"بلاقن Cordis","panel.trigger":"بلاقن Cordis","panel.version":"الإصدار","purpose.missing":"(لم يُذكر غرض)","render.failedAbdicated":"فشل العرض في {slot}؛ تمت استعادة الواجهة الافتراضية:","render.failedHeld":"فشل العرض في {slot}:","row.defineTitle":"تسجيل بلاقن Cordis","row.removeTitle":"إزالة بلاقن Cordis","row.runTitle":"تشغيل بلاقن Cordis","row.stopTitle":"إيقاف بلاقن Cordis","row.updateTitle":"تحديث بلاقن Cordis","run.removed":"لم تعد هذه الحزمة موجودة","run.superseded":"تتوفر بطاقة تشغيل أحدث أدناه","status.awaitingApproval":"بانتظار الموافقة","status.clientPending":"العميل جاهز للتفعيل","status.failed":"فشل التشغيل","status.idle":"جاهز","status.removed":"تمت الإزالة","status.running":"قيد التشغيل","status.superseded":"يتوفر تشغيل أحدث"},"cotTranslation":{"anonymousNotice":"لا يحتاج Bing وGoogle إلى تسجيل دخول أو مفتاح API للترجمة. وقد ترفض نقاط النهاية المجهولة الطلبات أو تحدّ منها.","bing":"Bing","codeTitle":"كتلة كود","copied":"تم النسخ","copy":"نسخ","deepseekAccount":"DeepSeek Flash — الحساب (مدفوع)","deepseekOfficial":"DeepSeek Flash — واجهة API الرسمية (مدفوع)","failed":"تعذّرت الترجمة. يُعرض النص الأصلي.","footnotes":"الحواشي","google":"Google","invalidLanguage":"أدخل auto أو رمز لغة مثل zh أو en أو ja.","invalidProvider":"اختر خدمة ترجمة.","original":"عرض الأصل","overridden":"متجاوَز","paidNotice":"كل جزء غير محفوظ في الكاش يُرسل طلبًا مدفوعًا مستقلًا إلى DeepSeek Flash عبر الحساب المحدد أو اعتمادات واجهة API الرسمية. وإعادة فتح الاستدلال تعيد استخدام النتائج المحفوظة؛ وقد يُرسل تغيير المزوّد أو اللغة أو النص المصدر أو إعدادات الطلب طلبًا مدفوعًا جديدًا.","privacy":"يُرسل الاستدلال الموسَّع إلى الخدمة المحددة، وقد يحتوي على كود خاص أو تفاصيل من المحادثة.","provider":"خدمة الترجمة","providerUnavailable":"هذا المزوّد غير متاح. اضبط حساب DeepSeek أو مزوّد واجهة API الرسمية، أو اختر خدمة متاحة.","providerUnavailableOption":"{provider} — غير متاح","readOnly":"يخزّن هذا النشر الإعدادات للقراءة فقط.","reset":"إعادة إلى الافتراضي","retry":"إعادة المحاولة","save":"حفظ","saveFailed":"لم يقبل النشر هذه القيم؛ تُركت لك لتصحيحها.","saving":"جارٍ الحفظ…","targetLanguage":"اللغة الهدف","targetLanguageHint":"تتبع قيمة auto لغة الواجهة؛ وتعمل أيضًا رموز اللغات مثل zh وen وja.","translating":"جارٍ ترجمة الاستدلال","translation":"عرض الترجمة","unavailable":"تفضيلات الترجمة غير متاحة.","unwrap":"إلغاء لف الأسطر","wrap":"لف الأسطر"},"deliverables":{"changes.added":"+{count}","changes.all":"كل الملفات ({count})","changes.binary":"ثنائي","changes.collapse":"طيّ","changes.collapseAria":"طيّ الملفات المتغيرة","changes.deleted":"-{count}","changes.expandAria":"عرض كل الملفات المتغيرة ({count})","changes.openReview":"مراجعة تغييرات هذه الدورة في الشريط الجانبي","changes.oversized":"كبير جدًا","changes.singleTitle":"تم تعديل {name}","changes.title":"تم تعديل {count} ملفات","changes.viewDiff":"عرض تغييرات {name}","diff.binary":"ملف ثنائي؛ لا يمكن عرض التغييرات","diff.coarse":"انتهت مهلة مقارنة الأسطر؛ يُعرض كاستبدال كامل للملف","diff.created":"أُنشئ في هذه الدورة","diff.deleted":"حُذف في هذه الدورة","diff.error":"تعذّرت قراءة التغييرات","diff.loading":"جارٍ قراءة التغييرات…","diff.missing":"لم تعد محتويات تغييرات هذه الدورة متاحة","diff.oversized":"الملف كبير جدًا؛ لا يمكن عرض التغييرات","diff.truncated":"عرض أول {count} أسطر","diff.unchanged":"كلا الجانبين يحتوي الأسطر نفسها","presented.all":"كل الملفات ({count})","presented.collapse":"طيّ","presented.collapseAria":"طيّ الملفات المسلَّمة","presented.directoryError":"تعذّر فتح المجلد الحاوي. حاول مرة أخرى.","presented.directoryOpened":"تم طلب فتح المجلد الحاوي","presented.directoryOpening":"جارٍ فتح المجلد الحاوي…","presented.error":"تعذّر الفتح. انقر لإعادة المحاولة.","presented.expandAria":"عرض كل الملفات المسلَّمة ({count})","presented.file":"ملف","presented.hostError":"تعذّرت قراءة معلومات سطح المكتب للمضيف","presented.nativeUnavailable":"لا يتوفر مسار مضيف لهذا الملف. عاينه في الشريط الجانبي.","presented.opened":"تم طلب الفتح","presented.opening":"جارٍ الفتح…","presented.preview":"معاينة في الشريط الجانبي","presented.previewButton":"فتح {name} في الشريط الجانبي","presented.previewCard":"معاينة {name} في الشريط الجانبي","presented.retry":"إعادة المحاولة","presented.revealError":"تعذّر العرض في مدير الملفات. حاول مرة أخرى.","presented.revealed":"تم طلب العرض في مدير الملفات","presented.revealing":"جارٍ العرض في مدير الملفات…","presented.unavailable":"لا يتوفر سطح مكتب لهذا المضيف لفتح الملفات أو المجلدات في تطبيقات خارجية. يمكن معاينة الملفات في الشريط الجانبي.","review.nowrap":"إيقاف التفاف الأسطر","review.openFile":"فتح الملف كاملًا في الشريط الجانبي","review.openFileAria":"فتح {name} في الشريط الجانبي","review.selectFile":"اختر الملف للمراجعة","review.split":"التبديل إلى العرض المنقسم","review.splitAria":"عرض منقسم","review.title":"مراجعة · الدورة {turn}","review.unified":"التبديل إلى العرض الموحّد","review.wrap":"تشغيل التفاف الأسطر","review.wrapAria":"التفاف الأسطر","row.error":"فشل التسليم","row.inspect":"فحص الاستدعاء","row.ok":"تم التسليم","row.preparing":"جارٍ تحضير المخرجات","row.running":"جارٍ التسليم","row.stopped":"تمت المقاطعة","row.title":"عرض الملفات"},"documentHtml":{"autoRefresh":"تحديث تلقائي","autoRefresh.disable":"إيقاف التحديث التلقائي","autoRefresh.enable":"تشغيل التحديث التلقائي","busy":"معاينة Office مشغولة. حاول بعد قليل.","changed":"تغيّر الملف أثناء القراءة. أعد فتح المعاينة.","charts":"مخططات","closeDetails":"إغلاق تفاصيل الخطوط","code.copied":"تم النسخ","code.copy":"نسخ","conditionalFormatting":"تنسيق شرطي","copied":"تم النسخ","copy":"نسخ","encoding":"تعذّرت قراءة ترميز النص هذا. احفظ الملف بترميز UTF-8 أو UTF-16 مع BOM ثم أعد المحاولة.","error.notFound":"الملف غير موجود. ربما نُقل أو حُذف.","error.notRegularFile":"ليس ملفًا عاديًا، لا يوجد ما يُعرض.","error.notText":"المعاينة غير متاحة لهذا النوع من الملفات بعد.","error.tooLarge":"تتجاوز هذه الصفحة الحد {limit} ولا يمكن قراءتها.","error.unavailable":"فشلت القراءة: {message}","failed":"تعذّر عرض PDF: {message}","featureSeparator":"، ","footnotes":"الحواشي","formulaWarning":"يحتوي هذا المصنف على صيغ. قد تكون النتائج المعروضة ناقصة أو غير دقيقة.","frame":"معاينة مستند HTML","images":"صور","invalid":"لا يمكن معاينة ملف Office هذا. قد يكون تالفًا أو محميًا بكلمة مرور أو بامتداد خاطئ.","language":"en","loadMore":"تحميل المزيد","loading":"جارٍ عرض المستند...","missingFontsCount":"الخطوط: {count}","missingFontsDescription":"هذه الخطوط غير متاحة لهذه المعاينة. قد يختلف النص والتخطيط عن المستند الأصلي.","missingFontsTitle":"خطوط مفقودة","openWith":"فتح باستخدام","pageImage":"صفحة PDF {page}","password":"يتطلب ملف PDF هذا كلمة مرور؛ لا تُدعم المعاينات المحمية بكلمة مرور.","preview":"معاينة الصورة: {name}","reload":"إعادة قراءة الملف","reloadNow":"إعادة التحميل","rendererUnavailable":"معاينة {name} غير متاحة.","rendering":"جارٍ عرض الصفحة…","resourceUnavailable":"خدمة موارد الملفات غير متاحة.","retry":"إعادة المحاولة","shapes":"أشكال","timeout":"انتهت مهلة تحويل Office. حاول مرة أخرى.","title":"PDF","tooLarge":"يتجاوز ملف Office أو ملف PDF المحوّل حد حجم المعاينة. قلّل حجم الملف أو عدّل إعدادات المعاينة.","unavailable":"معاينات Office غير متاحة. شغّل خدمة معاينة المستندات على الحاسوب الذي يعمل عليه DeepSeek Harness.","unsupported":"تتطلب معاينة PDF محتويات الملف كاملة.","unsupportedFile":"المعاينة غير متاحة لهذا النوع من الملفات بعد.","unsupportedNotice":"لا تدعم هذه المعاينة {features} في هذا المصنف. افتحه في تطبيق نظام للحصول على التجربة الكاملة.","viewMissingFonts":"خطوط مفقودة: {count}. انقر للعرض.","viewer.label":"Markdown","viewer.text":"نص عادي","workerFailed":"تعذّر متابعة عملية عرض PDF. يرجى إعادة المحاولة.","wrap.aria":"التفاف الأسطر","wrap.disable":"إيقاف التفاف الأسطر","wrap.enable":"تشغيل التفاف الأسطر","zoomControls":"أدوات التكبير","zoomFitWidth":"ملاءمة العرض","zoomIn":"تكبير","zoomMenu":"اختيار مستوى التكبير","zoomOut":"تصغير","zoomValue":"{percent}%"},"documentMarkdown":{"autoRefresh":"تحديث تلقائي","autoRefresh.disable":"إيقاف التحديث التلقائي","autoRefresh.enable":"تشغيل التحديث التلقائي","busy":"معاينة Office مشغولة. حاول بعد قليل.","changed":"تغيّر الملف أثناء القراءة. أعد فتح المعاينة.","charts":"مخططات","closeDetails":"إغلاق تفاصيل الخطوط","code.copied":"تم النسخ","code.copy":"نسخ","conditionalFormatting":"تنسيق شرطي","copied":"تم النسخ","copy":"نسخ","encoding":"تعذّرت قراءة ترميز النص هذا. احفظ الملف بترميز UTF-8 أو UTF-16 مع BOM ثم أعد المحاولة.","error.notFound":"الملف غير موجود. ربما نُقل أو حُذف.","error.notRegularFile":"ليس ملفًا عاديًا، لا يوجد ما يُعرض.","error.notText":"المعاينة غير متاحة لهذا النوع من الملفات بعد.","error.tooLarge":"تتجاوز هذه الصفحة الحد {limit} ولا يمكن قراءتها.","error.unavailable":"فشلت القراءة: {message}","failed":"تعذّر عرض PDF: {message}","featureSeparator":"، ","footnotes":"الحواشي","formulaWarning":"يحتوي هذا المصنف على صيغ. قد تكون النتائج المعروضة ناقصة أو غير دقيقة.","frame":"معاينة مستند HTML","images":"صور","invalid":"لا يمكن معاينة ملف Office هذا. قد يكون تالفًا أو محميًا بكلمة مرور أو بامتداد خاطئ.","language":"en","loadMore":"تحميل المزيد","loading":"جارٍ عرض المستند...","missingFontsCount":"الخطوط: {count}","missingFontsDescription":"هذه الخطوط غير متاحة لهذه المعاينة. قد يختلف النص والتخطيط عن المستند الأصلي.","missingFontsTitle":"خطوط مفقودة","openWith":"فتح باستخدام","pageImage":"صفحة PDF {page}","password":"يتطلب ملف PDF هذا كلمة مرور؛ لا تُدعم المعاينات المحمية بكلمة مرور.","preview":"معاينة الصورة: {name}","reload":"إعادة قراءة الملف","reloadNow":"إعادة التحميل","rendererUnavailable":"معاينة {name} غير متاحة.","rendering":"جارٍ عرض الصفحة…","resourceUnavailable":"خدمة موارد الملفات غير متاحة.","retry":"إعادة المحاولة","shapes":"أشكال","timeout":"انتهت مهلة تحويل Office. حاول مرة أخرى.","title":"PDF","tooLarge":"يتجاوز ملف Office أو ملف PDF المحوّل حد حجم المعاينة. قلّل حجم الملف أو عدّل إعدادات المعاينة.","unavailable":"معاينات Office غير متاحة. شغّل خدمة معاينة المستندات على الحاسوب الذي يعمل عليه DeepSeek Harness.","unsupported":"تتطلب معاينة PDF محتويات الملف كاملة.","unsupportedFile":"المعاينة غير متاحة لهذا النوع من الملفات بعد.","unsupportedNotice":"لا تدعم هذه المعاينة {features} في هذا المصنف. افتحه في تطبيق نظام للحصول على التجربة الكاملة.","viewMissingFonts":"خطوط مفقودة: {count}. انقر للعرض.","viewer.label":"Markdown","viewer.text":"نص عادي","workerFailed":"تعذّر متابعة عملية عرض PDF. يرجى إعادة المحاولة.","wrap.aria":"التفاف الأسطر","wrap.disable":"إيقاف التفاف الأسطر","wrap.enable":"تشغيل التفاف الأسطر","zoomControls":"أدوات التكبير","zoomFitWidth":"ملاءمة العرض","zoomIn":"تكبير","zoomMenu":"اختيار مستوى التكبير","zoomOut":"تصغير","zoomValue":"{percent}%"},"feedback":{"action.dislike":"ردّ سيئ","action.dislikeActive":"إزالة التقييم","action.like":"ردّ جيد","action.likeActive":"إزالة التقييم","category.instruction-following":"فهم التعليمات واتباعها","category.other":"أخرى","category.product-interaction":"ميزات المنتج والتفاعل","category.resource-cost":"استهلاك الموارد والتكلفة","category.security-privacy-permission":"الأمان والخصوصية والصلاحيات","category.service-stability":"الاستقرار والسرعة","category.task-result":"نتيجة المهمة","dialog.categories":"فئة الملاحظات","dialog.detail":"تفاصيل الملاحظات","dialog.hint":"أضف تفاصيل لمساعدتنا على التحسين. سيتضمن ما ترسله سجل المحادثة الحالية.","dialog.title":"إرسال الملاحظات","error.conflict":"تغيّرت هذه الملاحظات في مكان آخر؛ يتم عرض أحدث حالة","error.generic":"تعذّر حفظ الملاحظات","error.load":"تعذّر تحميل الملاحظات","error.noteTooLarge":"الوصف طويل جدًا؛ اختصره ثم أعد الإرسال","toast.recorded":"شكرًا على ملاحظاتك"},"goal":{"action.cancel":"إلغاء التعديل","action.clear":"مسح الهدف","action.edit":"تعديل الهدف","action.pause":"إيقاف الهدف مؤقتًا","action.resume":"استئناف الهدف","action.save":"حفظ الهدف","commandInput.aria":"إدخال الأوامر","objective.aria":"الغاية المستهدفة","phase.active":"هدف جارٍ","phase.active.disarmed":"هدف غير مُفعّل","phase.blocked":"هدف متعطّل","phase.paused":"هدف متوقف مؤقتًا"},"job":{"count.idle.one":"{count} مهمة خلفية","count.idle.other":"{count} مهام خلفية","count.live.one":"{count} مهمة خلفية قيد التشغيل","count.live.other":"{count} مهام خلفية قيد التشغيل","duration.hours":"{hours}س {minutes}د","duration.minutes":"{minutes}د {seconds}ث","duration.seconds":"{seconds}ث","duration.title.done":"استغرقت {duration}","duration.title.live":"قيد التشغيل منذ {duration}","kill.confirm":"انقر مرة أخرى للتأكيد","kill.confirmAction":"تأكيد الإيقاف","kill.failed":"فشل الإيقاف","kill.stop":"إيقاف المهمة {label}","list.aria":"المهام الخلفية","output.error":"انقطع بث المخرجات المباشر: {error}","output.gap":"… تم إسقاط مخرجات سابقة …","row.collapseAria":"إخفاء المخرجات المباشرة لـ{label}","row.expandAria":"عرض المخرجات المباشرة لـ{label}","section.clear":"مسح","section.live":"قيد التشغيل","section.settledCount":"منتهية {count}","status.completed":"مكتملة","status.failed":"فاشلة","status.killed":"ملغاة","status.running":"قيد التشغيل","status.stopping":"جارٍ الإيقاف","terminal.collapse":"طيّ","terminal.collapseAria":"طيّ المخرجات","terminal.commandLine":"سطر الأوامر {n}","terminal.copied":"تم النسخ","terminal.copy":"نسخ","terminal.done":"تم","terminal.exitCode":"رمز الخروج {code}","terminal.expand":"عرض {n} أسطر إضافية","terminal.expandAria":"توسيع {n} من أسطر المخرجات المطوية","terminal.failed":"فشل","terminal.noExitCode":"لا يوجد رمز خروج","terminal.noOutput":"(لا مخرجات)","terminal.running":"قيد التشغيل","terminal.signal":"إشارة {signal}"},"model":{"action.reload":"إعادة التحميل","command.description":"اختر الموديل لهذه المحادثة","command.label":"الموديل","effort.providerDefault":"افتراضي","empty.efforts":"لا يوفر هذا الموديل مستويات لجهد الاستدلال.","empty.models":"لا توجد موديلات متاحة.","error.action":"فشلت عملية الموديل: {message}","error.sessionInUse":"هذه الجلسة قيد الاستخدام بالفعل، ربما بواسطة نسخة DSH أخرى قيد التشغيل (مثل dsh web أو تطبيق سطح المكتب). أغلق نسخ DSH الأخرى العاملة وحاول مرة أخرى.","menu.aria":"الموديل وجهد الاستدلال","menu.effort":"الجهد","menu.model":"الموديل","option.loadError":"فشل تحميل الكتالوج: {message}","provider.account":"حساب DeepSeek","search.clear":"مسح البحث","search.empty":"لا توجد موديلات مطابقة.","search.placeholder":"بحث في الموديلات…","status.loading":"جارٍ تحديث قائمة الموديلات…","trigger.aria":"اختيار الموديل، الحالي {model}","trigger.ariaEffort":"اختيار الموديل، الحالي {model}، جهد الاستدلال {effort}","trigger.fallback":"اختيار الموديل","trigger.loading":"جارٍ تحميل الموديلات…","trigger.selectAria":"اختيار الموديل","warning.groupLoad":"فشل تحميل {name}: {message}"},"open-in-app":{"app.androidstudio":"Android Studio","app.cursor":"Cursor","app.explorer":"File Explorer","app.filemanager":"Files","app.finder":"Finder","app.fork":"Fork","app.ghostty":"Ghostty","app.gitbash":"Git Bash","app.github":"GitHub Desktop","app.gitkraken":"GitKraken","app.gnometerminal":"GNOME Terminal","app.goland":"GoLand","app.intellij":"IntelliJ IDEA","app.iterm":"iTerm2","app.kitty":"kitty","app.konsole":"Konsole","app.phpstorm":"PhpStorm","app.pycharm":"PyCharm","app.rider":"Rider","app.rustrover":"RustRover","app.smartgit":"SmartGit","app.sourcetree":"Sourcetree","app.sublimemerge":"Sublime Merge","app.sublimetext":"Sublime Text","app.terminal":"Terminal","app.tower":"Tower","app.vscode":"VS Code","app.vscodeinsiders":"VS Code Insiders","app.warp":"Warp","app.webstorm":"WebStorm","app.windowsterminal":"Windows Terminal","app.windsurf":"Windsurf","app.xcode":"Xcode","app.zed":"Zed","open.title":"فتح في {app}","open.tooltip":"فتح محليًا","path.appDefault":"{app} (افتراضي)","path.appsError":"تعذّر تحميل التطبيقات","path.more":"طرق أخرى للفتح","path.open":"فتح","path.openError":"تعذّر الفتح. حاول مرة أخرى.","path.reveal":"عرض موقع الملف","path.revealError":"تعذّر عرض موقع الملف. حاول مرة أخرى.","shortcut.busy":"جارٍ فتح مساحة العمل","shortcut.unavailable":"مساحة العمل الحالية أو التطبيق المحلي غير متاح"},"permission.access":{"confirm.acknowledge":"أفهم المخاطر وأريد المتابعة","confirm.cancel":"إلغاء","confirm.description":"يمنح الوصول الكامل الجلساتِ الجديدة إمكانية تقليل خطوات التأكيد وتنفيذ مزيد من الإجراءات مباشرة، بما في ذلك العمليات الحساسة أو تغييرات الملفات أو الأوامر الخارجية. استخدمه فقط عندما تثق بالمهام اللاحقة.","confirm.enable":"تشغيل الوصول الكامل","confirm.title":"هل تريد تشغيل الصلاحية الكاملة؟","description":"اختر وضع الصلاحيات الافتراضي للجلسات الجديدة","loading":"جارٍ التحميل","preset.fullAccess":"وصول كامل","preset.readOnly":"قراءة فقط","preset.workspaceWrite":"كتابة في مساحة العمل","title":"الصلاحية","unavailable":"غير متاح"},"plan":{"chip.exitFailed":"فشل الخروج من وضع الخطة","chip.label":"الخطة","chip.on.aria":"وضع الخطة مُفعّل، اضغط للإيقاف","chip.on.title":"وضع الخطة مُفعّل — انقر للإيقاف (/plan off)","preview.action":"فتح","preview.document":"الخطة · Markdown","preview.expired":"انتهت صلاحية معاينة الخطة المؤقتة هذه. أعد فتحها من بطاقة المراجعة المعلّقة.","preview.failed":"تعذّر تحميل الخطة","preview.full":"عرض الخطة كاملة","preview.historyUnavailable":"سجل الجلسة غير متاح","preview.invalidAddress":"عنوان خطة غير صالح","preview.loading":"جارٍ تحميل الخطة…","preview.notFound":"لم يتم العثور على هذه الخطة","preview.open":"فتح الخطة في الشريط الجانبي","preview.openNamed":"فتح الخطة: {title}","preview.title":"الخطة","preview.unavailable":"معاينة الخطة غير متاحة"},"pluginManager":{"addPlugin":"إضافة بلاقن","backToList":"العودة إلى البلاقن","backToPackage":"العودة إلى {name}","basicTitle":"إعدادات البلاقنات المضمّنة","bundlesTitle":"المثبَّتة","cancel":"إلغاء","chooseAddMethod":"اختر طريقة إضافة بلاقن","close":"إغلاق","configureRow":"إعداد {name}","confirmUninstall":"إلغاء التثبيت","confirmUninstallDescription":"تختفي الوظائف التي يوفرها بمجرد إلغاء تثبيته.","confirmUninstallTitle":"إلغاء تثبيت \"{name}\"؟","crumbRoot":"البلاقن","empty":"لم يتم تثبيت أي بلاقن بعد.","enableToggle":"تشغيل {name}","error":"تعذّرت قراءة جميع البلاقن، ربما بسبب مشكلة في الشبكة","extensionsTitle":"البلاقنات التجريبية","failedDisable":"تعذّر الإيقاف: {reason}","failedEnable":"تعذّر التشغيل: {reason}","failedRowDisable":"تعذّر إيقاف المكوّن: {reason}","failedRowEnable":"تعذّر تشغيل المكوّن: {reason}","failedUninstall":"تعذّر إلغاء التثبيت: {reason}","infoDescription":"اضبط البلاقن الرسمية وثبّت البلاقن الأخرى أو أدِرها من هنا. اعرض قائمة البلاقن المضمّنة وحالة بيئة التشغيل في الإعدادات → البلاقن المضمّنة.","infoLabel":"حول البلاقن","installApplying":"جارٍ تطبيق الإعدادات، يرجى الانتظار…","installApplyingCancellationError":"لم يتم تأكيد الإلغاء. يجري تطبيق التثبيت؛ انتظر نتيجته. {reason}","installApprovalCaution":"لا تسمح إلا بالحزم التي تثق بها.","installApprovalConsequence":"بعد السماح، تعمل السكربتات هنا بصلاحياتك، وتُحفظ الصلاحية في هذا الملف الشخصي.","installApprovalDescription":"تحتوي هذه الحزم على سكربتات تثبيت لم يشغّلها pnpm.","installApprovalTitle":"سكربتات التثبيت تحتاج إلى صلاحية","installApproveAndRetry":"السماح بهذه السكربتات وإعادة المحاولة","installAttempt":"تعذّر على {previous} توفير الحزمة؛ إعادة المحاولة عبر {registry} (سجل الحزم {index} من {total})","installAttemptBadge":"المحاولة {index} · {registry}","installAwaitingAcceptance":"بانتظار قبول المضيف للتثبيت. ستُعاد محاولة الإلغاء تلقائيًا بعد التأكيد.","installBackgroundApplying":"يجري تطبيق التثبيت ولا يمكن إلغاؤه. اعرض تقدم التثبيت.","installBackgroundDone":"اكتمل التثبيت. اعرض تفاصيل التثبيت.","installBackgroundFailed":"فشل التثبيت. اعرض تفاصيل التثبيت.","installBackgroundUnconfirmed":"حالة التثبيت غير مؤكدة. اعرض التثبيت للاطلاع على التفاصيل.","installBackgroundUnknown":"نتيجة التثبيت غير متاحة. تحقق من قائمة البلاقن.","installCancel":"إلغاء التثبيت","installCancelAndEdit":"إلغاء التثبيت والعودة إلى التعديل","installCancelUnconfirmed":"لم يتم تأكيد إيقاف التثبيت. أعد محاولة الإلغاء أو انتظر نتيجة التثبيت. {reason}","installCancelled":"أُلغي التثبيت؛ البلاقن غير مُفعّل، وقد تبقى الملفات التي تم تنزيلها","installCancelledShort":"أُلغي","installCancelling":"جارٍ إيقاف التثبيت…","installChangeRegistry":"تغيير سجل الحزم","installChecking":"جارٍ التحقق…","installClose":"تم","installCloseCancels":"إلغاء التثبيت والإغلاق","installDescription":"أدخل اسم حزمة البلاقن أو عنوان مستودع GitHub أو مسار دليل محلي.","installDetailsHide":"إخفاء تفاصيل التثبيت","installDetailsShow":"عرض تفاصيل التثبيت","installDoneApproved":"تم السماح بسكربتات التثبيت لـ{names}","installDoneNothing":"اكتمل التثبيت دون أي اعتمادية جديدة.","installDoneOtherVersion":"بموجب سياسة أمان سلسلة التوريد في pnpm (minimumReleaseAge)، لا تُثبَّت تلقائيًا الإصدارات التي مضى على نشرها وقت أقل من المدة المطلوبة، لذا استخدم هذا التثبيت {installed} بدلًا من أحدث إصدار {version}. الإصدار المنشور حديثًا لم يكمل فترة الانتظار هذه وقد يحتوي على كود ضارة أو عيوب لم تُكتشف. إذا كنت بحاجة إلى {version}، فألغِ تثبيت الإصدار الحالي ثم ثبّت {exact} لطلب ذلك الإصدار.","installDoneRestart":"تم التثبيت؛ سيُحمَّل عند التشغيل التالي.","installEdit":"تعديل","installEditAria":"العودة إلى التعديل","installEnableNow":"تشغيل الآن","installExisting":"تثبيت بلاقن من طرف ثالث","installExistingDescription":"يدعم حزم npm ومستودعات Git والأدلة المحلية","installFailedTitle":"تعذّر تثبيت البلاقن","installFailureBuildBlocked":"تحتاج سكربتات تثبيت إحدى الاعتماديات إلى صلاحيتك قبل أن يتواصل التثبيت","installFailureBuildBlockedManual":"حجب pnpm سكربتات التثبيت؛ اسمح بها ضمن allowBuilds في pnpm-workspace.yaml ثم أعد المحاولة","installFailureDiskFull":"القرص ممتلئ؛ توقف التثبيت","installFailureGeneric":"حدث خطأ أثناء التثبيت؛ توضح التفاصيل سببه","installFailureIntegrity":"فشلت الحزمة التي تم تنزيلها في فحص السلامة","installFailureNetwork":"فشل اتصال الشبكة","installFailureNetworkAll":"تعذّر الوصول إلى أي سجل حزم (تمت المحاولة: {registries}). تحقق من إعدادات الشبكة أو الوسيط، أو غيّر سجل الحزم وأعد المحاولة.","installFailureNetworkHost":"تعذّر الوصول إلى {host}. لا يتم جلب عنوان GitHub أو رابط .tgz عبر سجل الحزم: يجب أن يصل إليه هذا الجهاز مباشرة أو عبر وسيط. إذا كان البلاقن منشورًا على npm أيضًا، فأدخل اسم حزمته بدلًا من ذلك.","installFailureNoMatchingVersion":"لا يوجد إصدار يطابق الطلب","installFailureNotFound":"لم يتم العثور على هذا البلاقن","installFailurePermission":"لا توجد صلاحية كتابة؛ لا يمكن تثبيت البلاقن","installFailurePnpmMissing":"لم يتم العثور على pnpm، لذا لا يمكن تثبيت أي شيء","installFailureTimeout":"انتهت مهلة التثبيت","installGitTemplateHint":"استبدل هذا بعنوان مستودع Git الفعلي.","installGithubFailedDescription":"جرّب مصدر تثبيت آخر.","installGithubFailedTitle":"تعذّر الوصول إلى GitHub","installGithubTimeoutTitle":"انتهت مهلة الاتصال بـGitHub","installGuideExampleLabel":"مثال: ","installGuideFill":"استخدام المثال","installGuideFillAria":"استخدام المثال {example}","installGuideHide":"إخفاء الدليل","installGuideIdExample":"dsh-plugin-whale-pet","installGuideIdHint":"اسم حزمة البلاقن هو اسم حزمة npm (مثل dsh-xxx أو @author/plugin): وهو الجزء الذي يلي dsh plugin add أو pnpm add في أمر التثبيت بملف README الخاص ببلاقن مجتمعي.","installGuideIdTitle":"أدخل اسم حزمة npm للبلاقن","installGuideSafety":"ثبّت فقط البلاقن التي تثق بها: فهي تعمل بصلاحياتك وقد تضر DeepSeek Harness أو تسرّب بياناتك.","installGuideToggle":"دليل التثبيت والأمثلة","installLocation":"يُثبَّت في {dir}","installPackageLabel":"اسم حزمة البلاقن","installPathTemplateHint":"استبدل هذا بالمسار الفعلي لدليل البلاقن المحلي لديك.","installProblemInstalled":"هذا البلاقن مثبَّت بالفعل. لترقيته، ألغِ تثبيته ثم ثبّته مرة أخرى","installProblemInvalid":"هذا ليس اسم حزمة أو عنوانًا قابلًا للتثبيت: {reason}","installProblemNetwork":"تعذّر الوصول إلى سجل حزم البلاقن؛ تحقق من الشبكة وحاول مرة أخرى","installProblemNetworkAll":"تعذّر الوصول إلى أي سجل حزم (تمت المحاولة: {registries})؛ تحقق من إعدادات الشبكة أو الوسيط، أو غيّر سجل الحزم","installProblemNotBundle":"لا تُعلن هذه الحزمة البرمجية عن أي حزمة، لذا لا يمكن تثبيتها كبلاقن: {reason}","installProblemNotFound":"لم يتم العثور على هذا البلاقن","installProblemNotPackage":"المسار غير موجود أو ليس حزمة بلاقن صالحة","installProblemShipped":"يأتي هذا البلاقن مع DSH؛ وتحديث DSH يحدّثه","installProblemUnknown":"تعذّر البحث عن البلاقن: {reason}","installReconcile":"التحقق من حالة التثبيت","installResultUnconfirmed":"لم يتم استلام نتيجة التثبيت. تحقق من حالة التثبيت. {reason}","installRetry":"إعادة المحاولة","installRun":"تثبيت","installSpecLabel":"اسم الحزمة أو عنوانها","installSpecPlaceholder":"مثل dsh-plugin-whale-pet","installStarting":"جارٍ تحضير التثبيت…","installSubjectGit":"مستودع Git","installSubjectPath":"دليل محلي","installSubjectTarball":"أرشيف tarball","installTitle":"إضافة بلاقن","installTryAnotherWay":"جرّب طريقة أخرى","installUnconfirmedTitle":"حالة التثبيت غير مؤكدة","installUnknownDescription":"لا يوجد لدى المضيف تثبيت نشط بمعرّف الطلب هذا. تحقق من قائمة البلاقن قبل المحاولة مرة أخرى.","installUnknownTitle":"نتيجة التثبيت غير متاحة","installUpgradeNotice":"لا تُحدَّث البلاقن المثبَّتة تلقائيًا بعد. لترقية بلاقن، ألغِ تثبيته وثبّت الإصدار الجديد. وستواصل الإصدارات اللاحقة تحسين تجربة الترقية.","installUseGithubMirror":"استخدام مرآة البر الرئيسي للصين","installVersion":"الإصدار {version}","installViewTask":"عرض التثبيت","installedTitle":"المثبَّتة","installingTitle":"جارٍ تثبيت البلاقن…","intro":"ثبّت البلاقن وشغّلها واضبطها","loading":"جارٍ قراءة البلاقن…","metadataError":"خطأ في بيانات الحزمة الوصفية: {error}","moreAction":"المزيد","moreTitle":"البلاقنات التجريبية","openDetail":"عرض {name}","overriddenNotice":"تم حفظ {name}، لكن إعدادًا ذا أولوية أعلى يتجاوزه، لذا فهو غير سارٍ","panel":"البلاقن","partOff":"متوقف","partToggle":"تشغيل المكوّن {name}","partsCountFailed":"{count} فاشلة","partsCountOff":"{count} متوقفة","partsCountRunning":"{count} قيد التشغيل","partsCountTotal":"الإجمالي {count}","partsEmpty":"لا تحتوي حزمة البلاقن هذه على أي مكوّنات.","partsFilter":"تصفية المكوّنات","partsFilterEmpty":"لا يوجد مكوّن مطابق.","partsLabel":"المكوّنات","reasonAmbiguousInstall":"لا يمكن تحديد الحزمة التي تم تثبيتها من تغيير الاعتماديات.","reasonBundleInUse":"لا يزال إعداد آخر يستخدم مكوّنات هذه الحزمة؛ أوقفها أولًا.","reasonIncompatibleInstall":"ثبّت إصدارًا من البلاقن متوافقًا مع DSH هذا.","reasonIncompatibleInstalled":"أزل تثبيته وثبّت إصدارًا متوافقًا مع DSH هذا.","reasonIncompatibleVersion":"{plugin} غير متوافق مع DSH {runtime} (يتطلب {peers})؛ قد يؤدي تشغيله إلى أعطال أو فقدان بيانات.","reasonIncompatibleVersionUnnamed":"هذا البلاقن غير متوافق مع إصدار DSH قيد التشغيل؛ قد يؤدي تشغيله إلى أعطال أو فقدان بيانات.","reasonInvalidSpec":"أدخل اسم حزمة أو عنوانًا صالحًا.","reasonLabel":"السبب","reasonManagementRequired":"تحتاجه إدارة البلاقن؛ فلا يمكن إيقافه أو إزالة تثبيته.","reasonNotBundle":"لا تُعلن هذه الحزمة البرمجية عن أي حزمة، لذا لا يمكن إدارتها كبلاقن.","reasonNotRemovable":"هذه الحزمة البرمجية ليست مملوكة للملف الشخصي، أو أن إدارة البلاقن تحتاجها.","reasonOperationError":"أبلغ المضيف عن خطأ.","reasonStaleApproval":"تغيّرت موافقات السكربتات المعلّقة؛ أعد التثبيت لتحديثها.","reasonStopProfile":"يعمل هذا الملف الشخصي دون HMR؛ أوقفه وأزل تثبيت الحزمة باستخدام dsh plugin.","reasonUnaddressable":"لا يمكن لرقعة الملف الشخصي استهداف هذا العنصر بشكل فريد.","reasonUnknownPlugin":"لا يوجد بلاقن بهذا الاسم.","refresh":"تحديث","refreshError":"فشل التحديث. حاول مرة أخرى.","registryCustom":"عنوان مخصص","registryCustomHint":"أدخل عنوان سجل npm داخلي أو خاص يبدأ بـ http:// أو https://. إذا كان يتطلب تسجيل دخول، فخزّن الاعتماد في ~/.npmrc على هذا الجهاز.","registryCustomInvalid":"أدخل عنوانًا يبدأ بـ http:// أو https://","registryCustomPlaceholder":"https://npm.example.com/","registryDefault":"السجل الافتراضي","registryLegend":"سجل npm الذي يُنزَّل منه البلاقن","registryListSeparator":"، ","registryNpmmirror":"مرآة الصين القارية","registryOfficial":"سجل npm الرسمي","registryToggle":"السجل","restartNotice":"يسري التغيير عند التشغيل التالي","retry":"إعادة المحاولة","rowPhaseActive":"قيد التشغيل","rowPhaseFailed":"مشكلة","rowPhaseLoading":"جارٍ التحميل","rowPhasePending":"في انتظار التبعيات","rowPhaseUnloading":"جارٍ إلغاء التحميل","rowStateIdle":"غير مشغّل","sentenceSeparator":" ","sourceBuiltIn":"مدمج","sourceNotInstalled":"غير مثبَّت","sourceSpec":"مصدر الكود","sourceTargetSpec":"المصدر المطابق لنسخة DSH هذه","sourceTargetVersion":"الإصدار المطابق لنسخة DSH هذه","sourceTitle":"المصدر","sourceVersion":"الإصدار الحالي","statusBeta":"تجريبي","statusMissingFiles":"الحزمة البرمجية غير متاحة","statusNotInstalled":"غير مثبَّت","statusProblem":"مشكلة","statusUpdateAvailable":"يتوفّر تحديث","terminalCollapse":"طيّ","terminalCollapseAria":"طيّ المخرجات","terminalCommandLine":"سطر الأوامر {n}","terminalCopied":"تم النسخ","terminalCopy":"نسخ","terminalDone":"تم","terminalExitCode":"رمز الخروج {code}","terminalExpand":"… {n} سطرًا إضافيًا","terminalExpandAria":"توسيع أسطر المخرجات المتبقية البالغ عددها {n}","terminalFailed":"فشل","terminalNoExitCode":"لا رمز خروج","terminalNoOutput":"لا مخرجات","terminalRunning":"قيد التشغيل","terminalSignal":"إشارة {signal}","title":"البلاقن","unavailable":"يعمل هذا النشر دون ملف شخصي قابل للإدارة، لذا لا يمكن تثبيت البلاقن أو تشغيلها هنا.","uninstall":"إزالة التثبيت","uninstallLabel":"إزالة تثبيت {name}","update":"تحديث","updateLabel":"تحديث {name}","versionTag":"v{version}"},"question":{"action.next":"التالي","action.skip":"تخطي","custom.placeholder":"اكتب إجابتك","error.incomplete":"يرجى إكمال هذا السؤال أولًا.","error.resubmit":"لم تصل الإجابة قبل متابعة العمل؛ أرسلها مرة أخرى.","error.unanswered":"يرجى اختيار أحد الخيارات أو إدخال إجابة مخصصة.","error.unavailable":"لا يمكن الإرسال الآن؛ حاول بعد قليل.","nav.cancel":"إغلاق كل الأسئلة","nav.close":"إغلاق اللوحة — أعد فتحها من استدعاء الأداة","nav.maximize":"توسيع بطاقة السؤال","nav.minimize":"طيّ بطاقة السؤال","nav.next":"السؤال التالي","nav.prev":"السؤال السابق","option.recommended":"موصى به","plan.approve":"موافقة","plan.decline":"رفض","plan.discuss":"طلب تغييرات","plan.header":"مراجعة الخطة","reply.answerLabel":"الإجابة: ","reply.close":"إغلاق تفاصيل السؤال","reply.label":"الرد على الأسئلة المعلّقة السابقة","reply.open":"فتح تفاصيل السؤال","reply.skipped":"تم التخطي","review.skipped":"تم تخطي هذا السؤال.","review.status":"تمت الإجابة","status.sent":"تم إرسال الرد؛ تعذّر إغلاق اللوحة.","wait.continued":"استمر العمل — لا يزال بإمكانك الإجابة","wait.countdown":"المتابعة بعد {seconds} ثانية","wait.held":"في انتظار إجابتك","wait.paused":"متوقف مؤقتًا · تبقّى {seconds} ثانية","wait.takeTime":"خذ وقتك"},"reference":{"candidate.noCwd":"(لا دليل عمل)","crumb.root":"مساحة العمل","section.files":"الملفات والمجلدات","section.sessions":"الجلسات","section.subagents":"الوكلاء الفرعيون","time.days":"{n} يوم","time.hours":"{n} ساعة","time.minutes":"{n} دقيقة","time.months":"{n} شهر","time.now":"الآن","time.years":"{n} سنة"},"schedule.catalog":{"card.deleted":"محذوفة","card.open":"فتح","card.openLabel":"فتح تفاصيل المهمة: {title}","cron.day.both":"اليوم {days} من كل شهر أو {weekdays}{months}","cron.day.bothStarred":"اليوم {days} من كل شهر و{weekdays}{months}","cron.day.every":"كل يوم{months}","cron.day.monthDays":"اليوم {days} من كل شهر{months}","cron.day.weekdays":"{weekdays}{months}","cron.hours.list":"{hours}","cron.hours.range":"{from}–{to}","cron.list.join":"، ","cron.months":" في {months}","cron.part.join":" ","cron.time.at":"عند {times}","cron.time.everyHour":"كل ساعة","cron.time.everyMinute":"كل دقيقة","cron.time.everyMinutes":"كل {step} دقيقة","cron.time.everyNHours":"كل {count} ساعة","cron.time.hourlyAt":"كل ساعة عند الدقيقة {minutes}","cron.time.hoursAt":"عند الدقيقة {minutes} من الساعات {hours}","cron.time.hoursEveryMinute":"كل دقيقة خلال الساعات {hours}","cron.time.hoursEveryMinutes":"كل {step} دقيقة خلال الساعات {hours}","cron.time.joinedEveryHour":"كل ساعة","cron.time.joinedEveryMinute":"كل دقيقة","cron.time.joinedEveryMinutes":"كل {step} دقيقة","cron.time.joinedEveryNHours":"كل {count} ساعة","cron.time.joinedHourlyAt":"كل ساعة عند الدقيقة {minutes}","cron.weekday.name":"{weekday}","cron.weekday.range":"{from}–{to}","cronForm.atMinute":"عند الدقيقة","cronForm.daily":"كل يوم","cronForm.dateOption":"اليوم {day}","cronForm.dates":"في تواريخ محددة","cronForm.frequency":"التكرار","cronForm.minuteDecrease":"تقليل الدقيقة","cronForm.minuteIncrease":"زيادة الدقيقة","cronForm.monthly":"شهريًا","cronForm.weekly":"أسبوعيًا","delete.action":"حذف المهمة","delete.cancel":"إلغاء","delete.close":"إغلاق تأكيد الحذف","delete.confirm":"تأكيد الحذف","delete.description":"يوقف هذا تشغيل المهمة ويحذفها مع سجلات التسليم المحفوظة. تبقى الجلسة الأصلية ورسائلها؛ ولا تُسحب الرسائل الموجودة في قائمة الانتظار.","delete.label":"حذف التذكير: {title}","delete.pending":"جارٍ الحذف…","delete.title":"حذف هذه المهمة؟","delivery.collapse":"طيّ","delivery.cursorError":"تم تحديث السجلات.","delivery.empty":"لا يوجد سجل تسليم متاح","delivery.error":"تعذّر تحميل سجلات التسليم.","delivery.expand":"توسيع","delivery.label":"سجل تسليم محفوظ","delivery.loadMore":"تحميل المزيد","delivery.loading":"جارٍ تحميل سجلات التسليم…","delivery.notFound":"لم تعد هذه المهمة متاحة.","delivery.pruned":"تم مسح سجلات التسليم الأقدم","delivery.refresh":"تحديث","delivery.retention":"قواعد الاحتفاظ","delivery.retentionBounds":"تحتفظ كل مهمة بما يصل إلى {records} من سجلات التسليم خلال آخر {days} يومًا.","delivery.retentionExplanation":"عند حفظ سجل جديد، تُمسح تلقائيًا السجلات الأقدم التي تتجاوز هذه الحدود. ولا يؤدي مسح السجلات إلى إيقاف المهمة.","delivery.retry":"إعادة المحاولة","detail.close":"إغلاق التفاصيل","detail.frequency":"التكرار","detail.id":"معرّف المهمة","detail.instruction":"تعليمات مهمة الأتمتة","detail.label":"تفاصيل المهمة","detail.missing":"المهمة غير متاحة. ربما تم حذفها.","detail.more":"إجراءات مهمة الأتمتة","detail.name":"اسم مهمة الأتمتة","detail.next":"موعد التشغيل التالي","detail.nextRun":"التشغيل التالي","detail.openSession":"الجلسة المرتبطة: فتح الجلسة الأصلية","detail.openSessionTitle":"الجلسة المرتبطة {title}: فتح الجلسة الأصلية","detail.records":"السجلات","detail.rule":"القواعد","detail.session":"الجلسة المرتبطة","detail.sessionArchived":"الجلسة الأصلية مؤرشفة.","detail.sessionLoading":"جارٍ تحميل معلومات الجلسة الأصلية.","detail.sessionUnavailable":"الجلسة الأصلية غير متاحة.","detail.status":"الحالة","detail.tabs":"عروض تفاصيل المهمة","empty.action":"مهمة أتمتة جديدة","frequency.cron":"Cron {expression} ({timeZone})","frequency.cronLocal":"Cron {expression}","frequency.cronRule":"{rule} ({timeZone})","frequency.daily":"يوميًا عند {time} ({timeZone})","frequency.dailyLocal":"يوميًا عند {time}","frequency.every":"كل {value} {unit}","frequency.once":"مرة واحدة","frequency.weekday.1":"الاثنين","frequency.weekday.2":"الثلاثاء","frequency.weekday.3":"الأربعاء","frequency.weekday.4":"الخميس","frequency.weekday.5":"الجمعة","frequency.weekday.6":"السبت","frequency.weekday.7":"الأحد","frequency.weekday.join":"، ","frequency.weekly":"أسبوعيًا يوم {weekdays} عند {time} ({timeZone})","frequency.weeklyLocal":"أسبوعيًا يوم {weekdays} عند {time}","hover.more":"{count} إضافية","list.aria":"التذكيرات النشطة","list.empty":"لا توجد مهام بعد. تظهر هنا المهام التي تُنشأ في جلساتك.","list.emptyInactive":"لا توجد مهام أتمتة غير نشطة","list.error":"تعذّر تحميل المهام.","list.label":"دليل المهام","list.loading":"جارٍ تحميل المهام…","list.nextPrefix":"موعد التشغيل التالي: ","list.nextRun":"التشغيل التالي","list.noMatches":"لا مهام مطابقة","list.open":"فتح تفاصيل التذكير: {title}","list.retry":"إعادة المحاولة","mark.aria":"{count} مهمة مجدولة","new.action":"جديد","panel":"مهام الأتمتة","relative.future":"بعد {value} {unit}","relative.now":"حان الموعد","relative.overdue":"متأخر بـ{value} {unit}","rule.cancel":"إلغاء","rule.cron":"مخصص","rule.cronInvalid":"أدخل تعبير cron من خمسة حقول، مثل 0 9 * * 1-5.","rule.cronLabel":"تعبير Cron","rule.daily":"كل يوم","rule.error.conflict":"تغيّرت هذه المهمة قبل حفظ التحديث. يعرض الصف القاعدة المحفوظة؛ أعد المحاولة.","rule.error.notFound":"لم تعد هذه المهمة متاحة.","rule.error.unknown":"تعذّر تأكيد تحديث القاعدة. يعرض الصف القاعدة المحفوظة.","rule.everyHours":"كل N ساعات","rule.everyMinutes":"كل N دقائق","rule.everySeconds":"كل N ثوانٍ","rule.invalidPrompt":"أدخل تعليمات المهمة.","rule.invalidTitle":"أدخل اسم مهمة لا يتجاوز 120 حرفًا.","rule.once":"مرة واحدة","rule.repeat":"التكرار","rule.save":"حفظ التغييرات","rule.saving":"جارٍ الحفظ…","rule.title":"وقت التشغيل","rule.unsaved":"تغييرات غير محفوظة","rule.weekday":"يوم الأسبوع","rule.weekdayOption":"يوم الأسبوع {weekday}","rule.weekdays":"الاثنين إلى الجمعة","rule.weekly":"أسبوعيًا","rule.zone.system":" (النظام)","search.clear":"مسح البحث","search.label":"بحث في المهام","search.placeholder":"بحث في مهام الأتمتة","status.active":"مشغّلة","status.inactive":"غير نشطة","statusFilter.all":"الكل","statusFilter.label":"حالة المهمة","time.locale":"ar","time.utcPrefix":"UTC","timing.conflict":"تغيّرت هذه المهمة أثناء التعديل. تم الاحتفاظ بمسودتك. ألغِ ثم أعد الفتح بعد التحديث لتعديل أحدث قاعدة.","timing.date":"التاريخ","timing.error":"تعذّر تأكيد تحديث التوقيت. تم الاحتفاظ بمسودتك. تحقق من المهمة قبل إعادة المحاولة.","timing.hour":"الساعة","timing.inactive":"المهام غير النشطة للقراءة فقط. لا يمكن تعديل توقيتها.","timing.interval":"التكرار كل","timing.intervalDecrease":"تقليل الفاصل","timing.intervalHint.hour":"ساعة واحدة على الأقل. يُحسب الفاصل من إنشاء المهمة أو آخر تغيير للقاعدة ولا يعتمد على المناطق الزمنية.","timing.intervalHint.minute":"دقيقة واحدة على الأقل. يُحسب الفاصل من إنشاء المهمة أو آخر تغيير للقاعدة ولا يعتمد على المناطق الزمنية.","timing.intervalHint.second":"60 ثانية على الأقل. يُحسب الفاصل من إنشاء المهمة أو آخر تغيير للقاعدة ولا يعتمد على المناطق الزمنية.","timing.intervalIncrease":"زيادة الفاصل","timing.invalid":"أدخل تاريخًا ووقتًا صالحين، أو تحقق من حقول التوقيت.","timing.invalidInterval":"أدخل فاصلًا لا يقل عن دقيقة واحدة.","timing.invalidInterval.hour":"أدخل فاصلًا لا يقل عن ساعة واحدة.","timing.invalidInterval.minute":"أدخل فاصلًا لا يقل عن دقيقة واحدة.","timing.invalidInterval.second":"أدخل فاصلًا لا يقل عن 60 ثانية.","timing.invalidZone":"أدخل منطقة زمنية IANA صالحة، مثل Asia/Shanghai.","timing.minute":"الدقيقة","timing.nextMonth":"الشهر التالي","timing.notFound":"لم تعد هذه المهمة متاحة. تم الاحتفاظ بمسودتك؛ ألغِ لإغلاق المحرر.","timing.notFuture":"اختر تاريخًا ووقتًا في المستقبل.","timing.prevMonth":"الشهر السابق","timing.second":"الثانية","timing.subagentSession":"تنتمي هذه الجلسة إلى وكيل فرعي، وهو لا يتلقى التذكيرات المُسلَّمة.","timing.time":"الوقت","timing.unit.hour":"ساعات","timing.unit.minute":"دقائق","timing.unit.second":"ثوانٍ","timing.zone":"المنطقة الزمنية","timing.zoneNoResults":"لا مناطق زمنية مطابقة","timing.zoneNoStored":"المهمة ذات التنفيذ مرة واحدة تخزّن لحظة الاستهداف فقط، لا منطقة زمنية. يُفسَّر التاريخ والوقت حسب المنطقة الزمنية المحددة.","timing.zoneSearch":"بحث حسب إزاحة UTC أو معرّف IANA أو المدينة","title":"مهام الأتمتة","toast.deleteFailed":"تعذّر حذف المهمة.","toast.deleted":"تم حذف المهمة.","tool.invoked":"تم استدعاء {name}","trigger.label":"التذكيرات","trigger.one":"{count} تذكير","trigger.other":"{count} تذكيرات","unit.day.one":"يوم","unit.day.other":"أيام","unit.hour.one":"ساعة","unit.hour.other":"ساعات","unit.minute.one":"دقيقة","unit.minute.other":"دقائق","unit.second.one":"ثانية","unit.second.other":"ثوانٍ"},"schedule.manager":{"card.deleted":"محذوفة","card.open":"فتح","card.openLabel":"فتح تفاصيل المهمة: {title}","cron.day.both":"اليوم {days} من كل شهر أو {weekdays}{months}","cron.day.bothStarred":"اليوم {days} من كل شهر و{weekdays}{months}","cron.day.every":"كل يوم{months}","cron.day.monthDays":"اليوم {days} من كل شهر{months}","cron.day.weekdays":"{weekdays}{months}","cron.hours.list":"{hours}","cron.hours.range":"{from}–{to}","cron.list.join":"، ","cron.months":" في {months}","cron.part.join":" ","cron.time.at":"عند {times}","cron.time.everyHour":"كل ساعة","cron.time.everyMinute":"كل دقيقة","cron.time.everyMinutes":"كل {step} دقيقة","cron.time.everyNHours":"كل {count} ساعة","cron.time.hourlyAt":"كل ساعة عند الدقيقة {minutes}","cron.time.hoursAt":"عند الدقيقة {minutes} من الساعات {hours}","cron.time.hoursEveryMinute":"كل دقيقة خلال الساعات {hours}","cron.time.hoursEveryMinutes":"كل {step} دقيقة خلال الساعات {hours}","cron.time.joinedEveryHour":"كل ساعة","cron.time.joinedEveryMinute":"كل دقيقة","cron.time.joinedEveryMinutes":"كل {step} دقيقة","cron.time.joinedEveryNHours":"كل {count} ساعة","cron.time.joinedHourlyAt":"كل ساعة عند الدقيقة {minutes}","cron.weekday.name":"{weekday}","cron.weekday.range":"{from}–{to}","cronForm.atMinute":"عند الدقيقة","cronForm.daily":"كل يوم","cronForm.dateOption":"اليوم {day}","cronForm.dates":"في تواريخ محددة","cronForm.frequency":"التكرار","cronForm.minuteDecrease":"تقليل الدقيقة","cronForm.minuteIncrease":"زيادة الدقيقة","cronForm.monthly":"شهريًا","cronForm.weekly":"أسبوعيًا","delete.action":"حذف المهمة","delete.cancel":"إلغاء","delete.close":"إغلاق تأكيد الحذف","delete.confirm":"تأكيد الحذف","delete.description":"يوقف هذا تشغيل المهمة ويحذفها مع سجلات التسليم المحفوظة. تبقى الجلسة الأصلية ورسائلها؛ ولا تُسحب الرسائل الموجودة في قائمة الانتظار.","delete.label":"حذف التذكير: {title}","delete.pending":"جارٍ الحذف…","delete.title":"حذف هذه المهمة؟","delivery.collapse":"طيّ","delivery.cursorError":"تم تحديث السجلات.","delivery.empty":"لا يوجد سجل تسليم متاح","delivery.error":"تعذّر تحميل سجلات التسليم.","delivery.expand":"توسيع","delivery.label":"سجل تسليم محفوظ","delivery.loadMore":"تحميل المزيد","delivery.loading":"جارٍ تحميل سجلات التسليم…","delivery.notFound":"لم تعد هذه المهمة متاحة.","delivery.pruned":"تم مسح سجلات التسليم الأقدم","delivery.refresh":"تحديث","delivery.retention":"قواعد الاحتفاظ","delivery.retentionBounds":"تحتفظ كل مهمة بما يصل إلى {records} من سجلات التسليم خلال آخر {days} يومًا.","delivery.retentionExplanation":"عند حفظ سجل جديد، تُمسح تلقائيًا السجلات الأقدم التي تتجاوز هذه الحدود. ولا يؤدي مسح السجلات إلى إيقاف المهمة.","delivery.retry":"إعادة المحاولة","detail.close":"إغلاق التفاصيل","detail.frequency":"التكرار","detail.id":"معرّف المهمة","detail.instruction":"تعليمات مهمة الأتمتة","detail.label":"تفاصيل المهمة","detail.missing":"المهمة غير متاحة. ربما تم حذفها.","detail.more":"إجراءات مهمة الأتمتة","detail.name":"اسم مهمة الأتمتة","detail.next":"موعد التشغيل التالي","detail.nextRun":"التشغيل التالي","detail.openSession":"الجلسة المرتبطة: فتح الجلسة الأصلية","detail.openSessionTitle":"الجلسة المرتبطة {title}: فتح الجلسة الأصلية","detail.records":"السجلات","detail.rule":"القواعد","detail.session":"الجلسة المرتبطة","detail.sessionArchived":"الجلسة الأصلية مؤرشفة.","detail.sessionLoading":"جارٍ تحميل معلومات الجلسة الأصلية.","detail.sessionUnavailable":"الجلسة الأصلية غير متاحة.","detail.status":"الحالة","detail.tabs":"عروض تفاصيل المهمة","empty.action":"مهمة أتمتة جديدة","frequency.cron":"Cron {expression} ({timeZone})","frequency.cronLocal":"Cron {expression}","frequency.cronRule":"{rule} ({timeZone})","frequency.daily":"يوميًا عند {time} ({timeZone})","frequency.dailyLocal":"يوميًا عند {time}","frequency.every":"كل {value} {unit}","frequency.once":"مرة واحدة","frequency.weekday.1":"الاثنين","frequency.weekday.2":"الثلاثاء","frequency.weekday.3":"الأربعاء","frequency.weekday.4":"الخميس","frequency.weekday.5":"الجمعة","frequency.weekday.6":"السبت","frequency.weekday.7":"الأحد","frequency.weekday.join":"، ","frequency.weekly":"أسبوعيًا يوم {weekdays} عند {time} ({timeZone})","frequency.weeklyLocal":"أسبوعيًا يوم {weekdays} عند {time}","hover.more":"{count} إضافية","list.aria":"التذكيرات النشطة","list.empty":"لا توجد مهام بعد. تظهر هنا المهام التي تُنشأ في جلساتك.","list.emptyInactive":"لا توجد مهام أتمتة غير نشطة","list.error":"تعذّر تحميل المهام.","list.label":"دليل المهام","list.loading":"جارٍ تحميل المهام…","list.nextPrefix":"موعد التشغيل التالي: ","list.nextRun":"التشغيل التالي","list.noMatches":"لا مهام مطابقة","list.open":"فتح تفاصيل التذكير: {title}","list.retry":"إعادة المحاولة","mark.aria":"{count} مهمة مجدولة","new.action":"جديد","panel":"مهام الأتمتة","relative.future":"بعد {value} {unit}","relative.now":"حان الموعد","relative.overdue":"متأخر بـ{value} {unit}","rule.cancel":"إلغاء","rule.cron":"مخصص","rule.cronInvalid":"أدخل تعبير cron من خمسة حقول، مثل 0 9 * * 1-5.","rule.cronLabel":"تعبير Cron","rule.daily":"كل يوم","rule.error.conflict":"تغيّرت هذه المهمة قبل حفظ التحديث. يعرض الصف القاعدة المحفوظة؛ أعد المحاولة.","rule.error.notFound":"لم تعد هذه المهمة متاحة.","rule.error.unknown":"تعذّر تأكيد تحديث القاعدة. يعرض الصف القاعدة المحفوظة.","rule.everyHours":"كل N ساعات","rule.everyMinutes":"كل N دقائق","rule.everySeconds":"كل N ثوانٍ","rule.invalidPrompt":"أدخل تعليمات المهمة.","rule.invalidTitle":"أدخل اسم مهمة لا يتجاوز 120 حرفًا.","rule.once":"مرة واحدة","rule.repeat":"التكرار","rule.save":"حفظ التغييرات","rule.saving":"جارٍ الحفظ…","rule.title":"وقت التشغيل","rule.unsaved":"تغييرات غير محفوظة","rule.weekday":"يوم الأسبوع","rule.weekdayOption":"يوم الأسبوع {weekday}","rule.weekdays":"الاثنين إلى الجمعة","rule.weekly":"أسبوعيًا","rule.zone.system":" (النظام)","search.clear":"مسح البحث","search.label":"بحث في المهام","search.placeholder":"بحث في مهام الأتمتة","status.active":"مشغّلة","status.inactive":"غير نشطة","statusFilter.all":"الكل","statusFilter.label":"حالة المهمة","time.locale":"ar","time.utcPrefix":"UTC","timing.conflict":"تغيّرت هذه المهمة أثناء التعديل. تم الاحتفاظ بمسودتك. ألغِ ثم أعد الفتح بعد التحديث لتعديل أحدث قاعدة.","timing.date":"التاريخ","timing.error":"تعذّر تأكيد تحديث التوقيت. تم الاحتفاظ بمسودتك. تحقق من المهمة قبل إعادة المحاولة.","timing.hour":"الساعة","timing.inactive":"المهام غير النشطة للقراءة فقط. لا يمكن تعديل توقيتها.","timing.interval":"التكرار كل","timing.intervalDecrease":"تقليل الفاصل","timing.intervalHint.hour":"ساعة واحدة على الأقل. يُحسب الفاصل من إنشاء المهمة أو آخر تغيير للقاعدة ولا يعتمد على المناطق الزمنية.","timing.intervalHint.minute":"دقيقة واحدة على الأقل. يُحسب الفاصل من إنشاء المهمة أو آخر تغيير للقاعدة ولا يعتمد على المناطق الزمنية.","timing.intervalHint.second":"60 ثانية على الأقل. يُحسب الفاصل من إنشاء المهمة أو آخر تغيير للقاعدة ولا يعتمد على المناطق الزمنية.","timing.intervalIncrease":"زيادة الفاصل","timing.invalid":"أدخل تاريخًا ووقتًا صالحين، أو تحقق من حقول التوقيت.","timing.invalidInterval":"أدخل فاصلًا لا يقل عن دقيقة واحدة.","timing.invalidInterval.hour":"أدخل فاصلًا لا يقل عن ساعة واحدة.","timing.invalidInterval.minute":"أدخل فاصلًا لا يقل عن دقيقة واحدة.","timing.invalidInterval.second":"أدخل فاصلًا لا يقل عن 60 ثانية.","timing.invalidZone":"أدخل منطقة زمنية IANA صالحة، مثل Asia/Shanghai.","timing.minute":"الدقيقة","timing.nextMonth":"الشهر التالي","timing.notFound":"لم تعد هذه المهمة متاحة. تم الاحتفاظ بمسودتك؛ ألغِ لإغلاق المحرر.","timing.notFuture":"اختر تاريخًا ووقتًا في المستقبل.","timing.prevMonth":"الشهر السابق","timing.second":"الثانية","timing.subagentSession":"تنتمي هذه الجلسة إلى وكيل فرعي، وهو لا يتلقى التذكيرات المُسلَّمة.","timing.time":"الوقت","timing.unit.hour":"ساعات","timing.unit.minute":"دقائق","timing.unit.second":"ثوانٍ","timing.zone":"المنطقة الزمنية","timing.zoneNoResults":"لا مناطق زمنية مطابقة","timing.zoneNoStored":"المهمة ذات التنفيذ مرة واحدة تخزّن لحظة الاستهداف فقط، لا منطقة زمنية. يُفسَّر التاريخ والوقت حسب المنطقة الزمنية المحددة.","timing.zoneSearch":"بحث حسب إزاحة UTC أو معرّف IANA أو المدينة","title":"مهام الأتمتة","toast.deleteFailed":"تعذّر حذف المهمة.","toast.deleted":"تم حذف المهمة.","tool.invoked":"تم استدعاء {name}","trigger.label":"التذكيرات","trigger.one":"{count} تذكير","trigger.other":"{count} تذكيرات","unit.day.one":"يوم","unit.day.other":"أيام","unit.hour.one":"ساعة","unit.hour.other":"ساعات","unit.minute.one":"دقيقة","unit.minute.other":"دقائق","unit.second.one":"ثانية","unit.second.other":"ثوانٍ"},"session-inspector":{"filter.apply":"تطبيق التصفية","filter.cancel":"إلغاء","filter.candidates":"اقتراحات الأنواع","filter.clear":"مسح","filter.context":"السياق الأعلى لسجل مطابق","filter.failed":"تعذّر تحميل اقتراحات الأنواع.","filter.help":"يحتوي على مطابقة (*keyword*). يؤكد Enter؛ ويلغي Esc.","filter.input":"اكتب كلمة مفتاحية","filter.loading":"جارٍ البحث عن اقتراحات…","filter.noCandidates":"لا اقتراحات. لا يزال بإمكانك تطبيق هذه الكلمة المفتاحية.","filter.placeholder":"اكتب جزءًا من النص، مثل delta","filter.title":"تصفية الأنواع","object.absent":"[خانة فارغة]","object.accessor":"[Getter / Setter، غير مُقيَّم]","object.empty":"فارغ","object.group":"مجموعة","object.groupData":"بيانات المجموعة","object.more":"عرض المزيد","object.navigation":"تنقل في البيانات الخام","object.node":"عقدة","object.nodeData":"بيانات العقدة","object.properties":"خصائص أخرى","object.step":"خطوة","object.stepData":"بيانات الخطوة","object.turn":"دورة","object.turnData":"بيانات الدورة","picker.cancel":"إلغاء الالتقاط (Esc)","picker.instructions":"مرّر المؤشر في الدردشة الرئيسية للمعاينة، ثم انقر للاختيار. يلغي Esc.","picker.noChat":"افتح هذه الجلسة في الدردشة الرئيسية قبل الالتقاط.","picker.noMatch":"لا يوجد سجل مطابق في هذا الجدول. التقط عنصرًا آخر أو اضغط Esc للإلغاء.","picker.pick":"التقاط عنصر في عرض الدردشة","tab.description":"تحليل السجلات الخام ورسائل الدردشة المجمّعة للجلسة الحالية في الشريط الجانبي.","tab.title":"سجل الجلسة","table.close":"إغلاق","table.collapse":"طيّ العناصر الفرعية","table.data":"البيانات","table.empty":"لا سجلات","table.expand":"توسيع العناصر الفرعية","table.id":"الفهرس","table.latest":"متابعة الأحدث","table.loading":"جارٍ التحميل…","table.location":"T/S","table.older":"تحميل الأقدم","table.raw":"بيانات خام","table.rawError":"تعذّر تسلسل هذا السجل. اختر سجلًا آخر للمتابعة.","table.removed":"تمت إزالة هذا السجل أو اكتماله. اختر سجلًا حاليًا.","table.resizeDetails":"تغيير حجم لوحة البيانات الخام","table.time":"الوقت (UTC)","table.type":"النوع","view.chatNode":"مجموعة الدردشة","view.presentation":"العرض","view.sessionLog":"السجل الخام"},"session-log-download":{"dialog.close":"إغلاق","dialog.commandFailed":"تعذّر بدء تصدير الجلسة.","dialog.errorTitle":"فشل تصدير الجلسة","dialog.preparingDescription":"جارٍ تحضير ملف ZIP يضم هذه الجلسة وجلساتها الفرعية ومرفقاتها.","dialog.preparingTitle":"جارٍ تصدير الجلسة","dialog.successDescription":"يقوم المتصفح بتنزيل ملف ZIP للجلسة.","dialog.successTitle":"بدأ تنزيل الجلسة","header.more":"إجراءات إضافية","menu.download":"تنزيل سجل الجلسة","menu.feedback":"ملاحظات"},"settings":{"close":"إغلاق","connection.connected":"متصل","connection.connecting":"جارٍ إعادة الاتصال","connection.error":"غير متصل","connection.reconnect":"غير متصل، أعد الاتصال الآن","connection.restart":"جارٍ إعادة الاتصال، أعد الاتصال الآن","desktop.update.available":"تحديث","desktop.update.checkFailed":"تعذّر التحقق من التحديثات. حاول مرة أخرى لاحقًا.","desktop.update.checkNetworkFailed":"تعذّر التحقق من التحديثات. تحقق من اتصالك وحاول مرة أخرى.","desktop.update.checking":"جارٍ التحقق من التحديثات…","desktop.update.downloadDetail":"جارٍ تنزيل التحديث: {percent}%\nالإصدار الهدف: {version}","desktop.update.downloadFailed":"تعذّر تنزيل التحديث. حاول مرة أخرى.","desktop.update.downloadNetworkFailed":"تعذّر تنزيل التحديث. تحقق من اتصالك وحاول مرة أخرى.","desktop.update.installFailed":"تعذّر تثبيت التحديث. حاول مرة أخرى لاحقًا.","desktop.update.installNetworkFailed":"تعذّر تثبيت التحديث. تحقق من اتصالك وحاول مرة أخرى.","desktop.update.installing":"جارٍ التحضير لإعادة التشغيل…","desktop.update.progress":"{percent}%","desktop.update.ready":"تثبيت وإعادة التشغيل","desktop.update.retry":"إعادة محاولة التحديث","desktop.update.stopFailed":"تعذّر إيقاف المهام بأمان. لم يتم تثبيت التحديث. حاول مرة أخرى لاحقًا.","desktop.update.tasksChanged":"بدأت مهام جديدة. أكّد مرة أخرى لإيقاف المهام والتحديث.","desktop.update.tasksUnavailable":"حالة المهام غير متاحة. حاول التحديث مرة أخرى عندما تصبح مساحة العمل جاهزة.","desktop.update.verifying":"جارٍ التحقق من ملفات التحديث…","desktop.update.versionDetail":"{label}: {version}","developerTools.description":"يعرض المسار وفروق الكود وكل الإعدادات المسبقة للوكيل","developerTools.error":"تعذّر الحفظ. حاول مرة أخرى.","developerTools.title":"عرض واجهة البرمجة","general.currentVersion":"الإصدار الحالي: {version}","general.nav":"عام","openDocument":"فتح ملف الإعدادات","openDocument.error":"تعذّر فتح ملف الإعدادات","shortcut.open":"فتح الإعدادات","title":"الإعدادات","trigger":"الإعدادات"},"settings.account":{"accountInfo":"مزيد من معلومات الحساب","addApiKey":"إضافة مفتاح API","backToHarness":"العودة إلى DeepSeek Harness","balance":"الرصيد المشحون","balanceSignedOut":"سجّل الدخول للعرض","balanceUnavailable":"العرض على المنصة","bonusBalance":"الرصيد الممنوح","bonusNoticeTitle":"أُضيفت المكافأة","browserDescription":"، ثم افتحه في المتصفح لإكمال تسجيل الدخول.","browserPrompt":"لم تُفتح الصفحة تلقائيًا؟ ","browserTitle":"في انتظار تسجيل الدخول","cancel":"إلغاء","close":"إغلاق","completing":"جارٍ إكمال تسجيل الدخول…","contactUs":"ملاحظات","copiedLink":"تم نسخ الرابط","copyFailed":"فشل النسخ","copyLink":"نسخ رابط تسجيل الدخول","expired":"انتهت مدة تسجيل الدخول. أعد المحاولة.","failed":"تعذّر إكمال العملية. أعد المحاولة.","failureTitle":"تعذّر تسجيل الدخول","initializing":"جارٍ بدء تسجيل الدخول…","loading":"جارٍ التحميل…","loginDescription":"سجّل الدخول إلى حساب DeepSeek أو أضف مفتاح API للبدء. تُخزَّن مشاريعك وملفاتك محليًا.","loginTitle":"ابدأ الآن","menu":"قائمة الحساب","modelSignInRequired":"الموديل غير متاح. سجّل الدخول ثم أعد المحاولة.","more":"المزيد","nav":"الحساب","noResponse":"حدث خطأ ما. تحقق من اتصال الشبكة ثم أعد المحاولة.","onboardingArtworkLocale":"en","onboardingBack":"رجوع","onboardingBrand":"DeepSeek Harness","onboardingCompact":"النتائج فقط","onboardingCompactDescription":"اعرض النتائج فقط في واجهة بسيطة وواضحة","onboardingContinue":"متابعة","onboardingCredit":"إضافة رصيد","onboardingCreditDescription":"يخصم DeepSeek Harness رصيدًا بناءً على التوكنات التي تستخدمها الموديلات والأدوات. أضف رصيدًا مسبقًا لتبقى مهامك قيد التنفيذ دون انقطاع. ولا يُستخدم رصيدك إلا أثناء عمل الوكيل على مهمة.","onboardingDetailed":"كل التفاصيل","onboardingDetailedDescription":"اعرض العملية كاملة لتبسيط تصحيح الأخطاء وحل المشكلات","onboardingDevelopment":"البرمجة والتطوير","onboardingDevelopmentDescription":"عدّل الكود، وصحّح الأخطاء، وشغّل الأوامر، وأدر ملفات المشروع، والمزيد","onboardingEnter":"فتح التطبيق","onboardingFundedTopUp":"إضافة رصيد","onboardingGoTopUp":"إضافة رصيد","onboardingIntroduction":"يعمل DeepSeek Harness في مجلد محلي ويستخدم أدوات لقراءة الملفات وكتابتها على حاسوبك. ويمكنه مساعدتك في البحث عن المعلومات وتنظيمها، وإنشاء المستندات وجداول البيانات، وكتابة الكود، وحل المشكلات، والمزيد.","onboardingKeepSetting":"متابعة الإعداد","onboardingLater":"التالي","onboardingLoading":"جارٍ تحميل الإعدادات…","onboardingNoCreditDescription":"لا يمكن لـ DeepSeek Harness بدء مهام جديدة دون رصيد. ويمكنك إضافته لاحقًا من الإعدادات → الحساب.","onboardingNoCreditTitle":"هل تريد تخطي إضافة الرصيد؟","onboardingOffice":"أعمال المكتب والإبداع","onboardingOfficeDescription":"حرّر المستندات، ونظّم البيانات، وأنشئ العروض التقديمية، والمزيد","onboardingProcess":"ما مقدار التفاصيل التي تريد عرضها؟","onboardingProcessDescription":"يغيّر هذا طريقة عرض التقدّم فقط، لا ما يستطيع DeepSeek Harness فعله.","onboardingPurposeDescription":"سنضبط الواجهة والأدوات لتناسب طريقة عملك.","onboardingPurposePrefix":"ما الذي تريد","onboardingPurposeSuffix":"المساعدة فيه؟","onboardingRetry":"إعادة المحاولة","onboardingSaveFailed":"تعذّر حفظ الإعدادات. أعد المحاولة.","onboardingSkip":"تخطي","onboardingSkipDescription":"يمكنك تغيير طريقة عرض التقدّم والأداء والاستخدام، أو تشغيل أدوات البرمجة، في أي وقت من الإعدادات → عام.","onboardingSkipTitle":"هل تريد تخطي الإعداد؟","onboardingStandard":"التفاصيل الأساسية","onboardingStandardDescription":"التركيز على النتائج مع عرض أهم الخطوات والإجراءات فقط","onboardingStart":"ابدأ الآن","onboardingTopUp":"إضافة رصيد","onboardingUnderstood":"فهمت","onboardingWelcome":"مرحبًا بك في","open":"فتح المتصفح","platformFailed":"تعذّر إكمال العملية. أعد المحاولة.","platformRetry":"إعادة المحاولة","profileUnavailable":"تفاصيل الحساب غير متاحة بعد.","quotaDescription":"لا يستطيع DeepSeek Harness بدء مهمة جديدة بهذا الحساب عند عدم توفر رصيد. هل تريد إضافة رصيد؟ ويمكنك أيضًا إضافته لاحقًا من الإعدادات → الحساب.","quotaTitle":"لا يوجد رصيد متاح","quotaTopUp":"إضافة رصيد","retry":"تسجيل الدخول مجددًا","sessionExpired":"لقد سجّلت الخروج من حسابك، يرجى تسجيل الدخول مجددًا.","settings":"الإعدادات","settingsSignedOutDescription":"سجّل الدخول إلى DeepSeek Harness للحصول على مفتاح API المخصص لك","settingsSignedOutTitle":"أنت غير مسجّل الدخول إلى DeepSeek Harness","signIn":"تسجيل الدخول","signInDescription":"استخدم حساب DeepSeek للبدء.","signOut":"تسجيل الخروج","signOutDescription":"لن يؤدي تسجيل الخروج إلى حذف أي بيانات. ويمكنك تسجيل الدخول إلى هذا الحساب مجددًا.","signOutRunningDescription":"هناك مهام قيد التنفيذ حاليًا. سيؤدي تسجيل الخروج إلى مقاطعتها. هل تريد تسجيل الخروج الآن؟","signOutUnknownDescription":"تعذّر التحقق من المهام قيد التنفيذ. قد يؤدي تسجيل الخروج إلى مقاطعة مهام تستخدم هذا الحساب. هل تريد تسجيل الخروج الآن؟","signedIn":"مسجّل الدخول إلى DeepSeek","signedOut":"غير مسجّل الدخول","timeoutDescription":"سجّل الدخول مجددًا للمتابعة.","timeoutTitle":"انتهت مهلة تسجيل الدخول","topUp":"إضافة رصيد","usage":"عرض الاستخدام","waiting":"تابع في متصفحك"},"settings.agentLoop":{"description":"تحكّم في طريقة إرسال الوكيل لاستدعاءات الأدوات.","invalidNumber":"أدخل رقمًا، أو اتركه فارغًا لاستخدام القيمة الافتراضية.","maxParallel":"استدعاءات الأدوات المتوازية","maxParallelHint":"الحد الأعلى للاستدعاءات الآمنة التوازي التي تعمل في الوقت نفسه خلال خطوة واحدة.","overridden":"متجاوَز","readOnly":"يخزّن هذا النشر الإعدادات للقراءة فقط.","reset":"إعادة إلى الافتراضي","save":"حفظ","saveFailed":"لم يقبل النشر هذه القيم؛ تُركت لك لتصحيحها.","saving":"جارٍ الحفظ…","title":"حلقة الوكيل","unavailable":"لم يتم تحميل هذا البلاقن، لذا لا يمكن إعداده الآن."},"settings.agentPreset":{"guideCopied":"تم النسخ","guideCopy":"نسخ","guideCordisExplanation":"### ما الذي يمكنك إنشاؤه\n\nيتضمن وضع المنشئ أدوات المهام القياسية إضافةً إلى فحص وقت التشغيل، وإدارة البلاقنات الدائمة، وإرشادات لكتابة بلاقنات Cordis وإعدادات الوكيل المسبقة. ويمكنه إنشاء بلاقن يضيف قدرة أو واجهة، أو إعداد مسبق يجمع الأدوات والطلبات لمهمة معينة.\n\n### البلاقنات والأوضاع\n\nيضيف البلاقن قدرات إلى DSH، مثل أداة أو اتصال خدمة أو مدخل في الواجهة. والوضع هو إعداد مسبق للوكيل يختار الأدوات ويحدد كيفية عمل الوكيل في مهمة. ويمكن تضمين بلاقن في إعداد مسبق مخصص.\n\n### كيف يسري الناتج\n\nاطلب من الوكيل تثبيت الناتج والتحقق منه، لا مجرد توليد الكود المصدرية. وقد يُحمَّل البلاقن فورًا أو يتطلب إعادة تشغيل، حسب ما يغيّره. ويُختار الإعداد المسبق المُنشأ حديثًا عند بدء مهمة جديدة.","guideCordisIntro":"اختر وضع المنشئ لمهمة جديدة. صِف القدرة التي تريدها، ومكان ظهورها، وكيفية التحقق منها.","guideCordisUsage":"### إضافة واجهة\n\n> أنشئ بلاقن DSH يضيف مدخل ملاحظات المشروع إلى الشريط الجانبي. أتح لي تصفح ملفات Markdown في مساحة العمل هذه ومعاينة ملاحظة مختارة. ثبّته وتحقق من فتح الصفحة.\n\nالناتج المتوقع: بلاقن مثبَّت مع مدخل يعمل وصفحة معاينة، إضافةً إلى أي خطوات تفعيل متبقية.\n\n### إضافة أداة\n\n> أنشئ بلاقنًا يتضمن أداة تقرأ تقرير اختبارات هذا المشروع وتلخّص الاختبارات الفاشلة. سجّلها وتحقق منها باستخدام تقرير تجريبي.\n\nالناتج المتوقع: بلاقن بأداة قابلة للاستدعاء واستدعاء تجريبي تم التحقق منه.\n\n### إنشاء وضع خاص بي\n\n> أنشئ وضع «مراجعة الكود» استنادًا إلى الوضع القياسي. اجعله يعطي الأولوية للأخطاء المحتملة وثغرات الاختبارات، ويستشهد بمسارات الملفات وأسطرها، ويسأل قبل تعديل الملفات. واحفظه كإعداد مسبق قابل للاختيار.\n\nالناتج المتوقع: إعداد مسبق مخصص للمهام الجديدة. توجّه تعليمات المراجعة هذه الوكيل؛ وتحدد إعدادات الصلاحيات الإجراءات التي يمكنه تنفيذها.","guideExampleTask":"مثال على مهمة","guideFootnotes":"الحواشي","guideMinimalExplanation":"### ما الذي يتضمنه\n\nأداة طرفية واحدة دائمة وطلب نظام ثابت. ولا يحمّل الإعداد المسبق المضمّن المهارات أو التخطيط أو ضغط السياق أو سياق وقت التشغيل القياسي.\n\n### متى تختاره\n\nاستخدمه كخط أساس للتجارب والمقارنات. ولا يزال بإمكانه قراءة الملفات وتنفيذ النصوص البرمجية عبر أوامر الطرفية، لكنه يوفر طرقًا مضمّنة أقل لإدارة مهمة طويلة. وقلة الأدوات لا تعني بالضرورة سهولة أكبر للمبتدئ.","guideMinimalIntro":"اختر الوضع المبسّط لمهمة جديدة. ولإجراء مقارنة، أبقِ الموديل والصلاحيات والمدخلات وحالة مساحة العمل الابتدائية ثابتة في جميع التشغيلات.","guideMinimalUsage":"### مقارنة الأداء في إصلاح خطأ بسيط\n\n> شغّل اختبارات هذا المشروع، وابحث عن سبب الفشل، ونفّذ أصغر إصلاح ممكن. ثم شغّل الاختبارات المعنية مجددًا وأبلغ بالنتيجة.\n\nشغّل المهمة نفسها منفصلةً في الوضع القياسي والوضع المبسّط من الحالة الابتدائية نفسها. وقارن إنجاز المهمة واستدعاءات الأدوات والتغييرات الناتجة. وينفّذ الوضع المبسّط العمل عبر أوامر الطرفية.","guidePtcExplanation":"### كيفية استدعاء الأدوات\n\nPTC تعني الاستدعاء البرمجي للأدوات. وفي هذا الإعداد المسبق المضمّن، يستخدم الوكيل run_code لكتابة برنامج TypeScript يستدعي الأدوات عبر SDK مُولَّد. ويمكن للبرنامج استخدام الحلقات والشروط ومعالجة الأخطاء والاستدعاءات المتزامنة عند الحاجة.\n\n### ما الذي يصل إلى الموديل\n\nتصل نتائج الأدوات أولًا إلى البرنامج، الذي يمكنه تصفيتها ودمجها. ويتلقى الموديل ما يطبعه البرنامج أو يعيده؛ أما نتائج الصور فتُرفق بشكل منفصل. ولا تزال استدعاءات الأدوات المتداخلة مسجّلة وتخضع لصلاحيات الأدوات.\n\n### مقارنةً بالوضع القياسي\n\nيمكن للوضعين التعامل مع مهام البرمجة والمهام الدفعية. يعرض الوضع القياسي الأدوات الفردية مباشرةً؛ بينما ينظّم PTC استدعاءات الأدوات في الكود. ويترك الإعداد المسبق الحالي لـ PTC أداة سير العمل معطّلة. وتعتمد السرعة واستهلاك التوكنات على المهمة وطريقة تعامل البرنامج مع نتائجها.","guidePtcIntro":"اختر وضع PTC عند بدء مهمة جديدة. وحدّد ملفات الإدخال وقواعد المعالجة وصيغة الإخراج. ويكتب الوكيل الكود.","guidePtcUsage":"### فحص مجموعة من ملفات الإعداد\n\n> افحص كل ملفات JSON في configs/. واذكر الحقول المطلوبة الناقصة والقيم غير الصالحة مقارنةً بـ schema.json. واحفظ ملف CSV بسطر واحد لكل مشكلة. وأدرج الملفات غير القابلة للقراءة في التقرير وتابع فحص الباقي. واترك الملفات الأصلية دون تغيير.\n\nالناتج المتوقع: ملخص للمشكلات وتقرير CSV. ويمكن للبرنامج تكرار الفحوص نفسها ومعالجة الإخفاقات الفردية وجمع النتائج.\n\n### تلخيص سجلات الأخطاء\n\n> حلّل ملفات السجل في logs/. وجمّع الأخطاء حسب الخدمة ونوع الخطأ. واعرض أكثر عشرة مجموعات تكرارًا ومثالًا واحدًا من كل مجموعة. واحفظ الأعداد الكاملة في ملف CSV.\n\nالناتج المتوقع: أهم مجموعات الأخطاء وجدول أعداد كامل. ويمكن تجميع البيانات الوسيطة في البرنامج قبل وصول الملخص إلى الموديل.","guideSections":"أقسام الدليل","guideStandardExplanation":"### كيف يعمل\n\nيستدعي الوكيل الأدوات مباشرةً لقراءة الملفات وتعديلها، والبحث، وتشغيل أوامر الطرفية. ويتضمن المهارات والتخطيط والأهداف والوكلاء الفرعيين وسير العمل وضغط السياق.\n\n### متى تختاره\n\nابدأ به للبرمجة اليومية والعمل على الملفات والبحث. ويستطيع الوضع القياسي أيضًا كتابة النصوص البرمجية ومعالجة الملفات دفعةً واحدة. ويغيّر PTC طريقة تنظيم استدعاءات الأدوات؛ وهو ليس ضروريًا للمهام الدفعية.","guideStandardIntro":"اختر الوضع القياسي عند بدء مهمة جديدة. صِف ما تريد إنجازه، وأشِر إلى الملفات المعنية، واشرح كيفية التحقق من النتيجة.","guideStandardUsage":"### إصلاح خطأ\n\n> اكتشف سبب اختفاء النتائج عند إرسال نموذج البحث مرتين. أصلح المشكلة وشغّل الاختبارات المعنية. واشرح السبب وما تغيّر.\n\nالناتج المتوقع: تغيير في الكود، ونتائج الاختبارات المعنية، وشرح للسبب.\n\n### تنظيم ملاحظات المشروع\n\n> اقرأ ملاحظات Markdown في هذا المشروع. ولخّص القرارات المتفق عليها والأسئلة المفتوحة، مع روابط إلى الملفات المصدرية.\n\nالناتج المتوقع: ملخص مع مراجع يمكنك مقارنتها بالملاحظات الأصلية.","howToUse":"كيفية الاستخدام","modeExplanation":"تفاصيل الوضع"},"settings.locale":{"back":"رجوع","brand.localBuild":"نسخة DSH المحلية","cancel":"إلغاء","close":"إغلاق","codeBlock.title":"كتلة كود","codeBlock.unwrap":"عدم التفاف الأسطر","codeBlock.wrap":"التفاف الأسطر","collapse":"طيّ","copied":"تم النسخ","copy":"نسخ","copy.compactJson":"نسخ JSON المضغوط","copy.failed":"فشل النسخ","copy.json":"نسخ JSON","copy.optionsHint":"{action}؛ انقر بزر الفأرة الأيمن لخيارات النسخ","copy.path":"نسخ مسار الخاصية","copy.prettyJson":"نسخ JSON المنسّق","copy.value":"نسخ القيمة","delete":"حذف","edit":"تعديل","expand":"توسيع","json.label":"JSON","language.title":"اللغة","load.failed":"فشل التحميل","loading":"جارٍ التحميل…","markdown.footnotes":"الحواشي","markdown.truncatedCharacters":"… تم الاقتطاع عند {total} حرفًا","more":"المزيد","next":"التالي","none":"لا شيء","number.million":"{value}M","number.thousand":"{value}K","ok":"موافق","previous":"السابق","retry":"إعادة المحاولة","save":"حفظ","search":"بحث","skip":"تخطي","submit":"إرسال","submitting":"جارٍ الإرسال…","truncated":"مقتطع","unknown":"غير معروف","workspace.defaultName":"مساحة العمل الافتراضية"},"settings.models":{"add":"إضافة مزوّد","addCatalog":"مزوّد موديلات خارجي","addCatalogExhausted":"تم إعداد كل مزوّد في الكتالوج بالفعل.","addCatalogHint":"اختر OpenAI أو Anthropic أو Kimi أو مزوّدًا آخر من الكتالوج المضمّن، ثم أدخل مفتاح API الخاص به.","addCustom":"API موديل مخصّص","addCustomHint":"اربط خدمة وسيطة أو خادمًا مستضافًا ذاتيًا أو أي نقطة نهاية متوافقة مع OpenAI أو Anthropic عبر عنوان URL الأساسي والبروتوكول والموديلات.","addCustomUnavailable":"لا يتوفر أي بروتوكول API للإعلان عنه.","addMode":"طريقة الإضافة","addModel":"إضافة موديل","advancedHint":"توجد الحقول الأخرى في cordis.patch.yml؛ عدّل ذلك القسم مباشرةً.","apply":"تطبيق","applying":"جارٍ التطبيق…","baseUrl":"عنوان URL الأساسي","baseUrlDefault":"افتراضي المزوّد","cancel":"إلغاء","close":"إغلاق","conflict":"غيّر شخص آخر هذه الإعدادات أثناء فتح هذه البطاقة. أغلقها وأعد فتحها لتعديل القيم الحالية.","contextWindow":"نافذة السياق","contextWindowPlaceholder":"يستخدم افتراضي المزوّد","create":"إنشاء مزوّد","creating":"جارٍ الإنشاء…","credentialConfigured":"مفتاح API مُعدّ","credentialMissing":"مفتاح API مفقود","customAnthropicBaseUrlPlaceholder":"https://gateway.example","customApi":"بروتوكول API","customApiUnset":"غير محدد","customBaseUrlInvalid":"أدخل عنوان URL صالحًا عبر HTTP أو HTTPS.","customBaseUrlPlaceholder":"https://gateway.example/v1","customDisplayName":"اسم العرض","customNeedsBaseUrl":"يحتاج المزوّد المخصص إلى عنوان URL أساسي.","customNeedsModels":"يحتاج المزوّد المخصص إلى موديل واحد على الأقل.","customRoute":"معرّف المزوّد","customRouteHint":"معرّف بأحرف صغيرة يبدأ بحرف، ويسمّي هذا المزوّد بشكل فريد في الطلبات وكاسم اعتماده.","customRouteInvalid":"ابدأ بحرف صغير؛ ثم أحرف صغيرة وأرقام وشرطات.","customRouteTaken":"يستخدم مزوّد هذا المعرّف بالفعل.","customTag":"مخصص","customized":"إعدادات مخصصة","deepSeekAccount":"حساب DeepSeek","deepSeekBaseUrl":"https://api.deepseek.com/anthropic","deepSeekEndpointHint":"استخدم نقطة نهاية API متوافقة مع Anthropic Messages.","deleteConfirm":"حذف {provider}","deleteDescription":"يؤدي حذف {provider} إلى إزالة إعداده. أما أي اعتماد يستخدمه فيُدار في مكان آخر وسيُحتفظ به.","deleteDescriptionWithCredential":"يؤدي حذف {provider} إلى إزالة إعداده ومفتاح API المخزّن.","deleteTitle":"حذف {provider}؟","deleting":"جارٍ حذف {provider}…","edit":"تعديل","editProvider":"تعديل {provider}","fetchAdopt":"إضافة المحدد","fetchDescription":"هذه هي الموديلات المتاحة لدى هذا المزوّد. اختر ما تريد إضافته.","fetchDeselectAll":"إلغاء تحديد الكل","fetchEmpty":"لم يُدرج المزوّد أي موديلات. أضفها يدويًا.","fetchModels":"جلب الموديلات المتاحة","fetchNeedsBaseUrl":"أدخل عنوان URL الأساسي أولًا، ثم اجلب.","fetchNoMatches":"لا توجد موديلات مطابقة.","fetchSearch":"بحث في الموديلات","fetchSelectAll":"تحديد الكل","fetchTitle":"اختر الموديلات المراد إضافتها","fetching":"جارٍ الاستعلام من المزوّد…","intro":"أدخل مفاتيح API لاستخدام موديلات المزوّدين التاليين.","keyBlank":"أدخل مفتاح API، أو اترك الحقل فارغًا للاحتفاظ بالمفتاح المخزّن.","keyBlankNew":"أدخل مفتاح API، أو اترك الحقل فارغًا إذا كان هذا المزوّد يستخدم طريقة مصادقة أخرى.","keyEnvLocked":"مُوفَّر من بيئة التشغيل (للقراءة فقط)","keyIllegalCharacters":"صيغة مفتاح API هذا غير صالحة. يرجى التحقق منه.","keyInput":"مفتاح API","keyPlaceholder":"أدخل مفتاح API الخاص بك","keyPlaceholderNative":"أدخل مفتاح API، أو اتركه فارغًا لاستخدام مصادقة البيئة","keyRequired":"أدخل مفتاح API للمتابعة.","keyStored":"مُعدّ — أدخل قيمة جديدة للاستبدال","loadFailed":"فشل تحميل دليل المزوّدين","maxTokens":"الحد الأقصى لتوكنات الإخراج","maxTokensPlaceholder":"يستخدم افتراضي المزوّد","model":"الموديل","modelAdvanced":"خيارات الموديل","modelCapacityInvalid":"يجب أن تكون السعة رقمًا، مع لاحقة K أو M اختياريًا.","modelContextInvalid":"يجب أن تكون نافذة السياق عددًا موجبًا، مثل 131072 أو 256K أو 1M.","modelDuplicate":"يمكن أن يظهر معرّف كل موديل مرة واحدة.","modelId":"معرّف الموديل","modelIdDuplicate":"يجب أن يكون معرّف الموديل فريدًا.","modelIdRequired":"معرّف الموديل مطلوب.","modelInputImage":"صورة","modelInputText":"نص","modelInputTypes":"أنواع الإدخال","modelMaxTokensInvalid":"يجب أن يكون الحد الأقصى لتوكنات الإخراج عددًا موجبًا، مثل 8192 أو 64K أو 1M.","modelName":"اسم العرض","modelNameInvalid":"لا يمكن أن يكون اسم العرض فارغًا.","modelNamePlaceholder":"يستخدم معرّف الموديل عند تركه فارغًا","models":"الموديلات","modelsCustomized":"كتالوج موديلات مخصص","modelsEmpty":"لن يُعرض أي موديل في القائمة. ويمكن مع ذلك إرسال المعرّفات غير المدرجة مباشرةً.","modelsInherited":"استخدام افتراضيات المحوّل","nav":"الموديلات","onboardingDescription":"أعدّ مزوّد DeepSeek الرسمي لبدء العمل.","onboardingLater":"الإعداد لاحقًا","onboardingSave":"حفظ ومتابعة","onboardingSaving":"جارٍ الحفظ…","onboardingTitle":"أضف مفتاح API للبدء","protocolAnthropicMessages":"Anthropic Messages","protocolOpenAiCompletions":"OpenAI Chat Completions","protocolOpenAiResponses":"OpenAI Responses","provider":"المزوّد","readOnly":"مستند الإعدادات للقراءة فقط في هذا النشر.","remove":"حذف","removeModel":"حذف موديل","removeProvider":"حذف {provider}","resetModels":"استعادة الافتراضيات","retry":"إعادة المحاولة","savedProvider":"تم حفظ {provider}.","settingsPathUnresolvable":"مسار إعدادات غير قابل للتحديد","title":"الموديلات","welcomeBody":"لا يزال DeepSeek Harness 0.2 في مرحلة المعاينة، وتحتاج جوانب كثيرة إلى تحسين وصقل مستمرين. ونرحّب بملاحظات جميع المطوّرين والمستخدمين واقتراحاتهم. ويستهدف تطبيق سطح المكتب الجديد الآن مجموعة واسعة من المستخدمين، بينما يمكن تشغيل الميزات المتقدمة الخاصة بالمطوّرين من الإعدادات. ومن المتوقع أن تستمر ميزات منتج DeepSeek Harness وواجهات API الخاصة بالبلاقنات في التطوير والتحديث السريع، وأن تستقر تدريجيًا مع الوقت.\n\nونتطلع إلى استكشاف حدود الذكاء مع المستخدمين والمطوّرين حول العالم، بالبناء على بنية مفتوحة المصدر وقابلة لإعادة الاستخدام والتركيب. ونرحّب بالجميع لتحويل أفكارهم إلى واقع مع DeepSeek Harness والمشاركة في المجتمع لإثراء منظومة البلاقنات.","welcomeContinue":"متابعة","welcomeError":"تعذّر حفظ الإقرار. يرجى المحاولة مجددًا.","welcomeTitle":"إشعار المعاينة"},"settings.permission":{"confirm.acknowledge":"أفهم المخاطر وأريد المتابعة","confirm.cancel":"إلغاء","confirm.description":"تتيح الصلاحية الكاملة للجلسات الجديدة تقليل خطوات التأكيد وتنفيذ مزيد من الإجراءات مباشرةً، بما في ذلك العمليات الحساسة أو تغييرات الملفات أو الأوامر الخارجية. لا تستخدمها إلا عندما تثق بالمهام اللاحقة.","confirm.enable":"تشغيل الصلاحية الكاملة","confirm.title":"هل تريد تشغيل الصلاحية الكاملة؟","description":"اختر وضع الصلاحيات الافتراضي للجلسات الجديدة","loading":"جارٍ التحميل","preset.fullAccess":"صلاحية كاملة","preset.readOnly":"قراءة فقط","preset.workspaceWrite":"كتابة في مساحة العمل","title":"الصلاحيات","unavailable":"غير متاح"},"settings.pluginInventory":{"active":"قيد التشغيل","clientSyncFailed":"تعذّرت مزامنة بعض البلاقنات في هذه الصفحة. ولم يتغيّر التمكين في المضيف.","clientSyncRetry":"إعادة محاولة هذه الصفحة","clientSyncing":"جارٍ مزامنة البلاقنات في هذه الصفحة…","condition":"يُعطَّل عند","conditionalTag":"مشروط","configuration":"التهيئة","countUnit":"بلاقنات","disabledTag":"معطّل","empty":"لا تتوفر أي بلاقنات.","emptySearch":"لا توجد بلاقنات مطابقة.","enabledIn":"ممكّن في","enabledTag":"ممكّن","error":"البلاقنات غير متاحة مؤقتًا.","failed":"فشل البدء","failedCountLabel":"فاشل","failedTag":"فشل","fromPreset":"من","globalSubtitle":"مشتركة بين النظام وكل جلسة","globalTitle":"بلاقنات عامة","loading":"جارٍ قراءة البلاقن…","loadingPhase":"جارٍ التحميل","matchesInOtherPresets":"{count} من التطابقات الإضافية في إعدادات مسبقة أخرى: ","metadataError":"خطأ في بيانات الحزمة الوصفية: {error}","moduleLabel":"الوحدة","pending":"في انتظار التبعيات","presetEnabledTag":"عبر الإعدادات المسبقة","presetOptionBroken":"{name} (فشل التحميل)","presetOptionDefault":"{name} (افتراضي)","presetProvidedDetail":"معطّل عمومًا؛ وتوفّره الإعدادات المسبقة للوكيل لكل جلسة","presetSubtitle":"تُركَّب لكل جلسة عبر الإعدادات المسبقة للوكيل","presetTitle":"بلاقنات الجلسة","retry":"إعادة المحاولة","runtime":"الحالة","search":"بحث في البلاقنات","switcherLabel":"اختر الإعداد المسبق للوكيل لفحصه","tab":"قائمة البلاقنات","unloading":"جارٍ إلغاء التحميل","unobserved":"غير قيد التشغيل","viewInPreset":"عرض في مجموعة الإعداد المسبق"},"settings.plugins":{"empty":"لا يعرض هذا النشر أي طرق عرض للبلاقنات.","intro":"افحص البلاقنات المضمّنة في هذا النشر.","nav":"البلاقنات المضمّنة","tabs":"طرق عرض البلاقنات","title":"البلاقنات المضمّنة"},"settings.sessionLog":{"description":"ساعد في تحسين موديلات DeepSeek ومنتجاتها.","failed":"تعذّر حفظ التفضيل","saved":"تم حفظ التفضيل","title":"رفع سجل الجلسة عند استخدام API الموديل الرسمي"},"settings.shell":{"description":"حدّد مدة تشغيل كل أمر وحجم إخراجه.","invalidNumber":"أدخل رقمًا، أو اتركه فارغًا لاستخدام القيمة الافتراضية.","maxOutputBytes":"حد الإخراج لكل تدفق (بايت)","maxOutputBytesHint":"يُكتب الإخراج الزائد عن هذا الحد في ملف مؤقت بدلًا من فقدانه.","overridden":"متجاوَز","readOnly":"يخزّن هذا النشر الإعدادات للقراءة فقط.","reset":"إعادة إلى الافتراضي","save":"حفظ","saveFailed":"لم يقبل النشر هذه القيم؛ تُركت لك لتصحيحها.","saving":"جارٍ الحفظ…","timeoutMs":"مهلة الأمر (ms)","timeoutMsHint":"المدة التي يمكن أن يعملها الأمر قبل إنهائه.","title":"الطرفية","unavailable":"لم يتم تحميل هذا البلاقن، لذا لا يمكن إعداده الآن."},"settings.subagent":{"overridden":"متجاوَز","readOnly":"يخزّن هذا النشر الإعدادات للقراءة فقط.","reset":"إعادة إلى الافتراضي","save":"حفظ","saveFailed":"لم يقبل النشر هذه القيم؛ تُركت لك لتصحيحها.","saving":"جارٍ الحفظ…","subagentCapacityHelp":"إجمالي الوكلاء الفرعيين النشطين تحت الوكيل الرئيسي نفسه، عبر جميع مستويات التعاقب. ولا يُحتسب الوكيل الرئيسي. وتُرفض طلبات البدء الجديدة عند بلوغ الحد.","subagentCapacityHelpLabel":"حول حد التوازي للوكلاء الفرعيين","subagentCapacityInvalid":"أدخل عددًا صحيحًا يساوي 1 أو أكثر.","subagentDepthHelp":"يحدد عدد مستويات الوكلاء الفرعيين التي يمكن للوكيل إنشاؤها.","subagentDepthHelpLabel":"حول الحد الأقصى لعمق التعاقب","subagentDepthInvalid":"أدخل عددًا صحيحًا يساوي 0 أو أكثر.","subagentDepthOne":"الوكيل الرئيسي وحده يمكنه إنشاء وكلاء فرعيين","subagentDepthOverride":"إذا حدّدت أداة حدًا أقصى خاصًا بها لعمق التعاقب، فتكون له الأولوية.","subagentDepthZero":"إيقاف الوكلاء الفرعيين","subagentDescription":"حدّد عمق التعاقب وعدد الوكلاء الفرعيين وموديلاتها.","subagentLimitsTitle":"الحدود","subagentMaxActive":"حد التوازي للوكلاء الفرعيين","subagentMaxDepth":"الحد الأقصى لعمق التعاقب","subagentModelSelectionAllowed":"الموديلات المتاحة لاختيار الوكلاء","subagentModelSelectionChoose":"عند التشغيل، يمكن للوكلاء اختيار مزوّد وموديل وجهد استدلال لكل وكيل فرعي من الموديلات المصرّح بها أدناه. ويسري ذلك على الجلسات الجديدة فقط.","subagentModelSelectionConflict":"تغيّرت الإعدادات في مكان آخر. تجاهل مسودتك وحاول مجددًا.","subagentModelSelectionEmpty":"لا يعلن أي مزوّد موديلات حاليًا عن موديل.","subagentModelSelectionLoadFailed":"تعذّر تحميل الموديلات.","subagentModelSelectionLoading":"جارٍ تحميل الموديلات…","subagentModelSelectionOff":"تستخدم الوكلاء الفرعية الافتراضيات المُعدّة أو ترث موديل الوكيل الأصلي. وتبقى اختيارات الموديل المحفوظة كما هي.","subagentModelSelectionPartial":"تعذّر تحميل بعض مزوّدي الموديلات؛ ويمكن مع ذلك إزالة الاختيارات المحفوظة.","subagentModelSelectionRequired":"اختر موديلًا واحدًا على الأقل قبل الحفظ.","subagentModelSelectionRetry":"إعادة المحاولة","subagentModelSelectionTitle":"اختيار الموديل","subagentModelSelectionToggle":"السماح للوكلاء باختيار موديلات للوكلاء الفرعيين","subagentModelSelectionUnavailable":"غير متاح حاليًا","subagentModelSelectionUnavailableGroup":"محفوظ لكنه غير متاح حاليًا","subagentTitle":"وكيل فرعي","unavailable":"لم يتم تحميل هذا البلاقن، لذا لا يمكن إعداده الآن."},"settings.theme":{"appearance.dark":"داكن","appearance.light":"فاتح","appearance.system":"النظام","appearance.title":"المظهر","fontFamily.code.description":"يُستخدم لكتل الكود والكود المضمَّن ومخرجات الأدوات. افصل بين الخطوط بفواصل، واتركه فارغًا للافتراضي","fontFamily.code.title":"خط الكود","fontFamily.placeholder":"افتراضي","fontFamily.terminal.description":"يُستخدم لطرفية الشريط الجانبي. افصل بين الخطوط بفواصل، واتركه فارغًا للافتراضي","fontFamily.terminal.title":"خط الطرفية","fontFamily.text.description":"يُستخدم لنص الواجهة والمحادثة. افصل بين الخطوط بفواصل، واتركه فارغًا للافتراضي","fontFamily.text.title":"خط النص","fontSize.code.decrease":"تصغير حجم خط الكود","fontSize.code.description":"يُستخدم لكتل الكود والكود المضمَّن ومخرجات الأدوات","fontSize.code.increase":"تكبير حجم خط الكود","fontSize.code.title":"حجم خط الكود","fontSize.more":"مزيد من إعدادات الخطوط","fontSize.terminal.decrease":"تصغير حجم خط الطرفية","fontSize.terminal.description":"يُستخدم لطرفية الشريط الجانبي","fontSize.terminal.increase":"تكبير حجم خط الطرفية","fontSize.terminal.title":"حجم خط الطرفية","fontSize.text.decrease":"تصغير حجم الخط","fontSize.text.description":"يؤثر في محتوى المحادثة فقط","fontSize.text.increase":"تكبير حجم الخط","fontSize.text.title":"حجم الخط","fontSize.unit":"px"},"settings.webSearch":{"apiKey":"مفتاح API","apiKeyHint":"يُخزَّن خارج ملف الإعدادات. اتركه فارغًا للاحتفاظ بالمفتاح الحالي.","apiKeySet":"هناك مفتاح مُعدّ.","apiKeyUnset":"لا يوجد مفتاح مُعدّ؛ ولا يمكن البحث إلا في المحادثات التي تستخدم موديلًا من حساب DeepSeek، عبر نقطة النهاية الافتراضية.","baseUrl":"نقطة النهاية","baseUrlHint":"اتركه فارغًا لاستخدام افتراضي المزوّد.","description":"أعدّ مزوّد بحث DeepSeek.","invalidNumber":"أدخل رقمًا، أو اتركه فارغًا لاستخدام القيمة الافتراضية.","maxUses":"الحد الأقصى للبحث لكل طلب","maxUsesHint":"عدد مرات البحث المسموح بها لطلب واحد قبل أن يجب أن يجيب.","overridden":"متجاوَز","readOnly":"يخزّن هذا النشر الإعدادات للقراءة فقط.","reset":"إعادة إلى الافتراضي","save":"حفظ","saveFailed":"لم يقبل النشر هذه القيم؛ تُركت لك لتصحيحها.","saving":"جارٍ الحفظ…","title":"البحث في الويب","unavailable":"لم يتم تحميل هذا البلاقن، لذا لا يمكن إعداده الآن."},"shortcuts":{"application":"التطبيق","approval":"منطقة الموافقة","cancel":"إلغاء","clear":"إزالة","clear-search":"مسح البحث","close":"إغلاق اختصارات لوحة المفاتيح","close-confirmation":"إغلاق التأكيد","conflict":"مستخدم بالفعل بواسطة «{commands}»","description":"اعرض الاختصارات وإجراءات الإدخال المتاحة وعدّلها","desktop-document":"userData/keybindings.json","desktop-reload":"أعد تشغيل Harness","dismiss":"إغلاق القائمة أو الحوار الأعلى","edit-label":"تعديل اختصار {command}","empty":"لا توجد اختصارات مطابقة","future":"أُنشئ إعداد الاختصارات في {location} بإصدار أحدث. ارتقِ بـ Harness ثم أعد المحاولة.","global-hint":"الفتح من أي مكان","input":"إدخال الرسالة","invalid":"إعداد الاختصارات في {location} تالف. انسخ هذا الإعداد احتياطيًا وأصلحه، ثم {reload}.","macos-web-help":"استخدم Command+/ أو Command+, أو Command+Backslash أو Control+Backquote أو Command+Option+مفتاح أو Command+Shift+مفتاح. وتُدعم أيضًا التركيبات التي تضم ثلاثة أو أربعة مفاتيح تعديل مختلفة. وقد لا تصل اختصارات المتصفح أو النظام إلى الصفحة.","menus":"القوائم والحوارات","modified-count":"{count} مخصّص","modifier-required":"أدرج Command أو Ctrl أو Alt في التركيبة.","move":"نقل تحديد القائمة","native-failed":"تعذّر تأمين تسجيل المفاتيح على سطح المكتب. اخرج من التسجيل وحاول مجددًا.","not-ready":"الاختصارات غير جاهزة. يرجى المحاولة مجددًا.","open":"فتح اختصارات لوحة المفاتيح","read":"تعذّرت قراءة {location}. تحقق من صلاحيات الوصول، ثم {reload}.","record":"اضغط اختصارًا","record-help":"أفلت المفاتيح للحفظ. وينقل Tab بين الإجراءات؛ ويلغي Esc.","reserved":"هذه التركيبة محجوزة لإجراءات النظام أو تحرير النص.","reset":"استعادة الافتراضي","reset-all":"استعادة كل الافتراضيات","reset-description":"استعد الاختصارات الافتراضية لهذه المنصة. وستُستعاد كل الاختصارات المعدّلة أو المحذوفة. ولا تتأثر المنصات الأخرى.","reset-failed":"تعذّرت استعادة الافتراضيات. لم تتغير اختصاراتك. يرجى إعادة المحاولة.","reset-saved":"تمت استعادة الاختصارات الافتراضية","reset-title":"استعادة كل الاختصارات الافتراضية؟","retry-save":"إعادة محاولة الحفظ","review":"راجعت أحدث إعداد","saved":"معدّل","search":"بحث في الاختصارات","select":"تحديد عنصر القائمة","settings":"اختصارات لوحة المفاتيح","stale":"تغيّر إعداد الاختصارات أو الأوامر المتاحة. راجع أحدث الارتباطات قبل الحفظ.","title":"اختصارات لوحة المفاتيح","too-many-keys":"لا تضغط أكثر من مفتاحين غير معدّلين. أفلت المفاتيح لتحاول مجددًا.","unbound":"بدون اختصار","unsupported-browser":"لا يدعم هذا المتصفح هذه التركيبة بعد.","unsupported-key":"هذا المفتاح غير مدعوم.","using-accepted":"تظل آخر ارتباطات قُرئت بنجاح سارية.","using-defaults":"الارتباطات الافتراضية سارية.","view":"تعديل الاختصارات","web-document":"مدخل localStorage في هذا الموقع dsh.keybindings.v1","web-help":"تركيبات المتصفح: Mod+/ أو Mod+Shift+, أو Mod+Shift+.. ويكون Mod هو Command على Mac وCtrl في غيره.","web-reload":"أعد تحميل الصفحة","windows-web-help":"استخدم Ctrl+/ أو Ctrl+, أو Ctrl+Alt+مفتاح أو Ctrl+Shift+مفتاح. وتُدعم أيضًا التركيبات التي تضم ثلاثة أو أربعة مفاتيح تعديل مختلفة. وقد لا تصل اختصارات المتصفح أو النظام إلى الصفحة.","write-failed":"تعذّر الحفظ. تم الاحتفاظ باختصاراتك السابقة ومسودتك الحالية. يرجى إعادة المحاولة."},"shortcuts.layout":{"toggle":"تبديل الشريط الجانبي الأيسر"},"sidebar":{"panels.label":"اللوحات العامة","session.new":"جلسة جديدة","session.new.label":"جلسة جديدة","toggle.collapse":"طيّ الشريط الجانبي","toggle.open":"فتح الشريط الجانبي"},"sidebarBrowser":{"address.changed":"تغيّر عنوان URL","address.placeholder":"أدخل عنوان HTTP(S)","address.unknown":"انتقلت الصفحة؛ ولا يمكن لهذا الحامل قراءة عنوان URL الجديد.","back":"رجوع","error.application-origin":"لا يمكن للمتصفح المضمّن فتح تطبيق DSH نفسه.","error.credentials":"لا يمكن أن تحتوي العناوين على اسم مستخدم أو كلمة مرور.","error.empty":"أدخل عنوانًا.","error.invalid":"هذا العنوان غير صالح أو طويل جدًا.","error.protocol":"تُدعم عناوين HTTP وHTTPS فقط؛ استخدم معاينة المستندات للملفات المحلية.","external":"فتح في متصفح النظام","forward":"للأمام","go":"انتقال","guide.description":"تصفّح صفحات الويب","guide.title":"المتصفح","load.failed":"تعذّر تحميل الصفحة؛ أعد تحميلها أو افتحها في متصفح النظام.","load.failed.detail":"فشل تحميل الصفحة ({code}): {description}","loading":"جارٍ الفتح…","reload":"إعادة التحميل","restore.action":"استعادة الصفحة","restore.previous":"مفتوحة سابقًا","sandbox.disable":"إيقاف قيود البيئة المعزولة","sandbox.enable":"استعادة قيود البيئة المعزولة","sandbox.warning":"قيود البيئة المعزولة معطّلة؛ ويمكن للصفحة التنقل في التطبيق الأعلى واستخدام التنزيلات والحوارات المنبثقة وأقفال الإدخال.","shortcut.noSession":"افتح جلسة أولًا","start":"أدخل عنوان HTTP(S) لبدء التصفح","type.label":"المتصفح"},"sidebarCodePreview":{"autoRefresh":"تحديث تلقائي","autoRefresh.disable":"إيقاف التحديث التلقائي","autoRefresh.enable":"تشغيل التحديث التلقائي","busy":"معاينة Office مشغولة. أعد المحاولة بعد قليل.","changed":"تغيّر الملف أثناء قراءته. أعد فتح المعاينة.","charts":"مخططات","closeDetails":"إغلاق تفاصيل الخط","code.copied":"تم النسخ","code.copy":"نسخ","conditionalFormatting":"تنسيق شرطي","copied":"تم النسخ","copy":"نسخ","encoding":"تعذّرت قراءة ترميز النص هذا. احفظ الملف بترميز UTF-8 أو UTF-16 مع BOM ثم أعد المحاولة.","error.notFound":"لم يُعثر على الملف. ربما نُقل أو حُذف.","error.notRegularFile":"ليس ملفًا عاديًا، لا يوجد ما يُعرض.","error.notText":"المعاينة غير متاحة لهذا النوع من الملفات بعد.","error.tooLarge":"تتجاوز هذه الصفحة حد {limit} ولا يمكن قراءتها.","error.unavailable":"فشلت القراءة: {message}","failed":"تعذّر عرض PDF: {message}","featureSeparator":", ","footnotes":"الحواشي","formulaWarning":"يحتوي هذا المصنف على صيغ. وقد تكون النتائج المعروضة ناقصة أو غير دقيقة.","frame":"معاينة مستند HTML","images":"صور","invalid":"لا يمكن معاينة ملف Office هذا. قد يكون تالفًا أو محميًا بكلمة مرور أو بامتداد خاطئ.","language":"en","loadMore":"تحميل المزيد","loading":"جارٍ عرض المستند...","missingFontsCount":"الخطوط: {count}","missingFontsDescription":"هذه الخطوط غير متاحة لهذه المعاينة. وقد يختلف النص والتخطيط عن المستند الأصلي.","missingFontsTitle":"خطوط مفقودة","openWith":"فتح باستخدام","pageImage":"صفحة PDF {page}","password":"يتطلب ملف PDF هذا كلمة مرور؛ لا تُدعم المعاينات المحمية بكلمة مرور.","preview":"معاينة الصورة: {name}","reload":"إعادة قراءة الملف","reloadNow":"إعادة التحميل","rendererUnavailable":"معاينة {name} غير متاحة.","rendering":"جارٍ عرض الصفحة…","resourceUnavailable":"خدمة موارد الملفات غير متاحة.","retry":"إعادة المحاولة","shapes":"أشكال","timeout":"انتهت مهلة تحويل Office. أعد المحاولة.","title":"PDF","tooLarge":"يتجاوز ملف Office أو ملف PDF المحوّل حد حجم المعاينة. قلّل حجم الملف أو عدّل إعداد المعاينة.","unavailable":"معاينات Office غير متاحة. شغّل خدمة معاينة المستندات على الحاسوب الذي يعمل عليه DeepSeek Harness.","unsupported":"تتطلب معاينة PDF محتوى الملف كاملًا.","unsupportedFile":"المعاينة غير متاحة لهذا النوع من الملفات بعد.","unsupportedNotice":"لا تدعم هذه المعاينة {features} في هذا المصنف. افتحه في تطبيق نظام للحصول على التجربة الكاملة.","viewMissingFonts":"خطوط مفقودة: {count}. انقر للعرض.","viewer.label":"Markdown","viewer.text":"نص عادي","workerFailed":"تعذّر متابعة عملية عرض PDF. يرجى إعادة المحاولة.","wrap.aria":"التفاف الأسطر","wrap.disable":"إيقاف التفاف الأسطر","wrap.enable":"تشغيل التفاف الأسطر","zoomControls":"أدوات التكبير","zoomFitWidth":"ملاءمة العرض","zoomIn":"تكبير","zoomMenu":"اختيار نسبة التكبير","zoomOut":"تصغير","zoomValue":"{percent}%"},"sidebarDocumentPreview":{"autoRefresh":"تحديث تلقائي","autoRefresh.disable":"إيقاف التحديث التلقائي","autoRefresh.enable":"تشغيل التحديث التلقائي","busy":"معاينة Office مشغولة. أعد المحاولة بعد قليل.","changed":"تغيّر الملف أثناء قراءته. أعد فتح المعاينة.","charts":"مخططات","closeDetails":"إغلاق تفاصيل الخط","code.copied":"تم النسخ","code.copy":"نسخ","conditionalFormatting":"تنسيق شرطي","copied":"تم النسخ","copy":"نسخ","encoding":"تعذّرت قراءة ترميز النص هذا. احفظ الملف بترميز UTF-8 أو UTF-16 مع BOM ثم أعد المحاولة.","error.notFound":"لم يُعثر على الملف. ربما نُقل أو حُذف.","error.notRegularFile":"ليس ملفًا عاديًا، لا يوجد ما يُعرض.","error.notText":"المعاينة غير متاحة لهذا النوع من الملفات بعد.","error.tooLarge":"تتجاوز هذه الصفحة حد {limit} ولا يمكن قراءتها.","error.unavailable":"فشلت القراءة: {message}","failed":"تعذّر عرض PDF: {message}","featureSeparator":", ","footnotes":"الحواشي","formulaWarning":"يحتوي هذا المصنف على صيغ. وقد تكون النتائج المعروضة ناقصة أو غير دقيقة.","frame":"معاينة مستند HTML","images":"صور","invalid":"لا يمكن معاينة ملف Office هذا. قد يكون تالفًا أو محميًا بكلمة مرور أو بامتداد خاطئ.","language":"en","loadMore":"تحميل المزيد","loading":"جارٍ عرض المستند...","missingFontsCount":"الخطوط: {count}","missingFontsDescription":"هذه الخطوط غير متاحة لهذه المعاينة. وقد يختلف النص والتخطيط عن المستند الأصلي.","missingFontsTitle":"خطوط مفقودة","openWith":"فتح باستخدام","pageImage":"صفحة PDF {page}","password":"يتطلب ملف PDF هذا كلمة مرور؛ لا تُدعم المعاينات المحمية بكلمة مرور.","preview":"معاينة الصورة: {name}","reload":"إعادة قراءة الملف","reloadNow":"إعادة التحميل","rendererUnavailable":"معاينة {name} غير متاحة.","rendering":"جارٍ عرض الصفحة…","resourceUnavailable":"خدمة موارد الملفات غير متاحة.","retry":"إعادة المحاولة","shapes":"أشكال","timeout":"انتهت مهلة تحويل Office. أعد المحاولة.","title":"PDF","tooLarge":"يتجاوز ملف Office أو ملف PDF المحوَّل حد حجم المعاينة. قلّل حجم الملف أو عدّل إعدادات المعاينة.","unavailable":"معاينات Office غير متاحة. شغّل خدمة معاينة المستندات على الجهاز الذي يعمل عليه DeepSeek Harness.","unsupported":"تتطلب معاينة PDF محتويات الملف كاملة.","unsupportedFile":"المعاينة غير متاحة لهذا النوع من الملفات بعد.","unsupportedNotice":"لا تدعم هذه المعاينة {features} في هذا المصنف. افتحه في تطبيق من تطبيقات النظام للحصول على التجربة الكاملة.","viewMissingFonts":"خطوط مفقودة: {count}. انقر للعرض.","viewer.label":"Markdown","viewer.text":"نص عادي","workerFailed":"تعذّر متابعة عملية عرض PDF. يرجى إعادة المحاولة.","wrap.aria":"التفاف الأسطر","wrap.disable":"إيقاف التفاف الأسطر","wrap.enable":"تشغيل التفاف الأسطر","zoomControls":"أدوات التكبير","zoomFitWidth":"ملاءمة العرض","zoomIn":"تكبير","zoomMenu":"اختيار مستوى التكبير","zoomOut":"تصغير","zoomValue":"{percent}%"},"sidebarExcel":{"autoRefresh":"تحديث تلقائي","autoRefresh.disable":"إيقاف التحديث التلقائي","autoRefresh.enable":"تشغيل التحديث التلقائي","busy":"معاينة Office مشغولة. أعد المحاولة بعد قليل.","changed":"تغيّر الملف أثناء قراءته. أعد فتح المعاينة.","charts":"مخططات","closeDetails":"إغلاق تفاصيل الخطوط","code.copied":"تم النسخ","code.copy":"نسخ","conditionalFormatting":"تنسيق شرطي","copied":"تم النسخ","copy":"نسخ","encoding":"تعذّرت قراءة ترميز النص هذا. احفظ الملف بترميز UTF-8 أو UTF-16 مع BOM ثم أعد المحاولة.","error.notFound":"الملف غير موجود. ربما نُقل أو حُذف.","error.notRegularFile":"ليس ملفًا عاديًا، لا يوجد ما يُعرض.","error.notText":"المعاينة غير متاحة لهذا النوع من الملفات بعد.","error.tooLarge":"تتجاوز هذه الصفحة حد {limit} ولا يمكن قراءتها.","error.unavailable":"فشلت القراءة: {message}","failed":"تعذّر عرض PDF: {message}","featureSeparator":", ","footnotes":"الحواشي","formulaWarning":"يحتوي هذا المصنف على صيغ. قد تكون النتائج المعروضة ناقصة أو غير دقيقة.","frame":"معاينة مستند HTML","images":"صور","invalid":"لا يمكن معاينة ملف Office هذا. قد يكون تالفًا أو محميًا بكلمة مرور أو بامتداد خاطئ.","language":"en","loadMore":"تحميل المزيد","loading":"جارٍ عرض المستند...","missingFontsCount":"الخطوط: {count}","missingFontsDescription":"هذه الخطوط غير متاحة لهذه المعاينة. قد يختلف النص والتخطيط عن المستند الأصلي.","missingFontsTitle":"خطوط مفقودة","openWith":"فتح باستخدام","pageImage":"صفحة PDF {page}","password":"يتطلب ملف PDF هذا كلمة مرور؛ لا تُدعم المعاينات المحمية بكلمة مرور.","preview":"معاينة الصورة: {name}","reload":"إعادة قراءة الملف","reloadNow":"إعادة التحميل","rendererUnavailable":"معاينة {name} غير متاحة.","rendering":"جارٍ عرض الصفحة…","resourceUnavailable":"خدمة موارد الملفات غير متاحة.","retry":"إعادة المحاولة","shapes":"أشكال","timeout":"انتهت مهلة تحويل Office. أعد المحاولة.","title":"PDF","tooLarge":"يتجاوز ملف Office أو ملف PDF المحوَّل حد حجم المعاينة. قلّل حجم الملف أو عدّل إعدادات المعاينة.","unavailable":"معاينات Office غير متاحة. شغّل خدمة معاينة المستندات على الجهاز الذي يعمل عليه DeepSeek Harness.","unsupported":"تتطلب معاينة PDF محتويات الملف كاملة.","unsupportedFile":"المعاينة غير متاحة لهذا النوع من الملفات بعد.","unsupportedNotice":"لا تدعم هذه المعاينة {features} في هذا المصنف. افتحه في تطبيق من تطبيقات النظام للحصول على التجربة الكاملة.","viewMissingFonts":"خطوط مفقودة: {count}. انقر للعرض.","viewer.label":"Markdown","viewer.text":"نص عادي","workerFailed":"تعذّر متابعة عملية عرض PDF. يرجى إعادة المحاولة.","wrap.aria":"التفاف الأسطر","wrap.disable":"إيقاف التفاف الأسطر","wrap.enable":"تشغيل التفاف الأسطر","zoomControls":"أدوات التكبير","zoomFitWidth":"ملاءمة العرض","zoomIn":"تكبير","zoomMenu":"اختيار مستوى التكبير","zoomOut":"تصغير","zoomValue":"{percent}%"},"sidebarFiles":{"autoRefresh":"تحديث تلقائي","autoRefresh.disable":"إيقاف التحديث التلقائي","autoRefresh.enable":"تشغيل التحديث التلقائي","empty":"مجلد فارغ","entry.other":"ليس ملفًا ولا مجلدًا، لذا لا يمكن فتحه.","error.notDirectory":"هذا ليس مجلدًا.","error.notFound":"هذا المجلد لم يعد موجودًا. ربما نُقل أو حُذف.","error.outsideWorkspace":"هذا المجلد خارج مساحة العمل، لذا لن يقرأه الشريط الجانبي.","error.unavailable":"فشلت القراءة: {message}","guide.description":"تصفّح ملفات مساحة عمل هذه الجلسة","guide.title":"ملفات مساحة العمل","loading":"جارٍ القراءة…","noWorkspace":"لا تحتوي هذه الجلسة على مجلد مساحة عمل.","reload":"إعادة التحميل","shortcut.noSession":"اختر جلسة أولًا","truncated":"عدد العناصر كبير جدًا، ويُعرض بعضها فقط.","type.label":"الملفات"},"sidebarImage":{"autoRefresh":"تحديث تلقائي","autoRefresh.disable":"إيقاف التحديث التلقائي","autoRefresh.enable":"تشغيل التحديث التلقائي","busy":"معاينة Office مشغولة. أعد المحاولة بعد قليل.","changed":"تغيّر الملف أثناء قراءته. أعد فتح المعاينة.","charts":"مخططات","closeDetails":"إغلاق تفاصيل الخطوط","code.copied":"تم النسخ","code.copy":"نسخ","conditionalFormatting":"تنسيق شرطي","copied":"تم النسخ","copy":"نسخ","encoding":"تعذّرت قراءة ترميز النص هذا. احفظ الملف بترميز UTF-8 أو UTF-16 مع BOM ثم أعد المحاولة.","error.notFound":"الملف غير موجود. ربما نُقل أو حُذف.","error.notRegularFile":"ليس ملفًا عاديًا، لا يوجد ما يُعرض.","error.notText":"المعاينة غير متاحة لهذا النوع من الملفات بعد.","error.tooLarge":"تتجاوز هذه الصفحة حد {limit} ولا يمكن قراءتها.","error.unavailable":"فشلت القراءة: {message}","failed":"تعذّر عرض PDF: {message}","featureSeparator":", ","footnotes":"الحواشي","formulaWarning":"يحتوي هذا المصنف على صيغ. قد تكون النتائج المعروضة ناقصة أو غير دقيقة.","frame":"معاينة مستند HTML","images":"صور","invalid":"لا يمكن معاينة ملف Office هذا. قد يكون تالفًا أو محميًا بكلمة مرور أو بامتداد خاطئ.","language":"en","loadMore":"تحميل المزيد","loading":"جارٍ عرض المستند...","missingFontsCount":"الخطوط: {count}","missingFontsDescription":"هذه الخطوط غير متاحة لهذه المعاينة. قد يختلف النص والتخطيط عن المستند الأصلي.","missingFontsTitle":"خطوط مفقودة","openWith":"فتح باستخدام","pageImage":"صفحة PDF {page}","password":"يتطلب ملف PDF هذا كلمة مرور؛ لا تُدعم المعاينات المحمية بكلمة مرور.","preview":"معاينة الصورة: {name}","reload":"إعادة قراءة الملف","reloadNow":"إعادة التحميل","rendererUnavailable":"معاينة {name} غير متاحة.","rendering":"جارٍ عرض الصفحة…","resourceUnavailable":"خدمة موارد الملفات غير متاحة.","retry":"إعادة المحاولة","shapes":"أشكال","timeout":"انتهت مهلة تحويل Office. أعد المحاولة.","title":"PDF","tooLarge":"يتجاوز ملف Office أو ملف PDF المحوَّل حد حجم المعاينة. قلّل حجم الملف أو عدّل إعدادات المعاينة.","unavailable":"معاينات Office غير متاحة. شغّل خدمة معاينة المستندات على الجهاز الذي يعمل عليه DeepSeek Harness.","unsupported":"تتطلب معاينة PDF محتويات الملف كاملة.","unsupportedFile":"المعاينة غير متاحة لهذا النوع من الملفات بعد.","unsupportedNotice":"لا تدعم هذه المعاينة {features} في هذا المصنف. افتحه في تطبيق من تطبيقات النظام للحصول على التجربة الكاملة.","viewMissingFonts":"خطوط مفقودة: {count}. انقر للعرض.","viewer.label":"Markdown","viewer.text":"نص عادي","workerFailed":"تعذّر متابعة عملية عرض PDF. يرجى إعادة المحاولة.","wrap.aria":"التفاف الأسطر","wrap.disable":"إيقاف التفاف الأسطر","wrap.enable":"تشغيل التفاف الأسطر","zoomControls":"أدوات التكبير","zoomFitWidth":"ملاءمة العرض","zoomIn":"تكبير","zoomMenu":"اختيار مستوى التكبير","zoomOut":"تصغير","zoomValue":"{percent}%"},"sidebarOffice":{"autoRefresh":"تحديث تلقائي","autoRefresh.disable":"إيقاف التحديث التلقائي","autoRefresh.enable":"تشغيل التحديث التلقائي","busy":"معاينة Office مشغولة. أعد المحاولة بعد قليل.","changed":"تغيّر الملف أثناء قراءته. أعد فتح المعاينة.","charts":"مخططات","closeDetails":"إغلاق تفاصيل الخطوط","code.copied":"تم النسخ","code.copy":"نسخ","conditionalFormatting":"تنسيق شرطي","copied":"تم النسخ","copy":"نسخ","encoding":"تعذّرت قراءة ترميز النص هذا. احفظ الملف بترميز UTF-8 أو UTF-16 مع BOM ثم أعد المحاولة.","error.notFound":"الملف غير موجود. ربما نُقل أو حُذف.","error.notRegularFile":"ليس ملفًا عاديًا، لا يوجد ما يُعرض.","error.notText":"المعاينة غير متاحة لهذا النوع من الملفات بعد.","error.tooLarge":"تتجاوز هذه الصفحة حد {limit} ولا يمكن قراءتها.","error.unavailable":"فشلت القراءة: {message}","failed":"تعذّر عرض PDF: {message}","featureSeparator":", ","footnotes":"الحواشي","formulaWarning":"يحتوي هذا المصنف على صيغ. قد تكون النتائج المعروضة ناقصة أو غير دقيقة.","frame":"معاينة مستند HTML","images":"صور","invalid":"لا يمكن معاينة ملف Office هذا. قد يكون تالفًا أو محميًا بكلمة مرور أو بامتداد خاطئ.","language":"en","loadMore":"تحميل المزيد","loading":"جارٍ عرض المستند...","missingFontsCount":"الخطوط: {count}","missingFontsDescription":"هذه الخطوط غير متاحة لهذه المعاينة. قد يختلف النص والتخطيط عن المستند الأصلي.","missingFontsTitle":"خطوط مفقودة","openWith":"فتح باستخدام","pageImage":"صفحة PDF {page}","password":"يتطلب ملف PDF هذا كلمة مرور؛ لا تُدعم المعاينات المحمية بكلمة مرور.","preview":"معاينة الصورة: {name}","reload":"إعادة قراءة الملف","reloadNow":"إعادة التحميل","rendererUnavailable":"معاينة {name} غير متاحة.","rendering":"جارٍ عرض الصفحة…","resourceUnavailable":"خدمة موارد الملفات غير متاحة.","retry":"إعادة المحاولة","shapes":"أشكال","timeout":"انتهت مهلة تحويل Office. أعد المحاولة.","title":"PDF","tooLarge":"يتجاوز ملف Office أو ملف PDF المحوَّل حد حجم المعاينة. قلّل حجم الملف أو عدّل إعدادات المعاينة.","unavailable":"معاينات Office غير متاحة. شغّل خدمة معاينة المستندات على الجهاز الذي يعمل عليه DeepSeek Harness.","unsupported":"تتطلب معاينة PDF محتويات الملف كاملة.","unsupportedFile":"المعاينة غير متاحة لهذا النوع من الملفات بعد.","unsupportedNotice":"لا تدعم هذه المعاينة {features} في هذا المصنف. افتحه في تطبيق من تطبيقات النظام للحصول على التجربة الكاملة.","viewMissingFonts":"خطوط مفقودة: {count}. انقر للعرض.","viewer.label":"Markdown","viewer.text":"نص عادي","workerFailed":"تعذّر متابعة عملية عرض PDF. يرجى إعادة المحاولة.","wrap.aria":"التفاف الأسطر","wrap.disable":"إيقاف التفاف الأسطر","wrap.enable":"تشغيل التفاف الأسطر","zoomControls":"أدوات التكبير","zoomFitWidth":"ملاءمة العرض","zoomIn":"تكبير","zoomMenu":"اختيار مستوى التكبير","zoomOut":"تصغير","zoomValue":"{percent}%"},"sidebarPdf":{"autoRefresh":"تحديث تلقائي","autoRefresh.disable":"إيقاف التحديث التلقائي","autoRefresh.enable":"تشغيل التحديث التلقائي","busy":"معاينة Office مشغولة. أعد المحاولة بعد قليل.","changed":"تغيّر الملف أثناء قراءته. أعد فتح المعاينة.","charts":"مخططات","closeDetails":"إغلاق تفاصيل الخطوط","code.copied":"تم النسخ","code.copy":"نسخ","conditionalFormatting":"تنسيق شرطي","copied":"تم النسخ","copy":"نسخ","encoding":"تعذّرت قراءة ترميز النص هذا. احفظ الملف بترميز UTF-8 أو UTF-16 مع BOM ثم أعد المحاولة.","error.notFound":"الملف غير موجود. ربما نُقل أو حُذف.","error.notRegularFile":"ليس ملفًا عاديًا، لا يوجد ما يُعرض.","error.notText":"المعاينة غير متاحة لهذا النوع من الملفات بعد.","error.tooLarge":"تتجاوز هذه الصفحة حد {limit} ولا يمكن قراءتها.","error.unavailable":"فشلت القراءة: {message}","failed":"تعذّر عرض PDF: {message}","featureSeparator":", ","footnotes":"الحواشي","formulaWarning":"يحتوي هذا المصنف على صيغ. قد تكون النتائج المعروضة ناقصة أو غير دقيقة.","frame":"معاينة مستند HTML","images":"صور","invalid":"لا يمكن معاينة ملف Office هذا. قد يكون تالفًا أو محميًا بكلمة مرور أو بامتداد خاطئ.","language":"en","loadMore":"تحميل المزيد","loading":"جارٍ عرض المستند...","missingFontsCount":"الخطوط: {count}","missingFontsDescription":"هذه الخطوط غير متاحة لهذه المعاينة. قد يختلف النص والتخطيط عن المستند الأصلي.","missingFontsTitle":"خطوط مفقودة","openWith":"فتح باستخدام","pageImage":"صفحة PDF {page}","password":"يتطلب ملف PDF هذا كلمة مرور؛ لا تُدعم المعاينات المحمية بكلمة مرور.","preview":"معاينة الصورة: {name}","reload":"إعادة قراءة الملف","reloadNow":"إعادة التحميل","rendererUnavailable":"معاينة {name} غير متاحة.","rendering":"جارٍ عرض الصفحة…","resourceUnavailable":"خدمة موارد الملفات غير متاحة.","retry":"إعادة المحاولة","shapes":"أشكال","timeout":"انتهت مهلة تحويل Office. أعد المحاولة.","title":"PDF","tooLarge":"يتجاوز ملف Office أو ملف PDF المحوَّل حد حجم المعاينة. قلّل حجم الملف أو عدّل إعدادات المعاينة.","unavailable":"معاينات Office غير متاحة. شغّل خدمة معاينة المستندات على الجهاز الذي يعمل عليه DeepSeek Harness.","unsupported":"تتطلب معاينة PDF محتويات الملف كاملة.","unsupportedFile":"المعاينة غير متاحة لهذا النوع من الملفات بعد.","unsupportedNotice":"لا تدعم هذه المعاينة {features} في هذا المصنف. افتحه في تطبيق من تطبيقات النظام للحصول على التجربة الكاملة.","viewMissingFonts":"خطوط مفقودة: {count}. انقر للعرض.","viewer.label":"Markdown","viewer.text":"نص عادي","workerFailed":"تعذّر متابعة عملية عرض PDF. يرجى إعادة المحاولة.","wrap.aria":"التفاف الأسطر","wrap.disable":"إيقاف التفاف الأسطر","wrap.enable":"تشغيل التفاف الأسطر","zoomControls":"أدوات التكبير","zoomFitWidth":"ملاءمة العرض","zoomIn":"تكبير","zoomMenu":"اختيار مستوى التكبير","zoomOut":"تصغير","zoomValue":"{percent}%"},"sidebarRight":{"chrome.collapse":"طيّ الشريط الجانبي","chrome.collapseAria":"طيّ الشريط الجانبي الأيمن","chrome.exitFullscreen":"الخروج من ملء الشاشة","chrome.expand":"فتح الشريط الجانبي","chrome.expandAria":"فتح الشريط الجانبي الأيمن","chrome.toFullscreen":"ملء الشاشة","command.budget":"الحد الأقصى لوحتان","command.close":"إغلاق الصفحة أو النافذة الحالية","command.collapsed":"وسّع الشريط الجانبي الأيمن أولًا","command.empty":"افتح صفحة أولًا","command.float":"هذا الإجراء غير متاح في لوحة عائمة","command.fullscreen":"تبديل ملء شاشة اللوحة","command.noFocus":"ركّز على إحدى لوحات الشريط الجانبي الأيمن أولًا","command.noRefresh":"لا يمكن تحديث هذه الصفحة","command.noSession":"اختر جلسة أولًا","command.refresh":"تحديث الصفحة الحالية","command.stale":"تغيّرت الصفحة؛ ركّز عليها مرة أخرى","command.toggle":"تبديل الشريط الجانبي الأيمن","command.width":"العرض غير كافٍ للتقسيم، وسّع الشريط الجانبي","dock.addTab":"علامة تبويب جديدة","dock.closeFloat":"إغلاق","dock.closeTab":"إغلاق","dock.dockFloat":"إعادة إلى الشريط الجانبي","dock.drop.bottom":"إضافة تقسيم سفلي","dock.drop.center":"نقل إلى هنا","dock.drop.left":"إضافة تقسيم يساري","dock.drop.right":"إضافة تقسيم يميني","dock.drop.top":"إضافة تقسيم علوي","dock.emptyPane":"لوحة فارغة","dock.splitPane":"تقسيم","dock.splitPaneDisabled":"الحد الأقصى لوحتان","dock.splitPaneNarrow":"العرض غير كافٍ للتقسيم، وسّع الشريط الجانبي","tab.guide.title":"البدء","tab.unavailable":"لا يوجد هنا ما يمكنه عرض هذا النوع من المحتوى بعد."},"sidebarTerminal":{"attachmentEnded":"انتهى اتصال الطرفية. أعد الاتصال للمتابعة.","cleanupFailed":"تعذّر إنهاء الطرفية «{title}»: {message}","closed":"تم إغلاق الطرفية.","connecting":"جارٍ الاتصال…","control":"تولّي التحكم","creating":"جارٍ البدء…","description":"تشغيل الأوامر في مساحة عمل الجلسة","disconnected":"تم قطع الاتصال.","exited":"انتهت العملية ({code})","failed":"خطأ في الطرفية: {message}","inputFull":"ذاكرة الإدخال ممتلئة. أعد الاتصال وحاول مرة أخرى.","invalidOutput":"تعذّر استلام شاشة الطرفية. أعد الاتصال لاستعادتها.","loading":"جارٍ قراءة بيئة الطرفية…","missingTerminal":"هذه الطرفية لم تعد موجودة. افتح طرفية جديدة.","new":"طرفية جديدة","readonly":"هذا العرض للقراءة فقط.","reconnect":"إعادة الاتصال","recoveryFailed":"فشل استرجاع الطرفية: {message}","rename":"اسم الطرفية","retry":"إعادة المحاولة","retryRecovery":"إعادة محاولة استرجاع الطرفية","shell":"اختيار shell","shellEmpty":"لا تتوفر أي shell","shellLoading":"جارٍ تحميل shell…","shortcut.noSession":"اختر جلسة أولًا","terminalLimit":"تم بلوغ الحد الأقصى للطرفيات. أغلق الطرفيات غير المستخدمة وحاول مرة أخرى. تُحتسب الطرفيات المنتهية أيضًا ضمن الحد.","title":"الطرفية","unavailable":"غير متاح"},"skill":{"menu.userOnly":"للمستخدم فقط","row.failed":"فشل تحميل المهارة","row.inspect":"فحص","row.instructions":"التعليمات","row.preparing":"جارٍ التحضير لتحميل مهارة","row.running":"جارٍ تحميل المهارة","row.stopped":"تم إيقاف تحميل المهارة","row.title":"المهارة"},"slash.menu":{"command":"الأوامر","crumbs.aria":"التنقل بين المجلدات","drill.aria":"تصفّح المجلد","drill.hint":"تصفّح المجلد","drill.key":"Tab","loading":"جارٍ التحميل…","skill":"المهارات","subagent":"الوكلاء الفرعيون","suggestions.aria":"اقتراحات التشغيل"},"subagent":{"activity.completed":"مكتمل","activity.inactive":"غير قيد التشغيل","activity.running":"قيد التشغيل","branch.collapse":"طيّ الفروع التابعة لـ{label}","branch.expand":"توسيع الفروع التابعة لـ{label}","catalog.migrationRequired":"يلزم الترحيل","count.running.one":"{count} وكيل فرعي قيد التشغيل","count.running.other":"{count} وكيل فرعي قيد التشغيل","count.total.one":"{count} وكيل فرعي","count.total.other":"{count} وكيل فرعي","duration.days":"{days}ي","duration.daysHours":"{days}ي {hours}س","duration.exactDays":"{days}ي {hours}س {minutes}د {seconds}ث","duration.exactTitle":"إجمالي المدة النشطة: {duration}","duration.hours":"{hours}س {minutes}د {seconds}ث","duration.minutes":"{minutes}د {seconds}ث","duration.months":"~{months}ش","duration.monthsDays":"~{months}ش {days}ي","duration.seconds":"{seconds}ث","duration.years":"~{years}سن","duration.yearsMonths":"~{years}سن {months}ش","load.error":"تعذّر تحميل الوكلاء الفرعيين","loading.label":"جارٍ تحميل الوكلاء الفرعيين…","mode.continuable":"قابل للمتابعة","mode.external":"مهمة خارجية","mode.oneShot":"لمرة واحدة","mode.unknown":"نمط غير معروف","open.sidebar":"فتح في الشريط الجانبي","open.sidebar.aria":"فتح {label} في الشريط الجانبي","readonly.body":"جلسة الأصل غير متصلة؛ أعد فتحها لمتابعة إرسال الرسائل.","readonly.oneShot.body":"المهام التي تُنفَّذ لمرة واحدة لا تقبل متابعات؛ راجع سجل التنفيذ الكامل هنا.","readonly.oneShot.title":"سجل وكيل فرعي لمرة واحدة","readonly.title":"هذا الوكيل الفرعي للقراءة فقط في الوقت الحالي","readonly.unknown.body":"اقرأ جلسة الابن لتحديد ما إذا كان يمكن متابعتها.","retry":"إعادة المحاولة","sidebar.chat":"الدردشة","switcher.aria":"تبديل الوكيل الفرعي: {title}","tokens.million":"{value}M","tokens.thousand":"{value}K","tokens.total":"{value} توكن","tree.aria":"جلسات الوكلاء الفرعيين"},"trajectory":{"attachment.imageName":"صورة {index}","attachment.list":"المرفقات","block.label":"كتلة #{index} {type}","block.openSummary":"فتح ملخص استدعاء أداة الكتلة #{index}","block.openSummaryTitle":"فتح ملخص استدعاء الأداة","code.copyOutput":"نسخ المخرجات","code.copySource":"نسخ الكود","code.originalJson":"JSON الأصلي","code.output":"المخرجات","code.running":"قيد التشغيل…","code.source":"الكود","column.input":"الإدخال","column.model":"الموديل","column.output":"المخرجات","column.think":"التفكير","column.time":"الوقت","column.tools":"الأدوات","details.assistantMessage":"رسالة المساعد","details.close":"إغلاق التفاصيل","details.compacted":"مضغوط","details.error":"خطأ","details.event":"تفاصيل الحدث","details.failure.auth":"مفتاح API غير صالح","details.hierarchy":"التسلسل الهرمي","details.lastAttemptError":"خطأ المحاولة الأخيرة","details.model":"الموديل","details.provider":"المزوّد","details.purpose":"الغرض","details.resize":"تفاصيل حدث تغيير الحجم","details.resizeTitle":"اسحب لتغيير الحجم. انقر نقرًا مزدوجًا لإعادة الضبط.","details.result":"النتيجة","details.retry":"إعادة المحاولة","details.retryDelay":"مهلة إعادة المحاولة","details.source":"المصدر","details.status":"الحالة","details.subtoolCalls":"استدعاءات الأدوات الفرعية","details.toolCall":"استدعاء أداة","details.toolCalls":"استدعاءات الأدوات","group.compaction":"ضغط {seq}","group.message":"رسالة","group.step":"خطوة {step}","history.clickToLoadEarlier":"انقر لتحميل السجل الأقدم","history.loadEarlier":"تحميل السجل الأقدم","history.loadingEarlier":"جارٍ تحميل السجل الأقدم…","history.loadingEarlierAria":"جارٍ تحميل السجل الأقدم…","history.loadingTrajectory":"جارٍ تحميل المسار…","kind.assistant":"المساعد","kind.compacted":"مضغوط","kind.context":"السياق","kind.message":"رسالة","kind.sub":"فرعي","kind.subtool":"أداة فرعية","kind.system":"النظام","kind.tool":"أداة","kind.user":"المستخدم","layout.compacted":"تم ضغط السياق","layout.compacting":"جارٍ ضغط السياق…","layout.compactionFailed":"فشل الضغط","layout.compactionInterrupted":"توقف الضغط قبل اكتماله.","layout.fileAttachments":"ملفات ×{count}","layout.imageCount":"صور ×{count}","layout.initialSystemPrompt":"موجّه النظام الأولي","layout.systemPromptAndToolsUpdated":"تم تحديث موجّه النظام والأدوات","layout.systemPromptUpdated":"تم تحديث موجّه النظام","layout.toolAdded":"تمت إضافة أداة: {name}","layout.toolCallOnly":"استدعاء أداة فقط","layout.toolRemoved":"تمت إزالة أداة: {name}","layout.toolUpdateNotice":"تم تحديث الأدوات","layout.toolsAdded":"المضاف: {names}","layout.toolsAddedCount":"{count} مضاف","layout.toolsChanged":"{added} مضاف، {removed} مزال","layout.toolsRemoved":"المزال: {names}","layout.toolsRemovedCount":"{count} مزال","layout.toolsUpdated":"تم تحديث الأدوات","options.json":"JSON خيارات الطلب","options.notRecorded":"لم تُسجَّل الخيارات","record.json":"JSON","record.namedParametersJson":"JSON معاملات {name}","record.noContent":"لا يوجد محتوى","record.noOutput":"لا توجد مخرجات","record.noPayload":"لم تُلتقط أي حمولة","record.noResult":"لم تُلتقط أي نتيجة","record.outputJson":"JSON النتيجة","record.parameters":"المعاملات","record.parametersJson":"JSON المعاملات","record.payloadJson":"JSON الحمولة","record.resultJson":"JSON النتيجة","record.schemaUnavailable":"المخطط غير متاح","record.systemPrompt":"موجّه النظام","record.systemPromptMissing":"لا يوجد موجّه نظام في هذا الطلب","record.thinking":"التفكير","record.toolCallOnly":"(استدعاء أداة فقط)","record.tools":"الأدوات","record.toolsMissing":"لا توجد أدوات في هذا الطلب","record.wrapLines":"التفاف الأسطر","request.collapsedAssistant":"المساعد","request.collapsedSummary":"ملخص {kind} مطوي، {summary}","request.collapsedTurn":"دورة","request.compaction":"ضغط · {section}","request.compactionPurpose":"ضغط","request.label":"الطلب #{request}","request.labelCompaction":"الطلب #{request} · ضغط","request.noContent":"لا يوجد محتوى","request.retryProgress":"{retry} من {maximum}","request.rowAria":"{request}{kind}، {content}","request.rowAriaCompaction":"الطلب {request}، ضغط","request.rowPrefix":"الطلب {request}، ","section.betweenTurns":"بين الدورات","source.goal":"الهدف","source.goalRound":"الهدف · الجولة {round}","source.messageJson":"JSON مصدر الرسالة","source.notRecorded":"لم يُسجَّل المصدر","source.plugin":"بلاقن","source.pluginNamed":"بلاقن · {plugin}","source.unknown":"غير معروف","source.user":"المستخدم","status.completed":"مكتمل","status.failed":"فشل","status.pending":"قيد الانتظار","summary.steps.one":"{count} خطوة","summary.steps.other":"{count} خطوة","summary.toolCalls.one":"{count} استدعاء أداة","summary.toolCalls.other":"{count} استدعاء أداة","tab.diff":"الفرق","tab.options":"الخيارات","tab.payload":"الحمولة","tab.preview":"معاينة","tab.raw":"خام","tab.rawOutput":"المخرجات الخام","tab.result":"النتيجة","tab.schema":"المخطط","tab.source":"المصدر","tab.summary":"الملخص","tab.systemPrompt":"موجّه النظام","tab.timing":"التوقيت","tab.tools":"الأدوات","tab.usage":"الاستخدام","timeline.aria":"الخط الزمني للمسار","timeline.noTimingData":"لا توجد بيانات توقيت","timeline.overviewAria":"نظرة عامة على الخط الزمني؛ اسحب أفقيًا لتركيز الأحداث","timeline.started":"بدأ {time}","timeline.total":"الإجمالي {duration}","timeline.ttftDecoding":"TTFT {ttft} · فك الترميز {decoding}","timing.duration":"المدة","timing.durationTooShort":"المدة قصيرة جدًا","timing.firstTokenUnavailable":"التوكن الأول غير متاح","timing.generation":"التوليد","timing.notAvailable":"غير متاح","timing.notRecorded":"لم يُسجَّل","timing.outputTokensUnavailable":"توكنات المخرجات غير متاحة","timing.request":"توقيت الطلب","timing.sessionTimestamps":"الطوابع الزمنية للجلسة","timing.sessionTimestampsRunning":"الطوابع الزمنية للجلسة (قيد التشغيل)","timing.showLocalTime":"عرض التوقيت المحلي","timing.showUnixTimestamp":"عرض طابع Unix الزمني","timing.source":"مصدر التوقيت","timing.started":"بدأ","timing.stepStartUnavailable":"بداية الخطوة غير متاحة","timing.throughput":"الإنتاجية","timing.totalDuration":"المدة الإجمالية","timing.ttft":"TTFT","timing.usageUnavailable":"بيانات الاستخدام غير متاحة","toolbar.actualTime":"الوقت الفعلي","toolbar.aria":"شريط أدوات المسار","toolbar.calls":"الاستدعاءات","toolbar.collapseCalls":"طيّ الاستدعاءات","toolbar.collapseTurns":"طيّ الدورات","toolbar.duration":"المدة","toolbar.expandCalls":"توسيع الاستدعاءات","toolbar.expandTurns":"توسيع الدورات","toolbar.search":"بحث في المسار","toolbar.searchPlaceholder":"بحث","toolbar.turns":"الدورات","toolbar.useActualDuration":"استخدام المدة الفعلية","toolbar.useEqualWidth":"استخدام عمليات بعرض متساوٍ","turn.label":"الدورة {turn}","unit.milliseconds":"{value} م.ث","unit.seconds":"{value} ث","unit.tokens":"{value} توكن","unit.tokensPerSecond":"{value} توكن/ث","usage.cacheCreated":"تم إنشاء ذاكرة التخزين المؤقت","usage.cached":"مخزّن مؤقتًا","usage.content":"المحتوى","usage.input":"الإدخال","usage.notReported":"لم يُبلَّغ عن الاستخدام","usage.other":"أخرى","usage.output":"المخرجات","usage.reasoning":"الاستدلال","usage.sessionCumulative":"إجمالي الجلسة","usage.thisRequest":"هذا الطلب","usage.tokens":"التوكنات","view.trajectory":"المسار"},"voice-input":{"auto":"كشف تلقائي","cancel":"إلغاء","cancelPrepare":"إلغاء التحضير","cancelled":"تم إلغاء الإدخال الصوتي.","cloud":"سيُرسل الصوت إلى الخدمة السحابية المحددة.","cloudReady":"التعرّف السحابي على الكلام جاهز.","conflict":"تغيّرت مسودتك. النص المنسوخ محفوظ ويمكن إدراجه عند موضع المؤشر الحالي.","deviceMissing":"الميكروفون غير متاح. اختر جهاز إدخال آخر.","deviceUnavailable":"غير متاح","dictate":"إملاء","discard":"تجاهل النص","download.certificate":"تعذّر تنزيل {resource}: فشل التحقق من الشهادة.","download.dns":"تعذّر تنزيل {resource}: تعذّر تحليل عنوان التنزيل.","download.http":"تعذّر تنزيل {resource}: أعادت خدمة التنزيل HTTP {status}.","download.integrity":"تنزيل {resource} غير مكتمل أو فشل التحقق منه.","download.network":"تعذّر تنزيل {resource}: فشل الاتصال بخدمة التنزيل.","download.storage":"تعذّر حفظ {resource}: مساحة القرص غير كافية أو لا توجد صلاحية كتابة.","download.timeout":"انتهت مهلة تنزيل {resource}.","download.unknown":"تعذّر تجهيز {resource}.","downloadAdvice.certificate":"تحقّق من ساعة النظام والشهادات الموثوقة وإعدادات الوسيط على الجهاز الذي يشغّل DSH، ثم أعد المحاولة.","downloadAdvice.dns":"تحقّق من إعدادات DNS والوسيط على الجهاز الذي يشغّل DSH. تأكّد من قدرته على تحليل نطاق مصدر التنزيل، ثم أعد المحاولة.","downloadAdvice.http":"تأكّد من توفر عنوان التنزيل ومن قدرة الوسيط على الوصول إلى خدمة التنزيل، أو أعد المحاولة لاحقًا.","downloadAdvice.integrity":"أعد محاولة التنزيل. تُحتفظ بالملفات الأخرى المكتملة والمتحقَّق منها.","downloadAdvice.network":"تحقّق من قدرة الجهاز الذي يشغّل DSH على الوصول إلى مصدر التنزيل وخدمات تنزيل الموديلات. اضبط وسيطًا على ذلك الجهاز إذا لزم الأمر، ثم أعد المحاولة.","downloadAdvice.storage":"تحقّق من مساحة القرص المتاحة وصلاحية الكتابة لمجلد الموديل على الجهاز الذي يشغّل DSH، ثم أعد المحاولة.","downloadAdvice.timeout":"تحقّق من اتصال الشبكة أو الوسيط على الجهاز الذي يشغّل DSH، ثم أعد المحاولة لاحقًا. تُحتفظ بالملفات المنزَّلة المتحقَّق منها.","downloadAdvice.unknown":"تحقّق من الشبكة ومساحة القرص وصلاحيات مجلد الموديل على الجهاز الذي يشغّل DSH، ثم أعد المحاولة.","downloadBytes":"التنزيل: {completed} / {total} MB، {percent}%","downloadCode":"رمز الخطأ: {code}","downloadProgress":"تقدّم التنزيل","downloadSource":"مصدر التنزيل: {source}","downloadUnknown":"تم تنزيل {completed} MB","elapsed":"في انتظار {seconds} ثانية","empty":"لم يتم التعرّف على أي كلام","en":"الإنجليزية","failed":"فشل التعرّف على الكلام: {message}","inputDevice":"جهاز الإدخال","inputLevel":"مستوى إدخال الميكروفون","insert":"إدراج النص","interrupted":"توقف التسجيل. حاول مرة أخرى.","ja":"اليابانية","ko":"الكورية","language":"لغة التعرّف","loading":"جارٍ تحميل خدمات التعرّف…","local":"يتم التعرّف على الصوت على الجهاز الذي يشغّل DSH. إذا لزم تنزيل الموديلات، فيجب أن يتمكن ذلك الجهاز من الوصول إلى المصدر المحدد وخدمات ملفاته. اضبط وسيطًا على ذلك الجهاز إذا لزم الأمر.","permission":"الوصول إلى الميكروفون معطّل. اسمح به من إعدادات المتصفح والنظام.","preparation.cancelled":"أُلغي التجهيز. تُحتفظ بالتنزيلات المكتملة.","preparation.cancelling":"جارٍ إلغاء التجهيز…","preparation.checking":"جارٍ التحقق من الموارد المحلية…","preparation.loading":"جارٍ تحميل {name}…","preparation.ready":"التعرّف المحلي على الكلام جاهز.","preparation.standby":"الموارد المحلية جاهزة. يوقظ التسجيل أداة التعرّف.","preparation.unprepared":"يؤدي الاستخدام الأول إلى تنزيل موديلات التعرّف المحلية.","preparation.waking":"جارٍ إيقاظ التعرّف المحلي على الكلام…","preparationFailed":"فشل التجهيز: {message}","preparationSteps":"خطوات التجهيز","prepare":"تنزيل وتجهيز","provider":"خدمة التعرّف","reconnecting":"جارٍ الاتصال بخدمة التعرّف على الكلام…","recording":"جارٍ التسجيل…","requesting":"اسمح بالوصول إلى الميكروفون للمتابعة…","retryPrepare":"إعادة محاولة التجهيز","retryRecording":"التسجيل مرة أخرى","setup.disk":"مساحة القرص","setup.diskValue":"خصّص نحو {gb} GB للموديلات وبيئة التشغيل وذاكرة التنزيل المؤقتة","setup.estimateNote":"هذه تقديرات؛ وقد تستغرق الشبكات البطيئة وقتًا أطول. يُعاد استخدام التنزيلات؛ وتحرّر الموديلات الخاملة الذاكرة افتراضيًا.","setup.local":"ستُنزَّل الموديلات المحلية إلى الجهاز الذي يشغّل DSH. لا حاجة إلى Python أو مترجم.","setup.memory":"الذاكرة","setup.memoryValue":"نحو {gb} GB مع تحميل الموديل؛ وقد يستخدم التعرّف أكثر من ذلك","setup.time":"الإعداد الأول","setup.timeValue":"خصّص نحو {min}–{max} دقيقة، حسب الشبكة والجهاز","setupPrompt.body":"إدخال الصوت مفعّل. يتطلب الاستخدام الأول تنزيل موديلات التعرّف المحلية وتجهيزها. افتح تفاصيل البلاقن لمراجعة تقديرات مساحة القرص والذاكرة والوقت قبل بدء الإعداد.","setupPrompt.details":"فتح إعدادات بلاقن الصوت","setupPrompt.later":"لاحقًا","setupPrompt.open":"الانتقال إلى الإعداد","setupPrompt.title":"أعدّ إدخال الصوت قبل التسجيل","setupPrompt.trigger":"فتح إعداد إدخال الصوت","setupPrompt.unavailableBody":"افتح تفاصيل بلاقن الصوت للتحقق من حالة التعرّف أو تقدّم التجهيز أو الأخطاء.","setupPrompt.unavailableTitle":"التعرّف على الكلام غير جاهز","short.downloading":"جارٍ التنزيل","short.failed":"فشل الإعداد","sourceAuto":"تلقائي (موصى به)","sourceAutoHelp":"تفضيل أول مصدر يستجيب، ومحاولة مصدر آخر إذا فشل التنزيل.","sourceChoice":"مصدر تنزيل الموديل","sourceHuggingFace":"Hugging Face","sourceManualHelp":"التنزيل من المصدر المحدد فقط. يُعاد استخدام الملفات المنزَّلة المتحقَّق منها.","sourceMirror":"HF-Mirror (مرآة الصين)","start":"بدء التسجيل","step.check":"التحقق من الموارد المحلية","step.load":"تحميل {name}","step.model":"تجهيز موديل التعرّف","step.vad":"تجهيز موديل كشف الصوت","step.verify":"التحقق من ملفات الموديل","stepStatus.cancelled":"ملغى","stepStatus.complete":"مكتمل","stepStatus.failed":"فشل","stepStatus.pending":"لم يبدأ","stepStatus.running":"قيد التنفيذ","stop":"إيقاف ونسخ النص","systemMicrophone":"افتراضي النظام","systemMicrophoneNamed":"افتراضي النظام ({name})","tooLarge":"يتجاوز التسجيل حد الخدمة. جرّب تسجيلًا أقصر.","transcribingShort":"جارٍ نسخ النص…","unavailable":"لا يمكن لهذا المتصفح تسجيل الصوت. استخدم متصفحًا يدعم الميكروفون.","unnamedMicrophone":"ميكروفون {number}","unnamedSelectedMicrophone":"ميكروفون","wakingShort":"جارٍ الإيقاظ…","yue":"الكانتونية","zh":"الصينية"},"workflowRun":{"member.empty":"اسم عضو فارغ","member.open":"فتح {name}","phase.empty":"اسم مرحلة فارغ","phase.unassigned":"بلا مرحلة","run.empty":"لم يبدأ أي عضو","run.members.one":"{count} عضو","run.members.other":"{count} أعضاء","run.title":"{name}","status.cancelled":"ملغى","status.completed":"مكتمل","status.failed":"فشل","status.interrupted":"متوقف","status.running":"قيد التشغيل","statusCount.cancelled":"ملغى {count}","statusCount.completed":"مكتمل {count}","statusCount.failed":"فشل {count}","statusCount.interrupted":"متوقف {count}","statusCount.running":"قيد التشغيل {count}"},"workspace":{"actions.archive":"أرشفة","actions.newSession":"جلسة جديدة","actions.newSession.aria":"جلسة جديدة في {name}","actions.pin":"تثبيت","actions.session.aria":"إجراءات الجلسة لـ {name}","actions.unarchive":"إلغاء الأرشفة","actions.unpin":"إلغاء التثبيت","actions.workspace.aria":"إجراءات مساحة العمل لـ {name}","archive.confirm.action":"إيقاف وأرشفة","archive.confirm.activity":"العمل الذي سيُوقف","archive.confirm.desc":"لا يزال لدى “{title}” عمل قيد التنفيذ. تؤدي الأرشفة إلى إيقافه أولًا؛ ويمكنك استعادة الجلسة لاحقًا من تصفية “كل المحادثات (إظهار المؤرشفة)” في الشريط الجانبي، ولن يُستأنف العمل المُوقف من تلقاء نفسه.","archive.confirm.jobs.one":"{n} مهمة خلفية: {names}","archive.confirm.jobs.other":"{n} مهام خلفية: {names}","archive.confirm.listSeparator":"، ","archive.confirm.other.one":"{n} عنصر عمل آخر ({kind})","archive.confirm.other.other":"{n} عناصر عمل أخرى ({kind})","archive.confirm.pending":"جارٍ الإيقاف والأرشفة…","archive.confirm.schedules.one":"{n} تذكير مجدول: {names}","archive.confirm.schedules.other":"{n} تذكيرات مجدولة: {names}","archive.confirm.subagents.one":"{n} وكيل فرعي قيد التشغيل: {names}","archive.confirm.subagents.other":"{n} وكلاء فرعيون قيد التشغيل: {names}","archive.confirm.title":"إيقاف هذه الجلسة وأرشفتها؟","archive.confirm.turn":"الدورة الجارية","conflict.named":"توجد بالفعل مساحة عمل باسم “{name}”.","date.ymd":"{y}-{m}-{d}","defaultWorkspace.failed":"تعذّر إنشاء مساحة العمل الافتراضية. استخدم “اختيار مساحة عمل” لتحديد مجلد.","delete.desc":"يؤدي هذا إلى إزالة “{name}” من قائمة مساحات العمل. سيُحتفظ بالمجلد وسجلات الجلسات. وستظهر جلساتها ضمن “غير مجمّعة”.","delete.pending":"جارٍ حذف مساحة العمل…","delete.workspace":"حذف مساحة العمل","draft.initializationFailed":"تعذّر تعبئة المسودة. حاول مرة أخرى بعد قليل.","draft.workspaceRequired":"اختر مساحة عمل أولًا.","empty.noMatches":"لا توجد نتائج مطابقة","empty.none":"لا توجد جلسات بعد","empty.noneArchived":"لا توجد جلسات مؤرشفة بعد","empty.viewOthers":"عرض الجلسات الأخرى","field.sessionName":"اسم الجلسة","field.workspaceName":"اسم مساحة العمل","filterBy.label":"تصفية الجلسات","folderError.retry":"اختيار مرة أخرى","folderError.title":"تعذّر فتح المجلد","group.ungrouped":"غير مجمّعة","groupBy.flat":"في قائمة واحدة","groupBy.label":"التجميع حسب","groupBy.workspace":"مساحة العمل","groupBy.workspaceTree":"شجرة مساحات العمل","hover.copied":"تم النسخ","hover.created":"أُنشئت {time}","menu.addWorkspace":"إضافة مساحة عمل…","menu.archiveSession":"أرشفة الجلسة","menu.fork":"تفريع الجلسة","menu.pinSession":"تثبيت الجلسة","menu.unarchiveSession":"إلغاء أرشفة الجلسة","menu.unpinSession":"إلغاء تثبيت الجلسة","orderBy.label":"الترتيب حسب","orderBy.manual":"يدوي","orderBy.updated":"آخر تحديث","picker.loading":"جارٍ تحميل مساحات العمل…","rename":"إعادة التسمية","rename.session.title":"إعادة تسمية الجلسة","rename.workspace.title":"إعادة تسمية مساحة العمل","row.archived":"مؤرشفة","row.pinned":"مثبّتة","search.clear":"مسح البحث","search.hasMore":"عرض أول {n} نتيجة. ضيّق نطاق البحث.","search.noMatches":"لا توجد جلسات مطابقة","search.pending":"جارٍ البحث في سجل الجلسات…","search.placeholder":"بحث في أسماء الجلسات","search.results.aria":"نتائج البحث","search.sessions.aria":"بحث في الجلسات","section.sessions":"الجلسات","section.workspaces":"مساحات العمل","session.new":"جلسة جديدة","session.untitled":"بلا عنوان","sessions.collapse":"عرض أقل","sessions.count.one":"{n} جلسة","sessions.count.other":"{n} جلسات","sessions.expand":"عرض {n} جلسة إضافية","shortcut.directoryBusy":"جارٍ تحديد مساحة عمل أو إضافتها","shortcut.forkFailed":"تعذّر تفريع الجلسة. حاول مرة أخرى.","shortcut.noCompletedTurn":"لا تحتوي هذه الجلسة على دورة مكتملة","shortcut.noPicker":"منتقي المجلدات غير متاح","shortcut.noSession":"اختر جلسة أولًا","status.compact.answer":"الإجابة","status.compact.approval":"الموافقة","status.compact.planReview":"مراجعة الخطة","status.completed":"مكتمل","status.idle":"خامل","status.planReview":"خطة بانتظار المراجعة","status.running":"قيد التشغيل","status.subagentsRunning.one":"{n} وكيل فرعي قيد التشغيل","status.subagentsRunning.other":"{n} وكلاء فرعيون قيد التشغيل","status.waitingAnswer":"بانتظار الإجابة","status.waitingApproval":"بانتظار الموافقة","time.ago":"قبل {t}","time.days":"{n} يوم","time.hours":"{n} ساعة","time.minutes":"{n} دقيقة","time.months":"{n} شهر","time.now":"الآن","time.years":"{n} سنة","toast.archived":"تمت أرشفة الجلسة. يمكنك ","toast.archivedFilter":"تصفية الجلسات المؤرشفة","toast.archivedNotOpenable":"لا يمكن فتح الجلسات المؤرشفة. ألغِ أرشفتها للعرض.","toast.archivedOr":" أو ","toast.archivedUndo":"تراجع","toast.createFailed":"فشل إنشاء جلسة جديدة: {message}","toast.forkRequiresOpen":"افتح الجلسة الأصلية لإكمال الترحيل قبل إنشاء فرع.","toast.openForkSource":"فتح الجلسة الأصلية","toast.pinFailed":"فشل التثبيت. حاول مرة أخرى لاحقًا.","toast.stoppedAndArchived":"تم إيقاف الجلسة وأرشفتها. يمكنك ","toast.unpinFailed":"فشل إلغاء التثبيت. حاول مرة أخرى لاحقًا.","viewOptions.hideArchived":"إخفاء المؤرشفة","viewOptions.label":"خيارات العرض","viewOptions.onlyArchived":"المؤرشفة فقط","viewOptions.showArchived":"كل المحادثات (إظهار المؤرشفة)","workspace.add":"إضافة مساحة عمل"}}
     const PANEL_ID = 'environment-sidebar'
     const border = '1px solid rgba(128,128,128,.27)'
     const cardStyle = {
@@ -188,7 +193,7 @@ window.__ModuleLoader__.load({
 
     // Only stable published GitHub Releases may trigger an in-app update offer.
     // This browser-side checker never installs anything without a separate click.
-    const INSTALLED_VERSION = '0.8.0-rc.1'
+    const INSTALLED_VERSION = '1.0.0'
     const PACKAGE_NAME = '@abinadwan/dsh-plugins-suite'
     const RELEASE_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/latest'
     const COMMIT_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/commits/'
@@ -355,7 +360,7 @@ window.__ModuleLoader__.load({
     const MIGRATION_STEPS = [
       'Harness can update a Git-installed bundle in place only when it was installed from a spec pinned to a full 40-character commit. Nothing was changed.',
       'One-time migration (manual, at your discretion): note which components are switched on, Uninstall this bundle from this page, then use Add plugin with the pinned spec shown below, and switch the components back on.',
-      'Personal Profile settings are stored in this Harness Profile\'s configuration and uninstalling may remove them. If you use Personal Profile, first export a JSON backup from Personal Profile → Backup & Restore (it includes your saved access permissions and is not encrypted). If the pinned install fails, reinstall from the same spec or from the original source.',
+      'My Profile settings are stored in this Harness Profile\'s configuration and uninstalling may remove them. If you use My Profile, first export a JSON backup from My Profile → Backup & Restore (it includes your saved access permissions and is not encrypted). If the pinned install fails, reinstall from the same spec or from the original source.',
     ]
     // Installed-plugin detail page only; never run an installer in a React effect.
     function VersionUpdates({ installedVersion, pluginManager, useRemoteAccess }) {
@@ -750,17 +755,16 @@ window.__ModuleLoader__.load({
     }
     const PROFILE_NS = 'abinadwan-personal-profile'
     const PERSONAL_FIELDS = ['preferredName','nationality','gender']
-    const POLICY_VALUES = ['private','ask_first','allow']
+    const POLICY_VALUES = ['private','allow']
     const GENDER_VALUES = ['','male','female','unspecified']
-    // Record v2 (0.7.2): one unified profile in the active Harness Profile.
-    // No Workspace dependency: the same information, preferences and policies
-    // apply to eligible native agent steps. Structured personal fields remain local.
-    const PROFILE_VERSION = 2
+    // v4 removes both sharing switches and Ask First. Legacy records are read-only.
+    const PROFILE_VERSION = 4
+    const LEGACY_POLICY_VALUES = ['private','ask_first','allow']
     const PROFILE_CUSTOM_MAX = 8192
     const privatePolicies = () => Object.fromEntries(PERSONAL_FIELDS.map(key=>[key,'private']))
     const emptyInformation = () => ({preferredName:'',nationality:'',gender:''})
-    const emptyProfileRecord = () => ({version:PROFILE_VERSION,locale:'ar',information:emptyInformation(),
-      preferences:neutralProfilePreferences(),policies:privatePolicies(),allowPersonalInformation:false,allowCloud:false})
+    const emptyProfileRecord = () => ({version:PROFILE_VERSION,locale:'auto',information:emptyInformation(),
+      preferences:neutralProfilePreferences(),policies:privatePolicies()})
     // Payload guard for the serialized record (UTF-16 units) and for restore
     // text/files. Large enough for any v1 record with many Workspace rows.
     const PROFILE_MAX_CHARS = 3_000_000
@@ -769,7 +773,7 @@ window.__ModuleLoader__.load({
     const profileKeys = (value,keys) => value && typeof value==='object' && !Array.isArray(value) &&
       Object.keys(value).length===keys.length && keys.every(key=>Object.hasOwn(value,key))
     // Errors carry a reason code only; never user-supplied content.
-    const profileError = code => Object.assign(new Error('Invalid Personal Profile settings'),{code})
+    const profileError = code => Object.assign(new Error('Invalid My Profile settings'),{code})
     const profileCheck = (condition,code='invalidContent') => { if(!condition) throw profileError(code) }
     const validText = (v,n) => typeof v==='string' && v.length<=n
     // Decoders rebuild every object in canonical key order, so comparisons of
@@ -792,24 +796,27 @@ window.__ModuleLoader__.load({
       profileCheck(profileKeys(i,PERSONAL_FIELDS)&&validText(i.preferredName,128)&&validText(i.nationality,128)&&GENDER_VALUES.includes(i.gender))
       return {preferredName:i.preferredName,nationality:i.nationality,gender:i.gender}
     }
-    function decodePolicies(p) {
+    function decodePolicies(p,legacy=false) {
       profileCheck(profileKeys(p,PERSONAL_FIELDS),'invalidPolicy')
-      profileCheck(PERSONAL_FIELDS.every(key=>POLICY_VALUES.includes(p[key])),'invalidPolicy')
+      profileCheck(PERSONAL_FIELDS.every(key=>(legacy?LEGACY_POLICY_VALUES:POLICY_VALUES).includes(p[key])),'invalidPolicy')
       return Object.fromEntries(PERSONAL_FIELDS.map(key=>[key,p[key]]))
     }
     function profileRoot(value) {
       profileCheck(value!==null&&typeof value==='object'&&!Array.isArray(value))
       profileCheck(!profileTooLarge(value),'tooLarge')
     }
-    /** Strict v2 decoder (wire and backup). Unknown fields are rejected. */
+    /** Saved unified records must be complete. Backups have a separate decoder. */
     function decodeProfile(value) {
       profileRoot(value)
-      profileCheck(value.version===PROFILE_VERSION,'unsupportedVersion')
-      profileCheck(profileKeys(value,['version','locale','information','preferences','policies','allowPersonalInformation','allowCloud']))
-      profileCheck(['ar','en'].includes(value.locale)&&typeof value.allowPersonalInformation==='boolean'&&typeof value.allowCloud==='boolean')
-      return {version:PROFILE_VERSION,locale:value.locale,information:decodeInformation(value.information),
-        preferences:decodePreferences(value.preferences),policies:decodePolicies(value.policies),
-        allowPersonalInformation:value.allowPersonalInformation,allowCloud:value.allowCloud}
+      profileCheck([2,3,PROFILE_VERSION].includes(value.version),'unsupportedVersion')
+      const legacy=value.version!==PROFILE_VERSION
+      const keys=['version','locale','information','preferences','policies']
+      if(legacy)keys.push('allowPersonalInformation','allowCloud')
+      profileCheck(profileKeys(value,keys))
+      profileCheck((value.version===PROFILE_VERSION?['auto','en','ar','zh','es','fr','de','ja']:['ar','en']).includes(value.locale)&&(!legacy||(typeof value.allowPersonalInformation==='boolean'&&typeof value.allowCloud==='boolean')))
+      return {version:value.version,locale:value.locale,information:decodeInformation(value.information),
+        preferences:decodePreferences(value.preferences),policies:decodePolicies(value.policies,legacy),
+        ...(legacy?{allowPersonalInformation:value.allowPersonalInformation,allowCloud:value.allowCloud}:{})}
     }
     /** Strict decoder of the 0.7.0/0.7.1 record (v1). Used to migrate, never to save. */
     function decodeLegacyProfile(value) {
@@ -823,7 +830,7 @@ window.__ModuleLoader__.load({
         profileCheck(profileKeys(w,['id','override','preferences','policies'])&&validText(w.id,256)&&w.id.length>0&&
           !seen.has(w.id)&&typeof w.override==='boolean')
         seen.add(w.id)
-        return {id:w.id,override:w.override,preferences:decodePreferences(w.preferences),policies:decodePolicies(w.policies)}
+        return {id:w.id,override:w.override,preferences:decodePreferences(w.preferences),policies:decodePolicies(w.policies,true)}
       })
       return {version:1,locale:value.locale,information:decodeInformation(value.information),global:decodePreferences(value.global),
         workspaces,allowPersonalInformation:value.allowPersonalInformation,allowCloud:value.allowCloud}
@@ -832,13 +839,13 @@ window.__ModuleLoader__.load({
       profileRoot(value)
       return value.version===1 ? {legacy:decodeLegacyProfile(value)} : {record:decodeProfile(value)}
     }
-    // v1 -> v2. Keeps information, locale and global preferences (including
+    // Migrating v1 keeps information, locale and global preferences (including
     // custom instructions). Workspace rows are never merged or promoted:
     // unified policies start Private and both switches Off, because consent
     // given under the per-Workspace model does not carry over.
     function migrateLegacyProfile(legacy) {
       return {version:PROFILE_VERSION,locale:legacy.locale,information:{...legacy.information},
-        preferences:withoutCustomConsent(decodePreferences(legacy.global)),policies:privatePolicies(),allowPersonalInformation:false,allowCloud:false}
+        preferences:withoutCustomConsent(decodePreferences(legacy.global)),policies:privatePolicies()}
     }
     /** Workspace-specific data or permissions that a migration would discard. */
     const legacyDiscards = legacy => legacy.workspaces.length>0||legacy.allowPersonalInformation||legacy.allowCloud
@@ -846,6 +853,36 @@ window.__ModuleLoader__.load({
       if(view?.ns!==PROFILE_NS || !Number.isSafeInteger(view.revision)||view.revision<0||!profileKeys(view.value,['record'])) throw new Error('Settings unavailable')
       const decoded=decodeAnyProfile(view.value.record)
       return {revision:view.revision,record:decoded.record||null,legacy:decoded.legacy||null}
+    }
+    // Overlay only supplied leaves. Arrays and scalar values are replaced whole.
+    function overlayProfile(base, patch) {
+      return {...base,...patch,version:PROFILE_VERSION,
+        information:{...base.information,...patch.information},
+        preferences:{...base.preferences,...patch.preferences,traits:{...base.preferences.traits,...patch.preferences?.traits}},
+      }
+    }
+    function decodeUnifiedBackup(value) {
+      profileCheck([2,3,PROFILE_VERSION].includes(value.version),'unsupportedVersion')
+      const objectField=(parent,key,code)=>{
+        if(Object.hasOwn(parent,key)){
+          const field=parent[key]
+          profileCheck(field!==null&&typeof field==='object'&&!Array.isArray(field),code)
+        }
+      }
+      for(const key of ['information','preferences','policies']) objectField(value,key,key==='policies'?'invalidPolicy':undefined)
+      if(value.preferences)objectField(value.preferences,'traits')
+      const base=emptyProfileRecord()
+      const legacy=value.version!==PROFILE_VERSION
+      const candidate={...overlayProfile(base,value),version:value.version,policies:{...base.policies,...value.policies}}
+      // v1-v3 backups cannot express 'auto'; an omitted locale is a valid
+      // sparse backup and must not inherit the current v4 default.
+      if(legacy&&!Object.hasOwn(value,'locale'))candidate.locale='ar'
+      if(legacy){
+        for(const key of ['allowPersonalInformation','allowCloud'])if(!Object.hasOwn(value,key))candidate[key]=false
+      }
+      decodeProfile(candidate)
+      const {allowPersonalInformation,allowCloud,...rest}=value
+      return {...rest,version:PROFILE_VERSION,...(value.policies?{policies:Object.fromEntries(Object.entries(value.policies).map(([k,v])=>[k,v==='allow'?'allow':'private']))}:{})}
     }
     // Appends imported custom instructions to the existing text. Paragraphs
     // (blocks separated by a blank line) whose trimmed text already exists are
@@ -893,7 +930,7 @@ window.__ModuleLoader__.load({
         reader.readAsText(file)
       })
     }
-    function PersonalProfilePage({settings,connectionSource,useRemoteAccess}) {
+    function PersonalProfilePage({settings,connectionSource,localeSource,useRemoteAccess}) {
       const canRead=typeof useRemoteAccess==='function' ? useRemoteAccess('settings/describe') : false
       const canWrite=typeof useRemoteAccess==='function' ? useRemoteAccess('settings/replace') : false
       const generation=React.useSyncExternalStore(connectionSource.subscribe,connectionSource.getSnapshot,connectionSource.getSnapshot)
@@ -908,18 +945,24 @@ window.__ModuleLoader__.load({
       const [exportView,setExportView]=React.useState(false)
       const [backupMessage,setBackupMessage]=React.useState('')
       const [restoreText,setRestoreText]=React.useState('')
-      const [restoreStrategy,setRestoreStrategy]=React.useState('replace')
+      const [restoreStrategy,setRestoreStrategy]=React.useState('merge')
+      const [replaceAck,setReplaceAck]=React.useState(false)
       const [restoreReview,setRestoreReview]=React.useState(null)
       const [restoreAck,setRestoreAck]=React.useState(false)
       const [restorePermissions,setRestorePermissions]=React.useState(false)
       const [permissionsAck,setPermissionsAck]=React.useState(false)
-      const [mergedText,setMergedText]=React.useState('')
+      const [mergedText,setMergedText]=React.useState(null)
+      const importGeneration=React.useRef(0)
       const request=React.useRef(0)
       const inFlight=React.useRef(false)
       const access=React.useRef({canRead,canWrite,generation})
       access.current={canRead,canWrite,generation}
       const lifetimeValid = g=>connectionSource.getSnapshot()===g&&access.current.canRead
-      const clearRestore=()=>{setRestoreReview(null);setRestoreAck(false);setRestorePermissions(false);setPermissionsAck(false);setMergedText('')}
+      const clearRestore=()=>{
+        importGeneration.current++
+        setRestoreReview(null);setRestoreStrategy('merge');setRestoreAck(false);setReplaceAck(false)
+        setRestorePermissions(false);setPermissionsAck(false);setMergedText(null)
+      }
       const load = async () => {
         const id=++request.current,g=connectionSource.getSnapshot()
         inFlight.current=true;setConfirmReload(false);setStatus('loading');setRevision(null);setSaved(null)
@@ -936,7 +979,13 @@ window.__ModuleLoader__.load({
             // Stored v1 stays untouched until the user reviews and Saves.
             setRecord(migrateLegacyProfile(snapshot.legacy));setSaved(snapshot.legacy);setLegacy(snapshot.legacy)
             setRevision(snapshot.revision);setStatus('migration')
-          }else{setRecord(snapshot.record);setSaved(snapshot.record);setRevision(snapshot.revision);setStatus('ready')}
+          }else{
+            const stored=snapshot.record
+            const upgrade=stored.version!==PROFILE_VERSION
+            const {allowPersonalInformation,allowCloud,...rest}=stored
+            setRecord(upgrade ? {...rest,version:PROFILE_VERSION,policies:privatePolicies()} : stored)
+            setSaved(stored);setRevision(snapshot.revision);setStatus(upgrade?'sharingUpgrade':'ready')
+          }
         } catch {if(id===request.current&&lifetimeValid(g))setStatus('unavailable')}
         finally {if(id===request.current)inFlight.current=false}
       }
@@ -949,7 +998,7 @@ window.__ModuleLoader__.load({
           request.current++;inFlight.current=false
           setStatus(access.current.canRead?'reconnected':'unavailable')
         }else void load()
-        return()=>{request.current++;inFlight.current=false}
+        return()=>{request.current++;importGeneration.current++;inFlight.current=false}
       },[canRead,generation])
       const migrationBlocked=legacy!==null&&legacyDiscards(legacy)&&!migrationAck
       const save = async () => {
@@ -971,7 +1020,10 @@ window.__ModuleLoader__.load({
         }catch{if(id===request.current&&lifetimeValid(g))setStatus('failed')}
         finally{if(id===request.current)inFlight.current=false}
       }
-      const language=record.locale,values=record.information,preferences=record.preferences
+      const hostSnapshot=React.useSyncExternalStore(localeSource.subscribe,localeSource.getSnapshot,localeSource.getSnapshot)
+      const hostLanguage=['en','ar','zh','es','fr','de','ja'].includes(hostSnapshot?.active)?hostSnapshot.active:'en'
+      const language=record.locale==='auto'?hostLanguage:record.locale
+      const values=record.information,preferences=record.preferences
       const busy=status==='loading'||status==='saving'
       const editable=canRead&&canWrite&&revision!==null&&!busy&&generation===connectionSource.getSnapshot()
       const dirty=saved!==null&&!sameJson(record,saved)
@@ -983,7 +1035,7 @@ window.__ModuleLoader__.load({
       const setField=(id,value)=>setRecord(old=>({...old,information:{...old.information,[id]:value}}))
       const ar = {
         information:'معلوماتي', instructions:'تعليمات الوكيل', access:'التحكم في الوصول', backup:'النسخ والاستعادة', privacy:'الخصوصية والأمان',title:'الملف الشخصي',
-        subtitle:'ملف شخصي موحّد ضمن ملف Harness الحالي',warning:'يُحفظ هذا المحتوى محليًا دون تشفير خاص بالإضافة. لا تكتب كلمات مرور أو مفاتيح أو معلومات حساسة. تُرسل تفضيلات الرد المحفوظة إلى النموذج المختار وقد تبقى في سجل المحادثة. حقول المعلومات الشخصية لا تُرسل.',
+        subtitle:'ملف شخصي موحّد ضمن ملف Harness الحالي',warning:'يُحفظ هذا المحتوى محليًا دون تشفير خاص بالإضافة. لا تكتب كلمات مرور أو مفاتيح أو معلومات حساسة. تُرسل تفضيلات الرد المحفوظة إلى النموذج المختار وقد تبقى في سجل المحادثة. تُرسل المعلومات التي تحدد إتاحتها وتحفظها فقط إلى النموذج المختار، بما فيه السحابي.',
         language:'لغة الواجهة',preferredName:'الاسم المفضل',nationality:'الجنسية',gender:'الجنس',male:'ذكر',female:'أنثى',unspecified:'أفضّل عدم الذكر',
         unified:'إعدادات موحّدة',unifiedHint:'تُطبّق التفضيلات المحفوظة عند تجهيز الخطوة التالية في المحادثات الأصلية المدعومة، دون اختيار مساحة عمل. قد تتجاوزها بعض إعدادات الوكيل الخاصة.',
         personality:'الشخصية',styleTone:'الأسلوب والنبرة',responseLanguage:'لغة الردود',characteristics:'خصائص الردود',presets:'خيارات سلوكية جاهزة',customInstructions:'تعليمات مخصصة',
@@ -991,20 +1043,23 @@ window.__ModuleLoader__.load({
         less:'أقل',neutral:'متوازن',more:'أكثر',characters:'حرف',
         preferenceHint:'كل الاختيارات اختيارية وتُطبّق بعد الحفظ.',languageHint:'لغة الردود مستقلة عن لغة الواجهة. اللهجة تُكتب ضمن التعليمات.',
         previewHint:'معاينة المسودة التي ستُرسل بعد الحفظ في المحادثات المدعومة؛ لا تُحذف التعليمات السابقة من السجل.',presetHint:'لا اختيار افتراضيًا.',resetPreferences:'إعادة ضبط التفضيلات',
-        effective:'المعاينة النهائية',optIn:'السماح باستخدام المعلومات الشخصية (إعداد محفوظ، غير مفعّل في الوكيل)',
+        effective:'المعاينة النهائية',optIn:'السماح بمشاركة المعلومات الشخصية مع النموذج',
         fieldPolicies:'صلاحيات الحقول',policiesHint:'صلاحية واحدة لكل حقل تنطبق على الملف كله، لا على مساحة عمل بعينها.',private:'خاص',ask:'اسأل أولًا',allow:'سماح',on:'مفعّل',off:'متوقف',
-        cloud:'السماح بإرسال المعلومات الشخصية إلى مزود سحابي (إعداد محفوظ، غير مفعّل)',accessHint:'لا يتم الوصول للمعلومات أو إرسالها حاليًا. صلاحيات المرحلة السابعة محفوظة فقط: الإفصاح محظور لأن Harness لا يضمن عزل السجل عند تغيير الصلاحية أو المزود. حتى «سماح» لا يرسل الحقول.',
-        exportTitle:'تصدير نسخة احتياطية',exportHint:'ملف JSON غير مشفّر. يحتوي معلوماتك الشخصية وتعليماتك وصلاحيات الوصول المحفوظة كما هي. احفظه في مكان آمن ولا تشاركه.',
+        cloud:'السماح بمشاركة المعلومات الشخصية مع المزودين السحابيين',accessHint:'حدد المعلومات التي تريد إتاحتها للوكيل ثم احفظ. غير المحدد يبقى خاصًا. ينطبق اختيارك على جميع النماذج والمزودين.',
+        available:'متاح للوكيل',sharedTitle:'المعلومات المتاحة بعد الحفظ',sharedNone:'لا تتم مشاركة أي شيء.',
+        retention:'قد تبقى التفاصيل التي شاركتها سابقًا لدى المزود أو في سجل المحادثة أو سجلات Harness أو الملخصات أو الفروع. إذا احتوى طلب على تفاصيل أضافها الملف سابقًا ولم تعد متاحة، فقد يتوقف. ابدأ محادثة جديدة للمتابعة.',
+        exportTitle:'تصدير نسخة احتياطية',exportHint:'نسخ JSON الاحتياطية غير مشفّرة، وتتضمن المعلومات الشخصية والتعليمات وصلاحيات الحقول المحفوظة. عند اختيار الإنجليزية أو العربية يدويًا يُستخدم إصدار 2 للتوافق؛ أما «اتباع لغة DSH» واللغات الأخرى فتستخدم إصدار 4 للاحتفاظ بالاختيار. احفظ النسخة بأمان ولا تشاركها.',
         download:'تنزيل ملف JSON',copy:'نسخ JSON',view:'عرض JSON',hideView:'إخفاء JSON',exportJson:'نسخة JSON',
         importTitle:'استيراد واستعادة',importHint:'اختر ملف JSON أو الصقه، ثم راجعه. لا يُحفظ شيء قبل الضغط على «حفظ التغييرات».',
         importFile:'استيراد ملف JSON',pasteJson:'لصق JSON يدويًا',import:'مراجعة النسخة',cancelRestore:'إلغاء الاستعادة',
         strategy:'طريقة الاستعادة',replaceAll:'استبدال الكل',replaceAllHint:'تحل الإعدادات المستوردة محل الحالية، ويُلغى إذن إرسال النص المخصص.',
-        replaceMerge:'استبدال الكل مع دمج التعليمات المخصصة',replaceMergeHint:'يُلغى إذن إرسال النص المخصص عند الاستعادة. تُستبدل كل الإعدادات عدا التعليمات المخصصة: يبقى نصك الحالي وتُضاف إليه الفقرات المستوردة غير المكررة.',
+        reviewMerge:'المراجعة والدمج',reviewMergeHint:'تبقى الحقول غير الموجودة في النسخة كما هي. تُضاف فقرات التعليمات الجديدة دون تكرار، ويمكنك تعديل النص في المعاينة. القيمة النصية الفارغة تمسح التعليمات.',
         previewTitle:'معاينة الاستعادة',setting:'الإعداد',current:'المسودة الحالية',proposed:'بعد الاستعادة',interfaceLanguage:'لغة الواجهة',
         mergedLabel:'التعليمات بعد الدمج (قابلة للتعديل)',importedInstructions:'التعليمات المستوردة',none:'لا شيء',empty:'—',
         permissionsTitle:'الصلاحيات المحفوظة في النسخة',restorePermissions:'استعادة الصلاحيات المحفوظة في هذه النسخة',
-        permissionsDefault:'افتراضيًا تُعاد كل الصلاحيات إلى «خاص» ويبقى المفتاحان متوقفين.',permissionsAck:'أفهم أن هذه الصلاحيات ستُحفظ كتفضيلات فقط، وأنها لا تُفعّل أي وصول للوكيل أو إرسال سحابي.',
-        permissionsLegacy:'هذه النسخة من الإصدار 0.7.1 ولا تحوي صلاحيات موحّدة؛ تُستعاد كل الصلاحيات «خاص» والمفتاحان متوقفان.',
+        permissionsDefault:'يبقي الدمج إتاحة الحقول غير المتغيرة، وتصبح الحقول المستوردة المتغيرة خاصة افتراضيًا. استبدال الكل يبدأ بخيارات خاصة.',permissionsAck:'أوافق على إتاحة الحقول المحددة في هذه النسخة لجميع النماذج بعد الحفظ.',
+        permissionsLegacy:'لا تحتوي هذه النسخة على خيارات إتاحة قابلة للاستعادة.',
+        switchesOff:'متوقف بعد الاستعادة',replaceConfirm:'أوافق على استبدال مسودتي الحالية واستعادة القيم الافتراضية للحقول الغائبة عن النسخة.',
         legacyEntries:'إعدادات خاصة بمساحات العمل في هذه النسخة لن تُستعاد:',
         confirm:'راجعت هذه النسخة وأوافق على تطبيقها على المسودة.',applyRestore:'تطبيق الاستعادة على المسودة',
         reviewReady:'النسخة صالحة. راجع المعاينة ثم طبّقها.',restoreApplied:'طُبّقت الاستعادة على المسودة فقط. لم يُحفظ شيء بعد: اضغط «حفظ التغييرات».',
@@ -1018,21 +1073,24 @@ window.__ModuleLoader__.load({
         migrationHint:'وُجدت إعدادات محفوظة بالصيغة القديمة المرتبطة بمساحات العمل. يحتفظ الترحيل بمعلوماتك الشخصية ولغة الواجهة والتفضيلات العامة والتعليمات المخصصة. لا تتغير الإعدادات المخزنة قبل الضغط على «حفظ التغييرات».',
         migrationKept:'لا توجد إعدادات خاصة بمساحات العمل؛ لن يُحذف شيء.',
         migrationDiscard:'لن تُنقل الإعدادات التالية إلى الملف الموحّد، وستُحذف عند الحفظ. صدّرها أولًا إن أردت الاحتفاظ بها:',
-        migrationMasters:'مفاتيح المشاركة العامة كانت مفعّلة وستُعاد إلى «متوقف»؛ يمكنك تفعيلها لاحقًا من «التحكم في الوصول».',
+        migrationMasters:'مفاتيح المشاركة العامة كانت مفعّلة؛ لن تنتقل صلاحياتها إلى الإعدادات الجديدة.',
         workspaceId:'معرّف مساحة العمل',overrideCol:'تخصيص',policiesCol:'الصلاحيات',yes:'نعم',no:'لا',
         legacyJson:'إعدادات 0.7.1 الكاملة (JSON)',migrationAck:'راجعت وصدّرت ما أحتاجه، وأوافق على حذف الإعدادات الخاصة بمساحات العمل وإيقاف مفاتيح المشاركة عند الحفظ.',
         migration:'إعدادات من إصدار سابق بانتظار الترحيل. راجعها ثم احفظ.',
+        sharingUpgrade:'حُمّلت معلوماتك السابقة دون إتاحتها تلقائيًا. حدد ما تريد إتاحته ثم احفظ.',
+        upgradeTitle:'نسخة احتياطية قبل التحديث',
+        upgradeRollback:'يحدّث الحفظ إعدادات Harness إلى الإصدار 4. للرجوع إلى إصدار أقدم، تحتاج إلى إعدادات Harness المؤرشفة أو نسخة JSON احتياطية بصيغة الإصدار 2. صدّر نسخة قبل الحفظ إذا كنت تخطط للرجوع.',
         reset:'إعادة ضبط المسودة',missing:'غير محدد',noInstruction:'لا توجد تعليمات.',save:'حفظ التغييرات',reload:'إعادة التحميل (تجاهل المسودة)',
         loading:'جارٍ قراءة الإعدادات…',unavailable:'الإعدادات المحلية غير متاحة أو غير قابلة للكتابة. لم يتم حفظ شيء.',ready:'الإعدادات محمّلة.',saving:'جارٍ الحفظ…',saved:'تم تأكيد الحفظ من Harness.',
         failed:'تعذر تأكيد الحفظ. أعد التحميل للتحقق قبل المحاولة.',conflict:'تغيرت الإعدادات في نافذة أخرى. أعد التحميل ثم أعد تعديلها.',invalid:'الإعدادات أو النسخة غير صالحة.',dirty:'توجد تغييرات غير محفوظة.',
         tooLarge:'الإعدادات أكبر من الحد المسموح للحفظ. لم يُحفظ شيء، وبقيت تعديلاتك في المسودة.',
         reconnected:'أُعيد الاتصال. بقيت مسودتك في الصفحة: يمكنك الحفظ (يتحقق Harness من الإصدار) أو إعادة التحميل.',
         discardWarning:'لديك تغييرات غير محفوظة ستُفقد عند إعادة التحميل. للاحتفاظ بها انسخ نسخة JSON أولًا من «النسخ والاستعادة».',
-        discardConfirm:'تجاهل التغييرات وإعادة التحميل',discardCancel:'متابعة التعديل',
+        discardConfirm:'تجاهل التغييرات وإعادة التحميل',discardCancel:'متابعة التعديل',followDsh:'اتباع لغة DSH',
       }
       const en = {
-        information:'My Information',instructions:'Agent Instructions',access:'Access Control',backup:'Backup & Restore',privacy:'Privacy & Security',title:'Personal Profile',
-        subtitle:'One unified profile in the active Harness Profile',warning:'Stored locally without plugin-level encryption. Do not enter passwords, keys or sensitive information. Saved response preferences are sent to the selected model and may remain in conversation history. Structured personal fields are not sent.',
+        information:'My Information',instructions:'Agent Instructions',access:'Access Control',backup:'Backup & Restore',privacy:'Privacy & Security',title:'My Profile',
+        subtitle:'One unified profile in the active Harness Profile',warning:'Stored locally without plugin-level encryption. Do not enter passwords, keys or sensitive information. Saved response preferences are sent to the selected model and may remain in conversation history. Only saved, checked personal information is added to supported native model requests, including cloud models.',
         language:'Interface language',preferredName:'Preferred name',nationality:'Nationality',gender:'Gender',male:'Male',female:'Female',unspecified:'Prefer not to say',
         unified:'Unified preferences',unifiedHint:'Saved preferences apply at the next assembled step in supported native conversations, independent of Workspace. Some agent presets may override them.',
         personality:'Personality',styleTone:'Style and tone',responseLanguage:'Response language',characteristics:'Response characteristics',presets:'Behavior presets',customInstructions:'Custom instructions',
@@ -1040,20 +1098,23 @@ window.__ModuleLoader__.load({
         less:'Less',neutral:'Balanced',more:'More',characters:'characters',
         preferenceHint:'Optional choices apply after Save.',languageHint:'Response language is separate from interface language. Put dialect preferences in custom instructions.',
         previewHint:'Draft preview of what is contributed after Save in supported conversations. Earlier instructions are not erased from history.',presetHint:'None selected by default.',resetPreferences:'Reset preferences',
-        effective:'Effective preview',optIn:'Allow use of personal information (saved preference, not active in agent)',
+        effective:'Effective preview',optIn:'Allow sharing personal information with the model',
         fieldPolicies:'Field policies',policiesHint:'One policy per field for the whole profile, not per Workspace.',private:'Private',ask:'Ask First',allow:'Allow',on:'On',off:'Off',
-        cloud:'Allow personal information to be sent to a cloud provider (saved preference, not active)',accessHint:'No information is disclosed or sent today from structured personal fields. Policies are saved only: disclosure is blocked because Harness cannot guarantee history isolation after permission or provider changes. Even Allow does not send fields.',
-        exportTitle:'Export backup',exportHint:'The JSON file is not encrypted. It contains your personal information, instructions and saved access permissions exactly as set. Keep it somewhere safe and do not share it.',
+        cloud:'Allow sharing personal information with cloud providers',accessHint:'Check the information you want to make available to the agent, then Save. Unchecked fields stay private. Your choices apply to all models and providers.',
+        available:'Available to agent',sharedTitle:'Information available after Save',sharedNone:'Nothing is shared.',
+        retention:'Earlier disclosures can remain with providers and in conversation history, Harness logs, summaries and branches. If a request carries a recognizable Profile details block no longer authorized, it is stopped. Start a new chat to continue.',
+        exportTitle:'Export backup',exportHint:'JSON backups are not encrypted. They include saved personal information, instructions and saved access permissions. English/Arabic overrides export legacy version 2 for compatibility; Follow DSH and other languages export version 4 to preserve that choice. Store securely and do not share.',
         download:'Download JSON file',copy:'Copy JSON',view:'View JSON',hideView:'Hide JSON',exportJson:'JSON backup',
         importTitle:'Import and restore',importHint:'Choose a JSON file or paste JSON, then review it. Nothing is saved until you press Save changes.',
         importFile:'Import JSON file',pasteJson:'Paste JSON manually',import:'Review backup',cancelRestore:'Cancel restore',
         strategy:'Restore strategy',replaceAll:'Replace All',replaceAllHint:'Imported settings replace current settings, including custom instructions; custom-text sending consent is cleared.',
-        replaceMerge:'Replace All and Merge Custom Instructions',replaceMergeHint:'Custom-text sending consent is cleared on restore. Replaces everything except custom instructions: your current text is kept and imported paragraphs that are not duplicates are appended.',
+        reviewMerge:'Review & Merge',reviewMergeHint:'Keep settings the backup leaves out. Review the merged custom instructions and edit them if needed. An empty custom instruction value clears the text.',
         previewTitle:'Restore preview',setting:'Setting',current:'Current draft',proposed:'After restore',interfaceLanguage:'Interface language',
         mergedLabel:'Merged instructions (editable)',importedInstructions:'Imported instructions',none:'None',empty:'—',
         permissionsTitle:'Permissions saved in this backup',restorePermissions:'Restore the permissions saved in this backup',
-        permissionsDefault:'By default every policy is restored as Private and both switches stay Off.',permissionsAck:'I understand these permissions are saved as preferences only and do not enable any agent access or cloud disclosure.',
-        permissionsLegacy:'This backup is from 0.7.1 and has no unified permissions; every policy is restored as Private and both switches Off.',
+        permissionsDefault:'Review & Merge keeps sharing choices for unchanged fields. Changed imported fields start Private. Replace All starts with all fields Private.',permissionsAck:'I want to apply these field choices to all models after Save.',
+        permissionsLegacy:'This backup has no field sharing choices to restore.',
+        switchesOff:'Off after restore',replaceConfirm:'I want to replace my current draft and reset settings omitted from the backup to their defaults.',
         legacyEntries:'Workspace-specific settings in this backup that will not be restored:',
         confirm:'I reviewed this backup and want to apply it to the draft.',applyRestore:'Apply restore to draft',
         reviewReady:'Backup is valid. Review the preview, then apply it.',restoreApplied:'Restore applied to the draft only. Nothing is saved yet: press Save changes.',
@@ -1067,19 +1128,713 @@ window.__ModuleLoader__.load({
         migrationHint:'Settings stored in the earlier Workspace-based format were found. Migration keeps your personal information, interface language, global preferences and custom instructions. Stored settings do not change until you press Save changes.',
         migrationKept:'There are no Workspace-specific settings; nothing will be removed.',
         migrationDiscard:'The following settings do not move into the unified profile and are removed when you Save. Export them first if you want to keep them:',
-        migrationMasters:'The sharing switches were On and will be reset to Off; you can enable them again in Access Control.',
+        migrationMasters:'The old sharing switches were On; their permissions will not carry forward.',
         workspaceId:'Workspace ID',overrideCol:'Override',policiesCol:'Policies',yes:'Yes',no:'No',
         legacyJson:'Complete 0.7.1 settings (JSON)',migrationAck:'I reviewed and exported what I need, and agree to remove the Workspace-specific settings and turn the sharing switches Off when saving.',
         migration:'Settings from an earlier version await migration. Review them, then Save.',
+        sharingUpgrade:'Earlier settings were loaded with all fields Private. Check the fields you wish to share, then Save.',
+        upgradeTitle:'Backup before upgrading',
+        upgradeRollback:'Save upgrades your Harness settings to version 4. Older versions require an archived Harness configuration or a version 2 JSON backup. Export a backup before saving if you may downgrade.',
         reset:'Reset draft',missing:'Not set',noInstruction:'No instructions.',save:'Save changes',reload:'Reload (discard draft)',
         loading:'Reading settings…',unavailable:'Local settings unavailable or not writable. Nothing saved.',ready:'Settings loaded.',saving:'Saving…',saved:'Save confirmed by Harness.',
         failed:'Save not confirmed. Reload to verify before retrying.',conflict:'Settings changed in another window. Reload and reapply edits.',invalid:'Invalid settings or backup.',dirty:'Unsaved changes.',
         tooLarge:'Settings are too large to save. Nothing was saved; your edits remain in the draft.',
         reconnected:'Connection was reset. Your draft is kept on this page: you can Save (Harness checks the revision) or Reload.',
         discardWarning:'You have unsaved changes that Reload will discard. To keep them, first export a JSON backup from Backup & Restore.',
-        discardConfirm:'Discard changes and reload',discardCancel:'Keep editing',
+        discardConfirm:'Discard changes and reload',discardCancel:'Keep editing',followDsh:'Follow DSH',
       }
-      const t = key => (language === 'ar' ? ar : en)[key] || key
+      const es = {
+        "information": "Mis datos",
+        "instructions": "Instrucciones del agente",
+        "access": "Control de acceso",
+        "backup": "Copia de seguridad y restauración",
+        "privacy": "Privacidad y seguridad",
+        "title": "Mi perfil",
+        "subtitle": "Un perfil unificado en el perfil activo de Harness",
+        "warning": "Los datos se guardan localmente sin cifrado propio del complemento. No introduzcas contraseñas, claves ni información sensible. Las preferencias de respuesta guardadas se envían al modelo seleccionado y pueden permanecer en el historial. Solo se añaden a las solicitudes admitidas los datos personales guardados que hayas autorizado, incluso con modelos en la nube.",
+        "language": "Idioma de la interfaz",
+        "preferredName": "Nombre preferido",
+        "nationality": "Nacionalidad",
+        "gender": "Género",
+        "male": "Hombre",
+        "female": "Mujer",
+        "unspecified": "Prefiero no indicarlo",
+        "unified": "Preferencias unificadas",
+        "unifiedHint": "Las preferencias guardadas se aplican al siguiente paso de las conversaciones nativas admitidas, independientemente del espacio de trabajo. Algunas configuraciones del agente pueden prevalecer.",
+        "personality": "Personalidad",
+        "styleTone": "Estilo y tono",
+        "responseLanguage": "Idioma de respuesta",
+        "characteristics": "Características de respuesta",
+        "presets": "Opciones de comportamiento",
+        "customInstructions": "Instrucciones personalizadas",
+        "sendCustom": "Permitir enviar texto personalizado a los modelos seleccionados (incluidos los de la nube)",
+        "customConsentHint": "El texto puede permanecer en el historial y volver a enviarse. No incluyas datos sensibles. Editar o restaurar el texto revoca el consentimiento; revísalo y guarda de nuevo.",
+        "less": "Menos",
+        "neutral": "Equilibrado",
+        "more": "Más",
+        "characters": "caracteres",
+        "preferenceHint": "Las opciones son voluntarias y se aplican al guardar.",
+        "languageHint": "El idioma de respuesta es independiente del idioma de la interfaz. Indica las preferencias de dialecto en las instrucciones personalizadas.",
+        "previewHint": "Vista previa del borrador que se enviará tras guardar en las conversaciones admitidas. Las instrucciones anteriores no se borran del historial.",
+        "presetHint": "No hay opciones preseleccionadas.",
+        "resetPreferences": "Restablecer preferencias",
+        "effective": "Vista previa efectiva",
+        "optIn": "Permitir compartir datos personales con el modelo",
+        "fieldPolicies": "Permisos de los campos",
+        "policiesHint": "Un permiso por campo para todo el perfil, no por espacio de trabajo.",
+        "private": "Privado",
+        "ask": "Preguntar primero",
+        "allow": "Permitir",
+        "on": "Activado",
+        "off": "Desactivado",
+        "cloud": "Permitir compartir datos personales con proveedores en la nube",
+        "accessHint": "Marca los datos que quieres poner a disposición del agente y guarda. Los campos no marcados siguen siendo privados. Las elecciones se aplican a todos los modelos y proveedores.",
+        "available": "Disponible para el agente",
+        "sharedTitle": "Información disponible después de guardar",
+        "sharedNone": "No se comparte nada.",
+        "retention": "Los datos compartidos anteriormente pueden permanecer en el proveedor, el historial, los registros, los resúmenes o las ramas de Harness. Si una solicitud contiene datos del perfil previamente compartidos que ya no están autorizados, se detendrá. Inicia una conversación nueva para continuar.",
+        "exportTitle": "Exportar copia de seguridad",
+        "exportHint": "Las copias JSON no están cifradas. Contienen datos personales, instrucciones y permisos guardados. La selección manual de inglés o árabe exporta la versión 2 por compatibilidad; Seguir DSH y otros idiomas usan la versión 4 para conservar la preferencia. Guárdala de forma segura y no la compartas.",
+        "download": "Descargar JSON",
+        "copy": "Copiar JSON",
+        "view": "Ver JSON",
+        "hideView": "Ocultar JSON",
+        "exportJson": "Copia JSON",
+        "importTitle": "Importar y restaurar",
+        "importHint": "Selecciona un archivo JSON o pega su contenido y revísalo. Nada se guarda hasta pulsar Guardar cambios.",
+        "importFile": "Importar archivo JSON",
+        "pasteJson": "Pegar JSON manualmente",
+        "import": "Revisar copia",
+        "cancelRestore": "Cancelar restauración",
+        "strategy": "Método de restauración",
+        "replaceAll": "Sustituir todo",
+        "replaceAllHint": "La configuración importada sustituye a la actual, incluidas las instrucciones personalizadas; se revoca el permiso de enviarlas.",
+        "reviewMerge": "Revisar y combinar",
+        "reviewMergeHint": "Se conservan los ajustes ausentes en la copia. Revisa y edita las instrucciones combinadas. Un valor vacío elimina el texto.",
+        "previewTitle": "Vista previa de restauración",
+        "setting": "Ajuste",
+        "current": "Borrador actual",
+        "proposed": "Después de restaurar",
+        "interfaceLanguage": "Idioma de la interfaz",
+        "mergedLabel": "Instrucciones combinadas (editables)",
+        "importedInstructions": "Instrucciones importadas",
+        "none": "Ninguno",
+        "empty": "—",
+        "permissionsTitle": "Permisos guardados en esta copia",
+        "restorePermissions": "Restaurar los permisos de esta copia",
+        "permissionsDefault": "Combinar conserva los permisos de los campos sin cambios. Los campos importados modificados empiezan como Privados. Sustituir todo deja todos los campos como Privados.",
+        "permissionsAck": "Quiero aplicar estos permisos de campos a todos los modelos después de guardar.",
+        "permissionsLegacy": "Esta copia no contiene permisos de campos que se puedan restaurar.",
+        "switchesOff": "Desactivado tras restaurar",
+        "replaceConfirm": "Acepto sustituir mi borrador y restablecer los campos ausentes a sus valores predeterminados.",
+        "legacyEntries": "Ajustes por espacio de trabajo que no se restaurarán:",
+        "confirm": "He revisado esta copia y quiero aplicarla al borrador.",
+        "applyRestore": "Aplicar restauración al borrador",
+        "reviewReady": "Copia válida. Revisa la vista previa antes de aplicarla.",
+        "restoreApplied": "Restauración aplicada solo al borrador. Aún no se ha guardado nada: pulsa Guardar cambios.",
+        "invalidJson": "El texto no es JSON válido.",
+        "unsupportedVersion": "Versión de copia no admitida.",
+        "invalidPolicy": "La copia contiene un permiso no válido o no admitido.",
+        "instructionsTooLong": "Las instrucciones superan los 8192 caracteres. No se ha recortado ni aplicado nada.",
+        "invalidContent": "El contenido de la copia no es válido o tiene campos desconocidos.",
+        "mergeTooLong": "Las instrucciones combinadas superan los 8192 caracteres. Acórtalas antes de aplicarlas; nada se recorta automáticamente.",
+        "fileTooLarge": "El archivo supera el límite de 3 000 000 bytes.",
+        "fileReadFailed": "No se pudo leer el archivo.",
+        "copied": "JSON copiado al portapapeles.",
+        "copyFailed": "No se pudo copiar. Usa Ver JSON y copia el texto manualmente.",
+        "downloaded": "Descarga iniciada. Comprueba que se haya guardado.",
+        "downloadFailed": "La descarga no está disponible aquí. Usa Copiar JSON o Ver JSON.",
+        "migrationTitle": "Migrar ajustes de la versión 0.7.1",
+        "migrationHint": "Se encontraron ajustes anteriores por espacio de trabajo. La migración conserva tus datos, idioma de la interfaz, preferencias globales e instrucciones. Nada cambia hasta pulsar Guardar cambios.",
+        "migrationKept": "No hay ajustes por espacio de trabajo; no se eliminará nada.",
+        "migrationDiscard": "Los siguientes ajustes no pasan al perfil unificado y se eliminarán al guardar. Expórtalos antes si quieres conservarlos:",
+        "migrationMasters": "Las opciones antiguas de uso compartido estaban activadas; sus permisos no se transferirán.",
+        "workspaceId": "ID de espacio",
+        "overrideCol": "Anulación",
+        "policiesCol": "Permisos",
+        "yes": "Sí",
+        "no": "No",
+        "legacyJson": "Ajustes completos de 0.7.1 (JSON)",
+        "migrationAck": "He revisado y exportado lo necesario, y acepto eliminar los ajustes por espacio de trabajo y desactivar las opciones antiguas al guardar.",
+        "migration": "Hay ajustes de una versión anterior pendientes de migración. Revísalos y guarda.",
+        "sharingUpgrade": "Los datos anteriores se cargaron como privados. Marca los que quieras compartir y guarda.",
+        "upgradeTitle": "Copia antes de actualizar",
+        "upgradeRollback": "Guardar actualiza los ajustes de Harness a la versión 4. Para volver a una versión anterior necesitas una configuración archivada o una copia JSON de versión 2. Exporta una copia antes de guardar si podrías volver atrás.",
+        "reset": "Restablecer borrador",
+        "missing": "Sin especificar",
+        "noInstruction": "Sin instrucciones.",
+        "save": "Guardar cambios",
+        "reload": "Recargar (descartar borrador)",
+        "loading": "Leyendo ajustes…",
+        "unavailable": "Los ajustes locales no están disponibles o no son editables. Nada guardado.",
+        "ready": "Ajustes cargados.",
+        "saving": "Guardando…",
+        "saved": "Harness ha confirmado el guardado.",
+        "failed": "No se confirmó el guardado. Recarga para verificar antes de reintentar.",
+        "conflict": "Los ajustes cambiaron en otra ventana. Recarga y vuelve a aplicar los cambios.",
+        "invalid": "Ajustes o copia no válidos.",
+        "dirty": "Cambios sin guardar.",
+        "tooLarge": "Los ajustes superan el límite. Nada guardado; se mantiene el borrador.",
+        "reconnected": "Se restableció la conexión. Tu borrador permanece aquí; puedes guardar (Harness comprueba la revisión) o recargar.",
+        "discardWarning": "Tienes cambios sin guardar que se perderán al recargar. Para conservarlos, exporta antes una copia JSON.",
+        "discardConfirm": "Descartar cambios y recargar",
+        "discardCancel": "Seguir editando",
+        "followDsh": "Seguir el idioma de DSH"
+      }
+      const fr = {
+        "information": "Mes informations",
+        "instructions": "Instructions de l’agent",
+        "access": "Contrôle d’accès",
+        "backup": "Sauvegarde et restauration",
+        "privacy": "Confidentialité et sécurité",
+        "title": "Mon profil",
+        "subtitle": "Un profil unifié dans le profil Harness actif",
+        "warning": "Les données sont stockées localement sans chiffrement propre au module. Ne saisissez pas de mots de passe, de clés ou d’informations sensibles. Les préférences de réponse enregistrées sont transmises au modèle choisi et peuvent rester dans l’historique. Seules les informations personnelles enregistrées et explicitement autorisées sont ajoutées aux requêtes natives prises en charge, y compris vers les modèles cloud.",
+        "language": "Langue de l’interface",
+        "preferredName": "Prénom préféré",
+        "nationality": "Nationalité",
+        "gender": "Genre",
+        "male": "Homme",
+        "female": "Femme",
+        "unspecified": "Préfère ne pas préciser",
+        "unified": "Préférences unifiées",
+        "unifiedHint": "Les préférences enregistrées s’appliquent à la prochaine étape des conversations natives prises en charge, quel que soit l’espace de travail. Certains préréglages de l’agent peuvent prévaloir.",
+        "personality": "Personnalité",
+        "styleTone": "Style et ton",
+        "responseLanguage": "Langue des réponses",
+        "characteristics": "Caractéristiques des réponses",
+        "presets": "Préréglages de comportement",
+        "customInstructions": "Instructions personnalisées",
+        "sendCustom": "Autoriser l’envoi du texte personnalisé aux modèles choisis (cloud compris)",
+        "customConsentHint": "Ce texte peut rester dans l’historique et être renvoyé. N’y mettez pas de données sensibles. Modifier ou restaurer le texte annule l’autorisation : vérifiez puis enregistrez à nouveau.",
+        "less": "Moins",
+        "neutral": "Équilibré",
+        "more": "Plus",
+        "characters": "caractères",
+        "preferenceHint": "Les choix facultatifs prennent effet après l’enregistrement.",
+        "languageHint": "La langue des réponses est indépendante de celle de l’interface. Précisez les variantes régionales dans les instructions personnalisées.",
+        "previewHint": "Aperçu du brouillon envoyé après enregistrement dans les conversations prises en charge. Les anciennes instructions ne sont pas supprimées de l’historique.",
+        "presetHint": "Aucun préréglage sélectionné par défaut.",
+        "resetPreferences": "Réinitialiser les préférences",
+        "effective": "Aperçu effectif",
+        "optIn": "Autoriser le partage d’informations personnelles avec le modèle",
+        "fieldPolicies": "Autorisations des champs",
+        "policiesHint": "Une autorisation par champ pour tout le profil, pas par espace de travail.",
+        "private": "Privé",
+        "ask": "Demander d’abord",
+        "allow": "Autoriser",
+        "on": "Activé",
+        "off": "Désactivé",
+        "cloud": "Autoriser le partage avec des fournisseurs cloud",
+        "accessHint": "Cochez les informations que l’agent peut utiliser, puis enregistrez. Les champs non cochés restent privés. Vos choix s’appliquent à tous les modèles et fournisseurs.",
+        "available": "Accessible à l’agent",
+        "sharedTitle": "Informations accessibles après enregistrement",
+        "sharedNone": "Aucune information partagée.",
+        "retention": "Les données communiquées auparavant peuvent rester chez les fournisseurs, dans l’historique, les journaux Harness, les résumés et les branches. Une requête contenant un ancien bloc d’informations désormais non autorisé peut être arrêtée. Ouvrez une nouvelle conversation pour poursuivre.",
+        "exportTitle": "Exporter une sauvegarde",
+        "exportHint": "Les sauvegardes JSON ne sont pas chiffrées. Elles contiennent vos informations, instructions et autorisations enregistrées. Un choix manuel d’anglais ou d’arabe exporte la version 2 compatible ; Suivre DSH et les autres langues utilisent la version 4 pour préserver ce choix. Conservez-les en lieu sûr.",
+        "download": "Télécharger le JSON",
+        "copy": "Copier le JSON",
+        "view": "Afficher le JSON",
+        "hideView": "Masquer le JSON",
+        "exportJson": "Sauvegarde JSON",
+        "importTitle": "Importer et restaurer",
+        "importHint": "Choisissez un fichier JSON ou collez son contenu, puis vérifiez-le. Rien n’est enregistré avant de cliquer sur Enregistrer les modifications.",
+        "importFile": "Importer un fichier JSON",
+        "pasteJson": "Coller du JSON",
+        "import": "Examiner la sauvegarde",
+        "cancelRestore": "Annuler la restauration",
+        "strategy": "Méthode de restauration",
+        "replaceAll": "Tout remplacer",
+        "replaceAllHint": "Les paramètres importés remplacent les paramètres actuels, y compris les instructions personnalisées ; l’autorisation d’envoi du texte est annulée.",
+        "reviewMerge": "Examiner et fusionner",
+        "reviewMergeHint": "Conservez les réglages absents de la sauvegarde. Vérifiez et modifiez les instructions fusionnées si besoin. Une valeur vide efface le texte.",
+        "previewTitle": "Aperçu de la restauration",
+        "setting": "Paramètre",
+        "current": "Brouillon actuel",
+        "proposed": "Après restauration",
+        "interfaceLanguage": "Langue de l’interface",
+        "mergedLabel": "Instructions fusionnées (modifiables)",
+        "importedInstructions": "Instructions importées",
+        "none": "Aucun",
+        "empty": "—",
+        "permissionsTitle": "Autorisations de cette sauvegarde",
+        "restorePermissions": "Restaurer les autorisations de cette sauvegarde",
+        "permissionsDefault": "La fusion conserve les autorisations des champs inchangés. Les champs importés modifiés sont privés par défaut. Tout remplacer remet tous les champs en privé.",
+        "permissionsAck": "Je souhaite appliquer ces autorisations à tous les modèles après enregistrement.",
+        "permissionsLegacy": "Cette sauvegarde ne contient aucune autorisation de champ restaurable.",
+        "switchesOff": "Désactivé après restauration",
+        "replaceConfirm": "J’accepte de remplacer mon brouillon et de réinitialiser les champs absents de la sauvegarde.",
+        "legacyEntries": "Paramètres propres aux espaces de travail qui ne seront pas restaurés :",
+        "confirm": "J’ai examiné cette sauvegarde et souhaite l’appliquer au brouillon.",
+        "applyRestore": "Appliquer au brouillon",
+        "reviewReady": "Sauvegarde valide. Vérifiez l’aperçu avant de l’appliquer.",
+        "restoreApplied": "Restauration appliquée au brouillon uniquement. Rien n’est encore enregistré : cliquez sur Enregistrer les modifications.",
+        "invalidJson": "Le texte n’est pas du JSON valide.",
+        "unsupportedVersion": "Version de sauvegarde non prise en charge.",
+        "invalidPolicy": "La sauvegarde contient une autorisation incorrecte ou non prise en charge.",
+        "instructionsTooLong": "Les instructions dépassent 8 192 caractères. Aucun texte n’a été coupé ni appliqué.",
+        "invalidContent": "Contenu de sauvegarde invalide ou champs inconnus.",
+        "mergeTooLong": "Les instructions fusionnées dépassent 8 192 caractères. Raccourcissez-les : aucune troncature automatique.",
+        "fileTooLarge": "Le fichier dépasse la limite de 3 000 000 octets.",
+        "fileReadFailed": "Impossible de lire le fichier.",
+        "copied": "JSON copié dans le presse-papiers.",
+        "copyFailed": "Copie impossible. Affichez le JSON et copiez-le manuellement.",
+        "downloaded": "Téléchargement lancé. Vérifiez que le fichier a bien été enregistré.",
+        "downloadFailed": "Téléchargement indisponible ici. Utilisez Copier le JSON ou Afficher le JSON.",
+        "migrationTitle": "Migrer les paramètres de la version 0.7.1",
+        "migrationHint": "D’anciens paramètres par espace de travail ont été trouvés. La migration conserve vos informations, la langue de l’interface, les préférences globales et les instructions. Rien ne change avant Enregistrer les modifications.",
+        "migrationKept": "Aucun paramètre spécifique aux espaces de travail ; rien ne sera supprimé.",
+        "migrationDiscard": "Les paramètres suivants ne seront pas transférés au profil unifié et seront supprimés à l’enregistrement. Exportez-les d’abord pour les conserver.",
+        "migrationMasters": "Les anciens commutateurs de partage étaient actifs ; leurs autorisations ne seront pas transférées.",
+        "workspaceId": "ID d’espace de travail",
+        "overrideCol": "Remplacement",
+        "policiesCol": "Autorisations",
+        "yes": "Oui",
+        "no": "Non",
+        "legacyJson": "Paramètres complets 0.7.1 (JSON)",
+        "migrationAck": "J’ai examiné et exporté ce qui est nécessaire, et j’accepte la suppression des paramètres par espace de travail et la désactivation des anciens commutateurs à l’enregistrement.",
+        "migration": "Des paramètres d’une ancienne version attendent une migration. Vérifiez-les puis enregistrez.",
+        "sharingUpgrade": "Les anciennes informations ont été chargées en mode privé. Cochez celles à partager puis enregistrez.",
+        "upgradeTitle": "Sauvegarder avant la mise à niveau",
+        "upgradeRollback": "L’enregistrement met à niveau les paramètres Harness vers la version 4. Pour revenir en arrière, il faut une configuration archivée ou une sauvegarde JSON de version 2. Exportez une sauvegarde avant d’enregistrer si vous envisagez un retour.",
+        "reset": "Réinitialiser le brouillon",
+        "missing": "Non renseigné",
+        "noInstruction": "Aucune instruction.",
+        "save": "Enregistrer les modifications",
+        "reload": "Recharger (ignorer le brouillon)",
+        "loading": "Lecture des paramètres…",
+        "unavailable": "Paramètres locaux indisponibles ou non modifiables. Rien d’enregistré.",
+        "ready": "Paramètres chargés.",
+        "saving": "Enregistrement…",
+        "saved": "Enregistrement confirmé par Harness.",
+        "failed": "Enregistrement non confirmé. Rechargez pour vérifier avant de réessayer.",
+        "conflict": "Les paramètres ont changé dans une autre fenêtre. Rechargez et réappliquez les modifications.",
+        "invalid": "Paramètres ou sauvegarde invalides.",
+        "dirty": "Modifications non enregistrées.",
+        "tooLarge": "Paramètres trop volumineux. Rien d’enregistré ; vos modifications restent dans le brouillon.",
+        "reconnected": "La connexion a été rétablie. Votre brouillon est conservé ; vous pouvez enregistrer (Harness vérifie la révision) ou recharger.",
+        "discardWarning": "Vous avez des modifications non enregistrées qui seront perdues au rechargement. Exportez d’abord une sauvegarde JSON pour les conserver.",
+        "discardConfirm": "Ignorer les modifications et recharger",
+        "discardCancel": "Continuer à modifier",
+        "followDsh": "Suivre la langue de DSH"
+      }
+      const de = {
+        "information": "Meine Angaben",
+        "instructions": "Agentenanweisungen",
+        "access": "Zugriffskontrolle",
+        "backup": "Sicherung und Wiederherstellung",
+        "privacy": "Datenschutz und Sicherheit",
+        "title": "Mein Profil",
+        "subtitle": "Ein einheitliches Profil im aktiven Harness-Profil",
+        "warning": "Die Daten werden lokal ohne eigene Verschlüsselung des Plugins gespeichert. Gib keine Passwörter, Schlüssel oder sensiblen Informationen ein. Gespeicherte Antwortpräferenzen werden an das gewählte Modell gesendet und können im Chatverlauf verbleiben. Nur gespeicherte, ausdrücklich freigegebene persönliche Angaben werden in unterstützte native Modellanfragen aufgenommen, auch bei Cloudmodellen.",
+        "language": "Sprache der Oberfläche",
+        "preferredName": "Bevorzugter Name",
+        "nationality": "Staatsangehörigkeit",
+        "gender": "Geschlecht",
+        "male": "Männlich",
+        "female": "Weiblich",
+        "unspecified": "Keine Angabe",
+        "unified": "Einheitliche Einstellungen",
+        "unifiedHint": "Gespeicherte Einstellungen gelten ab dem nächsten Schritt in unterstützten nativen Gesprächen, unabhängig vom Workspace. Manche Agentenvorgaben können Vorrang haben.",
+        "personality": "Persönlichkeit",
+        "styleTone": "Stil und Ton",
+        "responseLanguage": "Antwortsprache",
+        "characteristics": "Antworteigenschaften",
+        "presets": "Verhaltensvorgaben",
+        "customInstructions": "Eigene Anweisungen",
+        "sendCustom": "Eigene Texte an ausgewählte Modelle senden (auch Cloudmodelle)",
+        "customConsentHint": "Texte können im Chatverlauf verbleiben und erneut gesendet werden. Keine sensiblen Daten eingeben. Bearbeiten oder Wiederherstellen widerruft die Einwilligung; anschließend prüfen und speichern.",
+        "less": "Weniger",
+        "neutral": "Ausgewogen",
+        "more": "Mehr",
+        "characters": "Zeichen",
+        "preferenceHint": "Optionale Einstellungen gelten erst nach dem Speichern.",
+        "languageHint": "Die Antwortsprache ist unabhängig von der Oberflächensprache. Dialektwünsche gehören in die eigenen Anweisungen.",
+        "previewHint": "Vorschau des Entwurfs, der nach dem Speichern in unterstützten Gesprächen verwendet wird. Frühere Anweisungen werden nicht aus dem Verlauf gelöscht.",
+        "presetHint": "Standardmäßig ist nichts ausgewählt.",
+        "resetPreferences": "Einstellungen zurücksetzen",
+        "effective": "Wirksame Vorschau",
+        "optIn": "Persönliche Daten für das Modell freigeben",
+        "fieldPolicies": "Feldberechtigungen",
+        "policiesHint": "Eine Berechtigung pro Feld für das gesamte Profil, nicht pro Workspace.",
+        "private": "Privat",
+        "ask": "Zuerst fragen",
+        "allow": "Erlauben",
+        "on": "Ein",
+        "off": "Aus",
+        "cloud": "Persönliche Daten für Cloudanbieter freigeben",
+        "accessHint": "Wähle die Angaben, die der Agent verwenden darf, und speichere. Nicht markierte Felder bleiben privat. Deine Auswahl gilt für alle Modelle und Anbieter.",
+        "available": "Für Agent verfügbar",
+        "sharedTitle": "Nach dem Speichern verfügbare Angaben",
+        "sharedNone": "Es wird nichts geteilt.",
+        "retention": "Früher übermittelte Angaben können bei Anbietern, im Chatverlauf, in Harness-Protokollen, Zusammenfassungen und Zweigen verbleiben. Eine Anfrage mit nicht mehr freigegebenen früheren Profilangaben kann gestoppt werden. Beginne dann einen neuen Chat.",
+        "exportTitle": "Sicherung exportieren",
+        "exportHint": "JSON-Sicherungen sind nicht verschlüsselt und enthalten persönliche Angaben, Anweisungen und gespeicherte Feldberechtigungen. Bei manueller Wahl von Englisch oder Arabisch wird das kompatible Format Version 2 exportiert; DSH folgen und andere Sprachen verwenden Version 4, damit die Auswahl erhalten bleibt. Sicher aufbewahren und nicht weitergeben.",
+        "download": "JSON herunterladen",
+        "copy": "JSON kopieren",
+        "view": "JSON anzeigen",
+        "hideView": "JSON ausblenden",
+        "exportJson": "JSON-Sicherung",
+        "importTitle": "Importieren und wiederherstellen",
+        "importHint": "Wähle eine JSON-Datei aus oder füge JSON ein und prüfe es. Erst durch Änderungen speichern wird etwas gespeichert.",
+        "importFile": "JSON-Datei importieren",
+        "pasteJson": "JSON manuell einfügen",
+        "import": "Sicherung prüfen",
+        "cancelRestore": "Wiederherstellung abbrechen",
+        "strategy": "Wiederherstellungsart",
+        "replaceAll": "Alles ersetzen",
+        "replaceAllHint": "Importierte Einstellungen ersetzen die aktuellen, auch eigene Anweisungen; die Einwilligung zur Textübermittlung wird widerrufen.",
+        "reviewMerge": "Prüfen und zusammenführen",
+        "reviewMergeHint": "In der Sicherung fehlende Einstellungen bleiben erhalten. Prüfe und bearbeite die zusammengeführten Anweisungen. Ein leerer Text löscht die Anweisungen.",
+        "previewTitle": "Vorschau der Wiederherstellung",
+        "setting": "Einstellung",
+        "current": "Aktueller Entwurf",
+        "proposed": "Nach Wiederherstellung",
+        "interfaceLanguage": "Sprache der Oberfläche",
+        "mergedLabel": "Zusammengeführte Anweisungen (bearbeitbar)",
+        "importedInstructions": "Importierte Anweisungen",
+        "none": "Keine",
+        "empty": "—",
+        "permissionsTitle": "Berechtigungen in dieser Sicherung",
+        "restorePermissions": "Gespeicherte Berechtigungen wiederherstellen",
+        "permissionsDefault": "Beim Zusammenführen bleiben Berechtigungen unveränderter Felder erhalten. Geänderte importierte Felder sind zunächst privat. Alles ersetzen setzt alle Felder auf privat.",
+        "permissionsAck": "Ich möchte diese Feldberechtigungen nach dem Speichern für alle Modelle anwenden.",
+        "permissionsLegacy": "Diese Sicherung enthält keine wiederherstellbaren Feldberechtigungen.",
+        "switchesOff": "Nach Wiederherstellung aus",
+        "replaceConfirm": "Ich stimme zu, meinen Entwurf zu ersetzen und fehlende Einstellungen zurückzusetzen.",
+        "legacyEntries": "Workspace-spezifische Einstellungen, die nicht wiederhergestellt werden:",
+        "confirm": "Ich habe die Sicherung geprüft und möchte sie auf den Entwurf anwenden.",
+        "applyRestore": "Auf Entwurf anwenden",
+        "reviewReady": "Sicherung gültig. Prüfe die Vorschau und wende sie dann an.",
+        "restoreApplied": "Nur auf den Entwurf angewendet. Noch nichts gespeichert: Klicke auf Änderungen speichern.",
+        "invalidJson": "Der Text ist kein gültiges JSON.",
+        "unsupportedVersion": "Nicht unterstützte Sicherungsversion.",
+        "invalidPolicy": "Die Sicherung enthält eine ungültige oder nicht unterstützte Berechtigung.",
+        "instructionsTooLong": "Eigene Anweisungen überschreiten 8.192 Zeichen. Nichts wurde gekürzt oder angewendet.",
+        "invalidContent": "Ungültiger Sicherungsinhalt oder unbekannte Felder.",
+        "mergeTooLong": "Zusammengeführte Anweisungen überschreiten 8.192 Zeichen. Vor dem Anwenden kürzen; es erfolgt keine automatische Kürzung.",
+        "fileTooLarge": "Die Datei überschreitet 3.000.000 Byte.",
+        "fileReadFailed": "Datei konnte nicht gelesen werden.",
+        "copied": "JSON in die Zwischenablage kopiert.",
+        "copyFailed": "Kopieren fehlgeschlagen. JSON anzeigen und manuell kopieren.",
+        "downloaded": "Download gestartet. Prüfe, ob die Datei gespeichert wurde.",
+        "downloadFailed": "Download hier nicht verfügbar. JSON kopieren oder anzeigen verwenden.",
+        "migrationTitle": "Einstellungen von Version 0.7.1 migrieren",
+        "migrationHint": "Ältere Workspace-Einstellungen wurden gefunden. Die Migration behält persönliche Angaben, Oberflächensprache, globale Präferenzen und Anweisungen. Gespeicherte Daten ändern sich erst nach Änderungen speichern.",
+        "migrationKept": "Keine Workspace-spezifischen Einstellungen; nichts wird gelöscht.",
+        "migrationDiscard": "Diese Einstellungen werden nicht ins einheitliche Profil übernommen und beim Speichern gelöscht. Exportiere sie vorher, wenn du sie behalten möchtest:",
+        "migrationMasters": "Die alten Freigabeschalter waren aktiviert; ihre Berechtigungen werden nicht übernommen.",
+        "workspaceId": "Workspace-ID",
+        "overrideCol": "Überschreibung",
+        "policiesCol": "Berechtigungen",
+        "yes": "Ja",
+        "no": "Nein",
+        "legacyJson": "Vollständige 0.7.1-Einstellungen (JSON)",
+        "migrationAck": "Ich habe alles Nötige geprüft und exportiert und stimme zu, Workspace-spezifische Einstellungen zu entfernen und alte Freigabeschalter beim Speichern auszuschalten.",
+        "migration": "Einstellungen einer älteren Version warten auf Migration. Prüfen und speichern.",
+        "sharingUpgrade": "Frühere Angaben wurden als privat geladen. Gewünschte Freigaben markieren und speichern.",
+        "upgradeTitle": "Vor dem Upgrade sichern",
+        "upgradeRollback": "Speichern aktualisiert Harness-Einstellungen auf Version 4. Für ein Downgrade brauchst du eine archivierte Harness-Konfiguration oder eine JSON-Sicherung im Format Version 2. Exportiere vor dem Speichern, wenn du möglicherweise zurückwechselst.",
+        "reset": "Entwurf zurücksetzen",
+        "missing": "Nicht angegeben",
+        "noInstruction": "Keine Anweisungen.",
+        "save": "Änderungen speichern",
+        "reload": "Neu laden (Entwurf verwerfen)",
+        "loading": "Einstellungen werden gelesen…",
+        "unavailable": "Lokale Einstellungen sind nicht verfügbar oder nicht beschreibbar. Nichts gespeichert.",
+        "ready": "Einstellungen geladen.",
+        "saving": "Wird gespeichert…",
+        "saved": "Speichern von Harness bestätigt.",
+        "failed": "Speichern nicht bestätigt. Vor erneutem Versuch neu laden und prüfen.",
+        "conflict": "Einstellungen wurden in einem anderen Fenster geändert. Neu laden und Änderungen erneut vornehmen.",
+        "invalid": "Ungültige Einstellungen oder Sicherung.",
+        "dirty": "Nicht gespeicherte Änderungen.",
+        "tooLarge": "Einstellungen zu groß. Nichts gespeichert; Änderungen bleiben im Entwurf.",
+        "reconnected": "Verbindung wiederhergestellt. Dein Entwurf bleibt erhalten; du kannst speichern (Harness prüft die Revision) oder neu laden.",
+        "discardWarning": "Nicht gespeicherte Änderungen gehen beim Neuladen verloren. Exportiere vorher eine JSON-Sicherung, wenn du sie behalten möchtest.",
+        "discardConfirm": "Änderungen verwerfen und neu laden",
+        "discardCancel": "Weiter bearbeiten",
+        "followDsh": "DSH-Sprache übernehmen"
+      }
+      const zh = {
+        "information": "我的信息",
+        "instructions": "智能体指令",
+        "access": "访问控制",
+        "backup": "备份与恢复",
+        "privacy": "隐私与安全",
+        "title": "我的资料",
+        "subtitle": "当前 Harness 配置下的统一个人资料",
+        "warning": "数据保存在本地，插件不提供独立加密。请勿输入密码、密钥或敏感信息。已保存的回复偏好会发送至所选模型，并可能留存在会话历史中。只有明确允许且已保存的个人信息才会加入受支持的原生模型请求，包括云端模型。",
+        "language": "界面语言",
+        "preferredName": "称呼",
+        "nationality": "国籍",
+        "gender": "性别",
+        "male": "男",
+        "female": "女",
+        "unspecified": "不愿透露",
+        "unified": "统一偏好",
+        "unifiedHint": "已保存的偏好会在受支持的原生会话下一步骤生效，不受工作区限制。部分智能体预设可能覆盖这些偏好。",
+        "personality": "个性",
+        "styleTone": "风格与语气",
+        "responseLanguage": "回复语言",
+        "characteristics": "回复特点",
+        "presets": "行为预设",
+        "customInstructions": "自定义指令",
+        "sendCustom": "允许向所选模型发送自定义文本（包括云端模型）",
+        "customConsentHint": "文本可能保留在会话历史中并被再次发送。请勿包含敏感数据。修改或恢复文本会撤销授权；请复核并重新保存。",
+        "less": "较少",
+        "neutral": "均衡",
+        "more": "较多",
+        "characters": "字符",
+        "preferenceHint": "所有选项均为可选，保存后生效。",
+        "languageHint": "回复语言与界面语言相互独立。方言偏好请写入自定义指令。",
+        "previewHint": "预览保存后在受支持会话中使用的指令草稿。历史指令不会被删除。",
+        "presetHint": "默认不选择任何预设。",
+        "resetPreferences": "重置偏好",
+        "effective": "实际指令预览",
+        "optIn": "允许与模型分享个人信息",
+        "fieldPolicies": "字段权限",
+        "policiesHint": "每个字段的权限适用于整个资料，而非单个工作区。",
+        "private": "私密",
+        "ask": "先询问",
+        "allow": "允许",
+        "on": "开启",
+        "off": "关闭",
+        "cloud": "允许与云服务商分享个人信息",
+        "accessHint": "勾选希望智能体使用的信息后保存。未勾选的字段仍为私密。选择适用于所有模型和服务商。",
+        "available": "提供给智能体",
+        "sharedTitle": "保存后可用的信息",
+        "sharedNone": "不会分享任何信息。",
+        "retention": "此前披露的信息可能仍保留在服务商、会话历史、Harness 日志、摘要或分支中。如果请求包含以前添加但现已取消授权的资料块，该请求可能被阻止。请开启新会话继续。",
+        "exportTitle": "导出备份",
+        "exportHint": "JSON 备份未加密，包含已保存的个人信息、指令和字段权限。手动选择英语或阿拉伯语时导出兼容的第 2 版；跟随 DSH 及其他语言使用第 4 版以保留选择。请安全保管，不要分享。",
+        "download": "下载 JSON",
+        "copy": "复制 JSON",
+        "view": "查看 JSON",
+        "hideView": "隐藏 JSON",
+        "exportJson": "JSON 备份",
+        "importTitle": "导入与恢复",
+        "importHint": "选择 JSON 文件或粘贴 JSON，然后进行检查。只有点击“保存更改”后才会写入。",
+        "importFile": "导入 JSON 文件",
+        "pasteJson": "手动粘贴 JSON",
+        "import": "检查备份",
+        "cancelRestore": "取消恢复",
+        "strategy": "恢复方式",
+        "replaceAll": "全部替换",
+        "replaceAllHint": "导入设置将替换当前设置，包括自定义指令；自定义文本的发送授权将被清除。",
+        "reviewMerge": "检查并合并",
+        "reviewMergeHint": "保留备份中未包含的设置。检查并按需编辑合并后的指令。空文本会清除指令。",
+        "previewTitle": "恢复预览",
+        "setting": "设置",
+        "current": "当前草稿",
+        "proposed": "恢复后",
+        "interfaceLanguage": "界面语言",
+        "mergedLabel": "合并后的指令（可编辑）",
+        "importedInstructions": "导入的指令",
+        "none": "无",
+        "empty": "—",
+        "permissionsTitle": "备份中保存的权限",
+        "restorePermissions": "恢复该备份中的权限",
+        "permissionsDefault": "合并时保留未更改字段的分享设置；已更改的导入字段默认为私密。全部替换则将所有字段设为私密。",
+        "permissionsAck": "我同意在保存后将这些字段权限应用于所有模型。",
+        "permissionsLegacy": "该备份中没有可恢复的字段分享权限。",
+        "switchesOff": "恢复后关闭",
+        "replaceConfirm": "我同意替换当前草稿，并将备份缺少的设置恢复为默认值。",
+        "legacyEntries": "以下工作区专属设置不会被恢复：",
+        "confirm": "我已检查该备份，并希望将其应用到草稿。",
+        "applyRestore": "应用恢复到草稿",
+        "reviewReady": "备份有效。请检查预览后应用。",
+        "restoreApplied": "仅已应用到草稿，尚未保存。请点击“保存更改”。",
+        "invalidJson": "文本不是有效的 JSON。",
+        "unsupportedVersion": "不支持的备份版本。",
+        "invalidPolicy": "备份包含无效或不受支持的权限。",
+        "instructionsTooLong": "自定义指令超过 8192 个字符。未截断或应用任何内容。",
+        "invalidContent": "备份内容无效或包含未知字段。",
+        "mergeTooLong": "合并后的指令超过 8192 个字符。请先缩短；系统不会自动截断。",
+        "fileTooLarge": "文件超过 3,000,000 字节的限制。",
+        "fileReadFailed": "无法读取文件。",
+        "copied": "已复制 JSON 到剪贴板。",
+        "copyFailed": "复制失败。请使用“查看 JSON”手动复制。",
+        "downloaded": "下载已开始。请确认文件已保存。",
+        "downloadFailed": "此处无法下载。请使用“复制 JSON”或“查看 JSON”。",
+        "migrationTitle": "迁移版本 0.7.1 的设置",
+        "migrationHint": "检测到旧版工作区设置。迁移将保留个人信息、界面语言、全局偏好及自定义指令。在点击“保存更改”前，存储的设置不会改变。",
+        "migrationKept": "没有工作区专属设置；不会删除任何内容。",
+        "migrationDiscard": "以下设置不会转移到统一资料，并将在保存时删除。如需保留，请先导出：",
+        "migrationMasters": "旧的全局分享开关已开启；其授权不会转移。",
+        "workspaceId": "工作区 ID",
+        "overrideCol": "覆盖",
+        "policiesCol": "权限",
+        "yes": "是",
+        "no": "否",
+        "legacyJson": "完整的 0.7.1 设置（JSON）",
+        "migrationAck": "我已检查并导出所需内容，同意在保存时删除工作区专属设置并关闭旧分享开关。",
+        "migration": "旧版设置等待迁移。请检查后保存。",
+        "sharingUpgrade": "旧信息已以私密模式加载。勾选需要分享的字段并保存。",
+        "upgradeTitle": "升级前备份",
+        "upgradeRollback": "保存会将 Harness 设置升级至版本 4。若要降级，需要归档的 Harness 配置或第 2 版 JSON 备份。若可能降级，请先导出备份。",
+        "reset": "重置草稿",
+        "missing": "未设置",
+        "noInstruction": "无指令。",
+        "save": "保存更改",
+        "reload": "重新加载（丢弃草稿）",
+        "loading": "正在读取设置…",
+        "unavailable": "本地设置不可用或不可写入。未保存任何内容。",
+        "ready": "设置已加载。",
+        "saving": "正在保存…",
+        "saved": "Harness 已确认保存。",
+        "failed": "无法确认保存。请重新加载并核实后重试。",
+        "conflict": "其他窗口已更改设置。请重新加载并重新应用修改。",
+        "invalid": "设置或备份无效。",
+        "dirty": "有未保存的更改。",
+        "tooLarge": "设置超过保存限制。未保存任何内容；修改仍保留在草稿中。",
+        "reconnected": "连接已恢复。草稿仍保留；你可以保存（Harness 会检查版本）或重新加载。",
+        "discardWarning": "重新加载将丢失未保存的修改。如需保留，请先导出 JSON 备份。",
+        "discardConfirm": "丢弃更改并重新加载",
+        "discardCancel": "继续编辑",
+        "followDsh": "跟随 DSH 语言"
+      }
+      const ja = {
+        "information": "マイ情報",
+        "instructions": "エージェントへの指示",
+        "access": "アクセス制御",
+        "backup": "バックアップと復元",
+        "privacy": "プライバシーとセキュリティ",
+        "title": "マイプロフィール",
+        "subtitle": "現在の Harness プロフィールに共通する設定",
+        "warning": "このデータはプラグイン独自の暗号化なしでローカルに保存されます。パスワード、キー、機密情報は入力しないでください。保存した回答設定は選択したモデルに送信され、会話履歴に残る場合があります。保存済みで許可された個人情報のみが、クラウドモデルを含む対応するネイティブリクエストに追加されます。",
+        "language": "表示言語",
+        "preferredName": "希望する呼び名",
+        "nationality": "国籍",
+        "gender": "性別",
+        "male": "男性",
+        "female": "女性",
+        "unspecified": "回答しない",
+        "unified": "共通設定",
+        "unifiedHint": "保存した設定は、ワークスペースに関係なく、対応するネイティブ会話の次の処理から適用されます。一部のエージェント設定が優先される場合があります。",
+        "personality": "パーソナリティ",
+        "styleTone": "文体とトーン",
+        "responseLanguage": "回答言語",
+        "characteristics": "回答の特徴",
+        "presets": "動作プリセット",
+        "customInstructions": "カスタム指示",
+        "sendCustom": "選択したモデル（クラウドを含む）へのカスタムテキスト送信を許可",
+        "customConsentHint": "テキストは会話履歴に残り、再送信される場合があります。機密情報を含めないでください。テキストの編集や復元により許可は取り消されます。再確認して保存してください。",
+        "less": "少なめ",
+        "neutral": "標準",
+        "more": "多め",
+        "characters": "文字",
+        "preferenceHint": "すべて任意の設定で、保存後に適用されます。",
+        "languageHint": "回答言語と表示言語は独立しています。方言の希望はカスタム指示に記入してください。",
+        "previewHint": "保存後に対応する会話で送信される指示のプレビューです。履歴内の以前の指示は削除されません。",
+        "presetHint": "既定では何も選択されていません。",
+        "resetPreferences": "設定をリセット",
+        "effective": "適用内容のプレビュー",
+        "optIn": "モデルへの個人情報の共有を許可",
+        "fieldPolicies": "項目の権限",
+        "policiesHint": "権限はワークスペースごとではなく、プロフィール全体の各項目に適用されます。",
+        "private": "非公開",
+        "ask": "事前に確認",
+        "allow": "許可",
+        "on": "オン",
+        "off": "オフ",
+        "cloud": "クラウド事業者への個人情報共有を許可",
+        "accessHint": "エージェントが利用してよい情報にチェックを入れて保存してください。未選択の項目は非公開です。設定はすべてのモデルと事業者に適用されます。",
+        "available": "エージェントが利用可能",
+        "sharedTitle": "保存後に利用できる情報",
+        "sharedNone": "共有する情報はありません。",
+        "retention": "以前共有した情報は、事業者、会話履歴、Harness のログ、要約、ブランチに残る場合があります。以前の情報が現在の権限に反して再利用されるリクエストは停止する場合があります。新しい会話を開始してください。",
+        "exportTitle": "バックアップをエクスポート",
+        "exportHint": "JSON バックアップは暗号化されず、保存済みの個人情報、指示、項目権限が含まれます。英語またはアラビア語を手動選択した場合は互換性のためバージョン 2、DSH に追従する場合やその他の言語では設定を維持できるバージョン 4 で書き出します。安全に保管し、共有しないでください。",
+        "download": "JSON をダウンロード",
+        "copy": "JSON をコピー",
+        "view": "JSON を表示",
+        "hideView": "JSON を隠す",
+        "exportJson": "JSON バックアップ",
+        "importTitle": "インポートと復元",
+        "importHint": "JSON ファイルを選ぶか貼り付け、内容を確認してください。「変更を保存」を押すまで保存されません。",
+        "importFile": "JSON ファイルを取り込む",
+        "pasteJson": "JSON を貼り付ける",
+        "import": "バックアップを確認",
+        "cancelRestore": "復元を中止",
+        "strategy": "復元方法",
+        "replaceAll": "すべて置き換える",
+        "replaceAllHint": "取り込んだ設定が現在の設定とカスタム指示を置き換えます。カスタムテキスト送信の許可は解除されます。",
+        "reviewMerge": "確認して統合",
+        "reviewMergeHint": "バックアップに含まれない設定は維持します。統合した指示を確認し、必要なら編集してください。空文字列は指示を削除します。",
+        "previewTitle": "復元プレビュー",
+        "setting": "設定",
+        "current": "現在の下書き",
+        "proposed": "復元後",
+        "interfaceLanguage": "表示言語",
+        "mergedLabel": "統合した指示（編集可能）",
+        "importedInstructions": "取り込んだ指示",
+        "none": "なし",
+        "empty": "—",
+        "permissionsTitle": "バックアップ内の権限",
+        "restorePermissions": "バックアップの権限を復元",
+        "permissionsDefault": "統合すると、変更のない項目の共有設定は維持されます。変更された取り込み項目は既定で非公開です。すべて置き換えると、全項目が非公開になります。",
+        "permissionsAck": "保存後、これらの項目の権限をすべてのモデルに適用することに同意します。",
+        "permissionsLegacy": "このバックアップに復元可能な項目権限はありません。",
+        "switchesOff": "復元後はオフ",
+        "replaceConfirm": "下書きを置き換え、バックアップにない設定を既定値に戻すことに同意します。",
+        "legacyEntries": "復元されないワークスペース固有の設定：",
+        "confirm": "バックアップを確認し、下書きに適用することに同意します。",
+        "applyRestore": "下書きに復元を適用",
+        "reviewReady": "有効なバックアップです。プレビューを確認してから適用してください。",
+        "restoreApplied": "下書きにのみ復元しました。まだ保存されていません。「変更を保存」を押してください。",
+        "invalidJson": "有効な JSON ではありません。",
+        "unsupportedVersion": "対応していないバックアップのバージョンです。",
+        "invalidPolicy": "バックアップに無効または非対応の権限があります。",
+        "instructionsTooLong": "カスタム指示が 8192 文字を超えています。省略も適用も行いませんでした。",
+        "invalidContent": "バックアップの内容が無効か、不明な項目を含んでいます。",
+        "mergeTooLong": "統合した指示が 8192 文字を超えています。適用前に短くしてください。自動では省略しません。",
+        "fileTooLarge": "ファイルが 3,000,000 バイトの制限を超えています。",
+        "fileReadFailed": "ファイルを読み込めませんでした。",
+        "copied": "JSON をクリップボードにコピーしました。",
+        "copyFailed": "コピーできませんでした。「JSON を表示」で手動コピーしてください。",
+        "downloaded": "ダウンロードを開始しました。保存されているか確認してください。",
+        "downloadFailed": "ここではダウンロードできません。「JSON をコピー」か「JSON を表示」を使ってください。",
+        "migrationTitle": "バージョン 0.7.1 の設定を移行",
+        "migrationHint": "以前のワークスペース別設定が見つかりました。移行後も個人情報、表示言語、共通設定、カスタム指示は維持されます。「変更を保存」を押すまで保存済み設定は変わりません。",
+        "migrationKept": "ワークスペース固有の設定はありません。削除されるものはありません。",
+        "migrationDiscard": "次の設定は共通プロフィールへ移行されず、保存時に削除されます。必要なら先にエクスポートしてください：",
+        "migrationMasters": "古い共有スイッチがオンでしたが、その権限は引き継がれません。",
+        "workspaceId": "ワークスペース ID",
+        "overrideCol": "上書き",
+        "policiesCol": "権限",
+        "yes": "はい",
+        "no": "いいえ",
+        "legacyJson": "0.7.1 の全設定（JSON）",
+        "migrationAck": "必要な内容を確認・エクスポートし、保存時にワークスペース別設定を削除して古い共有スイッチをオフにすることに同意します。",
+        "migration": "古いバージョンの設定は移行待ちです。確認して保存してください。",
+        "sharingUpgrade": "以前の情報は非公開で読み込みました。共有する項目を選び、保存してください。",
+        "upgradeTitle": "更新前にバックアップ",
+        "upgradeRollback": "保存すると Harness 設定がバージョン 4 に更新されます。旧版に戻すにはアーカイブ済みの Harness 設定かバージョン 2 の JSON バックアップが必要です。戻す可能性がある場合は先にエクスポートしてください。",
+        "reset": "下書きをリセット",
+        "missing": "未設定",
+        "noInstruction": "指示なし。",
+        "save": "変更を保存",
+        "reload": "再読み込み（下書きを破棄）",
+        "loading": "設定を読み込んでいます…",
+        "unavailable": "ローカル設定が利用できないか、書き込みできません。保存されていません。",
+        "ready": "設定を読み込みました。",
+        "saving": "保存中…",
+        "saved": "Harness により保存が確認されました。",
+        "failed": "保存を確認できませんでした。再試行前に再読み込みして確認してください。",
+        "conflict": "別のウィンドウで設定が変更されました。再読み込みして編集し直してください。",
+        "invalid": "設定またはバックアップが無効です。",
+        "dirty": "未保存の変更があります。",
+        "tooLarge": "設定がサイズ制限を超えています。保存されず、変更は下書きに残ります。",
+        "reconnected": "接続が復旧しました。下書きは保持されています。保存（Harness がリビジョンを確認）または再読み込みできます。",
+        "discardWarning": "再読み込みすると未保存の変更が失われます。残す場合は先に JSON バックアップをエクスポートしてください。",
+        "discardConfirm": "変更を破棄して再読み込み",
+        "discardCancel": "編集を続ける",
+        "followDsh": "DSH の言語に合わせる"
+      }
+      const uiDictionaries={ar,en,es,fr,de,zh,ja}
+      const t = key => (uiDictionaries[language]||en)[key] || en[key] || key
       const rtl = language === 'ar'
       const surface = { border:'1px solid rgba(128,128,128,.3)', borderRadius:13,
         padding:20, background:'rgba(128,128,128,.045)', marginBottom:16 }
@@ -1094,8 +1849,215 @@ window.__ModuleLoader__.load({
       const row = {display:'flex',gap:10,flexWrap:'wrap',alignItems:'center',margin:'12px 0'}
       const check = {display:'flex',gap:10,alignItems:'start',margin:'12px 0'}
       const cell = {padding:'6px 8px',borderBottom:'1px solid rgba(128,128,128,.25)',textAlign:'start',verticalAlign:'top',overflowWrap:'anywhere'}
-      const sections = ['information','instructions','access','backup','privacy']
-      const localLabel = item => item[rtl?1:2]
+      const sections = ['information','instructions','backup','privacy']
+      const localChoiceLabels = {
+        "zh": {
+          "styles": {
+            "default": "默认",
+            "professional": "专业",
+            "friendly": "友好",
+            "candid": "直率",
+            "creative": "创意",
+            "efficient": "高效",
+            "critical": "批判分析",
+            "technical": "技术"
+          },
+          "traits": {
+            "warmth": "亲切度",
+            "enthusiasm": "热情度",
+            "structure": "标题与列表",
+            "emoji": "表情符号",
+            "detail": "详细程度",
+            "critical": "批判性思维"
+          },
+          "presets": {
+            "critical": "批判性思维",
+            "no-fluff": "不说废话",
+            "grill-me": "深入追问",
+            "evidence": "证据优先",
+            "steps": "分步说明",
+            "action": "行动导向",
+            "code": "代码审查",
+            "humanizer": "自然表达"
+          },
+          "presetDescriptions": {
+            "critical": "质疑薄弱假设，不盲目赞同。",
+            "no-fluff": "避免赘述和不必要的恭维。",
+            "grill-me": "在复杂决策中核实关键需求与风险。",
+            "evidence": "区分证据、假设与不确定性，并在适当时引用可靠来源。",
+            "steps": "将复杂任务分解为可执行步骤。",
+            "action": "优先提供实用解决方案和下一步行动。",
+            "code": "检查代码质量、安全性、性能和测试覆盖率。",
+            "humanizer": "修改文字时保持事实、引文和不确定性，并使表达自然。"
+          }
+        },
+        "es": {
+          "styles": {
+            "default": "Predeterminado",
+            "professional": "Profesional",
+            "friendly": "Amable",
+            "candid": "Directo",
+            "creative": "Creativo",
+            "efficient": "Eficiente",
+            "critical": "Analítico",
+            "technical": "Técnico"
+          },
+          "traits": {
+            "warmth": "Cercanía",
+            "enthusiasm": "Entusiasmo",
+            "structure": "Títulos y listas",
+            "emoji": "Emojis",
+            "detail": "Detalle",
+            "critical": "Pensamiento crítico"
+          },
+          "presets": {
+            "critical": "Pensamiento crítico",
+            "no-fluff": "Sin relleno",
+            "grill-me": "Preguntas clave",
+            "evidence": "Primero la evidencia",
+            "steps": "Paso a paso",
+            "action": "Orientado a la acción",
+            "code": "Revisión de código",
+            "humanizer": "Redacción natural"
+          },
+          "presetDescriptions": {
+            "critical": "Cuestiona los supuestos débiles en vez de aceptarlos automáticamente.",
+            "no-fluff": "Evita el relleno y los halagos innecesarios.",
+            "grill-me": "Aclara los requisitos y los riesgos importantes antes de decidir.",
+            "evidence": "Distingue evidencia, supuestos e incertidumbre; cita fuentes fiables cuando corresponda.",
+            "steps": "Divide tareas complejas en pasos prácticos.",
+            "action": "Prioriza soluciones útiles y próximos pasos concretos.",
+            "code": "Evalúa la calidad, seguridad, rendimiento y pruebas del código.",
+            "humanizer": "Al editar, conserva los hechos, las citas y la incertidumbre con una redacción natural."
+          }
+        },
+        "fr": {
+          "styles": {
+            "default": "Par défaut",
+            "professional": "Professionnel",
+            "friendly": "Amical",
+            "candid": "Direct",
+            "creative": "Créatif",
+            "efficient": "Efficace",
+            "critical": "Analytique",
+            "technical": "Technique"
+          },
+          "traits": {
+            "warmth": "Chaleur",
+            "enthusiasm": "Enthousiasme",
+            "structure": "Titres et listes",
+            "emoji": "Émojis",
+            "detail": "Détail",
+            "critical": "Esprit critique"
+          },
+          "presets": {
+            "critical": "Esprit critique",
+            "no-fluff": "Sans remplissage",
+            "grill-me": "Questions ciblées",
+            "evidence": "Preuves d’abord",
+            "steps": "Étape par étape",
+            "action": "Orienté action",
+            "code": "Revue de code",
+            "humanizer": "Rédaction naturelle"
+          },
+          "presetDescriptions": {
+            "critical": "Remet en question les hypothèses fragiles au lieu d’acquiescer automatiquement.",
+            "no-fluff": "Évite le remplissage et les compliments inutiles.",
+            "grill-me": "Clarifie les exigences et les risques importants avant une décision.",
+            "evidence": "Distingue les faits, les hypothèses et l’incertitude ; cite des sources fiables si nécessaire.",
+            "steps": "Décompose les tâches complexes en étapes concrètes.",
+            "action": "Privilégie les solutions utiles et les prochaines actions.",
+            "code": "Évalue la qualité, la sécurité, la performance et les tests du code.",
+            "humanizer": "Préserve les faits, les citations et l’incertitude lors de la reformulation naturelle."
+          }
+        },
+        "de": {
+          "styles": {
+            "default": "Standard",
+            "professional": "Professionell",
+            "friendly": "Freundlich",
+            "candid": "Direkt",
+            "creative": "Kreativ",
+            "efficient": "Effizient",
+            "critical": "Analytisch",
+            "technical": "Technisch"
+          },
+          "traits": {
+            "warmth": "Wärme",
+            "enthusiasm": "Begeisterung",
+            "structure": "Überschriften und Listen",
+            "emoji": "Emojis",
+            "detail": "Detailgrad",
+            "critical": "Kritisches Denken"
+          },
+          "presets": {
+            "critical": "Kritisches Denken",
+            "no-fluff": "Ohne Füllwörter",
+            "grill-me": "Gezielte Rückfragen",
+            "evidence": "Belege zuerst",
+            "steps": "Schritt für Schritt",
+            "action": "Handlungsorientiert",
+            "code": "Codeprüfung",
+            "humanizer": "Natürlicher Stil"
+          },
+          "presetDescriptions": {
+            "critical": "Schwache Annahmen prüfen statt automatisch zuzustimmen.",
+            "no-fluff": "Überflüssige Füllwörter und Komplimente vermeiden.",
+            "grill-me": "Vor Entscheidungen wichtige Anforderungen und Risiken klären.",
+            "evidence": "Belege, Annahmen und Unsicherheit unterscheiden; gegebenenfalls zuverlässige Quellen nennen.",
+            "steps": "Komplexe Aufgaben in praktische Schritte zerlegen.",
+            "action": "Praktische Lösungen und nächste Schritte priorisieren.",
+            "code": "Codequalität, Sicherheit, Leistung und Testabdeckung bewerten.",
+            "humanizer": "Beim Überarbeiten Fakten, Zitate und Unsicherheit bewahren und natürlich formulieren."
+          }
+        },
+        "ja": {
+          "styles": {
+            "default": "標準",
+            "professional": "プロフェッショナル",
+            "friendly": "親しみやすい",
+            "candid": "率直",
+            "creative": "創造的",
+            "efficient": "効率重視",
+            "critical": "批判的分析",
+            "technical": "技術的"
+          },
+          "traits": {
+            "warmth": "親しみやすさ",
+            "enthusiasm": "熱意",
+            "structure": "見出しと箇条書き",
+            "emoji": "絵文字",
+            "detail": "詳細さ",
+            "critical": "批判的思考"
+          },
+          "presets": {
+            "critical": "批判的思考",
+            "no-fluff": "無駄を省く",
+            "grill-me": "要件を深掘り",
+            "evidence": "根拠を優先",
+            "steps": "段階的に説明",
+            "action": "実行重視",
+            "code": "コードレビュー",
+            "humanizer": "自然な文章"
+          },
+          "presetDescriptions": {
+            "critical": "弱い前提を検討し、無条件には同意しません。",
+            "no-fluff": "冗長な表現や不要な褒め言葉を避けます。",
+            "grill-me": "複雑な判断の前に要件と主要なリスクを確認します。",
+            "evidence": "根拠・仮定・不確実性を区別し、必要に応じて信頼できる出典を示します。",
+            "steps": "複雑な作業を実行可能な手順に分けます。",
+            "action": "実用的な解決策と次の行動を優先します。",
+            "code": "コードの品質、安全性、性能、テスト範囲を確認します。",
+            "humanizer": "文章の編集では事実、引用、不確実性を維持し自然な表現にします。"
+          }
+        }
+      }
+      const localLabel = item => {
+        if(!item)return ''
+        const group=PROFILE_STYLES.includes(item)?'styles':PROFILE_TRAITS.includes(item)?'traits':PROFILE_PRESETS.includes(item)?'presets':'languages'
+        return localChoiceLabels[language]?.[group]?.[item[0]] || item[rtl?1:2]
+      }
+      const localPresetDescription = item => localChoiceLabels[language]?.presetDescriptions?.[item[0]] || item[rtl?3:4]
       const policyLabel = v => t({private:'private',ask_first:'ask',allow:'allow'}[v])
       const genderLabel = v => v ? t(v) : t('missing')
       function card(title, ...children) {
@@ -1118,7 +2080,7 @@ window.__ModuleLoader__.load({
       }
       function checkbox(id, checked, onChange, text, props = {}) {
         return h('div',{style:check},
-          h('input',{id:'pp-'+id,type:'checkbox',checked,onChange:e=>onChange(e.target.checked),style:{marginTop:5},...props}),
+          h('input',{id:'pp-'+id,type:'checkbox',checked,onChange:onChange?e=>onChange(e.target.checked):undefined,style:{marginTop:5},...props}),
           h('label',{htmlFor:'pp-'+id},text))
       }
       function jsonView(id, text, title) {
@@ -1142,7 +2104,12 @@ window.__ModuleLoader__.load({
         border:'1px solid rgba(208,158,52,.7)', borderRadius:10,
         background:'rgba(208,158,52,.1)',fontSize:13,lineHeight:1.7} }, t('warning'))
       const backupStatus = backupMessage ? h('p',{id:'pp-backup-status',role:'status',style:{fontWeight:600}},t(backupMessage)) : null
-      const exportText = () => JSON.stringify(decodeProfile(record),null,2)
+      const exportText = () => JSON.stringify(
+        // Preserve existing v2 compatibility for en/ar overrides. Follow DSH
+        // and additional UI locales require v4 to round-trip without data loss.
+        record.locale==='ar'||record.locale==='en'
+          ? decodeProfile({...record,version:2,allowPersonalInformation:false,allowCloud:false})
+          : decodeProfile(record),null,2)
       const legacyText = () => JSON.stringify(legacy,null,2)
       // ---- Restore preview helpers (read-only rendering) ----
       const summarize = r => {
@@ -1153,7 +2120,7 @@ window.__ModuleLoader__.load({
           ['preferredName',t('preferredName'),r.information.preferredName||t('empty')],
           ['nationality',t('nationality'),r.information.nationality||t('empty')],
           ['gender',t('gender'),genderLabel(r.information.gender)],
-          ['locale',t('interfaceLanguage'),r.locale==='ar'?'العربية':'English'],
+          ['locale',t('interfaceLanguage'),r.locale==='auto'?t('followDsh'):(r.locale==='ar'?'العربية':r.locale==='en'?'English':r.locale.toUpperCase())],
           ['style',t('styleTone'),localLabel(PROFILE_STYLES.find(i=>i[0]===p.style))],
           ['responseLanguage',t('responseLanguage'),localLabel(PROFILE_LANGUAGES.find(i=>i[0]===p.responseLanguage))],
           ['traits',t('characteristics'),traits.length?traits.join(rtl?'، ':', '):t('neutral')],
@@ -1161,19 +2128,24 @@ window.__ModuleLoader__.load({
           ['custom',t('customInstructions'),p.custom.length+' '+t('characters')],
           ['sendCustom',t('sendCustom'),p.sendCustom===true?t('on'):t('off')],
           ...PERSONAL_FIELDS.map(key=>['policy-'+key,t('fieldPolicies')+' — '+t(key),policyLabel(r.policies[key])]),
-          ['allowPersonalInformation',t('optIn'),r.allowPersonalInformation?t('on'):t('off')],
-          ['allowCloud',t('cloud'),r.allowCloud?t('on'):t('off')],
+
         ]
       }
+      const importedCustom=restoreReview?.incoming.preferences?.custom
+      const mergedCustom=mergedText??(importedCustom===undefined ? record.preferences.custom :
+        importedCustom==='' ? '' : mergeInstructions(record.preferences.custom,importedCustom))
       const proposeRestore = () => {
         if(!restoreReview)return null
-        const incoming=restoreReview.incoming
-        const permissions=restorePermissions&&restoreReview.permissions
-          ? restoreReview.permissions : {policies:privatePolicies(),allowPersonalInformation:false,allowCloud:false}
-        const proposal={...incoming,preferences:withoutCustomConsent(incoming.preferences),policies:{...permissions.policies},
-          allowPersonalInformation:permissions.allowPersonalInformation,allowCloud:permissions.allowCloud}
-        if(restoreStrategy==='replace-merge')proposal.preferences={...withoutCustomConsent(incoming.preferences),custom:mergedText}
-        return proposal
+        const merge=restoreStrategy==='merge'
+        const base=merge ? record : emptyProfileRecord()
+        const proposal=overlayProfile(base,restoreReview.incoming)
+        const preferences=withoutCustomConsent(proposal.preferences)
+        if(merge)preferences.custom=mergedCustom
+        const policies={...base.policies}
+        // An imported value is not automatically authorized by an older choice.
+        for(const key of PERSONAL_FIELDS)if(proposal.information[key]!==base.information[key])policies[key]='private'
+        if(restorePermissions)Object.assign(policies,restoreReview.permissions)
+        return {...proposal,preferences,policies}
       }
       const startReview = text => {
         clearRestore()
@@ -1182,14 +2154,16 @@ window.__ModuleLoader__.load({
           if(text.length>PROFILE_MAX_CHARS)throw profileError('tooLarge')
           let parsed
           try{parsed=JSON.parse(text)}catch{throw profileError('invalidJson')}
-          const decoded=decodeAnyProfile(parsed)
-          const review=decoded.legacy
-            ? {source:'legacy',incoming:migrateLegacyProfile(decoded.legacy),permissions:null,
-              legacyWorkspaces:decoded.legacy.workspaces.map(w=>w.id)}
-            : {source:'current',incoming:decoded.record,legacyWorkspaces:[],
-              permissions:{policies:decoded.record.policies,allowPersonalInformation:decoded.record.allowPersonalInformation,allowCloud:decoded.record.allowCloud}}
-          setRestoreReview(review)
-          setMergedText(mergeInstructions(record.preferences.custom,review.incoming.preferences.custom))
+          profileRoot(parsed)
+          if(parsed.version===1){
+            const legacyBackup=decodeLegacyProfile(parsed)
+            setRestoreReview({incoming:migrateLegacyProfile(legacyBackup),permissions:null,
+              legacyWorkspaces:legacyBackup.workspaces.map(w=>w.id)})
+          }else{
+            const incoming=decodeUnifiedBackup(parsed)
+            const permissions=Object.keys(incoming.policies??{}).length ? incoming.policies : null
+            setRestoreReview({incoming,permissions,legacyWorkspaces:[]})
+          }
           setBackupMessage('reviewReady')
         // Never clear a conflict/failed state: those require a reload before Save.
         }catch(error){
@@ -1199,22 +2173,32 @@ window.__ModuleLoader__.load({
       }
       const importFile = async e => {
         const target=e.currentTarget, file=target.files?.[0], win=target.ownerDocument?.defaultView
-        clearRestore()
         if(!file)return
-        if(!(file.size<=PROFILE_MAX_CHARS)){target.value='';setBackupMessage('fileTooLarge');setStatus(s=>s==='conflict'||s==='failed'?s:'invalid');return}
-        let text
-        try{text=await readFileText(file,win)}catch{target.value='';setBackupMessage('fileReadFailed');return}
+        clearRestore()
+        const id=importGeneration.current
         target.value=''
+        setRestoreText('');setBackupMessage('')
+        if(!(file.size<=PROFILE_MAX_CHARS)){setBackupMessage('fileTooLarge');setStatus(s=>s==='conflict'||s==='failed'?s:'invalid');return}
+        let text
+        try{text=await readFileText(file,win)}catch{if(id===importGeneration.current)setBackupMessage('fileReadFailed');return}
+        if(id!==importGeneration.current)return
         setRestoreText(text);startReview(text)
       }
       let contents
       if (page === 'information') {
         contents = card(t('information'),
-          h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))',gap:'0 18px'}},
-            ...PERSONAL_FIELDS.map(id=>id==='gender'
+          h('p',{style:muted},t('accessHint')),
+          ...PERSONAL_FIELDS.map(id=>h('div',{key:id,style:{display:'flex',alignItems:'center',flexWrap:'wrap',columnGap:12,minWidth:0}},
+            h('div',{style:{flex:'1 1 220px',minWidth:0}},id==='gender'
               ? dropdown(id,t(id),values.gender,GENDER_VALUES.map(v=>[v,genderLabel(v)]),v=>setField(id,v))
-              : input(id,t(id),values[id],v=>setField(id,v)))))
-      } else if (page === 'instructions') {
+              : input(id,t(id),values[id],v=>setField(id,v))),
+            checkbox('policy-'+id,record.policies[id]==='allow',
+              v=>setRecord(old=>({...old,policies:{...old.policies,[id]:v?'allow':'private'}})),t('available')+' — '+t(id)))),
+          h('p',{style:muted},t('sharedTitle')),
+          h('output',{id:'pp-shared-preview',dir:'auto',style:{display:'block',whiteSpace:'pre-wrap',overflowWrap:'anywhere'}},
+            PERSONAL_FIELDS.filter(k=>record.policies[k]==='allow'&&(k==='gender'?['male','female'].includes(values[k]):values[k].trim())).map(k=>t(k)).join(rtl?'، ':', ')||t('sharedNone')),
+          h('p',{role:'note',style:muted},t('retention')))
+       } else if (page === 'instructions') {
         const setPreference = (key,value) => setPreferences(old=>key==='custom'?{...withoutCustomConsent(old),custom:value}:({...old,[key]:value}))
         const activePreview = previewProfilePreferences(preferences)
         contents = h(React.Fragment,null,
@@ -1254,7 +2238,7 @@ window.__ModuleLoader__.load({
                 onChange:e=>{const checked=e.target.checked;setPreferences(old=>({...old,
                   presets:checked?[...new Set([...old.presets,item[0]])]:old.presets.filter(id=>id!==item[0])}))}}),
               h('span',null,h('strong',null,localLabel(item)),
-                h('span',{style:{display:'block',fontSize:12,opacity:.76}},rtl?item[3]:item[4]))))),
+                h('span',{style:{display:'block',fontSize:12,opacity:.76}},localPresetDescription(item)))))),
           card(t('customInstructions'),
             h('label',{htmlFor:'pp-custom',style:label},t('customInstructions')),
             h('textarea',{id:'pp-custom',rows:6,maxLength:PROFILE_CUSTOM_MAX,style:control,'aria-describedby':'pp-custom-count',
@@ -1267,29 +2251,24 @@ window.__ModuleLoader__.load({
           card(t('effective'),h('p',{style:muted},t('previewHint')),
             h('output',{id:'pp-effective-instructions',dir:'auto',
               style:{display:'block',whiteSpace:'pre-wrap',overflowWrap:'anywhere'}},activePreview||t('noInstruction'))))
-      } else if (page === 'access') {
-        contents = card(t('access'),h('p',null,t('accessHint')),
-          checkbox('opt-in',record.allowPersonalInformation,v=>setRecord(old=>({...old,allowPersonalInformation:v})),t('optIn')),
-          checkbox('cloud',record.allowCloud,v=>setRecord(old=>({...old,allowCloud:v})),t('cloud')),
-          h('h3',{style:{fontSize:15}},t('fieldPolicies')),
-          h('p',{style:muted},t('policiesHint')),
-          ...PERSONAL_FIELDS.map(id=>dropdown('policy-'+id,t(id),record.policies[id],
-            POLICY_VALUES.map(v=>[v,policyLabel(v)]),
-            v=>setRecord(old=>({...old,policies:{...old.policies,[id]:v}})))))
       } else if(page==='backup') {
         const proposal=proposeRestore()
-        const mergeTooLong=!!restoreReview&&restoreStrategy==='replace-merge'&&mergedText.length>PROFILE_CUSTOM_MAX
+        const mergeTooLong=!!restoreReview&&restoreStrategy==='merge'&&mergedCustom.length>PROFILE_CUSTOM_MAX
         let proposalValid=false
         try{proposalValid=!!proposal&&!mergeTooLong&&!!decodeProfile(proposal)}catch{proposalValid=false}
-        const canApply=proposalValid&&restoreAck&&(!restorePermissions||permissionsAck)
+        const canApply=proposalValid&&restoreAck&&(!restorePermissions||permissionsAck)&&(restoreStrategy!=='replace'||replaceAck)
         const strategyOption=(value,title,hint)=>h('div',{key:value,style:check},
           h('input',{id:'pp-strategy-'+value,type:'radio',name:'pp-strategy',value,checked:restoreStrategy===value,
             style:{marginTop:5},'aria-describedby':'pp-strategy-'+value+'-hint',
-            onChange:()=>{setRestoreStrategy(value);setRestoreAck(false)}}),
+            onChange:()=>{setRestoreStrategy(value);setRestoreAck(false);setReplaceAck(false);setPermissionsAck(false)}}),
           h('div',null,h('label',{htmlFor:'pp-strategy-'+value,style:{fontWeight:650}},title),
             h('p',{id:'pp-strategy-'+value+'-hint',style:{...muted,marginTop:2}},hint)))
         const currentRows=summarize(record)
         const reviewCard = restoreReview ? card(t('previewTitle'),
+          h('fieldset',{style:{border:0,padding:0,margin:'0 0 14px',minWidth:0}},
+            h('legend',{style:{...label,padding:0}},t('strategy')),
+            strategyOption('merge',t('reviewMerge'),t('reviewMergeHint')),
+            strategyOption('replace',t('replaceAll'),t('replaceAllHint'))),
           h('table',{id:'pp-restore-preview',style:{width:'100%',borderCollapse:'collapse',fontSize:13}},
             h('caption',{style:{textAlign:'start',fontWeight:650,marginBottom:6}},t('previewTitle')),
             h('thead',null,h('tr',null,
@@ -1301,26 +2280,26 @@ window.__ModuleLoader__.load({
           restoreReview.legacyWorkspaces.length ? h('div',{role:'note',style:{marginTop:12}},
             h('p',{style:{margin:'0 0 6px'}},t('legacyEntries')),
             h('ul',{id:'pp-restore-legacy',dir:'ltr',style:{margin:0}},...restoreReview.legacyWorkspaces.map(id=>h('li',{key:id},id)))) : null,
-          restoreStrategy==='replace-merge' ? h('div',{style:{marginTop:14}},
+          restoreStrategy==='merge' ? h('div',{style:{marginTop:14}},
             h('label',{htmlFor:'pp-restore-merged',style:label},t('mergedLabel')),
-            h('textarea',{id:'pp-restore-merged',rows:8,dir:'auto',style:control,value:mergedText,'aria-describedby':'pp-restore-merged-count',
+            h('textarea',{id:'pp-restore-merged',rows:8,dir:'auto',style:control,value:mergedCustom,'aria-describedby':'pp-restore-merged-count',
               'aria-invalid':mergeTooLong,onChange:e=>{setMergedText(e.target.value);setRestoreAck(false)}}),
             h('p',{id:'pp-restore-merged-count',role:mergeTooLong?'alert':undefined,style:{...muted,marginTop:6,fontWeight:mergeTooLong?700:400}},
-              mergedText.length+' / '+PROFILE_CUSTOM_MAX+' '+t('characters')+(mergeTooLong?' — '+t('mergeTooLong'):''))) :
+              mergedCustom.length+' / '+PROFILE_CUSTOM_MAX+' '+t('characters')+(mergeTooLong?' — '+t('mergeTooLong'):''))) :
             h('div',{style:{marginTop:14}},
               h('label',{htmlFor:'pp-restore-imported',style:label},t('importedInstructions')),
-              h('textarea',{id:'pp-restore-imported',readOnly:true,rows:5,dir:'auto',style:control,value:restoreReview.incoming.preferences.custom})),
+              h('textarea',{id:'pp-restore-imported',readOnly:true,rows:5,dir:'auto',style:control,value:importedCustom??''})),
           h('h3',{style:{fontSize:15,marginTop:18}},t('permissionsTitle')),
           restoreReview.permissions ? h(React.Fragment,null,
             h('p',{style:muted},t('permissionsDefault')),
             checkbox('restore-permissions',restorePermissions,v=>{setRestorePermissions(v);setPermissionsAck(false);setRestoreAck(false)},t('restorePermissions')),
             restorePermissions ? h('div',{style:{padding:'10px 14px',border:'1px solid rgba(208,58,52,.5)',borderRadius:10}},
               h('ul',{id:'pp-restore-permission-list',style:{margin:'0 0 8px'}},
-                ...PERSONAL_FIELDS.map(key=>h('li',{key},t(key)+': '+policyLabel(restoreReview.permissions.policies[key]))),
-                h('li',null,t('optIn')+': '+(restoreReview.permissions.allowPersonalInformation?t('on'):t('off'))),
-                h('li',null,t('cloud')+': '+(restoreReview.permissions.allowCloud?t('on'):t('off')))),
-              checkbox('restore-permissions-ack',permissionsAck,v=>{setPermissionsAck(v);setRestoreAck(false)},t('permissionsAck'))) : null)
+                ...PERSONAL_FIELDS.filter(key=>Object.hasOwn(restoreReview.permissions,key))
+                  .map(key=>h('li',{key},t(key)+': '+policyLabel(restoreReview.permissions[key])))),
+               checkbox('restore-permissions-ack',permissionsAck,v=>{setPermissionsAck(v);setRestoreAck(false)},t('permissionsAck'))) : null)
             : h('p',{style:muted},t('permissionsLegacy')),
+          restoreStrategy==='replace' ? checkbox('restore-replace-ack',replaceAck,setReplaceAck,t('replaceConfirm'),{disabled:!proposalValid}) : null,
           checkbox('restore-confirm',restoreAck,setRestoreAck,t('confirm'),{disabled:!proposalValid}),
           h('div',{style:row},
             h('button',{id:'pp-restore-apply',type:'button',style:btn,disabled:!canApply,onClick:()=>{
@@ -1338,15 +2317,11 @@ window.__ModuleLoader__.load({
             h('input',{id:'pp-import-file',type:'file',accept:'application/json,.json',style:{...control,padding:'7px 9px'},onChange:e=>{void importFile(e)}}),
             h('label',{htmlFor:'pp-restore-json',style:{...label,marginTop:14}},t('pasteJson')),
             h('textarea',{id:'pp-restore-json',rows:6,maxLength:PROFILE_MAX_CHARS,dir:'ltr',lang:'en',spellCheck:false,style:jsonControl,value:restoreText,
-              onChange:e=>{setRestoreText(e.target.value);clearRestore()}}),
-            h('fieldset',{style:{border:0,padding:0,margin:'14px 0 0',minWidth:0}},
-              h('legend',{style:{...label,padding:0}},t('strategy')),
-              strategyOption('replace',t('replaceAll'),t('replaceAllHint')),
-              strategyOption('replace-merge',t('replaceMerge'),t('replaceMergeHint'))),
+              onChange:e=>{setRestoreText(e.target.value);clearRestore();setBackupMessage('')}}),
             h('button',{id:'pp-restore-review',type:'button',style:btn,onClick:()=>startReview(restoreText)},t('import'))),
           reviewCard)
       }else {
-        contents=card(t('privacy'),h('p',null,t('warning')),h('p',null,t('accessHint')),h('p',null,t('exportHint')))
+        contents=card(t('privacy'),h('p',null,t('warning')),h('p',null,t('accessHint')),h('p',null,t('retention')),h('p',null,t('exportHint')))
       }
       const migrationCard = legacy ? h('section',{id:'pp-migration',style:{...surface,border:'1px solid rgba(208,158,52,.75)'},'aria-label':t('migrationTitle')},
         h('h2',{style:{fontSize:17,margin:'0 0 10px'}},t('migrationTitle')),
@@ -1371,6 +2346,14 @@ window.__ModuleLoader__.load({
         legacyView?jsonView('legacy-json',legacyText(),t('legacyJson')):null,
         legacyDiscards(legacy) ? checkbox('migration-ack',migrationAck,setMigrationAck,t('migrationAck'),{disabled:!editable}) : null,
         page!=='backup'?backupStatus:null) : null
+      const upgradePending=saved?.version===2||saved?.version===3
+      const upgradeCard=upgradePending ? card(t('upgradeTitle'),
+        h('p',{id:'pp-upgrade-note',role:'note'},t('upgradeRollback')),
+        page!=='backup' ? h(React.Fragment,null,
+          h('p',{style:muted},t('exportHint')),
+          jsonActions('rollback',exportText,backupFileName(false),exportView,setExportView),
+          exportView?jsonView('rollback-json',exportText(),t('exportJson')):null,
+          backupStatus) : null) : null
       return h('div',{'data-personal-profile-panel':'native-settings',lang:language,
         dir:rtl?'rtl':'ltr',style:{height:'100%',overflowY:'auto',boxSizing:'border-box',
           padding:'max(var(--dsh-frame-top-clearance, 0px), 28px) clamp(18px,4vw,56px) 52px',
@@ -1380,13 +2363,14 @@ window.__ModuleLoader__.load({
             alignItems:'center',justifyContent:'space-between'}},
             h('div',null,h('h1',{style:{margin:'0 0 4px',fontSize:'clamp(22px,3vw,32px)'}},t('title')),
               h('p',{style:{margin:'0 0 12px',opacity:.7}},t('subtitle'))),
-            h('fieldset',{disabled:!editable,style:{width:145,border:0,padding:0,margin:0}},dropdown('language',t('language'),language,
-              [['ar','العربية'],['en','English']],setLanguage))),
+            h('fieldset',{disabled:!editable,style:{width:145,border:0,padding:0,margin:0}},dropdown('language',t('language'),record.locale,
+              [['auto',t('followDsh')],['en','English'],['ar','العربية'],['zh','中文'],['es','Español'],['fr','Français'],['de','Deutsch'],['ja','日本語']],setLanguage))),
           notice,
+          upgradeCard,
           h('div',{style:{display:'flex',gap:10,flexWrap:'wrap',alignItems:'center',marginBottom:12}},
-            h('button',{id:'pp-save',type:'button',style:btn,disabled:!editable||!dirty||status==='conflict'||status==='failed'||migrationBlocked,onClick:save},t('save')),
+            h('button',{id:'pp-save',type:'button',style:btn,'aria-describedby':upgradePending?'pp-upgrade-note':undefined,disabled:!editable||!dirty||status==='conflict'||status==='failed'||migrationBlocked,onClick:save},t('save')),
             h('button',{id:'pp-reload',type:'button',style:btn,disabled:busy||!canRead,onClick:requestReload},t('reload')),
-            h('button',{id:'pp-reset',type:'button',style:btn,disabled:!editable,onClick:()=>{setRecord({...emptyProfileRecord(),locale:language});setRestoreText('');clearRestore();setExportView(false)}},t('reset'))),
+            h('button',{id:'pp-reset',type:'button',style:btn,disabled:!editable,onClick:()=>{setRecord({...emptyProfileRecord(),locale:record.locale});setRestoreText('');clearRestore();setExportView(false)}},t('reset'))),
           h('p',{id:'pp-save-status',role:'status'},t(status)+(dirty&&status!=='migration'?' '+t('dirty'):'')),
           confirmReload?h('div',{id:'pp-reload-prompt',role:'alert',style:{padding:'12px 15px',marginBottom:12,
             border:'1px solid rgba(208,58,52,.6)',borderRadius:10,background:'rgba(208,58,52,.08)'}},
@@ -1416,18 +2400,18 @@ window.__ModuleLoader__.load({
       render(){
         if(!this.state.failed)return this.props.children
         return h('div',{'data-personal-profile-error':'',role:'alert',style:{padding:'max(var(--dsh-frame-top-clearance, 0px), 28px) clamp(18px,4vw,56px)',lineHeight:1.6}},
-          h('h1',{style:{fontSize:22,margin:'0 0 8px'}},'Personal Profile — الملف الشخصي'),
+          h('h1',{style:{fontSize:22,margin:'0 0 8px'}},'My Profile — الملف الشخصي'),
           h('p',{dir:'rtl',lang:'ar'},'تعذر عرض صفحة الملف الشخصي. لم يتم حفظ أو تغيير أي إعداد.'),
-          h('p',{lang:'en'},'Personal Profile could not be displayed. No settings were saved or changed.'),
+          h('p',{lang:'en'},'My Profile could not be displayed. No settings were saved or changed.'),
           h('button',{type:'button',onClick:()=>this.setState({failed:false}),style:{border:'1px solid rgba(128,128,128,.35)',borderRadius:8,padding:'9px 13px',font:'inherit',background:'rgba(128,128,128,.08)',color:'inherit',cursor:'pointer'}},'Retry — إعادة المحاولة'))
       }
     }:null
 
     function ProfileDraft() {
       return h('section',{'data-personal-profile-draft':'',style:{borderTop:border,padding:'20px 0'}},
-        h('h3',null,'Personal Profile — local settings'),
+        h('h3',null,'My Profile — local settings'),
         h('p',null,'One unified profile: Preferred name, Nationality, Gender, response preferences and optional Custom Instructions. All access is Private by default.'),
-        h('p',null,'Saved in the active Harness Profile without plugin-level encryption. Open Personal Profile to edit. Saved response preferences are contributed to supported native agent steps; structured personal information disclosure is not implemented.'))
+        h('p',null,'Saved in the active Harness Profile without plugin-level encryption. Open My Profile to edit. Saved response preferences apply to supported native agent steps. Personal information sharing is disabled in this build.'))
     }
     const PROFILE_MODULE = TYPE + '/personal-profile'
     /** The Host's own enablement of the Profile row on the subject page; false when it says Off. */
@@ -1437,7 +2421,7 @@ window.__ModuleLoader__.load({
         ? subject.pkg.rows.find(item => item?.moduleName === PROFILE_MODULE) : undefined
       return row === undefined ? true : row.enabled === true
     }
-    // Every Personal Profile surface lives in this child fiber, which the
+    // Every My Profile surface lives in this child fiber, which the
     // suite starts only while the Host row is enabled and active, and disposes
     // (unregistering each Slot entry) as soon as the row is switched Off.
     // No agent capabilities; all writes go through the native settings service.
@@ -1451,17 +2435,26 @@ window.__ModuleLoader__.load({
         const connectionSource={getSnapshot:()=>generation,subscribe:fn=>{listeners.add(fn);return()=>listeners.delete(fn)}}
         ctx.on('connection/reset',()=>{generation++;for(const fn of [...listeners])fn()})
         const settings=ctx.remote.settings
+        // The optional public DSH Locale service drives the UI only while the
+        // profile preference is 'auto'. Never write to DSH's locale preference.
+        const hostLocale = typeof ctx.get === 'function' ? ctx.get('locale') : undefined
+        const fallbackLocale = Object.freeze({active:'en',revision:0})
+        const localeSource = hostLocale && typeof hostLocale.getSnapshot==='function' &&
+          typeof hostLocale.subscribe==='function'
+          ? {getSnapshot:()=>hostLocale.getSnapshot(),subscribe:fn=>hostLocale.subscribe(fn)}
+          : {getSnapshot:()=>fallbackLocale,subscribe:()=>()=>{}}
         function ProfileSlot(props) {
-          const page=h(PersonalProfilePage,{settings,connectionSource,useRemoteAccess:props?.useRemoteAccess})
+          const page=h(PersonalProfilePage,{settings,connectionSource,localeSource,useRemoteAccess:props?.useRemoteAccess})
           return ProfileErrorBoundary?h(ProfileErrorBoundary,null,page):page
         }
-        ctx.slots.inject('main', () => ctx.slots.register({
-          name: 'main', key: PROFILE_PANEL_ID,
+        // Native Settings navigation replaces the global sidebar entry. Keep
+        // the stable panel id and Host namespace for existing saved profiles.
+        ctx.slots.inject('settings.section', () => ctx.slots.register({
+          name: 'settings.section', id: PROFILE_PANEL_ID, label: 'My Profile', order: 40,
         }, ProfileSlot))
-        ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({
-          name: 'sidebar.panellist', id: PROFILE_PANEL_ID, order: 40,
-          label: () => 'Personal Profile',
-        }, ProfilePanelIcon))
+        ctx.slots.inject('settings.section.icon', () => ctx.slots.register({
+          name: 'settings.section.icon', id: PROFILE_PANEL_ID,
+        }, ({ size }) => h(ProfilePanelIcon, { size })))
         ctx.slots.inject('plugins.detail.section', () => ctx.slots.register({
           name: 'plugins.detail.section', id: 'abinadwan-profile-draft', order: 40,
         }, ({ subject }) => ((subject?.kind === 'bundle' && subject.pkg?.name === TYPE) ||
@@ -1469,12 +2462,600 @@ window.__ModuleLoader__.load({
           ? h(ProfileDraft) : null))
       },
     }
+    const lifecycleIcon = ['M10 13H6V7a1 1 0 0 1 1-1h8m-9 7-1 2m3.5-3.5v-2H15',
+      'M18.25 11.25a4.5 4.5 0 1 1-6.5 1.25m3.75.75v2.25h2']
+    const reasoningIcon = ['M6.5 15v3m5.5-6v6m5.5-9v9M6.5 11.5c3.6 0 5-4.5 8.8-4.5',
+      'M19.5 7a2 2 0 1 1-4 0 2 2 0 0 1 4 0Z']
+    const suiteGlyph = (paths, size = 18) => h('svg', { width: size, height: size, viewBox: '0 0 24 24',
+      fill: 'none', stroke: 'currentColor', strokeWidth: 2, strokeLinecap: 'round', strokeLinejoin: 'round', 'aria-hidden': true },
+    ...paths.map(path => h('path', { key: path, d: path })))
+    const suiteWatch = source => React.useSyncExternalStore(
+      notify => source.subscribe(notify), () => source.getSnapshot(), () => source.getSnapshot())
+    const suiteSettingsView = view => view?.value && Number.isSafeInteger(view.revision) && view.revision >= 0 ? view : null
+
+    function useSuiteRecord(settings, id, useRemoteAccess, connection) {
+      const mayRead = useRemoteAccess?.('settings/describe') === true
+      const mayWrite = useRemoteAccess?.('settings/replace') === true
+      const [state, setState] = React.useState({ status: 'loading' })
+      const [reload, setReload] = React.useState(0)
+      const epoch = React.useRef(0)
+      const busy = React.useRef(false)
+      const access = React.useRef({ mayRead, mayWrite })
+      const generationAtRender = suiteWatch(connection)
+      access.current = { mayRead, mayWrite }
+      const ns = `abinadwan-${id}`
+      React.useEffect(() => {
+        const generation = ++epoch.current
+        const live = () => epoch.current === generation && connection.getSnapshot() === generationAtRender
+        busy.current = false
+        if (!mayRead) setState({ status: 'unavailable' })
+        else {
+          setState({ status: 'loading' })
+          Promise.resolve().then(() => settings.describe()).then(result => {
+            if (!live()) return
+            const view = result?.ok && suiteSettingsView(result.value?.namespaces?.find(item => item.ns === ns))
+            setState(view ? { status: 'ready', view, writable: result.value.writable === true,
+              connectionGeneration: generationAtRender } : { status: 'unavailable' })
+          }).catch(() => { if (live()) setState({ status: 'unavailable' }) })
+        }
+        return () => { epoch.current++ }
+      }, [settings, ns, mayRead, reload, generationAtRender])
+
+      const currentView = state.connectionGeneration === generationAtRender
+      const writable = mayRead && mayWrite && currentView && state.writable === true &&
+        ['ready', 'saved', 'failed'].includes(state.status)
+      async function save(record) {
+        if (!writable || busy.current || connection.getSnapshot() !== generationAtRender ||
+            !access.current.mayRead || !access.current.mayWrite) return false
+        const generation = epoch.current
+        busy.current = true
+        setState({ ...state, status: 'saving' })
+        try {
+          const result = await settings.replace(ns, { record }, state.view.revision)
+          if (generation !== epoch.current || connection.getSnapshot() !== generationAtRender || !access.current.mayRead) return false
+          const view = result?.ok && suiteSettingsView(result.value)
+          if (view && view.ns === ns) {
+            setState({ ...state, status: 'saved', view })
+            return true
+          }
+          setState({ ...state, status: result?.error?.code === 'settings/conflict' ? 'conflict' : 'failed' })
+        } catch {
+          if (generation === epoch.current && connection.getSnapshot() === generationAtRender && access.current.mayRead) {
+            setState({ ...state, status: 'failed' })
+          }
+        } finally { if (generation === epoch.current) busy.current = false }
+        return false
+      }
+      const source = mayRead && currentView ? state.view : undefined
+      return { record: source?.value.record, source, writable,
+        status: mayRead && state.view && !currentView ? 'loading' : state.status, save,
+        reload: () => { if (!busy.current) setReload(value => value + 1) } }
+    }
+
+    function suiteConnection(ctx) {
+      let generation = 0
+      const listeners = new Set()
+      const invalidate = () => { generation++; for (const notify of listeners) notify() }
+      ctx.on('connection/reset', invalidate)
+      ctx.effect(() => ctx.remote.$on('settings/document-updated', invalidate))
+      return { getSnapshot: () => generation,
+        subscribe: notify => { listeners.add(notify); return () => listeners.delete(notify) } }
+    }
+
+    function SuiteRecordStatus({ settings }) {
+      const labels = {
+        loading: 'Loading settings…', unavailable: 'Settings unavailable.',
+        saving: 'Saving…', saved: 'Saved.', failed: 'Save failed.',
+        conflict: 'Settings changed in another window. Reload before saving again.',
+      }
+      const label = labels[settings.status]
+      return label ? h('div', { role: 'status', style: lifecycleMuted }, label, ' ',
+        ['conflict', 'unavailable'].includes(settings.status) ? h(Button, { size: 'sm',
+          onClick: settings.reload }, 'Reload settings') : null) : null
+    }
+
+    const lifecycleDurations = ['365', '180', '90', '30', '7']
+    const lifecycleMuted = { color: 'var(--dsw-alias-label-secondary, inherit)', fontSize: 12, lineHeight: 1.45 }
+    const lifecycleRule = '1px solid var(--dsw-alias-border-l3, CanvasText)'
+    const lifecycleLabel = { display: 'grid', gap: 6, fontSize: 13, fontWeight: 500, minWidth: 0 }
+    const lifecycleSelect = {
+      display: 'block', width: '100%', minWidth: 0, height: 32, paddingInline: 8,
+      borderRadius: 8, border: lifecycleRule, color: 'inherit', font: 'inherit',
+      background: 'var(--dsw-alias-settings-card-fill, Canvas)',
+    }
+    const lifecycleActions = { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }
+
+    function LifecycleGroup({ title, children }) {
+      return h('section', { style: { display: 'grid', gap: 10, minWidth: 0, paddingBlockStart: 14,
+        borderBlockStart: lifecycleRule } },
+      h('h2', { style: { margin: 0, fontSize: 14, fontWeight: 600 } }, title), children)
+    }
+
+    function RetentionField({ label, value, inherit, disabled, onChange }) {
+      return h('label', { style: lifecycleLabel }, label,
+        h('select', { style: lifecycleSelect, value, disabled, onChange: event => onChange(event.target.value) },
+          inherit ? h('option', { value: 'inherit' }, 'Use global policy') : null,
+          h('option', { value: 'forever' }, 'Keep forever'),
+          ...lifecycleDurations.map(days => h('option', { key: days, value: days }, `${days} days`))))
+    }
+
+    function WorkspaceLifecycle({ services, useRemoteAccess }) {
+      const settings = useSuiteRecord(services.settings, 'conversation-lifecycle', useRemoteAccess, services.connection)
+      const workspace = suiteWatch(services.workspaces)
+      const sessions = suiteWatch(services.sessions)
+      const [scope, setScope] = React.useState('')
+      const [proposal, setChange] = React.useState(null)
+      const [previewAt, setPreviewAt] = React.useState(null)
+      const record = settings.record
+      const ready = workspace?.phase === 'ready' && sessions?.phase === 'ready'
+      const workspaces = ready ? workspace.items : []
+      const chosen = workspaces.find(item => item.workspaceId === scope)
+      const change = proposal && proposal.source === settings.source &&
+        (!proposal.workspaceId || chosen?.workspaceId === proposal.workspaceId) ? proposal : null
+      React.useEffect(() => {
+        if (proposal && !change) { setChange(null); setPreviewAt(null) }
+      }, [proposal, change])
+      const override = record?.overrides?.find(item => item.workspace === chosen?.workspaceId)?.retention ?? 'inherit'
+      const memberships = new Map()
+      for (const item of workspaces) for (const id of item.sessionIds ?? []) {
+        if (memberships.has(id)) memberships.set(id, null)
+        else memberships.set(id, item.workspaceId)
+      }
+      const archived = new Set(workspace?.archivedSessionIds ?? [])
+      const protectedIds = new Set(record?.protectedIds ?? [])
+      const rows = []
+      let unknown = 0
+      const selectedIds = chosen ? new Set(chosen.sessionIds ?? []) : null
+      for (const [id, member] of memberships) {
+        if (selectedIds && !selectedIds.has(id)) continue
+        if (member === null) { unknown++; continue }
+        const row = sessions.byId?.[id]
+        if (!row) { unknown++; continue }
+        const projection = sessions.projectionsBySession?.[id]?.values
+        if (projection?.agentPreset === 'abinadwan-direct-chat' || row.agentPreset === 'abinadwan-direct-chat') continue
+        const isActive = row.running !== false || row.agentAvailable === true ||
+          Object.values(row.retainedBy ?? {}).some(count => count > 0)
+        const examined = change?.next ?? record
+        const days = examined?.overrides?.find(item => item.workspace === member)?.retention ?? examined?.retention
+        // The installed Session Controller reports max(createdAt, lastPromptAt).
+        // Count only known prompt-derived dates, never an unstarted Session's creation date.
+        const summaryPrompt = Number.isFinite(row.createdAt) && row.updatedAt > row.createdAt ? row.updatedAt : undefined
+        const lastPrompt = projection?.sessionListMetadata?.lastPromptAt ?? summaryPrompt
+        const isProtected = protectedIds.has(id)
+        const candidate = previewAt !== null && !isActive && !isProtected && lifecycleDurations.includes(days) &&
+          Number.isFinite(lastPrompt) && lastPrompt > 0 && lastPrompt <= previewAt - Number(days) * 86400000
+        rows.push({ id, row, isActive, isProtected, candidate })
+      }
+      const update = next => {
+        setChange(null)
+        setPreviewAt(null)
+        void settings.save(next)
+      }
+      function propose(value, workspaceId) {
+        if (!record) return
+        const next = workspaceId ? { ...record, overrides: [...record.overrides.filter(row => row.workspace !== workspaceId),
+          ...(value === 'inherit' ? [] : [{ workspace: workspaceId, retention: value }])] } : { ...record, retention: value }
+        setChange({ value, workspaceId, next, source: settings.source })
+        setPreviewAt(Date.now())
+      }
+
+      const candidates = rows.filter(row => row.candidate)
+      const stats = [
+        ['Known conversations', ready ? rows.length : 'Unavailable'],
+        ['Archived', ready ? rows.filter(row => archived.has(row.id)).length : 'Unavailable'],
+        ['Storage usage', 'Unavailable'],
+      ]
+      return h('section', { lang: 'en', dir: 'ltr', style: { padding: '8px 16px 20px', display: 'grid', gap: 16, minWidth: 0 } },
+        h('header', null, h('h1', { style: { margin: '0 0 4px', fontSize: 18, lineHeight: 1.3 } }, 'Chat Control'),
+          h('p', { style: { ...lifecycleMuted, margin: 0 } }, 'Part of the ABINADWAN Plugins Suite.')),
+        h(SuiteRecordStatus, { settings }),
+        h(LifecycleGroup, { title: 'Overview' },
+          h('label', { style: lifecycleLabel }, 'Workspace',
+            h('select', { style: lifecycleSelect, value: chosen ? scope : '', disabled: !ready, onChange: event => {
+              setScope(event.target.value)
+              setChange(null)
+              setPreviewAt(null)
+            } }, h('option', { value: '' }, 'All Workspaces'),
+            ...workspaces.map(item => h('option', { value: item.workspaceId, key: item.workspaceId, dir: 'auto' }, item.title)))),
+          h('dl', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(112px, 1fr))', gap: 8, margin: 0 } },
+            ...stats.map(([label, value]) => h('div', { key: label, style: { border: lifecycleRule, borderRadius: 8,
+              padding: '8px 10px', background: 'var(--dsw-alias-settings-card-fill, Canvas)' } },
+            h('dt', { style: lifecycleMuted }, label),
+            h('dd', { style: { margin: '3px 0 0', fontSize: 14, fontWeight: 600 } }, value)))),
+          unknown > 0 ? h('small', { style: lifecycleMuted }, `${unknown} unavailable or ambiguous`) : null),
+        h(LifecycleGroup, { title: 'Retention Policy' },
+          h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 } },
+            h(RetentionField, { label: 'Global retention', value: change && !change.workspaceId ? change.value : record?.retention ?? '',
+              disabled: !settings.writable, onChange: value => propose(value) }),
+            chosen ? h(RetentionField, { label: 'Workspace override', inherit: true,
+              value: change?.workspaceId === chosen.workspaceId ? change.value : override,
+              disabled: !settings.writable, onChange: value => propose(value, chosen.workspaceId) }) : null),
+          !chosen ? h('small', { style: lifecycleMuted }, 'Select a Workspace to set its own retention policy.') : null,
+          change ? h('div', { style: lifecycleActions },
+            h('span', { style: lifecycleMuted }, 'Save this policy for previews?'),
+            h(Button, { size: 'sm', variant: 'primary', disabled: !settings.writable, onClick: () => update(change.next) },
+              'Confirm and save'),
+            h(Button, { size: 'sm', onClick: () => { setChange(null); setPreviewAt(null) } }, 'Cancel')) : null),
+        h(LifecycleGroup, { title: 'Protected Conversations' },
+          ready && rows.length ? h('ul', { style: { listStyle: 'none', padding: 0, margin: 0,
+            maxBlockSize: 185, overflow: 'auto', overflowWrap: 'anywhere' } },
+          ...rows.map(({ id, row, isProtected }) => h('li', { key: id, style: { ...lifecycleActions, minHeight: 32 } },
+            h(Checkbox, { label: h(React.Fragment, null, 'Protect ', h('bdi', null, row.displayTitle || id)),
+              checked: isProtected, disabled: !settings.writable,
+              onChange: checked => update({ ...record, protectedIds: checked ? [...protectedIds, id] : [...protectedIds].filter(value => value !== id) }) }),
+            archived.has(id) ? h('small', { style: lifecycleMuted }, 'Archived') : null))) :
+            h('p', { style: { ...lifecycleMuted, margin: 0 } }, ready ? 'No known conversations in this view.' : 'Workspace inventory is unavailable.')),
+        h(LifecycleGroup, { title: 'Cleanup Management' },
+          h('strong', { style: { fontSize: 13 } }, 'Preview only'),
+          h('p', { style: { ...lifecycleMuted, margin: 0 } },
+            'Estimates use known last prompt dates. Active, protected, Direct Chat, and unverified conversations are excluded.'),
+          h('p', { style: { ...lifecycleMuted, margin: 0 } },
+            'Permanent deletion and automatic cleanup are unavailable.'),
+          h('div', { style: lifecycleActions },
+            h(Button, { size: 'sm', variant: 'outline', disabled: !record || !ready, onClick: () => setPreviewAt(Date.now()) }, 'Preview cleanup'),
+            previewAt !== null ? h('span', { role: 'status', style: { fontSize: 13 } },
+              `${candidates.length} estimated candidate${candidates.length === 1 ? '' : 's'}`) : null),
+          candidates.length ? h('ul', { style: { margin: 0, paddingInlineStart: 20, fontSize: 13 } },
+            ...candidates.map(({ id, row }) => h('li', { key: id }, h('bdi', null, row.displayTitle || id)))) : null))
+    }
+
+    const reasoningCell = { padding: '4px 8px', textAlign: 'end', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
+
+    /** Same-origin POST to an owner-only Adaptive Reasoning route. */
+    async function reasoningPost(path, body) {
+      const endpoint = new URL(`api/abinadwan-reasoning/${path}`, document.baseURI)
+      if (endpoint.origin !== document.location.origin) throw new Error('Cross-origin reasoning endpoint')
+      const result = await fetch(endpoint, { method: 'POST', credentials: 'same-origin', redirect: 'error',
+        headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
+      return { ok: result.ok, status: result.status, body: await result.json().catch(() => null) }
+    }
+
+    function ReasoningStatistics({ open, onClose, nameOf }) {
+      const [state, setState] = React.useState({ status: 'loading' })
+      const request = React.useRef(0)
+      function load(path) {
+        const id = ++request.current
+        setState({ status: 'loading' })
+        reasoningPost(path, {}).then(result => {
+          if (id === request.current) setState(result.ok && result.body ? { status: 'ready', stats: result.body } : { status: 'failed' })
+        }).catch(() => { if (id === request.current) setState({ status: 'failed' }) })
+      }
+      React.useEffect(() => { if (open) load('stats'); return () => { request.current++ } }, [open])
+      const stats = state.stats
+      const count = value => Number(value || 0).toLocaleString('en-US')
+      const line = (label, value) => h('div', { key: label, style: { display: 'flex', justifyContent: 'space-between', gap: 16 } },
+        h('span', null, label), h('span', { style: { fontVariantNumeric: 'tabular-nums' } }, value))
+      const group = (title, children) => h('section', { key: title, style: { marginBottom: 14 } },
+        h('h3', { style: { fontSize: 13, fontWeight: 650, margin: '0 0 6px' } }, title), children)
+      const rows = stats ? ['session', 'subagent'].flatMap(scope => Object.entries(stats.requests?.[scope] || {})
+        .map(([effort, row]) => ({ scope, effort, row }))) : []
+      const body = state.status === 'loading' ? h('div', { role: 'status' }, 'Loading statistics…')
+        : state.status === 'failed' ? h('div', { role: 'status' }, 'Statistics are unavailable.')
+        : h('div', { style: { fontSize: 13, lineHeight: 1.6 } },
+          group('Messages', [line('Total', count(stats.messages)),
+            line('Session effort', count(stats.sources?.manual)),
+            line('Provider default', count(stats.sources?.default))]),
+          group('Requests by effort', rows.length ? h('table', { style: { borderCollapse: 'collapse', width: '100%' } },
+            h('thead', null, h('tr', null, ...['Effort', 'Requests', 'Input tokens', 'Output tokens', 'Reasoning tokens', 'Average time']
+              .map((label, index) => h('th', { key: label, scope: 'col', style: { ...reasoningCell, textAlign: index ? 'end' : 'start', fontWeight: 600 } }, label)))),
+            h('tbody', null, ...rows.map(({ scope, effort, row }) => h('tr', { key: `${scope}:${effort}` },
+              h('th', { scope: 'row', style: { ...reasoningCell, textAlign: 'start', fontWeight: 400 } },
+                `${effort === 'default' ? 'Provider default' : nameOf(effort)}${scope === 'subagent' ? ' (subagents)' : ''}`),
+              h('td', { style: reasoningCell }, count(row.requests)),
+              h('td', { style: reasoningCell }, count(row.inputTokens)),
+              h('td', { style: reasoningCell }, count(row.outputTokens)),
+              h('td', { style: reasoningCell }, row.reasoningReported
+                ? `${count(row.reasoningTokens)}${row.reasoningReported < row.requests ? ` (${row.reasoningReported} of ${row.requests})` : ''}`
+                : 'Not reported'),
+              h('td', { style: reasoningCell }, row.timed ? `${(row.durationMs / row.timed / 1000).toFixed(1)} s` : '—'))))
+          ) : h('div', { style: lifecycleMuted }, 'No requests yet.')),
+          h('p', { style: { ...lifecycleMuted, margin: 0 } },
+            'Times run on this computer from stream start to the saved reply. Reasoning tokens appear only when the provider reports them. No savings are estimated.'))
+      return h(Modal, { open, onClose, title: 'Reasoning statistics', closeLabel: 'Close',
+        description: stats ? `Aggregate counts kept in memory on this computer since ${new Date(stats.since).toLocaleString('en-US')}. Nothing is sent anywhere, and restarting Harness clears them.` : undefined,
+        footer: h('div', { style: lifecycleActions },
+          h(Button, { size: 'sm', variant: 'outline', disabled: state.status !== 'ready', onClick: () => load('stats/reset') }, 'Reset statistics'),
+          h(Button, { size: 'sm', onClick: onClose }, 'Done')) },
+      h('div', { lang: 'en', dir: 'ltr' }, body))
+    }
+
+    function ReasoningComposer({ directory, sessionId, settingsService, connection, useRemoteAccess, useAccess }) {
+      const settings = useSuiteRecord(settingsService, 'adaptive-reasoning', useRemoteAccess, connection)
+      const directoryState = suiteWatch(directory.store)
+      const canSelect = useAccess?.('session/selectModel') === true
+      const [open, setOpen] = React.useState(false)
+      const [working, setWorking] = React.useState(false)
+      const [notice, setNotice] = React.useState(null)
+      const [statsOpen, setStatsOpen] = React.useState(false)
+      const busy = React.useRef(false)
+      const noticeId = React.useRef(0)
+      const mounted = React.useRef(false)
+      const selection = directoryState.current
+      React.useEffect(() => { void directory.load().catch(() => {}) }, [directory])
+      React.useEffect(() => {
+        mounted.current = true
+        return () => { mounted.current = false }
+      }, [])
+
+      function capability(snapshot) {
+        const current = snapshot.current
+        if (!current || snapshot.routable !== true) return null
+        return snapshot.groups.find(group => group.id === current.provider)?.models
+          .find(model => model.id === current.model)?.reasoning
+      }
+
+      function show(text, success = false) {
+        if (mounted.current) setNotice({ id: ++noticeId.current, text, success })
+      }
+
+      const reasoning = capability(directoryState)
+      const level = id => reasoning?.efforts?.find(row => row.id === id)
+      const nameOf = id => level(id)?.name || id
+
+      if (!canSelect || !selection || !reasoning?.efforts?.length) return null
+      const effort = selection.reasoningEffort ?? reasoning.defaultEffort
+      const record = settings.record
+      const preferences = record?.preferences ?? []
+      const isCurrentRoute = row => row.provider === selection.provider && row.model === selection.model
+      const saved = preferences.find(isCurrentRoute)
+      const currentLabel = level(effort)?.name || effort || 'Provider default'
+      const savedLabel = saved
+        ? `Saved preference: ${nameOf(saved.effort)}${level(saved.effort) ? '' : ' (unavailable)'}`
+        : record ? 'No saved preference' : 'Saved preferences unavailable'
+
+      async function changeEffort(current, value, manual) {
+        const expected = { provider: current.provider, model: current.model, reasoningEffort: value }
+        const result = await reasoningPost('effort', { sessionId, ...expected, ...(manual ? { mode: 'manual' } : {}) })
+        if (result.status === 409 && result.body?.error === 'session-unavailable') {
+          show(manual ? 'Start or resume this chat before changing its effort.' :
+            'Start or resume this chat before applying the saved effort.')
+          return
+        }
+        if (result.status === 409 && result.body?.error === 'preference-changed') settings.reload()
+        const confirmed = result.body?.selected
+        if (!result.ok || confirmed?.provider !== expected.provider || confirmed?.model !== expected.model ||
+            confirmed?.reasoningEffort !== value) throw new Error('Effort selection was not accepted')
+        show(manual ? 'Effort changed.' : 'Effort applied.', true)
+      }
+
+      async function selectItem(id) {
+        if (busy.current) return
+        setOpen(false)
+        if (id === 'reload') { settings.reload(); return }
+        if (id === 'stats') { setStatsOpen(true); return }
+        const latest = directory.store.getSnapshot()
+        const current = latest.current
+        const available = capability(latest)
+        if (!current || !isCurrentRoute(current) || !available || latest.pending != null) return
+        const offered = value => available.efforts.some(option => option.id === value)
+        const currentEffort = current.reasoningEffort ?? available.defaultEffort
+        busy.current = true
+        setWorking(true)
+        try {
+          if (id === 'save' || id === 'remove') {
+            if (!settings.writable || !record || (id === 'remove' && !saved) || (id === 'save' && !offered(currentEffort))) return
+            const remaining = preferences.filter(row => !isCurrentRoute(row))
+            const next = id === 'save' ? [...remaining, { provider: current.provider,
+              model: current.model, effort: currentEffort }] : remaining
+            const savedOk = await settings.save({ ...record, preferences: next })
+            show(savedOk ? (id === 'save' ? 'Preference saved.' : 'Preference removed.') :
+              'Preference could not be updated.', savedOk)
+          } else {
+            const manual = id !== 'apply'
+            const value = manual ? available.efforts.find(option => `effort:${option.id}` === id)?.id : saved?.effort
+            if (value && value !== current.reasoningEffort && offered(value)) await changeEffort(current, value, manual)
+          }
+        } catch {
+          show('Harness could not change the effort.')
+        } finally {
+          busy.current = false
+          setWorking(false)
+        }
+      }
+
+      const items = [
+        { type: 'label', id: 'session-label', text: 'Current session' },
+        ...reasoning.efforts.map(option => ({ id: 'effort:' + option.id, label: option.name || option.id })),
+        { type: 'separator', id: 'preference-divider' },
+        { type: 'label', id: 'preference-label', text: savedLabel },
+        { id: 'save', label: 'Save current effort', disabled: !settings.writable || !level(effort) || saved?.effort === effort },
+        ...(saved ? [
+          { id: 'apply', label: 'Apply saved effort', disabled: !level(saved.effort) || saved.effort === selection.reasoningEffort },
+          { id: 'remove', label: 'Remove saved preference', disabled: !settings.writable },
+        ] : []),
+        ...(Modal ? [{ type: 'separator', id: 'more-divider' }, { id: 'stats', label: 'Reasoning statistics…' }] : []),
+        ...(['conflict', 'unavailable'].includes(settings.status)
+          ? [{ id: 'reload', label: 'Reload preferences' }] : []),
+      ]
+      const selectedIds = level(effort) ? ['effort:' + effort] : []
+      const description = 'Adaptive Reasoning: ' + currentLabel
+      const trigger = h(Button, { variant: 'toolbar', size: 'sm', icon: suiteGlyph(reasoningIcon, 14),
+        lang: 'en', dir: 'ltr', title: description, 'aria-label': description,
+        'aria-haspopup': 'menu', 'aria-expanded': open, disabled: working || directoryState.pending != null,
+        onClick: () => setOpen(value => !value) }, currentLabel)
+      return h('span', { lang: 'en', dir: 'ltr' },
+        h(Menu, { open, anchor: trigger, items, selectedIds,
+          portal: true, side: 'top', align: 'end', compact: true, autoFocus: true,
+          onClose: () => setOpen(false), onSelect: id => void selectItem(id) }),
+        Modal && statsOpen ? h(ReasoningStatistics, { open: statsOpen, onClose: () => setStatsOpen(false), nameOf }) : null,
+        notice ? h(Toast, { key: notice.id, text: notice.text, tone: notice.success ? 'success' : undefined,
+          holdMs: 2400, onDone: () => setNotice(null) }) : null)
+    }
+
+    // ---------------------------------------------------------------- Direct Chat (Global Chat PoC)
+    // Uses the supported sidebar action and native Host session-creation route.
+    // Activation is opt-in until a cold Desktop restart verifies the Workspace gate.
+    const DIRECT_CHAT_ID = 'abinadwan-direct-chat'
+    function DirectChatButton({ wide, useRemoteAccess, startChat }) {
+      const permitted = typeof useRemoteAccess === 'function' ? useRemoteAccess('session/create') : true
+      const inflight = React.useRef(false)
+      const [status, setStatus] = React.useState('idle')
+      if (!permitted) return null
+      const busy = status === 'pending'
+      const label = 'Direct Chat'
+      async function open() {
+        if (inflight.current) return
+        inflight.current = true
+        setStatus('pending')
+        try {
+          await startChat()
+          setStatus('idle')
+        } catch (error) {
+          console.warn('[abinadwan-direct-chat] Could not open Direct Chat:', error)
+          setStatus('failed')
+        } finally {
+          inflight.current = false
+        }
+      }
+      return h('div', { 'data-abinadwan-direct-chat': '', style: { padding: '2px 4px' } },
+        h('button', { type: 'button', disabled: busy, onClick: open,
+          'aria-label': busy ? 'Opening Direct Chat' : label, 'aria-busy': busy,
+          title: label, style: { display: 'inline-flex', gap: 7, alignItems: 'center',
+            cursor: busy ? 'wait' : 'pointer', border: 0, borderRadius: 8,
+            padding: '8px 10px', color: 'inherit', background: 'transparent', font: 'inherit',
+            width: '100%', justifyContent: 'center' } },
+          suiteGlyph(['M6 4h12a2 2 0 0 1 2 2v9a2 2 0 0 1-2 2h-7l-5 4v-4a2 2 0 0 1-2-2V6a2 2 0 0 1-2-2Z'], 16),
+          wide ? h('span', null, label) : null),
+        status === 'failed' ? h('div', { role: 'alert', style: { fontSize: 12, padding: 8 } },
+          'Unable to open Direct Chat. Check the Workspace list before retrying.') : null)
+    }
+    // Official DSH New Session HOC: mounts immediately beneath the native
+    // New Session control, above global Plugins and Workspace/Projects rows.
+    function DirectChatTopAction({ children, wide, useRemoteAccess, startChat }) {
+      return h('div', { 'data-abinadwan-direct-chat-top': '',
+        style: { display: 'flex', flexDirection: 'column', gap: 4, width: '100%' } },
+        children,
+        h(DirectChatButton, { wide, useRemoteAccess, startChat }))
+    }
+    const directChatPlugin = {
+      inject: ['slots', 'sessions', 'workspaces', 'uiWorkspace', 'layout'],
+      apply(ctx) {
+        const lifetime = new AbortController()
+        ctx.effect(() => () => lifetime.abort(), 'direct-chat: abort pending navigation')
+        async function startChat() {
+          const navigation = AbortSignal.any([ctx.layout.beginNavigation(), lifetime.signal])
+          const response = await fetch('/api/abinadwan-direct-chat/prepare', {
+            method: 'POST', headers: { 'content-type': 'application/json' }, body: '{}',
+            signal: AbortSignal.any([navigation, AbortSignal.timeout(15000)]),
+          })
+          if (!response.ok) throw new Error('Direct Chat Workspace preparation returned HTTP ' + response.status)
+          const result = await response.json()
+          if (typeof result.path !== 'string' || !result.path) {
+            throw new Error('Direct Chat Workspace preparation returned no path')
+          }
+          if (navigation.aborted) return
+          // Workspace creation is idempotent for this one canonical path.
+          // Conversation history and agent continuation are scoped by Session ID.
+          const workspace = await ctx.workspaces.create({ path: result.path })
+          if (typeof workspace?.workspaceId !== 'string' || !workspace.workspaceId) {
+            throw new Error('DSH did not return a Workspace identity')
+          }
+          if (workspace.title !== 'Direct Chat') {
+            await ctx.workspaces.rename(workspace.workspaceId, 'Direct Chat')
+          }
+          if (navigation.aborted) return
+          // Native DSH reuses a still-empty draft, otherwise creates an
+          // independent Session; no prior chat transcript is carried over.
+          const sessionId = await ctx.uiWorkspace.connectWorkspace(workspace.workspaceId)
+          if (typeof sessionId !== 'string' || !sessionId) {
+            throw new Error('DSH did not return a native Session identity')
+          }
+          if (!navigation.aborted) ctx.uiWorkspace.openSession(sessionId)
+        }
+        ctx.slots.inject('sidebar.session.action', () => ctx.slots.register({
+          name: 'sidebar.session.action', id: DIRECT_CHAT_ID,
+          inject: () => ({ startChat }),
+        }, DirectChatTopAction))
+      },
+    }
+
+    const reasoningComposerPlugin = {
+      inject: ['slots', 'remote', 'remote.settings', 'sessions', 'modelDirectories'],
+      apply(ctx) {
+        const settingsService = ctx.remote.settings
+        const connection = suiteConnection(ctx)
+        const modelDirectories = ctx.modelDirectories
+        const sessions = ctx.sessions
+        ctx.slots.inject('conversation.input.right', () => ctx.slots.register({ name: 'conversation.input.right',
+          id: 'abinadwan-reasoning-preference', order: 25, inject: sessionId => ({
+            directory: sessionId && !sessions.subagentAddress(sessionId) ? modelDirectories.directoryFor(sessionId) : null,
+            sessionId,
+          }) }, props => props.directory ? h(ReasoningComposer, { ...props, settingsService, connection }) : null))
+      },
+    }
+
+    const lifecycleSettingsPlugin = {
+      inject: ['slots', 'remote', 'remote.settings', 'sessions', 'workspaces'],
+      apply(ctx) {
+        const services = { settings: ctx.remote.settings, sessions: ctx.sessions.list, workspaces: ctx.workspaces.list,
+          connection: suiteConnection(ctx) }
+        const id = 'abinadwan-conversation-lifecycle'
+        ctx.slots.inject('settings.section', () => ctx.slots.register({ name: 'settings.section',
+          id, label: 'Chat Control', order: 45 }, props => h(WorkspaceLifecycle, { ...props, services })))
+        ctx.slots.inject('settings.section.icon', () => ctx.slots.register({ name: 'settings.section.icon', id },
+          ({ size }) => suiteGlyph(lifecycleIcon, size)))
+      },
+    }
+
+    // Root-owned locale registration is independent of the three Host Components.
+    // Requiring only the official locale service keeps a missing service from
+    // disabling Environment & Context or the other suite capabilities.
+    const arabicLocalePlugin = {
+      inject: ['locale'],
+      apply(ctx) {
+        ctx.effect(() => {
+          const locale = ctx.locale
+          if (typeof locale?.addLanguage !== 'function' || typeof locale?.register !== 'function') {
+            console.warn('[abinadwan-suite] Arabic UI locale requires the official DSH locale catalog API')
+            return
+          }
+          const disposers = []
+          const occupied = error => /occupied|already/i.test(String(error?.message || error))
+          try {
+            // Do not call setLocale: this only makes Arabic an available option.
+            try {
+              const dispose = locale.addLanguage({ id: 'ar', label: 'العربية', fallback: 'en' })
+              if (typeof dispose === 'function') disposers.push(dispose)
+            } catch (error) {
+              if (!occupied(error)) throw error
+            }
+            for (const [namespace, dictionary] of Object.entries(ARABIC_UI_DICTIONARIES)) {
+              try {
+                const dispose = locale.register(namespace, 'ar', dictionary)
+                if (typeof dispose === 'function') disposers.push(dispose)
+              } catch (error) {
+                // Other installed Arabic packs may already own a namespace.
+                if (!occupied(error)) throw error
+              }
+            }
+          } catch (error) {
+            for (const dispose of disposers.reverse()) {
+              try { dispose() } catch (cleanupError) { console.warn('[abinadwan-suite] Arabic locale cleanup failed', cleanupError) }
+            }
+            throw error
+          }
+          return () => {
+            // Unregister dictionaries before the language itself on suite unload.
+            for (const dispose of disposers.reverse()) {
+              try { dispose() } catch (error) { console.warn('[abinadwan-suite] Arabic locale cleanup failed', error) }
+            }
+          }
+        }, 'suite: Arabic UI language registration')
+      },
+    }
     return {
+
       // `remote.pluginManager` is its own Cordis service (one per Remote
       // namespace). It must be injected here: Cordis 4 throws "cannot get
       // property without inject" when an un-injected namespace is read.
       inject: ['slots', 'remote', 'remote.pluginManager', 'remoteAccess'],
       apply(ctx) {
+        // The Arabic option is registered at suite scope, independently of Components.
+        // Registration only: the selected DSH interface language is unchanged.
+        ctx.effect(() => {
+          const fiber = ctx.plugin(arabicLocalePlugin)
+          return () => fiber.dispose()
+        }, 'suite: bundled Arabic locale')
         const pluginManager = ctx.remote.pluginManager
         // The suite browser lifetime owns the opt-in-free read-only version
         // check. A timer cannot install, enable or modify any plugin.
@@ -1515,6 +3096,9 @@ window.__ModuleLoader__.load({
           const components = [
             [TYPE + '/environment-context', environmentPlugin],
             [TYPE + '/personal-profile', profilePlugin],
+            [TYPE + '/direct-chat', directChatPlugin],
+            [TYPE + '/conversation-lifecycle', lifecycleSettingsPlugin],
+            [TYPE + '/adaptive-reasoning', reasoningComposerPlugin],
           ]
           async function refresh() {
             const request = ++generation

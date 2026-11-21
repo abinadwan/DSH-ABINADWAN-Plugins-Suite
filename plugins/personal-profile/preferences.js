@@ -61,11 +61,27 @@ export function previewProfilePreferences(pref) {
   if(pref.sendCustom===true && pref.custom.trim()) lines.push(pref.custom)
   return lines.length ? ['Response preferences (follow the current request and higher-priority host/safety/tool requirements; custom guidance takes precedence over other style preferences where compatible).',...new Set(lines)].join('\n') : ''
 }
+export const RECORD_VERSION=4
+
+// Structured fields are optional profile data, not instructions.
+const PROFILE_DISCLOSURE_HEADER='Personal details the user chose to share (use them only when relevant to the request):'
+const PROFILE_DISCLOSURE_FIELDS=[['preferredName','Preferred name'],['nationality','Nationality'],['gender','Gender']]
+const profileDisclosureValue=value=>String(value).replace(/[\u0000-\u001f\u007f-\u009f\u2028\u2029\u202a-\u202e\u2066-\u2069]/g,' ').replace(/\s+/g,' ').trim()
+export function previewProfileDisclosure(record) {
+  if(!record||record.version!==RECORD_VERSION) return ''
+  const lines=[]
+  for(const [key,label] of PROFILE_DISCLOSURE_FIELDS) {
+    if(record.policies[key]!=='allow') continue
+    const value=key==='gender' ? (['male','female'].includes(record.information.gender)?record.information.gender:'') : profileDisclosureValue(record.information[key])
+    if(value) lines.push(label+': '+value)
+  }
+  return lines.length ? [PROFILE_DISCLOSURE_HEADER,...lines].join('\n') : ''
+}
 
 const keys=(value,expected)=>value!==null&&typeof value==='object'&&!Array.isArray(value)&&Object.keys(value).length===expected.length&&expected.every(k=>Object.hasOwn(value,k))
 export const SECTION_NAME='abinadwan:personal-profile-preferences'
 export function responsePreferences(record) {
-  if(!record||record.version!==2)return ''
+  if(!record||![2,3,RECORD_VERSION].includes(record.version))return ''
   const p=record.preferences
   const expected=['style','responseLanguage','traits','presets','custom']
   if(p && Object.hasOwn(p,'sendCustom'))expected.push('sendCustom')
@@ -75,6 +91,56 @@ export function responsePreferences(record) {
     !p.presets.every(id=>PROFILE_PRESETS.some(i=>i[0]===id))||typeof p.custom!=='string'||p.custom.length>8192||
     (Object.hasOwn(p,'sendCustom')&&typeof p.sendCustom!=='boolean'))return ''
   return previewProfilePreferences(p)
+}
+export const DISCLOSURE_SECTION_NAME='abinadwan:personal-profile-information'
+const FIELD_KEYS=PROFILE_DISCLOSURE_FIELDS.map(([key])=>key)
+/** Evaluate the explicit field policies. An older record or malformed input yields no block. */
+export function profileDisclosure(record) {
+  if(!record||record.version!==RECORD_VERSION)return ''
+  const {information:i,policies:p}=record
+  if(!keys(i,FIELD_KEYS)||!keys(p,FIELD_KEYS)||
+    !FIELD_KEYS.every(k=>['private','allow'].includes(p[k]))||
+    typeof i.preferredName!=='string'||i.preferredName.length>128||typeof i.nationality!=='string'||i.nationality.length>128||
+    !['','male','female','unspecified'].includes(i.gender))return ''
+  return previewProfileDisclosure(record)
+}
+const DISCLOSURE_LINE=new RegExp('^('+PROFILE_DISCLOSURE_FIELDS.map(([,label])=>label).join('|')+'): .')
+/** Every shared-details block carried by system-level text of one model request. */
+export function disclosureBlocks(request) {
+  const texts=[]
+  if(typeof request?.system==='string')texts.push(request.system)
+  for(const message of Array.isArray(request?.messages)?request.messages:[]){
+    if(message?.role!=='system'&&message?.role!=='developer')continue
+    if(typeof message.content==='string')texts.push(message.content)
+    else if(Array.isArray(message.content))for(const block of message.content)if(typeof block?.text==='string')texts.push(block.text)
+  }
+  const blocks=[]
+  for(const text of texts){
+    const lines=text.split('\n')
+    for(let i=0;i<lines.length;i++){
+      if(lines[i]!==PROFILE_DISCLOSURE_HEADER)continue
+      let end=i+1
+      while(end<lines.length&&DISCLOSURE_LINE.test(lines[end]))end++
+      blocks.push(lines.slice(i,end).join('\n'))
+      i=end-1
+    }
+  }
+  return blocks
+}
+/** Send-time check for recognizable prior Profile sections against saved choices. */
+export function staleDisclosure(request,record) {
+  const blocks=disclosureBlocks(request)
+  if(!blocks.length)return false
+  const allowed=profileDisclosure(record)
+  return blocks.some(block=>block!==allowed)
+}
+const REFUSAL={
+  en:'Personal Profile stopped this request: the conversation contains personal details that your current settings no longer share. Start a new chat to continue.',
+  ar:'أوقف الملف الشخصي هذا الطلب: تحتوي المحادثة على معلومات شخصية لم تعد إعداداتك الحالية تسمح بمشاركتها. ابدأ محادثة جديدة للمتابعة.',
+}
+/** Terminal, non-retryable outcome in the native stream protocol. Never names a value. */
+export async function* refuseStaleDisclosure(locale) {
+  yield {type:'finish',reason:{kind:'error',failure:{code:'INVALID_REQUEST',message:REFUSAL[locale]??REFUSAL.en}}}
 }
 export function eligibleAssembly(context) {
   const a=context?.agent, selection=context?.modelSelection, header=a?.session?.header

@@ -1,0 +1,597 @@
+{
+  "schemaVersion": 1,
+  "reviewDate": "2026-11-18",
+  "scope": "Read-only packaged Desktop inspection; no live Desktop, provider call, configuration or user transcript inspected",
+  "desktop": {
+    "name": "@deepseek-ai/dsh-desktop",
+    "description": "Electron desktop shell for a bundled dsh runtime and external plugins",
+    "version": "0.2.2-rc.3",
+    "private": true,
+    "license": "MIT",
+    "author": {
+      "name": "Hangzhou DeepSeek Artificial Intelligence Co., Ltd."
+    },
+    "type": "module",
+    "main": "lib/main.js",
+    "dependencies": {
+      "electron-updater": "^6.8.9",
+      "semver": "^7.8.5",
+      "ws": "^8.21.3",
+      "@deepseek-ai/dsh-api-gateway": "workspace:*",
+      "@deepseek-ai/cordis": "workspace:~"
+    },
+    "dshDesktopAppId": "com.deepseek.dsh",
+    "dshDesktopUpdateChannel": "nightly",
+    "dshMandatoryUpdatePolicy": {
+      "origin": "https://harness.deepseek.com",
+      "allowedPageOrigins": [
+        "https://harness.deepseek.com"
+      ],
+      "authentication": "anonymous"
+    },
+    "dshBuildCommit": "6b729fedde0c8fd03af7afdf5a711aa64fe87c3b",
+    "dshBuildDirty": false
+  },
+  "runtime": {
+    "desktopVersion": "0.2.2-rc.3",
+    "platform": "win32",
+    "arch": "x64",
+    "payloadDigest": "0881fbf610a9a8ef344a9e650f3a4c1b7724260a74eeaefaa9ec31355907374f",
+    "python": "3.12.14",
+    "node": "24.21.0",
+    "pnpm": "11.28.5",
+    "pythonPackages": {
+      "numpy": "2.3.5",
+      "pandas": "3.0.1",
+      "python-dateutil": "2.9.0.post0",
+      "six": "1.17.0",
+      "tzdata": "2025.2",
+      "python-docx": "1.2.0",
+      "python-pptx": "1.0.2",
+      "openpyxl": "3.1.5",
+      "Pillow": "12.3.0",
+      "lxml": "6.1.3",
+      "XlsxWriter": "3.2.9",
+      "typing_extensions": "4.16.0",
+      "et_xmlfile": "2.0.0"
+    }
+  },
+  "archivePath": "C:/Users/Admin/AppData/Local/Programs/DeepSeek Harness/resources/app.asar",
+  "archiveSha256": "14cfd81c9135bf0afb89417543c94f9ecfe09266574452a9b106890c698725ae",
+  "packages": [
+    {
+      "name": "@deepseek-ai/dsh-agent",
+      "version": "0.2.2-rc.3",
+      "license": "MIT",
+      "repositoryDirectory": "packages/core/agent",
+      "files": [
+        {
+          "path": "package.json",
+          "sha256": "6555561592606f19c6c1baaefc3807adeb82e7b1b1597695d123fb69e7f6f7f6"
+        },
+        {
+          "path": "README.md",
+          "sha256": "b19682f29e2e3c8159a128dea7e1b35b70f3dd8fe5beaeed117f63b9cbe286fe"
+        },
+        {
+          "path": "lib/index.js",
+          "sha256": "bc2a39dea1174c2b2dc0641f08094f840d3a1e414bef42ac93c945f7235d7ead"
+        }
+      ]
+    },
+    {
+      "name": "@deepseek-ai/dsh-agent-loop",
+      "version": "0.2.2-rc.3",
+      "license": "MIT",
+      "repositoryDirectory": "packages/core/agent-loop",
+      "files": [
+        {
+          "path": "package.json",
+          "sha256": "dd7e9b8ef6b243c61db21b2e17bb8e9d0cb86b09dc6e792845fbf4d52991dcc4"
+        },
+        {
+          "path": "README.md",
+          "sha256": "3f18ec7b6655de35b73ecf4505bfc8828c4d759e1d653e413f115c9b8e9b0258"
+        },
+        {
+          "path": "lib/index.js",
+          "sha256": "f09f60814d4e96a880f41b9fc3832f33c56a28f954f48810d8439ce83ad6ffa8"
+        }
+      ]
+    },
+    {
+      "name": "@deepseek-ai/dsh-agent-preset-registry",
+      "version": "0.2.2-rc.3",
+      "license": "MIT",
+      "repositoryDirectory": "packages/preset/agent-preset-registry",
+      "files": [
+        {
+          "path": "package.json",
+          "sha256": "7e5f8b371077b8515edcef85191aaca56aef4095703ba6fc5228e2a2367e9860"
+        },
+        {
+          "path": "README.md",
+          "sha256": "aae5a92fb089b19a62de245d5d131fa62affe9e45b01451e3c749f702280abb6"
+        },
+        {
+          "path": "lib/index.js",
+          "sha256": "7365e9c7ce8442bb11df4c94a0c0f152be5fb18001dc60c740d07224bb80da18"
+        }
+      ]
+    },
+    {
+      "name": "@deepseek-ai/dsh-api-session-controller",
+      "version": "0.2.2-rc.3",
+      "license": "MIT",
+      "repositoryDirectory": "packages/api/session-controller",
+      "files": [
+        {
+          "path": "package.json",
+          "sha256": "d66ed00c4935f2ba24d0afef78ac8013dccc6e0fc2c4f224be960323c2dc7a40"
+        },
+        {
+          "path": "README.md",
+          "sha256": "801bbfc3840459f60f5455d3f6e78893a407aec64a5fded339232cabcc308b3c"
+        },
+        {
+          "path": "lib/index.js",
+          "sha256": "c6ce8f8014d943c8f2dceaf7a9b184a56b2de757de6097938646549d2d2a9087"
+        },
+        {
+          "path": "lib/client.js",
+          "sha256": "e9af25a01168a8405730c107471cbd6befccfab3294e793b10e1467c57255852"
+        }
+      ]
+    },
+    {
+      "name": "@deepseek-ai/dsh-api-workspace-controller",
+      "version": "0.2.2-rc.3",
+      "license": "MIT",
+      "repositoryDirectory": "packages/api/workspace-controller",
+      "files": [
+        {
+          "path": "package.json",
+          "sha256": "29bd81cf05871742b30b82d64ab18b68626e057454d92140bb20cf87680d4110"
+        },
+        {
+          "path": "README.md",
+          "sha256": "d094f0c4782bcdad62f7fef5d2c92548d7fa691e45e8298a89be86427e90a7cc"
+        },
+        {
+          "path": "lib/index.js",
+          "sha256": "257848af0e4bacb15265660a3750c7909bb4002ab02a1c2a3188045f882ee39e"
+        },
+        {
+          "path": "lib/client.js",
+          "sha256": "70b58daaf44c3c3e7cd0bf9674a1c8a68d612e53338f59eaa891c7bac588021b"
+        }
+      ]
+    },
+    {
+      "name": "@deepseek-ai/dsh-session",
+      "version": "0.2.2-rc.3",
+      "license": "MIT",
+      "repositoryDirectory": "packages/core/session",
+      "files": [
+        {
+          "path": "package.json",
+          "sha256": "e881dcd5716fdcbc08eeb9b55fa81216f6d70db85ee99bfcbd4466753d7529de"
+        },
+        {
+          "path": "README.md",
+          "sha256": "3dc8af1ff43e4615e1f3db42418e9406ed0be5e6abddba19368773562e9f7332"
+        },
+        {
+          "path": "lib/index.js",
+          "sha256": "d9911b5e1585bcb142d03ce46eb2990b3fc7c254de5a76d3ffb124bd2469216c"
+        }
+      ]
+    },
+    {
+      "name": "@deepseek-ai/dsh-session-persistence",
+      "version": "0.2.2-rc.3",
+      "license": "MIT",
+      "repositoryDirectory": "packages/session/session-persistence",
+      "files": [
+        {
+          "path": "package.json",
+          "sha256": "45895439453064c271a816265dc5d81e182a7e0ac5f791b6dc5a4da15acc01a6"
+        },
+        {
+          "path": "README.md",
+          "sha256": "dbbcac6422ea08cf7257a90ffa655c1d794caabc10fe76492f47eaafe61e2653"
+        },
+        {
+          "path": "lib/index.js",
+          "sha256": "cc0b6d3a224133af611b428d5a49020e300f86c3b4ba28037aeb219029bde3eb"
+        }
+      ]
+    },
+    {
+      "name": "@deepseek-ai/dsh-session-persistence-jsonl",
+      "version": "0.2.2-rc.3",
+      "license": "MIT",
+      "repositoryDirectory": "packages/session/session-persistence-jsonl",
+      "files": [
+        {
+          "path": "package.json",
+          "sha256": "8eaaba7f1f96781d15aca7ea16396a25af0a0ce4c5e4729c51ff28eceebcdbd2"
+        },
+        {
+          "path": "README.md",
+          "sha256": "85392cc2c4655582e2d29b7e848d08bf8681bd0cc36c6a30eacfba963821581e"
+        },
+        {
+          "path": "lib/index.js",
+          "sha256": "69efef5f84dddf947032bc1425067878fa610416c8885acde2ded9b01230c9b7"
+        }
+      ]
+    },
+    {
+      "name": "@deepseek-ai/dsh-session-query",
+      "version": "0.2.2-rc.3",
+      "license": "MIT",
+      "repositoryDirectory": "packages/session-query/session-query",
+      "files": [
+        {
+          "path": "package.json",
+          "sha256": "3139d837e97f0cdb8423491367c8119bd457a26b30a333e1b9f7733b26fd9986"
+        },
+        {
+          "path": "README.md",
+          "sha256": "a3d73202eb4295e58b307937287be01213beb72f7c3971c51133eb4dacd713a5"
+        },
+        {
+          "path": "lib/index.js",
+          "sha256": "cd479b998f66e04639ec3e626fca706ce4f8aad40b75e983e549043ae9d0185b"
+        }
+      ]
+    },
+    {
+      "name": "@deepseek-ai/dsh-session-stats",
+      "version": "0.2.2-rc.3",
+      "license": "MIT",
+      "repositoryDirectory": "packages/session/session-stats",
+      "files": [
+        {
+          "path": "package.json",
+          "sha256": "c08edb79cabe251f9abfbd8f3177a9f47b12ae9dd1710940c51355038738cb5a"
+        },
+        {
+          "path": "README.md",
+          "sha256": "ed15627bc35b1d5a6d2f33aea9e2e8e286765a20e5ded3101cd2e52bf0b53de8"
+        },
+        {
+          "path": "lib/index.js",
+          "sha256": "d4599ba27785d98b0269bb6cbd7340fe2789df76d73e6897f9e5dcec41e92e2a"
+        }
+      ]
+    },
+    {
+      "name": "@deepseek-ai/dsh-storage-domain",
+      "version": "0.2.2-rc.3",
+      "license": "MIT",
+      "repositoryDirectory": "packages/storage/storage-domain",
+      "files": [
+        {
+          "path": "package.json",
+          "sha256": "1cc57d3573224b07cdc3935ae2cc9b491057db9976889f8c955fc024d6235cfd"
+        },
+        {
+          "path": "README.md",
+          "sha256": "e961c1a4e351b36f7bcc3275fde61544b3de51a7b92cffa9843eaa8a928d2ff0"
+        },
+        {
+          "path": "lib/index.js",
+          "sha256": "c425203d549c358d0a72d6476cec32235e51ae8e98ef32cac8576bd4c9b217c2"
+        }
+      ]
+    },
+    {
+      "name": "@deepseek-ai/dsh-settings",
+      "version": "0.2.2-rc.3",
+      "license": "MIT",
+      "repositoryDirectory": "packages/settings/settings",
+      "files": [
+        {
+          "path": "package.json",
+          "sha256": "7c351e3103f37ab891a95d74d3b01f1dbf689b8d5db407986504532997aa138f"
+        },
+        {
+          "path": "README.md",
+          "sha256": "8859387a23e3081b6653c2529153e7b48ddb9a28428bb5872321a6242230e3b8"
+        },
+        {
+          "path": "lib/index.js",
+          "sha256": "041a2682ed77a7025ceb9bf659b80db8b788c338cd1aa644f0bcc6bc122a4091"
+        }
+      ]
+    },
+    {
+      "name": "@deepseek-ai/dsh-llm",
+      "version": "0.2.2-rc.3",
+      "license": "MIT",
+      "repositoryDirectory": "packages/llm/llm",
+      "files": [
+        {
+          "path": "package.json",
+          "sha256": "293e6975795eff89d2684d646e720abc7f5f7a59ffa7560b3e78ecf2d1f33d13"
+        },
+        {
+          "path": "README.md",
+          "sha256": "c49986dedc0d65a6868f8729c93c07f967c2d7e46d1f2437bf142ae18fe7436f"
+        },
+        {
+          "path": "lib/index.js",
+          "sha256": "6384b5f1e21404e997a41a31a22a079c9533f2ddc1ffd9148e684884ff62eb74"
+        }
+      ]
+    },
+    {
+      "name": "@deepseek-ai/dsh-tools",
+      "version": "0.2.2-rc.3",
+      "license": "MIT",
+      "repositoryDirectory": "packages/core/tools",
+      "files": [
+        {
+          "path": "package.json",
+          "sha256": "bce7c75347a3876292eceb38dfddb1c6069a50722576bb08b0ca708641997171"
+        },
+        {
+          "path": "README.md",
+          "sha256": "c375bf13dc385236c7e1c42576d9be2c18c7ac5ec5a515b62f7249fba5a7f41e"
+        },
+        {
+          "path": "lib/index.js",
+          "sha256": "bf71a6ce1e95c5dfba06be7f69827bab19c5d2d9cf272875d92013ba2a8dadb0"
+        }
+      ]
+    },
+    {
+      "name": "@deepseek-ai/dsh-subagent",
+      "version": "0.2.2-rc.3",
+      "license": "MIT",
+      "repositoryDirectory": "packages/subagent/subagent",
+      "files": [
+        {
+          "path": "package.json",
+          "sha256": "1f527f1660013a9acd116eacfd3c25e88577d18e42b669df76df5376fe356316"
+        },
+        {
+          "path": "README.md",
+          "sha256": "6fa80138bc4fb7f767b7d9130de73f24dee07a01ecd9b1c34d01e8e34d30472d"
+        },
+        {
+          "path": "lib/index.js",
+          "sha256": "47837c0cd3cd8259fbdd14b7a477f3df3f928946c5b9e261f35a883411ba3697"
+        }
+      ]
+    },
+    {
+      "name": "@deepseek-ai/dsh-attachment",
+      "version": "0.2.2-rc.3",
+      "license": "MIT",
+      "repositoryDirectory": "packages/attachment/attachment",
+      "files": [
+        {
+          "path": "package.json",
+          "sha256": "85a9cea692ed1919a74cbf2f002d79c65e93ed04d25fd20c9044dbd4d0e21faf"
+        },
+        {
+          "path": "README.md",
+          "sha256": "a0c26b691272de990a9cd33190b4026c615e551ebaee3aaddca39b63e96057c9"
+        },
+        {
+          "path": "lib/index.js",
+          "sha256": "1de6cc47488042638d708ba6c492e2afad3bdaf65ba7e91720d37bac06a9b9dd"
+        }
+      ]
+    },
+    {
+      "name": "@deepseek-ai/dsh-client-file-upload",
+      "version": "0.2.2-rc.3",
+      "license": "MIT",
+      "repositoryDirectory": "packages/client/file-upload",
+      "files": [
+        {
+          "path": "package.json",
+          "sha256": "94efe442bfefda13648a1845632e474085d51eeb1664a22ca09c1f321be8e18b"
+        },
+        {
+          "path": "README.md",
+          "sha256": "fddb0dcf700c6d4b09f3a914400eafb77a69e3a0bc77663c1c72e13fe7402154"
+        },
+        {
+          "path": "lib/index.js",
+          "sha256": "b17e3621ce127ceb4f68919acdeeac64c54cf64c5d42429be8a7a65b5d20bbfe"
+        },
+        {
+          "path": "lib/client.js",
+          "sha256": "57e8b8c03c98f1a59b03a0a7b9c8fd0b70d48724961dd68a4aef49c4bf860b96"
+        }
+      ]
+    },
+    {
+      "name": "@deepseek-ai/dsh-client-ui-settings-general",
+      "version": "0.2.2-rc.3",
+      "license": "MIT",
+      "repositoryDirectory": "packages/client/ui-settings-general",
+      "files": [
+        {
+          "path": "package.json",
+          "sha256": "8073e708591426b39588b92ad0552d42b84776150776a9159ed23543b7a4bbe8"
+        },
+        {
+          "path": "README.md",
+          "sha256": "f097c427c2dbc6540c7fd1421fcc117e21f5d3a387560bab264c9d3448477bef"
+        },
+        {
+          "path": "lib/index.js",
+          "sha256": "b91129388489ef64d7d372b3eaf1d83166135f1039406dc6ea698262471c3eaa"
+        },
+        {
+          "path": "lib/client.js",
+          "sha256": "53fee556aa9f709425977ec4efbc8be815203f72f7d8819b108751e440abf40b"
+        }
+      ]
+    },
+    {
+      "name": "@deepseek-ai/dsh-client-ui-model-selection",
+      "version": "0.2.2-rc.3",
+      "license": "MIT",
+      "repositoryDirectory": "packages/client/ui-model-selection",
+      "files": [
+        {
+          "path": "package.json",
+          "sha256": "5faff60b8d5afe291f3fbfc54f1df654729a1ca88aff189cd3fcab50411453bc"
+        },
+        {
+          "path": "README.md",
+          "sha256": "0b6a764dad752851cc7136f1e921550da35c605c6bcf7b120a19aacfdad7db16"
+        },
+        {
+          "path": "lib/index.js",
+          "sha256": "6879ba2c29e67b2ad0e0caf8feeee9c62364d871f7664e10efa7f14b4e216eb0"
+        },
+        {
+          "path": "lib/client.js",
+          "sha256": "48ccaabb92a3b40ac88ad42b2e1695057381ee53047da7d7b9bd04045040a96e"
+        }
+      ]
+    },
+    {
+      "name": "@deepseek-ai/dsh-client-ui-conversation",
+      "version": "0.2.2-rc.3",
+      "license": "MIT",
+      "repositoryDirectory": "packages/client/ui-conversation",
+      "files": [
+        {
+          "path": "package.json",
+          "sha256": "62e3517c7cdeef5120bf9cf2c69e2ce579ae6c619983136bb20db48be9343ea8"
+        },
+        {
+          "path": "README.md",
+          "sha256": "8f698f3792fecb8a380419fb01d8f003b3af14a424050b615fa17c7298d7c0eb"
+        },
+        {
+          "path": "lib/index.js",
+          "sha256": "cf4164ca735f63a53bd3b69242fbcff732477c6386502a4b092b9e65854b65e8"
+        },
+        {
+          "path": "lib/client.js",
+          "sha256": "2c3c39fddb37df9ee1168c279259aebb7cf484651a7e978ce9baaaf24d142a60"
+        }
+      ]
+    },
+    {
+      "name": "@deepseek-ai/dsh-client-ui-workspace",
+      "version": "0.2.2-rc.3",
+      "license": "MIT",
+      "repositoryDirectory": "packages/client/ui-workspace",
+      "files": [
+        {
+          "path": "package.json",
+          "sha256": "e53a8b33d9a3c910d503270dcf8b70938393d7a29bc41070691976d6eb9427da"
+        },
+        {
+          "path": "README.md",
+          "sha256": "ece932739e6616e142e899b382b23342e1b0433bdd7882f4e0c0337cd89d8c38"
+        },
+        {
+          "path": "lib/index.js",
+          "sha256": "e6cdc4b725585354102a5c4598c9d8c79d6abac62d7979c09919821716370438"
+        },
+        {
+          "path": "lib/client.js",
+          "sha256": "9695de66609c6fbe0857da1d1b4b7456a543b962bf1c19ab210ec5ef688cf9c7"
+        }
+      ]
+    },
+    {
+      "name": "@deepseek-ai/dsh-tool-web",
+      "version": "0.2.2-rc.3",
+      "license": "MIT",
+      "repositoryDirectory": "packages/web/tool-web",
+      "files": [
+        {
+          "path": "package.json",
+          "sha256": "549cca13f21bede67be4f7e30d42fccaae64aebe8a71fc17c0afb8ecc8d12d73"
+        },
+        {
+          "path": "README.md",
+          "sha256": "b627e50661584d5cddee9bd98e4ee65a6f7b522ec2317f7774b2254ec0f1d5e4"
+        },
+        {
+          "path": "lib/index.js",
+          "sha256": "34a99a7eb86f940e9cb5734ab19482ac231f5d5a2411ba6736b3b9ecf4699177"
+        }
+      ]
+    }
+  ],
+  "observations": [
+    {
+      "id": "E01",
+      "package": "dsh-client-ui-settings-general",
+      "file": "lib/client.js",
+      "find": [
+        "settings.section",
+        "ctx.slots.entries",
+        "ctx.slots.subscribe"
+      ],
+      "finding": "Installed shell enumerates, labels and renders settings.section contributions."
+    },
+    {
+      "id": "E02",
+      "package": "dsh-api-session-controller",
+      "file": "lib/index.js",
+      "lines": "724-755",
+      "finding": "create permits cwd without workspaceId; model selection persists route defaults via separate background save."
+    },
+    {
+      "id": "E03",
+      "package": "dsh-session-persistence",
+      "file": "README.md",
+      "lines": "153-154",
+      "finding": "Explicitly no deletion or retention API; list unpaginated."
+    },
+    {
+      "id": "E04",
+      "package": "dsh-agent-loop",
+      "file": "lib/index.js",
+      "lines": "679-703,1007-1014",
+      "finding": "Effort captured before tools/prompt/pre-step; request hook rejects effort mutation."
+    },
+    {
+      "id": "E05",
+      "package": "dsh-session",
+      "file": "README.md",
+      "lines": "71-73",
+      "finding": "External plugins must not call experimental appendPluginRecord."
+    },
+    {
+      "id": "E06",
+      "package": "dsh-storage-domain",
+      "file": "README.md",
+      "finding": "Supported plugin-owned sidecar domains, durable serialized writes, one opener; no cross-table transactions or cross-process change visibility."
+    },
+    {
+      "id": "E07",
+      "package": "dsh-attachment",
+      "file": "README.md",
+      "lines": "66-75,118-119",
+      "finding": "Immutable shared references; native verified readFileStream; attachments never automatically deleted."
+    },
+    {
+      "id": "E08",
+      "package": "dsh-client-ui-conversation",
+      "file": "README.md",
+      "finding": "conversation.content Factory permits embedded native shell; Desktop generic files can become real-path reference chips."
+    },
+    {
+      "id": "E09",
+      "package": "dsh-client-ui-model-selection",
+      "file": "README.md",
+      "finding": "Native composer already selects model-supported effort; captured running step unchanged."
+    }
+  ]
+}

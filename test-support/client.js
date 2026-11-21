@@ -40,8 +40,8 @@ class Slots extends Service {
   register(options, component) {
     // Real Slots partition cells by slot name. Keep the historic lookup keys,
     // but refuse a duplicate cell exactly as SlotCore.register does.
-    const key = options.name === 'sidebar.panellist'
-      ? 'sidebar.panellist:' + options.id : options.id || options.key || options.name
+    const key = ['sidebar.panellist', 'settings.section.icon'].includes(options.name)
+      ? options.name + ':' + options.id : options.id || options.key || options.name
     if (options.name === 'sidebar.panellist' || options.name === 'plugins.detail.section') {
       if (options.id === undefined) throw new Error(`list slot "${options.name}" requires options.id`)
     }
@@ -193,6 +193,31 @@ export async function clientHarness(options = {}) {
   const tabs = new Tabs(ctx)
   const access = new Access(ctx)
   const remote = new Remote(ctx)
+  // DSH's public Locale snapshot: the default test Host is Arabic so existing
+  // RTL regressions remain realistic; tests can opt into English or switch live.
+  const hostLocale = observable({active:options.hostLocale || 'ar',revision:0})
+  // Model the native DSH locale catalog in addition to its observable snapshot.
+  // Other Component tests must not receive false missing-API warnings from a
+  // suite-wide language pack, and locale ownership must remain disposable.
+  const hostLanguages = new Map([['en', { id: 'en', label: 'English' }]])
+  const hostDictionaries = new Map()
+  ctx.provide('locale', options.locale || {
+    getSnapshot: () => hostLocale.getSnapshot(),
+    getLocale: () => hostLocale.getSnapshot(),
+    subscribe: notify => hostLocale.subscribe(notify),
+    addLanguage(language) {
+      if (hostLanguages.has(language.id)) throw new Error('language already occupied')
+      hostLanguages.set(language.id, language)
+      return () => { hostLanguages.delete(language.id) }
+    },
+    register(namespace, locale, dictionary) {
+      const key = locale + ':' + namespace
+      if (!hostLanguages.has(locale)) throw new Error('unregistered locale')
+      if (hostDictionaries.has(key)) throw new Error('dictionary already occupied')
+      hostDictionaries.set(key, dictionary)
+      return () => { hostDictionaries.delete(key) }
+    },
+  })
   const timers = new Map()
   const intervals = new Map()
   const mountedListeners = new Set()
@@ -219,10 +244,22 @@ export async function clientHarness(options = {}) {
   const sessions = observable(options.sessions || sessionSnapshot())
   const workspaces = new HostWorkspaceModel({
     items: options.workspaceItems || [{ workspaceId: 'w', title: 'HomeBook', path: 'C:/Work/HomeBook', sessionIds: ['s1'] }],
-    archivedSessionIds: [], pinnedSessionIds: [], state: 'idle', phase: 'ready', error: null,
+    archivedSessionIds: options.archivedSessionIds ?? [], pinnedSessionIds: [], state: 'idle', phase: 'ready', error: null,
   })
-  ctx.provide('sessions', { list: sessions })
-  ctx.provide('workspaces', { list: workspaces })
+  ctx.provide('sessions', { list: sessions, refresh: options.refresh || (async () => {}), subagentAddress: () => undefined,
+    binding: id => options.sessionBinding?.(id) })
+  ctx.provide('workspaces', {
+    list: workspaces,
+    create: input => options.onWorkspaceCreate?.(input) ?? { workspaceId: 'direct-workspace', path: input.path, title: 'Direct Chat' },
+    rename: (id, title) => options.onWorkspaceRename?.(id, title) ?? Promise.resolve({ workspaceId: id, title }),
+    delete: id => options.onWorkspaceDelete?.(id) ?? Promise.resolve(),
+  })
+  ctx.provide('uiWorkspace', {
+    openSession: id => options.onOpenSession?.(id),
+    connectWorkspace: id => options.onConnectWorkspace?.(id) ?? Promise.resolve('session-direct-1'),
+  })
+  ctx.provide('layout', { beginNavigation: () => new AbortController().signal })
+  if (options.modelDirectories) ctx.provide('modelDirectories', options.modelDirectories)
   ctx.provide('sidebarRight', {
     mounted: { getSnapshot: () => 's1', subscribe: listener => {
       mountedListeners.add(listener)
@@ -238,17 +275,38 @@ export async function clientHarness(options = {}) {
     clearInterval: id => intervals.delete(id), console: options.console || console,
     fetch: options.fetch || (() => { throw new Error('unexpected network request') }),
     navigator: options.navigator,
-    AbortSignal,
+    document: options.document,
+    AbortController, AbortSignal, URL, TextDecoder, Blob, crypto: globalThis.crypto,
   })
   const plugin = loaded.factory(name => {
+    const react = options.React || ReactStub
+    if (name === '@deepseek-ai/dsh-client-ui-primitives') {
+      const h = react.createElement
+      return {
+        Button: ({ size, variant, icon, children, ...props }) => h('button', { type: 'button', ...props }, icon, children),
+        Checkbox: ({ label, onChange, ...props }) => h('label', null,
+          h('input', { type: 'checkbox', ...props, onChange: event => onChange(event.target.checked) }), label),
+        Toast: ({ text }) => h('span', { role: 'alert' }, text),
+        // Submenu rows render inline after their parent, which opens them without selecting.
+        Menu: ({ open, anchor, items, onSelect, selectedId, selectedIds }) => {
+          const rows = list => list.flatMap(item => item.type === 'label' ? [h('span', { key: item.id }, item.text)] :
+            item.type === 'separator' ? [h('hr', { key: item.id })] : [h('button', { key: item.id, role: 'menuitem',
+              disabled: item.disabled, 'aria-checked': item.id === selectedId || selectedIds?.includes(item.id) ? 'true' : undefined,
+              onClick: () => { if (!item.submenu) onSelect(item.id) } }, item.label), ...item.submenu ? rows(item.submenu) : []])
+          return h('span', null, anchor, open && h('div', { role: 'menu' }, ...rows(items)))
+        },
+        Modal: ({ open, title, description, children, footer }) => open ? h('div', { role: 'dialog', 'aria-label': title },
+          h('h2', null, title), description ? h('p', null, description) : null, children, footer) : null,
+      }
+    }
     if (name !== 'react') throw new Error(`unexpected browser import ${name}`)
-    return options.React || ReactStub
+    return react
   })
   const fiber = ctx.plugin(plugin)
   await fiber.await()
   await tick()
   return {
-    ctx, fiber, access, slots, tabs, events: remote.events, timers, intervals, mountedListeners,
+    ctx, fiber, access, slots, tabs, events: remote.events, timers, intervals, mountedListeners, hostLocale,
     sessions, workspaces, loaded, plugin, get opened() { return opened },
     slot(name) { return [...slots.records.values()].find(record => record.options.name === name)?.component },
     entries(name) { return [...slots.records.values()].filter(record => record.options.name === name) },

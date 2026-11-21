@@ -10,3 +10,12 @@
     - id: abinadwan-personal-profile
       name: '@abinadwan/dsh-plugins-suite/personal-profile'
       disabled: true
+    - id: abinadwan-direct-chat
+      name: '@abinadwan/dsh-plugins-suite/direct-chat'
+      disabled: true
+    - id: abinadwan-conversation-lifecycle
+      name: '@abinadwan/dsh-plugins-suite/conversation-lifecycle'
+      disabled: true
+    - id: abinadwan-adaptive-reasoning
+      name: '@abinadwan/dsh-plugins-suite/adaptive-reasoning'
+      disabled: true

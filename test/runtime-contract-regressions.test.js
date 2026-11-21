@@ -76,7 +76,7 @@ test('P2: a refused or malformed Host inventory keeps components paused, then re
   assert.equal(app.tabs.records.size, 1)
 })
 
-test('P3: Personal Profile is absent from the left sidebar and main panel while its component is Off', async t => {
+test('P3: My Profile is absent from Settings and the main sidebar while its component is Off', async t => {
   const app = await clientHarness({ fetch: notFound })
   t.after(() => app.dispose())
   assert.equal(app.rows().find(row => row.moduleName === base + '/personal-profile').enabled, false)
@@ -85,21 +85,24 @@ test('P3: Personal Profile is absent from the left sidebar and main panel while 
   assert.equal(app.slots.records.has('abinadwan-profile-draft'), false)
 })
 
-test('P3: toggling Personal Profile adds and removes its launcher, page and draft without duplicates', async t => {
+test('P3: toggling My Profile adds and removes its Settings entry, icon, and draft without duplicates', async t => {
   const app = await clientHarness({ fetch: notFound })
   t.after(() => app.dispose())
   for (let round = 0; round < 3; round++) {
     app.setRows(withProfile(app.rows(), true))
     await app.changed()
     await app.changed()
-    assert.equal(app.entries('sidebar.panellist').filter(x => x.options.id === profilePanel).length, 1)
-    assert.equal(app.entries('main').filter(x => x.options.key === profilePanel).length, 1)
-    assert.equal(app.slots.records.get('sidebar.panellist:' + profilePanel).options.label(), 'Personal Profile')
+    assert.equal(app.entries('settings.section').filter(x => x.options.id === profilePanel).length, 1)
+    assert.equal(app.entries('settings.section.icon').filter(x => x.options.id === profilePanel).length, 1)
+    assert.equal(app.entries('sidebar.panellist').filter(x => x.options.id === profilePanel).length, 0)
+    assert.equal(app.entries('main').filter(x => x.options.key === profilePanel).length, 0)
+    assert.equal(app.slots.records.get(profilePanel).options.label, 'My Profile')
     assert.ok(app.slots.records.has('abinadwan-profile-draft'))
     assert.equal(app.tabs.records.size, 1, 'Environment unaffected')
     app.setRows(withProfile(app.rows(), false))
     await app.changed()
     assert.equal(app.slots.records.has('sidebar.panellist:' + profilePanel), false)
+    assert.equal(app.slots.records.has('settings.section.icon:' + profilePanel), false)
     assert.equal(app.slots.records.has(profilePanel), false)
     assert.equal(app.slots.records.has('abinadwan-profile-draft'), false)
     assert.equal(app.tabs.records.size, 1, 'Environment unaffected')

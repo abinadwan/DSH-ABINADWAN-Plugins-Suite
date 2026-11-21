@@ -30,7 +30,7 @@ test('DSH bundle has a Group carrier and top-level settings-owned Personal Profi
 
 test('actual DSH metadata reader gives each component its title and transparent PNG', () => {
   const names = ['', '/environment-context', '/humanizer', '/personal-profile']
-  const titles = ['ABINADWAN Plugins Suite', 'Environment & Context', 'Humanizer', 'Personal Profile']
+  const titles = ['ABINADWAN Plugins Suite', 'Environment & Context', 'Humanizer', 'My Profile']
   const icons = new Set()
   names.forEach((path, index) => {
     const meta = readPluginMeta(base + path, root.href)
