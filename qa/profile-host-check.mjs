@@ -102,7 +102,7 @@ test('rc.3 real loop: committed config, new and existing sessions, disable and c
     await remove()
     // Old versions must not promote previously inactive sharing choices.
     for(const version of [2,3]){
-      const record={...structuredClone(next),version,allowPersonalInformation:true,allowCloud:true,
+      const record={...structuredClone(next),version,locale:'en',allowPersonalInformation:true,allowCloud:true,
         policies:{preferredName:'allow',nationality:'allow',gender:'allow'}}
       await fiber.update({record})
       a.model.select({provider:'history',model:'test'})
