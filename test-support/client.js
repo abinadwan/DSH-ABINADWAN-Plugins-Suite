@@ -193,6 +193,14 @@ export async function clientHarness(options = {}) {
   const tabs = new Tabs(ctx)
   const access = new Access(ctx)
   const remote = new Remote(ctx)
+  // DSH's public Locale snapshot: the default test Host is Arabic so existing
+  // RTL regressions remain realistic; tests can opt into English or switch live.
+  const hostLocale = observable({active:options.hostLocale || 'ar',revision:0})
+  ctx.provide('locale', {
+    getSnapshot: () => hostLocale.getSnapshot(),
+    getLocale: () => hostLocale.getSnapshot(),
+    subscribe: notify => hostLocale.subscribe(notify),
+  })
   const timers = new Map()
   const intervals = new Map()
   const mountedListeners = new Set()
@@ -281,7 +289,7 @@ export async function clientHarness(options = {}) {
   await fiber.await()
   await tick()
   return {
-    ctx, fiber, access, slots, tabs, events: remote.events, timers, intervals, mountedListeners,
+    ctx, fiber, access, slots, tabs, events: remote.events, timers, intervals, mountedListeners, hostLocale,
     sessions, workspaces, loaded, plugin, get opened() { return opened },
     slot(name) { return [...slots.records.values()].find(record => record.options.name === name)?.component },
     entries(name) { return [...slots.records.values()].filter(record => record.options.name === name) },
