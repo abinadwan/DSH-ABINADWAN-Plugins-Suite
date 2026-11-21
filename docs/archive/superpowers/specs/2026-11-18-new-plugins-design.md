@@ -1,8 +1,8 @@
 # Direct Chat, Conversation Lifecycle and Adaptive Reasoning — Phase B design
 
-> **Historical Phase B specification.** The approved plan evolved: today's Direct Chat uses one shared Workspace with native Sessions and Host tool guards; Chat Control provides retention preview without deletion; Adaptive Reasoning supports manual effort, not automatic/message-only effort. See [current DETAIL](../../DETAIL.md).
+> **Historical Phase B specification.** The approved plan evolved: today's Direct Chat uses one shared Workspace with native Sessions and Host tool guards; Chat Control provides retention preview without deletion; Adaptive Reasoning supports manual effort, not automatic/message-only effort. See [current DETAIL](../../../DETAIL.md).
 
-Status: **Conditionally approved for gated Phase C on 2026-11-19**. Baseline `feature/new-plugins` / `2c475f9`, suite `0.8.0-rc.1`. The owner approved the native architecture, separate plugins, shared domain, Settings and icon concepts, subject to the safe deletion, retention, storage and reasoning amendments below. See the [discovery and SDK evidence](../../research/NEW_PLUGINS_PHASE_A.md), [roadmap](../plans/2026-11-18-new-plugins.md) and [Phase C capability update](../../research/NEW_PLUGINS_PHASE_C.md).
+Status: **Conditionally approved for gated Phase C on 2026-11-19**. Baseline `feature/new-plugins` / `2c475f9`, suite `0.8.0-rc.1`. The owner approved the native architecture, separate plugins, shared domain, Settings and icon concepts, subject to the safe deletion, retention, storage and reasoning amendments below. See the [discovery and SDK evidence](../../../research/NEW_PLUGINS_PHASE_A.md), [roadmap](../plans/2026-11-18-new-plugins.md) and [Phase C capability update](../../research/NEW_PLUGINS_PHASE_C.md).
 
 ## Intent and constraints
 
@@ -249,4 +249,4 @@ Lifecycle: exact scope and archive completeness; counts/partial storage reportin
 
 Reasoning: native-supported manual choices remain; real adapter parameters, validated model maps/defaults/cap, explicit override preservation, deterministic local adaptive rules, receipt-bound next-message behavior, capability-limited subagents and truthful statistics. Full automatic/one-use acceptance is blocked until B3 exists.
 
-The owner approved the architecture and icon palette with gated execution. Each automatic policy revision needs informed consent once safe execution is available. The separate manual confirmation, exact child/fork scope, receipt-bound reasoning, shared-file coordination, and native safety tests remain acceptance conditions. The icon source and export assets are documented in the [branding record](../../NEW_PLUGINS_BRANDING.md).
+The owner approved the architecture and icon palette with gated execution. Each automatic policy revision needs informed consent once safe execution is available. The separate manual confirmation, exact child/fork scope, receipt-bound reasoning, shared-file coordination, and native safety tests remain acceptance conditions. The icon source and export assets are documented in the [branding record](../../../NEW_PLUGINS_BRANDING.md).
