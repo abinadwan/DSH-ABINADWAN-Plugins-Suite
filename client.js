@@ -356,7 +356,7 @@ window.__ModuleLoader__.load({
     const MIGRATION_STEPS = [
       'Harness can update a Git-installed bundle in place only when it was installed from a spec pinned to a full 40-character commit. Nothing was changed.',
       'One-time migration (manual, at your discretion): note which components are switched on, Uninstall this bundle from this page, then use Add plugin with the pinned spec shown below, and switch the components back on.',
-      'Personal Profile settings are stored in this Harness Profile\'s configuration and uninstalling may remove them. If you use My Profile, first export a JSON backup from My Profile → Backup & Restore (it includes your saved access permissions and is not encrypted). If the pinned install fails, reinstall from the same spec or from the original source.',
+      'My Profile settings are stored in this Harness Profile\'s configuration and uninstalling may remove them. If you use My Profile, first export a JSON backup from My Profile → Backup & Restore (it includes your saved access permissions and is not encrypted). If the pinned install fails, reinstall from the same spec or from the original source.',
     ]
     // Installed-plugin detail page only; never run an installer in a React effect.
     function VersionUpdates({ installedVersion, pluginManager, useRemoteAccess }) {
@@ -769,7 +769,7 @@ window.__ModuleLoader__.load({
     const profileKeys = (value,keys) => value && typeof value==='object' && !Array.isArray(value) &&
       Object.keys(value).length===keys.length && keys.every(key=>Object.hasOwn(value,key))
     // Errors carry a reason code only; never user-supplied content.
-    const profileError = code => Object.assign(new Error('Invalid Personal Profile settings'),{code})
+    const profileError = code => Object.assign(new Error('Invalid My Profile settings'),{code})
     const profileCheck = (condition,code='invalidContent') => { if(!condition) throw profileError(code) }
     const validText = (v,n) => typeof v==='string' && v.length<=n
     // Decoders rebuild every object in canonical key order, so comparisons of
