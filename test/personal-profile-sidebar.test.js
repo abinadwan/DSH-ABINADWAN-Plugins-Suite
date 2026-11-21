@@ -11,7 +11,7 @@ const namespace='abinadwan-personal-profile'
 const panelId=base+'/personal-profile-page'
 const copy=x=>JSON.parse(JSON.stringify(x))
 function mockSettings(){
-  let record=emptyRecord(), revision=0, calls=[], conflict=false
+  let record={...emptyRecord(),locale:'ar'}, revision=0, calls=[], conflict=false
   const view=()=>({ns:namespace,value:{record:copy(record)},revision})
   return {calls,view,conflict:()=>{conflict=true;revision++},describe:async()=>ok({writable:true,namespaces:[view()]}),
     replace:async(ns,value,expected)=>{
