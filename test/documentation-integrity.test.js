@@ -5,6 +5,9 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
+// npm pack intentionally omits package-lock and historical docs. Exercise their
+// integrity in the source checkout; the packed-artifact pass checks shipped UI.
+const sourceCheckout = existsSync(join(root, 'package-lock.json'))
 const read = path => readFileSync(join(root, path), 'utf8')
 const packageJson = JSON.parse(read('package.json'))
 
@@ -18,11 +21,13 @@ const icons = [
 ]
 
 test('development source metadata, lockfile, client version and documentation agree', () => {
-  const lock = JSON.parse(read('package-lock.json'))
   const client = read('client.js')
   assert.equal(packageJson.version, '1.0.0')
-  assert.equal(lock.version, packageJson.version)
-  assert.equal(lock.packages[''].version, packageJson.version)
+  if (sourceCheckout) {
+    const lock = JSON.parse(read('package-lock.json'))
+    assert.equal(lock.version, packageJson.version)
+    assert.equal(lock.packages[''].version, packageJson.version)
+  }
   assert.equal(client.match(/const INSTALLED_VERSION = '([^']+)'/)?.[1], packageJson.version)
   assert.match(read('README.md'), /v1\.0\.0.*development|development.*v1\.0\.0/i)
   assert.match(read('docs/DETAIL.md'), /v1\.0\.0.*development/i)
@@ -54,7 +59,8 @@ function localLinkSource(text) {
   ].filter(href => href && !/^(?:https?:|mailto:|#|data:)/i.test(href))
 }
 
-test('all repository docs Markdown links and embedded local image paths resolve', () => {
+test('all repository docs Markdown links and embedded local image paths resolve', t => {
+  if (!sourceCheckout) return t.skip('source-only historical docs are not part of the packed plugin')
   const docs = docsUnder(join(root, 'docs'))
   assert.ok(docs.length >= 44, 'documentation index and audited records should exist')
   for (const document of [join(root, 'README.md'), ...docs]) {
