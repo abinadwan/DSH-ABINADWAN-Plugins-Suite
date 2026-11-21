@@ -1,6 +1,6 @@
 # Personal Profile Phase 1 implementation plan
 
-> **Superseded (historical record).** Version 0.7.0 replaced this design with native Harness settings; see [the current design](../../PERSONAL_PROFILE_LOCAL_SETTINGS.md). Nothing described here is in the runtime or the package.
+> **Superseded (historical record).** Version 0.7.0 replaced this design with native Harness settings; see [the current design](../../../PERSONAL_PROFILE_LOCAL_SETTINGS.md). Nothing described here is in the runtime or the package.
 
 Goal: implement the user's Phase 1 specification only, on a new branch from main.
 Architecture: internal ESM modules for schemas, model, policies, evaluation and retrieval;
