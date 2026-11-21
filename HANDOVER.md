@@ -1,6 +1,6 @@
 # ABINADWAN Plugins Suite development handover
 
-> **Feature branch note (feature/direct-chat-global-chat-replacement):** The Direct Chat implementation in this branch is intentionally replaced with the Codex Global Chat native-session proof of concept. The Windows LPAC companion description below documents the original `develop` baseline only. Desktop acceptance, persistent hidden Workspace, migration, and permanent deletion are not complete for the replacement. Do not merge or release this branch as-is.
+> **Current development note (feature/direct-chat-hidden-workspace-phase2):** Direct Chat was replaced with native DSH Sessions in PR #24, then this feature branch added a temporary Workspace bridge to address the blank composer gate. The historical Windows LPAC companion descriptions below do **not** describe the active implementation. Desktop send/receive, hidden Workspace behavior, migration and permanent deletion remain unverified. Keep Direct Chat Off; do not merge this phase into `develop` or release without acceptance.
 
 ## Baseline and workflow
 

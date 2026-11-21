@@ -21,7 +21,7 @@ One installation supplies six independently toggleable DSH components. The packa
 | <img src="plugins/environment-context/icon.png" width="32" alt="Teal monitor"/> **Environment & Context** | Read-only session inspector | On | [Plugin details](plugins/environment-context/README.md) |
 | <img src="plugins/humanizer/icon.png" width="32" alt="Purple feather"/> **Humanizer** | Runtime writing Skill | On | [Usage and scope](plugins/humanizer/README.md) |
 | <img src="plugins/personal-profile/icon.png" width="32" alt="Amber ID and gear"/> **Personal Profile** | Native response preferences (RC) | Host Off | [Local settings and acceptance](plugins/personal-profile/README.md) |
-| **Direct Chat** | Experimental native-session Global Chat replacement (desktop validation pending) | Off | [Suite details](docs/DETAIL.md) |
+| **Direct Chat** | Experimental native Session + temporary Workspace bridge (Desktop validation pending) | Off | [Suite details](docs/DETAIL.md) |
 | **Conversation Lifecycle** | Workspace inventory, protection and retention preview | Off | [Suite details](docs/DETAIL.md) |
 | **Adaptive Reasoning** | Manual session effort and local statistics | Off | [Suite details](docs/DETAIL.md) |
 
