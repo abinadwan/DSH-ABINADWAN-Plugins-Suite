@@ -2,6 +2,8 @@
 
 **Status: research / design only. Unattended updating has NOT been enabled.**
 
+**Current built-in suite update behavior (as of development v1.0.0):** the Plugins detail page already checks *published stable GitHub Releases* at startup/every 24 hours and offers a user-confirmed **Update now** through DSH `pluginManager.updateBundle` for eligible full-SHA-pinned Git installs. This document's design-only status applies specifically to **unattended/independent updating**; it must not be read as claiming that the current manual update UI is absent. [Actual current flow](../DETAIL.md#installation-and-updates).
+
 ## User goal
 
 The suite must remain one bundle with six separately toggleable components. Users should not need to manually uninstall and reinstall the bundle after each development release. Updates should come from a trusted, approved release channel, without adopting arbitrary commits from the active development branch.
