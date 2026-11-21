@@ -69,3 +69,60 @@ test('failed connect rolls back the temporary Workspace registration', async t =
   assert.deepEqual(deleted, ['direct-failed'])
   assert.equal(warnings.length, 1)
 })
+
+test('reopens an existing blank Direct Chat without creating another temporary Workspace', async t => {
+  const opened = [], requests = [], deleted = []
+  const sessionId = 'previous-blank'
+  const workspaceId = 'previous-temporary-workspace'
+  const app = await clientHarness({
+    workspaceItems: [{
+      workspaceId,
+      title: 'session-previous',
+      path: 'C:\\profile\\abinadwan-direct-chat-data\\session-previous',
+      sessionIds: [sessionId],
+    }],
+    sessions: { ids: [sessionId], phase: 'ready', byId: {
+      [sessionId]: { id: sessionId, blank: true },
+    } },
+    onOpenSession: id => opened.push(id),
+    onWorkspaceDelete: id => { deleted.push(id); return Promise.resolve() },
+    fetch: async (url) => { requests.push(url); throw new Error('must not provision another directory') },
+  })
+  t.after(() => app.dispose())
+  enabled(app)
+  await app.changed()
+  await action(app).props.onClick()
+  assert.deepEqual(opened, [sessionId])
+  assert.equal(requests.some(url => url === '/api/abinadwan-direct-chat/prepare'), false)
+  assert.deepEqual(deleted, [])
+  app.sessions.set({ ...app.sessions.getSnapshot(), byId: {
+    [sessionId]: { id: sessionId, blank: false },
+  } })
+  assert.deepEqual(deleted, [workspaceId], 'after the first message only the Workspace registration is removed')
+})
+
+test('reconciles completed Direct Chat Workspace registrations on plugin startup without deleting history', async t => {
+  const deleted = []
+  const app = await clientHarness({
+    workspaceItems: [{
+      workspaceId: 'old-temporary-workspace',
+      title: 'session-old',
+      path: '/profile/abinadwan-direct-chat-data/session-old',
+      sessionIds: ['old-message'],
+    }, {
+      workspaceId: 'ordinary-workspace',
+      title: 'My Project',
+      path: '/profile/my-project',
+      sessionIds: ['regular-message'],
+    }],
+    sessions: { ids: ['old-message', 'regular-message'], phase: 'ready', byId: {
+      'old-message': { id: 'old-message', blank: false },
+      'regular-message': { id: 'regular-message', blank: false },
+    } },
+    onWorkspaceDelete: id => { deleted.push(id); return Promise.resolve() },
+  })
+  t.after(() => app.dispose())
+  enabled(app)
+  await app.changed()
+  assert.deepEqual(deleted, ['old-temporary-workspace'])
+})

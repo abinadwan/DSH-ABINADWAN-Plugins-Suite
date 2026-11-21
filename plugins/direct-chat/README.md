@@ -13,6 +13,12 @@ This feature branch addresses the real DSH Desktop failure `Choose a workspace t
 
 This approach follows documented public DSH Workspace services and an independently published projectless-session proof of concept, but our Desktop version has **not** been tested yet.
 
+## Recovery for interrupted or repeated chats
+
+The Client reopens an already-registered **blank** Direct Chat on a subsequent button click instead of creating another temporary Workspace. It also reattaches lifecycle watchers to existing Direct Chat registrations after a restart. For a Session already confirmed non-blank, the plugin requests removal of its temporary Workspace registration; it does not remove DSH's Session, transcript or on-disk working directory. A blank, unsent chat is intentionally retained rather than silently deleted.
+
+**This does not hide the temporary Workspace while its chat is blank.** A new conversation with its own first message still uses a unique session directory, and DSH may list that directory until the first prompt is accepted.
+
 ## Important limits
 
 - **Not a truly hidden Workspace.** The temporary registration may appear in the native Workspace browser until the first prompt has been accepted; it is then removed. DSH's public Workspace record has no supported `hidden` flag.
