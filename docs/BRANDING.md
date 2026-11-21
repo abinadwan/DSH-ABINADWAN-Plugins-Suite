@@ -1,6 +1,6 @@
 # ABINADWAN Plugins Suite artwork
 
-The suite's original four owner-approved transparent PNGs were introduced in v0.5.0. Each shipped image is a 256 × 256 RGBA derivative retaining its composition and alpha channel and fitting DSH's icon-size limit. Three additional original vector-derived icon families were introduced for the later components; all seven are shipped in the v1.0.0 development source.
+The suite's original four owner-approved transparent PNGs were introduced in v0.5.0. Each shipped image is a 256 × 256 RGBA derivative retaining its composition and alpha channel and fitting DSH's icon-size limit. Three additional original vector-derived icon families were introduced for the later components; all seven are shipped with the v1.0.0 source release.
 
 | Identity | Supplied artwork | Shipped resource |
 | --- | --- | --- |
