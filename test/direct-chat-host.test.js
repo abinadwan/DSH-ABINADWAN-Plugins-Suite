@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
-import { lstat, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
-import { join, sep } from 'node:path'
+import { lstat, mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
+import { join, relative } from 'node:path'
 import { tmpdir } from 'node:os'
 import test from 'node:test'
 import * as plugin from '../plugins/direct-chat/index.js'
@@ -38,7 +38,9 @@ test('prepare endpoint creates distinct native session directories without creat
   const a = (await first.json()).path
   const b = (await second.json()).path
   assert.notEqual(a, b)
-  assert.ok(a.startsWith(join(profile, 'abinadwan-direct-chat-data') + sep))
+  const canonicalRoot = join(await realpath(profile), 'abinadwan-direct-chat-data')
+  assert.match(relative(canonicalRoot, a), /^session-/)
+  assert.match(relative(canonicalRoot, b), /^session-/)
   assert.equal((await lstat(a)).isDirectory(), true)
   assert.equal((await lstat(b)).isDirectory(), true)
 })
