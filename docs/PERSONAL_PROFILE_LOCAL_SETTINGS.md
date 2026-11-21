@@ -1,4 +1,4 @@
-# My Profile (Personal Profile) — simplified development candidate
+# My Profile — current Settings and privacy contract (development v1.0.0)
 
 My Profile is optional and disabled by default. The page appears under **Settings → My Profile**, not the main sidebar. It uses one native settings record across Workspaces of the active Harness Profile.
 
@@ -22,10 +22,10 @@ The plugin uses native settings.describe and settings.replace with a revision ch
 
 ## Backup & Restore
 
-Export remains complete, plain version 2 JSON with both old switches Off for backward compatibility. Imports accept v1–v4. Merge preserves omitted values; imported changed information defaults to private unless its permissions are separately selected and acknowledged. Replace All starts Private and requires a separate confirmation. Legacy Ask First maps to Private. An explicitly acknowledged imported Allow choice applies only after Save. Custom-text permission clears on restore. No encryption, passwords or new consent registry.
+Exports remain complete and unencrypted JSON. Explicit English/Arabic interface overrides use the compatible **v2** export shape (with the old sharing switches Off); **Follow DSH** and the five additional UI languages use **v4** to preserve the interface-language selection. Imports accept v1–v4. Merge preserves omitted values; imported changed information defaults to private unless its permissions are separately selected and acknowledged. Replace All starts Private and requires a separate confirmation. Legacy Ask First maps to Private. An explicitly acknowledged imported Allow choice applies only after Save. Custom-text permission clears on restore. No encryption, passwords or new consent registry.
 
 ## Context boundary and acceptance
 
 The plugin contributes to supported native agent steps only. The send-time guard refuses a recognizable earlier Profile details section that no longer matches the current allowed block while the plugin is enabled. This does not erase information from previously sent messages, provider systems, logs, stored history, summaries, files, or other sources. A new clean Workspace/session should receive only current checked fields from this plugin; this is not a promise of global Workspace isolation.
 
-Use synthetic values and clean disposable Workspaces on rc.5 Desktop to exercise saved and unsaved checkbox changes, old and new conversations, switching providers, retries, restart, upgrade, backup and rollback. Verify actual outgoing request bytes, not model responses alone. Source, package and native/real Desktop verification remain acceptance gates for this feature branch. Do not merge until the owner approves.
+Use synthetic values and a disposable Desktop Profile to check saved and unsaved checkbox changes, new conversations, switching providers, retries, restart, backup and rollback. Verify outgoing request contents where permitted; a model's refusal or ignorance alone does not prove exclusion. Changes for My Profile and language navigation were merged into `develop` in [PR #26](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/26) after successful cross-platform CI. Final Windows multilingual Settings checks and request-level disclosure security verification remain open; `develop` integration must not be described as stable-release acceptance.
