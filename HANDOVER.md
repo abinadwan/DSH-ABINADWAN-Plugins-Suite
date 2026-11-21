@@ -1,12 +1,12 @@
 # ABINADWAN Plugins Suite development handover
 
-> **Current `develop` baseline — v1.0.0 (unreleased development source, 2026-11-21):** Direct Chat Phase 2 was accepted and merged through PR #25 with deep Host/security isolation explicitly deferred. My Profile moved into native Settings and follows DSH language by default, with seven independently selectable UI languages; Conversation Lifecycle is displayed as Chat Control. Those changes merged through PR #26. This documentation pass adds the missing three icons, audits 43 project-related docs and aligns the version metadata. Neither merge nor CI constitutes a published stable release or full Windows Desktop/security sign-off. Archived LPAC companion and encrypted profile designs below describe historical work, **not** currently active features.
+> **v1.0.0 source release (2026-11-22):** The owner approved promotion from `develop` to `main` through PR #31 and publication as GitHub Release `v1.0.0`. Direct Chat Phase 2, Settings-based My Profile (Follow DSH and seven UI languages), Chat Control, all six component icons and reorganized documentation are included. CI passed on Windows and Linux Node 22/24. Deep Direct Chat Host tool/request authorization, per-chat filesystem isolation and final My Profile multilingual Desktop checks are still **not verified**; releasing does not change those facts. Historical LPAC companion/encrypted profile designs below are not active.
 
 ## Baseline and workflow
 
-**Development branch:** `develop`. **Current source version:** `1.0.0` (unreleased). **Last published stable release recorded before this documentation pass:** `0.7.2`. Future stable publication requires separate approval and a published release tag.
+**Working branch:** `develop`. **Published release:** [`v1.0.0`](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.0) from `main`; preceding stable release was `v0.7.2`. Future releases still need explicit approval, CI, release notes and tagged commits.
 
-This is the private, unified development baseline for all six components. Branch future work from `develop` and integrate it back into `develop`. The stable release will use one owner-approved pull request into `main` after the acceptance gates close.
+This file records the unified development and release history for all six components. Branch future work from `develop`, validate it, and promote it through reviewed pull requests into `main`. The owner explicitly approved v1.0.0 publication with the outstanding validation caveats documented rather than calling those gates passed.
 
 The integration worktree started at `4faa6fa`, the accepted Direct Chat storage and Windows lifecycle hardening. Merge `cb31863` adds Personal Profile Phase 8 from `5d8ba7b`. Merge `4dff6eb` adds Adaptive Reasoning from `dcfc346`. The only merge conflict was in `test-support/client.js`. The resolved test context contains `TextDecoder`, `Blob` and `crypto`. The earlier Host-only work at `b10610f` is retained as provenance on its original branch.
 
