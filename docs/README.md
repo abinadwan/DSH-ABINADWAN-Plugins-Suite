@@ -86,13 +86,13 @@ These superseded research reports and implementation plans are project-related, 
 | File | Reason to keep |
 | --- | --- |
 | [archive/superpowers/plans/2026-11-16-personal-profile-consent.md](archive/superpowers/plans/2026-11-16-personal-profile-consent.md) | Historical consent plan |
-| [superpowers/plans/2026-11-16-personal-profile-instructions.md](superpowers/plans/2026-11-16-personal-profile-instructions.md) | Historical instructions plan |
-| [superpowers/plans/2026-11-16-personal-profile-integration.md](superpowers/plans/2026-11-16-personal-profile-integration.md) | Historical integration plan |
-| [superpowers/plans/2026-11-16-personal-profile-phase1.md](superpowers/plans/2026-11-16-personal-profile-phase1.md) | Historical Phase 1 plan |
-| [superpowers/plans/2026-11-16-personal-profile-storage.md](superpowers/plans/2026-11-16-personal-profile-storage.md) | Historical storage plan |
-| [superpowers/plans/2026-11-16-personal-profile-ui.md](superpowers/plans/2026-11-16-personal-profile-ui.md) | Historical UI plan |
-| [superpowers/plans/2026-11-18-new-plugins.md](superpowers/plans/2026-11-18-new-plugins.md) | Historic new-plugin implementation plan |
-| [superpowers/specs/2026-11-18-new-plugins-design.md](superpowers/specs/2026-11-18-new-plugins-design.md) | Historic conditional Phase B specification |
+| [superpowers/plans/2026-11-16-personal-profile-instructions.md](archive/superpowers/plans/2026-11-16-personal-profile-instructions.md) | Historical instructions plan |
+| [superpowers/plans/2026-11-16-personal-profile-integration.md](archive/superpowers/plans/2026-11-16-personal-profile-integration.md) | Historical integration plan |
+| [superpowers/plans/2026-11-16-personal-profile-phase1.md](archive/superpowers/plans/2026-11-16-personal-profile-phase1.md) | Historical Phase 1 plan |
+| [superpowers/plans/2026-11-16-personal-profile-storage.md](archive/superpowers/plans/2026-11-16-personal-profile-storage.md) | Historical storage plan |
+| [superpowers/plans/2026-11-16-personal-profile-ui.md](archive/superpowers/plans/2026-11-16-personal-profile-ui.md) | Historical UI plan |
+| [superpowers/plans/2026-11-18-new-plugins.md](archive/superpowers/plans/2026-11-18-new-plugins.md) | Historic new-plugin implementation plan |
+| [superpowers/specs/2026-11-18-new-plugins-design.md](archive/superpowers/specs/2026-11-18-new-plugins-design.md) | Historic conditional Phase B specification |
 
 ## Rules for maintaining this directory
 
