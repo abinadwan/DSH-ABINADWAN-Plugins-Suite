@@ -5,10 +5,10 @@ The three original vector icons share a 24×24 grid, rounded badge geometry, 2-u
 | Plugin | Symbol | Palette | SVG master |
 |---|---|---|---|
 | Direct Chat | Conversation bubble with two reply lines | `#2563EB`, `#173A8A`, `#93C5FD` | [Direct Chat](../plugins/direct-chat/assets/icon.svg) |
-| Conversation Lifecycle | Offset conversation cards and a clock arc | `#15856F`, `#0D5147`, `#8EE0C5` | [Conversation Lifecycle](../plugins/conversation-lifecycle/assets/icon.svg) |
+| Chat Control (formerly Conversation Lifecycle) | Offset conversation cards and a clock arc | `#15856F`, `#0D5147`, `#8EE0C5` | [Conversation Lifecycle](../plugins/conversation-lifecycle/assets/icon.svg) |
 | Adaptive Reasoning | Rising effort bars and a selection node | `#C43D70`, `#772342`, `#F4A6C4` | [Adaptive Reasoning](../plugins/adaptive-reasoning/assets/icon.svg) |
 
-Each `assets/png/` folder contains transparent RGBA variants at 32, 64, 128, 256 and 512 pixels. The 256-pixel versions are 6,573, 8,012 and 7,799 bytes respectively. They are ready for the component `/icon` exports when the shared package metadata is coordinated. The 512-pixel versions are available for documentation and Plugin Hub artwork. Suite Settings, sidebar and toolbar registration are part of the subsequent integration.
+Each `assets/png/` folder contains transparent RGBA variants at 32, 64, 128, 256 and 512 pixels. The 256-pixel versions are 6,573, 8,012 and 7,799 bytes respectively. The 256-pixel PNGs are already used by the component `/icon` exports and the README/DETAIL component tables. The 512-pixel versions are available for documentation and Plugin Hub artwork. Suite Settings, sidebar and toolbar registrations are implemented in the development baseline; the Direct Chat/Projects visual grouping remains a separate future feature.
 
 ![Light theme with real 32, 64 and 128 pixel badges and 16, 20 and 24 pixel glyphs](assets/new-plugins/contact-sheet-light.png)
 
