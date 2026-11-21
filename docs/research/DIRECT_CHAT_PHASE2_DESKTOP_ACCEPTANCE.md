@@ -1,6 +1,6 @@
 # Direct Chat Phase 2 — one Workspace and isolated chat histories
 
-**Feature branch:** `feature/direct-chat-hidden-workspace-phase2`. Based on `develop` after PR #24.
+**Historical feature branch:** `feature/direct-chat-hidden-workspace-phase2` (merged into `develop` in [PR #25](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/25), then deleted). This document retains its original acceptance checklist as historical test context; current status is recorded below.
 
 ## Intent and verified contracts
 
@@ -25,9 +25,22 @@ Previous per-chat `session-*` directories and Workspace registrations from the t
 7. Use harmless fixture files to audit attempts at shell, file and workspace tools while Direct Chat is selected; the authorization hooks must deny them.
 8. Disable Direct Chat. Its footer action must disappear, but its Workspace and native conversations must remain intact.
 
-## Remaining work before merge
+## Owner acceptance outcome (2026-11-21)
 
-- Real Desktop acceptance for session history separation, restart, and security.
+The owner accepted Phase 2 for `develop` after Windows Desktop testing:
+- PASS: Direct Chat action directly below New Session.
+- PASS: one permanent Workspace rather than one new Workspace per click.
+- PASS: independent native Sessions, preserved messages across restart.
+- PASS: existing Projects/workspaces were unaffected.
+- PASS (behavioral): the same cloud model executed PowerShell `pwd` via `Ran commands` in a normal Workspace and returned **`Error: Direct chats do not run tools.`** in Direct Chat.
+- NOT VERIFIED / EXPLICITLY DEFERRED: a full Host request-trace proving absence of other Sessions' context, exhaustive tool-route authorization, and filesystem/process isolation. A prior standalone context-recall test was not used because DSH does not automatically search other Session histories.
+- No auto-migration or deletion of earlier experimental `session-*` paths occurred.
+
+The owner explicitly authorized proceeding without those deeper tests. **Accepted for development integration is not equivalent to verified high-assurance isolation or approval for a stable release.**
+
+## Remaining work after merge
+
+- Deep Host request-trace, cross-session authorization, filesystem boundaries and any remaining Desktop security coverage are deferred and still open.
 - True independent per-chat filesystem isolation is not part of this single-Workspace architecture; redesign if required.
 - Dedicated Direct Chat vs Projects top-level sidebar grouping.
 - Safe handling of existing experimental records, including optional migration and user-approved deletion.
