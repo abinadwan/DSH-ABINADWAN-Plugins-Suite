@@ -18,17 +18,18 @@ Both renamed entries retain their current icons. No new top-level navigation, co
 
 ## My Profile interface-language policy
 
-- **English** (`en`, left-to-right) is the default UI language for newly created v4 profile records; the Settings page initially opens in English for a fresh profile.
-- An explicit **Interface language** control offers **English** and **العربية**. Choosing Arabic immediately renders the UI in Arabic and right-to-left; the choice is only persisted after the user presses **Save**.
-- Existing stored `locale: 'ar'` or `locale: 'en'` values are respected as-is. Opening the new version, reconnecting, restoring a backup, or migrating legacy records must not silently overwrite a previously chosen locale.
-- Historical v1–v3 record defaults and backup-compatibility behavior remain unchanged; the new schema default applies only to newly created current-version records.
-- **Interface language is independent from Response language**; the latter retains its Automatic setting unless separately changed. No forced model response language, no global DSH locale change, and no new privacy permissions are introduced.
-
+- New v4 profiles store `locale: 'auto'` (**Follow DSH**); they read the active language from DSH's public `ctx.get('locale')` snapshot service, and subscribe so the page updates immediately when DSH changes.
+- Users may choose **English, العربية, 中文, Español, Français, Deutsch or 日本語** instead of Follow DSH. An independent override changes only My Profile and is saved after **Save changes**; no call writes to DSH language settings. The page can return to Follow DSH at any time.
+- Existing saved `ar` or `en` remain explicit overrides and retain the current interface when upgraded. v1–v3 legacy records are not rewritten on load.
+- Arabic layouts use RTL; English, Chinese, Spanish, French, German and Japanese use LTR. Unrecognized DSH languages (such as Portuguese or Russian) fall back to English inside the plugin, without changing DSH or hiding the selected Follow DSH mode.
+- The page provides complete translations for its own UI dictionary keys in the seven supported languages. The model **Response language** remains independent and defaults to Automatic.
+- Backup format compatibility: explicit English/Arabic exports remain version 2, but `auto` and other languages export version 4 to preserve the selection. Both formats import; a historic version 2 backup or Harness configuration is needed for rollback to versions that cannot read v4.
+- The `locale` field stays in the same native settings namespace. No separate DSH settings writes, forced model-language changes, or new data-sharing permissions are introduced.
 
 ## Implementation
 
 - The browser `profilePlugin` now registers `settings.section` and `settings.section.icon` with label **My Profile**. It no longer registers `main` or `sidebar.panellist` slots for the editor.
-- The profile renderer, its React error boundary, access checks, Settings Remote `describe/replace`, backup/restore, language preferences, permission toggles and saved-profile semantics are unchanged.
+- The profile renderer, its React error boundary, access checks, Settings Remote `describe/replace`, permission toggles and saved-profile semantics are unchanged; interface locale and the conditional v2/v4 backup selection are updated as described above.
 - The existing `lifecycleSettingsPlugin` retains its native `settings.section` and icon; only its label and page heading become **Chat Control**.
 - English metadata titles in `plugins/personal-profile/locale/en.json` and `plugins/conversation-lifecycle/locale/en.json` reflect the new names. The profile's Arabic metadata file follows the selected English product title for a consistent card label.
 - The Profile and Lifecycle enable/disable behavior remains controlled by their existing Host component rows. Turning either component Off removes its Settings entry without deleting its stored settings.
