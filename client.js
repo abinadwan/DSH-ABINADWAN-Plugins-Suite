@@ -2234,7 +2234,7 @@ window.__ModuleLoader__.load({
                 onChange:e=>{const checked=e.target.checked;setPreferences(old=>({...old,
                   presets:checked?[...new Set([...old.presets,item[0]])]:old.presets.filter(id=>id!==item[0])}))}}),
               h('span',null,h('strong',null,localLabel(item)),
-                h('span',{style:{display:'block',fontSize:12,opacity:.76}},rtl?item[3]:item[4]))))),
+                h('span',{style:{display:'block',fontSize:12,opacity:.76}},localPresetDescription(item)))))),
           card(t('customInstructions'),
             h('label',{htmlFor:'pp-custom',style:label},t('customInstructions')),
             h('textarea',{id:'pp-custom',rows:6,maxLength:PROFILE_CUSTOM_MAX,style:control,'aria-describedby':'pp-custom-count',
