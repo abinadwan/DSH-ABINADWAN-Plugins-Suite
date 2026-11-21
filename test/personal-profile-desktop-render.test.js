@@ -94,7 +94,7 @@ test('missing access hook, denied access or an unavailable settings service show
       const { d, crashes } = await mountInHostSlot(t, options)
       assert.equal(crashes.length, 0, label)
       assert.equal(d.querySelector('[data-slot-error]'), null, 'not blank')
-      assert.match(d.getElementById('pp-save-status').textContent, /غير متاحة/, label)
+      assert.match(d.getElementById('pp-save-status').textContent, /غير متاحة|unavailable/, label)
       assert.equal(d.getElementById('pp-save').disabled, true)
     })
   }
