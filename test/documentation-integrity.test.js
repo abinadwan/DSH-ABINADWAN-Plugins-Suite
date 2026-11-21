@@ -63,7 +63,7 @@ test('all repository docs Markdown links and embedded local image paths resolve'
   if (!sourceCheckout) return t.skip('source-only historical docs are not part of the packed plugin')
   const docs = docsUnder(join(root, 'docs'))
   assert.ok(docs.length >= 44, 'documentation index and audited records should exist')
-  for (const document of [join(root, 'README.md'), ...docs]) {
+  for (const document of [join(root, 'README.md'), join(root, 'HANDOVER.md'), join(root, 'CHANGELOG.md'), ...docs]) {
     for (const href of localLinkSource(readFileSync(document, 'utf8'))) {
       const pathPart = href.split('#', 1)[0].split('?', 1)[0]
       if (!pathPart || /\s/.test(pathPart) || pathPart.includes('$')) continue
