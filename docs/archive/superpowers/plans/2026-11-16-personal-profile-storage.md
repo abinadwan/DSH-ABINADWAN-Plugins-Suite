@@ -1,6 +1,6 @@
 # Personal Profile Phase 5 implementation plan
 
-> **Superseded (historical record).** Version 0.7.0 replaced this design with native Harness settings; see [the current design](../../PERSONAL_PROFILE_LOCAL_SETTINGS.md). Nothing described here is in the runtime or the package.
+> **Superseded (historical record).** Version 0.7.0 replaced this design with native Harness settings; see [the current design](../../../PERSONAL_PROFILE_LOCAL_SETTINGS.md). Nothing described here is in the runtime or the package.
 
 Goal: implement the user's Phase 5 specification as isolated Host-side components.
 Architecture: serialize the Phase 1 Master Profile schema, never a second database; authenticate bounded encrypted envelopes before parsing content; synchronous atomic filesystem commits; reuse Phase 2 consent with generation-bound capabilities. Production has no approved provider and must refuse construction.
