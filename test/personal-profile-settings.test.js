@@ -15,7 +15,9 @@ const UNAVAILABLE = /غير متاحة/, INVALID = /غير صالحة/, MIGRATIO
 const REVIEW = 'مراجعة النسخة'
 const policies = (v = 'private') => ({ preferredName: v, nationality: v, gender: v })
 const fictional = () => {
-  const record = emptyRecord()
+  // Historical regression tests deliberately exercise Arabic RTL; the actual
+  // product default is now English and is covered by the dedicated test below.
+  const record = { ...emptyRecord(), locale: 'ar' }
   record.information = { preferredName: 'Fictional Tester', nationality: 'Testland', gender: 'unspecified' }
   return record
 }
@@ -29,6 +31,30 @@ const legacyWith = mutate => {
   return r
 }
 const resolved = config => { const v = Config(config).record; return JSON.parse(JSON.stringify(isVolatile(v) ? v.get() : v)) }
+
+test('new My Profile defaults to English and saved Arabic selection survives Reload', async t => {
+  const fresh = emptyRecord()
+  assert.equal(fresh.locale, 'en', 'new Host records default to English')
+  assert.equal(resolved({}).locale, 'en', 'Host schema uses the same default')
+  const transport = mockSettings(fresh)
+  const view = await mountProfile(t, { transport })
+  const panel = view.d.querySelector('[data-personal-profile-panel]')
+  assert.equal(view.byId('language').value, 'en')
+  assert.equal(panel.getAttribute('lang'), 'en')
+  assert.equal(panel.getAttribute('dir'), 'ltr')
+  assert.match(panel.textContent, /Interface language/)
+  await view.select('language', 'ar')
+  assert.equal(panel.getAttribute('lang'), 'ar')
+  assert.equal(panel.getAttribute('dir'), 'rtl')
+  assert.equal(view.byId('language').value, 'ar')
+  assert.equal(transport.calls.length, 0, 'changing language alone does not silently save')
+  await view.click('save')
+  assert.equal(transport.record.locale, 'ar', 'explicit Save preserves chosen Arabic locale')
+  await view.click('reload')
+  assert.equal(view.byId('language').value, 'ar', 'Reload retains the saved language')
+  assert.equal(panel.getAttribute('lang'), 'ar')
+  assert.equal(panel.getAttribute('dir'), 'rtl')
+})
 
 // ---------- Native settings read contract ----------
 
