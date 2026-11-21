@@ -39,6 +39,12 @@ The 0.8.0-rc.1 candidate is the tested development baseline; **0.7.2 remains the
 
 **Settings navigation:** **My Profile** replaces the main-sidebar Personal Profile entry. **Chat Control** is the compact Settings and component-card label formerly shown as Conversation Lifecycle. Module paths, stored namespaces, enablement state, backups and the suite version remain unchanged. See the [navigation/rename change record](docs/SETTINGS_NAVIGATION_NAMES_2026_11_21.md).
 
+## Bundled Arabic language for the DSH interface
+
+The suite automatically registers **العربية** as an available language under **Settings → General → Language** when its browser carrier is active. This is a **language option**, not an extra toggleable component; installation does **not** select Arabic, change the existing language, modify My Profile overrides, or change agent response-language preferences.
+
+The bundled dictionary provides **3,307 Arabic strings across 60 DSH namespaces**, sourced from [SMSMy/dsh-arabic](https://github.com/SMSMy/dsh-arabic) v0.4.6 under the MIT license with the copyright and full license preserved in [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md). Texts not covered by the dictionary follow DSH's native English fallback. This integration excludes the external plugin's font files, optional RTL/bidi injection, and automatic translation. Mixed-language layout and actual Desktop behavior should be accepted separately.
+
 ## Environment & Context
 
 The native right-side session inspector opens once when a session becomes visible and can be reopened from the conversation header.
