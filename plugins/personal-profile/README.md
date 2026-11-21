@@ -1,6 +1,6 @@
-# Personal Profile — simplified development candidate
+# My Profile (Personal Profile) — simplified development candidate
 
-Personal Profile is optional and disabled by default. It uses one native settings record across Workspaces of the active Harness Profile.
+My Profile is optional and disabled by default. Its editor is available under **Settings → My Profile**, not the main sidebar. It uses one native settings record across Workspaces of the active Harness Profile.
 
 ## My Information
 
