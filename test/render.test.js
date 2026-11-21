@@ -4,7 +4,7 @@ import * as React from 'react'
 import { renderToStaticMarkup } from 'react-dom/server'
 import { clientHarness, base } from '../test-support/client.js'
 
-test('real React renders the Environment and the native-settings Personal Profile summary', async t => {
+test('real React renders the Environment and the My Profile settings summary', async t => {
   const app = await clientHarness({ React })
   t.after(() => app.dispose())
   const body = app.slot('sidebar.right.pane.tab')
@@ -21,7 +21,7 @@ test('real React renders the Environment and the native-settings Personal Profil
   const draft = app.slots.records.get('abinadwan-profile-draft').component
   const render = subject => renderToStaticMarkup(React.createElement(draft, { subject }))
   const html = render({ kind: 'bundle', pkg: { name: base } })
-  assert.match(html, /Personal Profile — local settings/)
+  assert.match(html, /My Profile — local settings/)
   // Native local persistence, described accurately.
   assert.match(html, /Saved in the active Harness Profile/)
   // No misleading encryption claim: only the explicit disclaimer is allowed.
