@@ -465,3 +465,22 @@ test('Chat Control refuses stale concurrent policy confirmation and preserves ne
   await act(async () => { fixture.ctx.emit('connection/reset') })
   assert.equal(confirmation(), undefined, 'stale confirmation disappears when the catalog is reloaded')
 })
+
+
+test('Chat Control respects read-only settings permission and never offers a destructive operation', async t => {
+  const settings = settingsFixture('conversation-lifecycle',
+    { retention: '7', overrides: [], protectedIds: [], protectedWorkspaces: [] })
+  const originalDescribe = settings.service.describe
+  settings.service.describe = async () => {
+    const result = await originalDescribe()
+    return { ...result, value: { ...result.value, writable: false } }
+  }
+  const { div } = await mount(t, { settings: settings.service },
+    'conversation-lifecycle', 'settings.section')
+  assert.equal(div.querySelectorAll('select')[1].disabled, true,
+    'read-only users must not change retention policies')
+  assert.equal(div.querySelector('input[type=checkbox]').disabled, true,
+    'read-only users must not change protection flags')
+  assert.match(div.textContent, /Deletion is unavailable\. Automatic cleanup is disabled\./)
+  assert.deepEqual(settings.writes, [])
+})
