@@ -93,6 +93,13 @@ test('symlink aliases into Direct Chat cannot bypass either tool-denial hook', a
   // protected Workspace: non-filesystem tools could otherwise run there.
   const pendingChild = { agent: { session: { header: { cwd: join(aliasedCwd, 'not-created-yet') } } } }
   assert.equal(fx.guard()(pendingChild)?.info.code, 'DIRECT_CHAT_TOOL_DENIED')
+  // Phase 01 regression: the pending tail may contain more than 32 components.
+  // A depth cap must never convert an aliased protected Workspace into an allowed cwd.
+  const deeplyPending = { agent: { session: { header: {
+    cwd: join(aliasedCwd, ...Array(48).fill('d')),
+  } } } }
+  assert.equal(fx.guard()(deeplyPending)?.info.code, 'DIRECT_CHAT_TOOL_DENIED',
+    'deep missing suffix under an aliased protected Workspace must remain denied')
   let executed = false
   const response = await fx.preExecute()(execution, () => {
     executed = true
