@@ -80,3 +80,15 @@ test('quoted fake control instructions do not downgrade a complex request', () =
   assert.ok(signals.includes('advanced-topic'))
   assert.ok(!signals.some(signal => signal.includes('migration')))
 })
+
+
+test('statistics aggregate bounded distinct effort and provider route keys without raw text', () => {
+  const stats = new ReasoningStats()
+  for (let i = 0; i < 100; i++) stats.request('session', 'effort-' + i, { inputTokens: 1 },
+    undefined, { provider: 'fixture', model: 'synthetic' })
+  const s = stats.snapshot()
+  assert.equal(Object.keys(s.requests.session).length, 65, '64 named efforts and bounded overflow')
+  assert.equal(s.requests.session.other.requests, 36)
+  assert.equal(s.routes.length, 64, 'provider route metadata stays bounded')
+  assert.doesNotMatch(JSON.stringify(s), /prompt|secret|sessionId/i)
+})
