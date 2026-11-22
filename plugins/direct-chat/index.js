@@ -2,7 +2,7 @@
 // Session history isolation does not constitute process or filesystem isolation.
 import { realpathSync } from 'node:fs'
 import { lstat, mkdir, realpath } from 'node:fs/promises'
-import { isAbsolute, join, normalize, sep } from 'node:path'
+import { isAbsolute, join, normalize, sep, toNamespacedPath } from 'node:path'
 
 export const name = 'abinadwan-direct-chat'
 export const inject = ['profileContext', 'connection', 'tools']
@@ -14,7 +14,9 @@ const workspaceName = 'Direct Chat'
 function pathKey(path) {
   if (typeof path !== 'string' || !isAbsolute(path)) return undefined
   const normalized = normalize(path)
-  return process.platform === 'win32' ? normalized.toLowerCase() : normalized
+  // Windows realpath can return extended-length paths (\\\\?\\...) while
+  // DSH supplies ordinary drive/UNC paths. Compare in one namespaced form.
+  return process.platform === 'win32' ? normalize(toNamespacedPath(normalized)).toLowerCase() : normalized
 }
 function isDirectChatCwd(cwd, roots) {
   const key = pathKey(cwd)
