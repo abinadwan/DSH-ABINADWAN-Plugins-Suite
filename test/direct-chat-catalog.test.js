@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { lstat, mkdir, mkdtemp, readFile, rm, symlink, writeFile } from 'node:fs/promises'
+import { lstat, mkdir, mkdtemp, readFile, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -10,11 +10,12 @@ test('Direct Chat catalog uses the canonical registration, never names or create
   t.after(() => rm(root, { recursive: true, force: true }))
   const data = join(root, 'abinadwan-direct-chat-data')
   const path = join(data, 'Direct Chat')
-  const matching = { id: 'authorized', title: 'Renamed', path }
   const decoy = { id: 'project', title: 'Direct Chat', path: join(root, 'elsewhere') }
-  assert.equal(await findWorkspace(root, () => [decoy, matching]), null)
+  assert.equal(await findWorkspace(root, () => [decoy]), null)
   await assert.rejects(lstat(data), { code: 'ENOENT' })
   await mkdir(path, { recursive: true })
+  // Workspace Registry canonicalizes this exact directory with fs.realpath.
+  const matching = { id: 'authorized', title: 'Renamed', path: await realpath(path) }
   assert.equal(await findWorkspace(root, () => [decoy, matching]), matching.id)
   await assert.rejects(findWorkspace(root, () => [matching, { ...matching, id: 'ambiguous' }]))
 })

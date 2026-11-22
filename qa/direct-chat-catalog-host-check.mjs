@@ -16,7 +16,7 @@ test('native Host connection gates Direct Chat discovery and bounded metadata to
   })
   const path = join(await realpath(dir), 'abinadwan-direct-chat-data', 'Direct Chat')
   await mkdir(path, { recursive: true })
-  const workspace = { id: 'permanent', path, sessionIds: ['fictional-one'] }
+  const workspace = { id: 'permanent', path: await realpath(path), sessionIds: ['fictional-one'] }
   const reads = []
   ctx.provide('workspaceRegistry', { list: () => [workspace, {
     id: 'project', path: join(dir, 'Project'), sessionIds: ['unrelated'],
