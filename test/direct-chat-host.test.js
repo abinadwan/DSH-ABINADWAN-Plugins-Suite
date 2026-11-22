@@ -100,6 +100,13 @@ test('symlink aliases into Direct Chat cannot bypass either tool-denial hook', a
   } } } }
   assert.equal(fx.guard()(deeplyPending)?.info.code, 'DIRECT_CHAT_TOOL_DENIED',
     'deep missing suffix under an aliased protected Workspace must remain denied')
+  assert.equal((await fx.preExecute()(deeplyPending,
+    () => assert.fail('pre-execute hook must not admit an aliased pending child'))).kind, 'deny')
+  const unrelatedDeep = { agent: { session: { header: {
+    cwd: join(root, 'unrelated-deep-workspace', ...Array(48).fill('d')),
+  } } } }
+  assert.equal(fx.guard()(unrelatedDeep), undefined,
+    'unrelated deep directories must not be denied because of the traversal fix')
   let executed = false
   const response = await fx.preExecute()(execution, () => {
     executed = true
