@@ -7,8 +7,8 @@
 - Review: phase-specific Draft PR targeting `develop`; owner approval required.
 - Published version remains `v1.0.0`; no `main` changes.
 
-## Finding and repair
-When a user requested a persistent statistics reset, `plugins/adaptive-reasoning/index.js` previously called `stats.takeCounters()` and `stats.reset()` **before** awaiting `target.reset()`. If the backing JSON document was corrupt or unreadable and the storage reset failed, the process lost unsaved in-memory aggregate counts despite returning HTTP 503. This violates failure transparency.
+## Review finding and conservative hardening
+When a user requested a persistent statistics reset, `plugins/adaptive-reasoning/index.js` previously called `stats.takeCounters()` and `stats.reset()` **before** awaiting `target.reset()`. A failed reset had to rely on the generic retry-carry path to preserve these counters, even though no reset had completed. The existing native Host regression passed before the source change, so an actual lost-count failure was **not** reproduced. This change makes the ordering explicit and avoids clearing live counters before a reset commits.
 
 The fix performs the storage reset transaction **before** clearing live counters or an outstanding retry delta. A failed reset returns 503 while retaining the live counters for subsequent successful persistence. An ambiguous crash after an atomic write is still outside plugin-level exactly-once guarantees and is not claimed solved.
 
