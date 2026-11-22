@@ -84,7 +84,7 @@ async function mount(t, options, active, slot) {
   document.body.append(div)
   const previousLanguage = document.documentElement.lang
   document.documentElement.lang = options.language ?? previousLanguage
-  const fixture = await clientHarness({ React, document, ...options })
+  const fixture = await clientHarness({ React, document, hostLocale: options.hostLocale ?? 'en', ...options })
   fixture.setRows([...fixture.rows(), { moduleName: `${base}/${active}`, enabled: true, fiberPhase: 'active' }])
   await fixture.changed()
   const entry = fixture.entries(slot)[0]
@@ -483,4 +483,39 @@ test('Chat Control respects read-only settings permission and never offers a des
     'read-only users must not change protection flags')
   assert.match(div.textContent, /Deletion is unavailable\. Automatic cleanup is disabled\./)
   assert.deepEqual(settings.writes, [])
+})
+
+
+test('Chat Control follows active Arabic Host locale and renders RTL labels without changing stored IDs', async t => {
+  const settings = settingsFixture('conversation-lifecycle', {
+    retention: 'forever', overrides: [], protectedIds: [], protectedWorkspaces: [],
+  })
+  const { div, fixture } = await mount(t, { settings: settings.service, hostLocale: 'ar' },
+    'conversation-lifecycle', 'settings.section')
+  const section = div.querySelector('section')
+  assert.equal(section.lang, 'ar')
+  assert.equal(section.dir, 'rtl')
+  assert.deepEqual([...div.querySelectorAll('h2')].map(node => node.textContent),
+    ['نظرة عامة', 'سياسة الاحتفاظ', 'المحادثات المحمية', 'إدارة التنظيف'])
+  assert.match(div.textContent, /الحذف غير متاح/)
+  assert.equal(div.querySelectorAll('select')[1].querySelector('option[value=forever]').textContent,
+    'احتفاظ دائم')
+  await act(async () => fixture.hostLocale.set({ active: 'en', revision: 1 }))
+  assert.equal(div.querySelector('section').lang, 'en')
+  assert.equal(div.querySelector('section').dir, 'ltr')
+  assert.match(div.textContent, /Retention Policy/)
+})
+
+test('Adaptive Reasoning composer localizes its accessible menu labels with Arabic Host locale', async t => {
+  const fixture = reasoningFixture()
+  fixture.options.hostLocale = 'ar'
+  const view = await openReasoning(t, fixture)
+  const trigger = view.trigger()
+  assert.equal(trigger.getAttribute('lang'), 'ar')
+  assert.equal(trigger.getAttribute('dir'), 'rtl')
+  await view.open()
+  assert.ok(view.item('حفظ مستوى الاستدلال الحالي'))
+  assert.ok(view.item('إحصائيات الاستدلال…'))
+  assert.ok(view.item('توصية مستوى الاستدلال…'))
+  assert.doesNotMatch(view.div.textContent, /Save current effort/)
 })
