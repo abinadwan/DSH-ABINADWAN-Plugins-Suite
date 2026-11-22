@@ -66,7 +66,7 @@ export const RECORD_VERSION=4
 // Structured fields are optional profile data, not instructions.
 const PROFILE_DISCLOSURE_HEADER='Personal details the user chose to share (use them only when relevant to the request):'
 const PROFILE_DISCLOSURE_FIELDS=[['preferredName','Preferred name'],['nationality','Nationality'],['gender','Gender']]
-const profileDisclosureValue=value=>String(value).replace(/[\u0000-\u001f\u007f-\u009f\u061c\u200e\u200f\u2028\u2029\u202a-\u202e\u2066-\u206f]/g,' ').replace(/\s+/g,' ').trim()
+const profileDisclosureValue=value=>String(value).replace(/[\u0000-\u001f\u007f-\u009f\u061c\u200b\u200e\u200f\u2028\u2029\u202a-\u202e\u2060\u2066-\u206f\ufeff]/g,' ').replace(/\s+/g,' ').trim()
 export function previewProfileDisclosure(record) {
   if(!record||record.version!==RECORD_VERSION) return ''
   const lines=[]
@@ -116,7 +116,7 @@ export function disclosureBlocks(request) {
   }
   const blocks=[]
   for(const text of texts){
-    const lines=text.split(/\r\n?|\n/)
+    const lines=text.split(/\r\n?|\n|[\u0085\u2028\u2029]/)
     for(let i=0;i<lines.length;i++){
       if(lines[i]!==PROFILE_DISCLOSURE_HEADER)continue
       let end=i+1
