@@ -1,6 +1,6 @@
 # v1.0.1 development progress — single source of truth
 
-> **State: Phase 01 approved on `develop`; Phase 02 candidate `1.0.1-rc.2` awaiting review.** Last baseline review: 2026-11-22. Phase records are edited on temporary branches and merged into `develop` only after explicit owner approval. The published `v1.0.0` tag and `main` remain unchanged by these phases. No release is authorized by this work.
+> **State: Phases 01–02 approved on `develop`; Phase 03 candidate `1.0.1-rc.3` under review.** Last baseline review: 2026-11-22. Phase reports originate on temporary branches; merge to `develop` and delete the branch only after explicit owner approval. The published `v1.0.0` tag and `main` remain unchanged by these phases. No release is authorized by this work.
 
 ## Why this register exists
 
@@ -41,8 +41,8 @@ At each approved phase, update all version-dependent source/metadata **consisten
 | Phase | Primary problem | Status | Evidence / review | Pending |
 | --- | --- | --- | --- | --- |
 | 1 | Integrated security audit and regression | **Approved on develop** | [PR #39](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/39) · [final four-platform CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45048359692) · [Phase 01 audit](research/v1.0.1/PHASE_01_SECURITY_INTEGRATION.md) | Real Windows Desktop/provider-bound checks remain independently deferred |
-| 2 | Chat Control retention/protection consistency | **Implemented — needs review** | [Draft PR #40](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/40) · [Phase 02 report](research/v1.0.1/PHASE_02_CHAT_CONTROL_RETENTION.md) · [red reproduction](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45049423963) · [passing source matrix](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45049842042) | Final PR-head CI, owner approval and real Desktop permissions, activity and archive transitions |
-| 3 | Direct Chat search/history scale | **Not started** | — | 100 / 1,000 / 10,000 synthetic-item benchmarks |
+| 2 | Chat Control retention/protection consistency | **Approved on develop** | [PR #40](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/40) · [final PR-head CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45050012849) · [Phase 02 report](research/v1.0.1/PHASE_02_CHAT_CONTROL_RETENTION.md) | Real Desktop permission, archive and concurrent-window acceptance deferred to final Desktop gate |
+| 3 | Direct Chat search/history scale | **Implemented — needs review** | [Draft PR #41](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/41) · [Phase 03 report](research/v1.0.1/PHASE_03_DIRECT_CHAT_PERFORMANCE.md) · [red CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45050660659) · [passing performance CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45050837406) | Final PR-head CI, owner approval, and 10k-item Desktop responsiveness later |
 | 4 | Adaptive Reasoning statistics persistence/recovery | **Not started** | — | Crash, corruption, concurrent writer and reset tests |
 | 5 | Arabic complexity classification | **Not started** | — | Arabic/mixed-language benchmark and no English regression |
 | 6 | Arabic UI and RTL | **Not started** | — | Translation, keyboard, direction and accessible UI tests |
@@ -63,13 +63,13 @@ Status vocabulary: `Not started`, `In progress`, `Implemented — needs review`,
 
 **One problem:** stale/ambiguous Session membership, protection changes and timestamp edge cases can make previews misleading. Validate all 7/30/90/180/365/Forever policies, Workspace overrides, pinned/running/archived Sessions, explicit confirmation and revision conflicts. No deletion worker or scheduler activation.
 
-**Candidate implementation under review:** reproduced Chat Control's malformed Workspace/Session catalog readiness defect via failing CI; changed the UI gate to fail closed instead of producing misleading retention previews. Added synthetic boundary checks for all `7/30/90/180/365/Forever` durations, UTC last-prompt edges, protection and override precedence, pinned/running/archived Sessions, ambiguous ownership, read-only access and concurrent Settings revision conflicts. Added the five owner-requested JavaScript/Node.js/React/Cordis/DSH badges to `README.md`, retaining stable `v1.0.0` and CI/MIT badges. Candidate metadata is `1.0.1-rc.2`. [Review PR #40](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/40) and [immutable report](research/v1.0.1/PHASE_02_CHAT_CONTROL_RETENTION.md) contain evidence and limitations. **Pending:** complete final-head CI, owner review, and real Desktop permission/archive/clock/concurrency checks. **No Session deletion or automatic cleanup enabled.**
+**Approved on `develop`:** repaired fail-closed authorization-catalog readiness, tested all `7/30/90/180/365/Forever` cutoffs, stale revisions, protection and read-only cases, and included five owner-requested README technology badges. Version `1.0.1-rc.2` merged via [PR #40](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/40) at `f33b72fa4eca3c26ee4ea21b830de809fd86bd72`, after [four-platform CI passed](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45050012849). The temporary branch was deleted. **Deferred to final Desktop acceptance:** actual permission/archive/clock/reconnect and multi-window tests. **No deletion or automatic cleanup enabled.**
 
 ### Phase 3 — Direct Chat search/history performance
 
 **One problem:** metadata browsing/search/sorting under large inventories and failures. Benchmark 100/1,000/10,000 synthetic Sessions without reading transcripts, leaking unauthorized IDs or unbounded allocation. Respect existing API limits (e.g. bounded creation-time sort); explicitly report unavailable ordering rather than fabricating results.
 
-**Completed:** none under this phase yet. **Pending:** metrics, tests, any proven optimizations and acceptance criteria.
+**Candidate implementation:** metadata-only search and ordering tests for 100/1,000/10,000 synthetic authorized Sessions; native catalog checks confirm zero `sessionPersistence.stat()` reads for >100 Session creation ordering requests and honest null/unavailable metadata, while 100 registered Sessions may use at most 100 native header reads. UI search/sort now uses one testable, immutable helper; if creation-time metadata is incomplete, the interface explicitly says it is displaying **last activity** instead of implying creation order. Unicode normalization and stable tie-breaking remain checked. Candidate version `1.0.1-rc.3`; see [Phase 03 report](research/v1.0.1/PHASE_03_DIRECT_CHAT_PERFORMANCE.md). **Pending:** final CI, owner review and actual Desktop responsiveness with 10k Sessions; no transcript reads or unbounded creation-sort metadata sweep added.
 
 ### Phase 4 — Reasoning statistics durability
 
