@@ -60,6 +60,14 @@ export function apply(ctx) {
   const profileDir = ctx.profileContext.dir
   if (!profileDir || !isAbsolute(profileDir)) throw new Error('Direct Chat requires a persistent DSH profile.')
   const roots = new Set([pathKey(join(profileDir, directoryName))])
+  // Windows may supply the Profile under an 8.3 short path (RUNNER~1),
+  // whereas realpathSync.native(cwd) expands it (runneradmin). Protect both
+  // spellings even before the first Workspace prepare call.
+  try {
+    roots.add(pathKey(join(realpathSync.native(profileDir), directoryName)))
+  } catch {
+    // The prepare route separately verifies the canonical Profile directory.
+  }
   const deny = denyTools(roots)
   ctx.on('tools/pre-execute', (exec, next) => {
     const denial = deny(exec)
