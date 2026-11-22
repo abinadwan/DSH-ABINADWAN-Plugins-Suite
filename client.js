@@ -2579,6 +2579,74 @@ window.__ModuleLoader__.load({
           ...lifecycleDurations.map(days => h('option', { key: days, value: days }, `${days} days`))))
     }
 
+    const catalogReady = (workspaces, sessions) => workspaces?.phase === 'ready' &&
+      workspaces.state !== 'error' && sessions?.phase === 'ready' && Array.isArray(sessions.ids)
+
+    // Both surfaces use DSH's authorized catalog, never local retained-only rows.
+    function conversationInventory(workspaces, sessions, scope) {
+      const admitted = new Set(sessions.ids)
+      const owners = new Map()
+      for (const workspace of workspaces.items) {
+        for (const id of workspace.sessionIds) {
+          const existing = owners.get(id)
+          owners.set(id, existing === undefined || existing === workspace ? workspace : null)
+        }
+      }
+      const selected = scope ? new Set(scope.sessionIds) : null
+      const rows = []
+      let unknown = 0
+      for (const [id, owner] of owners) {
+        if (selected && !selected.has(id)) continue
+        if (!owner || !admitted.has(id) || !Object.hasOwn(sessions.byId, id)) { unknown++; continue }
+        const row = sessions.byId[id]
+        if (row.id !== id || row.origin === 'subagent' || row.blank === true) continue
+        const projection = sessions.projectionsBySession?.[id]?.values
+        const lastPrompt = projection?.sessionListMetadata?.lastPromptAt ?? row.projectionValues?.sessionListMetadata?.lastPromptAt
+        rows.push({ id, row, owner, lastPrompt, legacyDirectChat: projection?.agentPreset === 'abinadwan-direct-chat' ||
+          row.agentPreset === 'abinadwan-direct-chat' })
+      }
+      return { rows, unknown }
+    }
+
+    function retentionRows(inventory, workspace, record, at) {
+      const protectedIds = new Set(record?.protectedIds)
+      const protectedWorkspaces = new Set(record?.protectedWorkspaces)
+      const pinned = new Set(workspace?.pinnedSessionIds)
+      const policy = new Map()
+      for (const { workspace: id, retention } of record?.overrides ?? []) {
+        policy.set(id, policy.has(id) ? 'unknown' : retention)
+      }
+      return inventory.map(item => {
+        const { id, row, owner, lastPrompt } = item
+        const days = policy.get(owner.workspaceId) ?? record?.retention
+        const isProtected = protectedIds.has(id)
+        const workspaceProtected = protectedWorkspaces.has(owner.workspaceId)
+        const active = row.running !== false || row.agentAvailable === true ||
+          Object.values(row.retainedBy ?? {}).some(count => count > 0)
+        const hasActivity = Number.isSafeInteger(lastPrompt) && lastPrompt > 0 && lastPrompt <= at
+        const reason = isProtected ? 'Protected conversation' : workspaceProtected ? 'Protected Workspace'
+          : pinned.has(id) ? 'Pinned conversation' : active ? 'Active or open conversation'
+          : row.formatStatus === 'migration-required' ? 'Unverified history format'
+          : days === 'forever' ? 'Retained forever' : !lifecycleDurations.includes(days) ? 'Retention policy unavailable'
+          : !hasActivity ? 'Last prompt date unavailable'
+          : lastPrompt > at - Number(days) * 86400000 ? 'Within retention period' : 'Past retention cutoff'
+        return { ...item, isProtected, workspaceProtected, reason, days, candidate: reason === 'Past retention cutoff' }
+      })
+    }
+
+    function CleanupPreview({ rows, at }) {
+      const candidates = rows.filter(row => row.candidate)
+      return h(React.Fragment, null,
+        h('span', { role: 'status', style: { fontSize: 13 } },
+          `${candidates.length} estimated candidate${candidates.length === 1 ? '' : 's'}`),
+        h('p', { style: lifecycleMuted }, `Evaluated at ${new Date(at).toISOString()}. Retention uses 24-hour days.`),
+        candidates.length ? h('ul', { style: { margin: 0, paddingInlineStart: 20, fontSize: 13 } },
+          ...candidates.slice(0, 50).map(({ id, row, owner, lastPrompt, days }) => h('li', { key: id },
+            h('bdi', null, row.displayTitle || id), ' · ', h('bdi', null, owner.title),
+            ` · ${days} days · last prompt ${new Date(lastPrompt).toISOString()}`))) : null,
+        candidates.length > 50 ? h('p', { style: lifecycleMuted }, 'Showing the first 50 candidates. Select a Workspace to narrow the preview.') : null)
+    }
+
     function WorkspaceLifecycle({ services, useRemoteAccess }) {
       const settings = useSuiteRecord(services.settings, 'conversation-lifecycle', useRemoteAccess, services.connection)
       const workspace = suiteWatch(services.workspaces)
@@ -2587,7 +2655,7 @@ window.__ModuleLoader__.load({
       const [proposal, setChange] = React.useState(null)
       const [previewAt, setPreviewAt] = React.useState(null)
       const record = settings.record
-      const ready = workspace?.phase === 'ready' && sessions?.phase === 'ready'
+      const ready = catalogReady(workspace, sessions)
       const workspaces = ready ? workspace.items : []
       const chosen = workspaces.find(item => item.workspaceId === scope)
       const change = proposal && proposal.source === settings.source &&
@@ -2596,36 +2664,17 @@ window.__ModuleLoader__.load({
         if (proposal && !change) { setChange(null); setPreviewAt(null) }
       }, [proposal, change])
       const override = record?.overrides?.find(item => item.workspace === chosen?.workspaceId)?.retention ?? 'inherit'
-      const memberships = new Map()
-      for (const item of workspaces) for (const id of item.sessionIds ?? []) {
-        if (memberships.has(id)) memberships.set(id, null)
-        else memberships.set(id, item.workspaceId)
-      }
-      const archived = new Set(workspace?.archivedSessionIds ?? [])
-      const protectedIds = new Set(record?.protectedIds ?? [])
-      const rows = []
-      let unknown = 0
-      const selectedIds = chosen ? new Set(chosen.sessionIds ?? []) : null
-      for (const [id, member] of memberships) {
-        if (selectedIds && !selectedIds.has(id)) continue
-        if (member === null) { unknown++; continue }
-        const row = sessions.byId?.[id]
-        if (!row) { unknown++; continue }
-        const projection = sessions.projectionsBySession?.[id]?.values
-        if (projection?.agentPreset === 'abinadwan-direct-chat' || row.agentPreset === 'abinadwan-direct-chat') continue
-        const isActive = row.running !== false || row.agentAvailable === true ||
-          Object.values(row.retainedBy ?? {}).some(count => count > 0)
-        const examined = change?.next ?? record
-        const days = examined?.overrides?.find(item => item.workspace === member)?.retention ?? examined?.retention
-        // The installed Session Controller reports max(createdAt, lastPromptAt).
-        // Count only known prompt-derived dates, never an unstarted Session's creation date.
-        const summaryPrompt = Number.isFinite(row.createdAt) && row.updatedAt > row.createdAt ? row.updatedAt : undefined
-        const lastPrompt = projection?.sessionListMetadata?.lastPromptAt ?? summaryPrompt
-        const isProtected = protectedIds.has(id)
-        const candidate = previewAt !== null && !isActive && !isProtected && lifecycleDurations.includes(days) &&
-          Number.isFinite(lastPrompt) && lastPrompt > 0 && lastPrompt <= previewAt - Number(days) * 86400000
-        rows.push({ id, row, isActive, isProtected, candidate })
-      }
+      const archived = new Set(workspace?.archivedSessionIds)
+      const protectedIds = new Set(record?.protectedIds)
+      const protectedWorkspaces = new Set(record?.protectedWorkspaces)
+      const [page, setPage] = React.useState(1)
+      const [selected, setSelected] = React.useState(null)
+      const inventory = React.useMemo(() => ready ? conversationInventory(workspace, sessions, chosen) : { rows: [], unknown: 0 },
+        [ready, workspace, sessions, chosen])
+      const { unknown } = inventory
+      const rows = retentionRows(inventory.rows.filter(row => !row.legacyDirectChat), workspace,
+        change?.next ?? record, previewAt ?? Date.now())
+      const selectedRow = selected && rows.find(row => row.id === selected)
       const update = next => {
         setChange(null)
         setPreviewAt(null)
@@ -2639,7 +2688,6 @@ window.__ModuleLoader__.load({
         setPreviewAt(Date.now())
       }
 
-      const candidates = rows.filter(row => row.candidate)
       const stats = [
         ['Known conversations', ready ? rows.length : 'Unavailable'],
         ['Archived', ready ? rows.filter(row => archived.has(row.id)).length : 'Unavailable'],
@@ -2653,6 +2701,8 @@ window.__ModuleLoader__.load({
           h('label', { style: lifecycleLabel }, 'Workspace',
             h('select', { style: lifecycleSelect, value: chosen ? scope : '', disabled: !ready, onChange: event => {
               setScope(event.target.value)
+              setPage(1)
+              setSelected(null)
               setChange(null)
               setPreviewAt(null)
             } }, h('option', { value: '' }, 'All Workspaces'),
@@ -2677,26 +2727,39 @@ window.__ModuleLoader__.load({
               'Confirm and save'),
             h(Button, { size: 'sm', onClick: () => { setChange(null); setPreviewAt(null) } }, 'Cancel')) : null),
         h(LifecycleGroup, { title: 'Protected Conversations' },
+          chosen ? h(Checkbox, { label: 'Protect this Workspace', checked: protectedWorkspaces.has(chosen.workspaceId),
+            disabled: !settings.writable, onChange: checked => {
+              if (checked) protectedWorkspaces.add(chosen.workspaceId)
+              else protectedWorkspaces.delete(chosen.workspaceId)
+              update({ ...record, protectedWorkspaces: [...protectedWorkspaces] })
+            } }) : null,
           ready && rows.length ? h('ul', { style: { listStyle: 'none', padding: 0, margin: 0,
             maxBlockSize: 185, overflow: 'auto', overflowWrap: 'anywhere' } },
-          ...rows.map(({ id, row, isProtected }) => h('li', { key: id, style: { ...lifecycleActions, minHeight: 32 } },
+          ...rows.slice(0, page * 50).map(({ id, row, isProtected }) => h('li', { key: id, style: { ...lifecycleActions, minHeight: 32 } },
             h(Checkbox, { label: h(React.Fragment, null, 'Protect ', h('bdi', null, row.displayTitle || id)),
               checked: isProtected, disabled: !settings.writable,
               onChange: checked => update({ ...record, protectedIds: checked ? [...protectedIds, id] : [...protectedIds].filter(value => value !== id) }) }),
-            archived.has(id) ? h('small', { style: lifecycleMuted }, 'Archived') : null))) :
-            h('p', { style: { ...lifecycleMuted, margin: 0 } }, ready ? 'No known conversations in this view.' : 'Workspace inventory is unavailable.')),
+            archived.has(id) ? h('small', { style: lifecycleMuted }, 'Archived') : null,
+            h(Button, { size: 'sm', onClick: () => setSelected(id),
+              'aria-label': 'Preview deletion for ' + (row.displayTitle || id) }, 'Preview deletion')))) :
+            h('p', { style: { ...lifecycleMuted, margin: 0 } }, ready ? 'No known conversations in this view.' : 'Workspace inventory is unavailable.'),
+          rows.length > page * 50 ? h(Button, { size: 'sm', onClick: () => setPage(page + 1) }, 'Show more') : null),
         h(LifecycleGroup, { title: 'Cleanup Management' },
           h('strong', { style: { fontSize: 13 } }, 'Preview only'),
           h('p', { style: { ...lifecycleMuted, margin: 0 } },
-            'Estimates use known last prompt dates. Active, protected, Direct Chat, and unverified conversations are excluded.'),
+            'Deletion is unavailable. Automatic cleanup is disabled.'),
           h('p', { style: { ...lifecycleMuted, margin: 0 } },
-            'Permanent deletion and automatic cleanup are unavailable.'),
+            'Estimates use known last prompt dates. Active, protected, pinned, and unverified conversations are excluded.'),
+          selected ? h('div', { role: 'status', style: lifecycleMuted },
+            selectedRow ? h(React.Fragment, null, h('bdi', null, selectedRow.row.displayTitle || selectedRow.id), ' · ',
+              h('bdi', null, selectedRow.owner.title), ' · ', selectedRow.reason, '. No data will be removed.')
+              : 'Conversation is no longer available in this inventory.',
+            ' ', h(Button, { size: 'sm', onClick: () => setSelected(null) }, 'Close preview')) : null,
           h('div', { style: lifecycleActions },
             h(Button, { size: 'sm', variant: 'outline', disabled: !record || !ready, onClick: () => setPreviewAt(Date.now()) }, 'Preview cleanup'),
-            previewAt !== null ? h('span', { role: 'status', style: { fontSize: 13 } },
-              `${candidates.length} estimated candidate${candidates.length === 1 ? '' : 's'}`) : null),
-          candidates.length ? h('ul', { style: { margin: 0, paddingInlineStart: 20, fontSize: 13 } },
-            ...candidates.map(({ id, row }) => h('li', { key: id }, h('bdi', null, row.displayTitle || id)))) : null))
+            previewAt !== null ? h(Button, { size: 'sm', onClick: () => setPreviewAt(null) }, 'Cancel preview') : null),
+          previewAt !== null && record && ready ? h(CleanupPreview, { rows, at: previewAt }) : null))
+
     }
 
     const reasoningCell = { padding: '4px 8px', textAlign: 'end', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }

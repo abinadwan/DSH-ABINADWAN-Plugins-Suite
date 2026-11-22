@@ -124,9 +124,10 @@ test('retention previews archived Workspace chats, excludes active and Direct ch
   const { div, window } = await mount(t, {
     settings: settings.service, archivedSessionIds: ['cold'], language: 'ar',
     workspaceItems: [{ workspaceId: 'workspace-a', title: 'Fictional Workspace', sessionIds: rows.map(([id]) => id) }],
-    sessions: { phase: 'ready', byId: Object.fromEntries(rows.map(([id, displayTitle, running]) => [id,
+    sessions: { phase: 'ready', ids: rows.map(([id]) => id), byId: Object.fromEntries(rows.map(([id, displayTitle, running]) => [id,
       { id, displayTitle, running, createdAt: old - 1000, updatedAt: old }])),
-    projectionsBySession: { direct: { values: { agentPreset: 'abinadwan-direct-chat' } } } },
+    projectionsBySession: { cold: { values: { sessionListMetadata: { lastPromptAt: old } } },
+      direct: { values: { agentPreset: 'abinadwan-direct-chat' } } } },
   }, 'conversation-lifecycle', 'settings.section')
   assert.equal(div.querySelector('section').lang, 'en')
   assert.equal(div.querySelector('section').dir, 'ltr')
@@ -327,4 +328,35 @@ test('statistics open in a native dialog with honest reasoning-token labels and 
   await act(async () => reset.click())
   assert.deepEqual(fixture.calls.map(call => call.path), ['stats', 'stats/reset'])
   assert.match(view.div.querySelector('[role=dialog]').textContent, /No requests yet/)
+})
+
+test('retention previews enforce all UTC cutoffs and exclude unknown or protected records', async t => {
+  const now = Date.now()
+  const day = 86400000
+  const durations = [365, 180, 90, 30, 7]
+  const scoped = durations.map(days => ({
+    workspaceId: 'w' + days, title: 'Workspace ' + days, sessionIds: ['edge' + days, 'recent' + days],
+  }))
+  scoped.push({ workspaceId: 'protected', title: 'Protected Workspace', sessionIds: ['protected-chat'] })
+  scoped.push({ workspaceId: 'other', title: 'Other', sessionIds: ['unknown', 'ambiguous', 'uncatalogued', 'protected-session'] })
+  scoped.push({ workspaceId: 'second', title: 'Second', sessionIds: ['ambiguous'] })
+  const settings = settingsFixture('conversation-lifecycle', {
+    retention: '7', overrides: durations.map(days => ({ workspace: 'w' + days, retention: String(days) })),
+    protectedIds: ['protected-session'], protectedWorkspaces: ['protected'],
+  })
+  const ids = [...new Set(scoped.flatMap(workspace => workspace.sessionIds))].filter(id => id !== 'uncatalogued')
+  const projectionsBySession = Object.fromEntries([...ids, 'uncatalogued'].filter(id => id !== 'unknown').map(id => {
+    const days = Number(id.match(/\d+$/)?.[0]) || 365
+    return [id, { values: { sessionListMetadata: { lastPromptAt: now - days * day + (id.startsWith('recent') ? 60000 : 0) } } }]
+  }))
+  const { div } = await mount(t, {
+    settings: settings.service, workspaceItems: scoped,
+    sessions: { phase: 'ready', ids, projectionsBySession,
+      byId: Object.fromEntries([...ids, 'uncatalogued'].map(id => [id, { id, displayTitle: id, running: false }])) },
+  }, 'conversation-lifecycle', 'settings.section')
+  await act(async () => [...div.querySelectorAll('button')].find(button => button.textContent === 'Preview cleanup').click())
+  assert.match(div.textContent, /5 estimated candidates/)
+  assert.match(div.textContent, /Automatic cleanup is disabled/)
+  assert.match(div.textContent, /Deletion is unavailable/)
+  assert.equal(settings.writes.length, 0)
 })
