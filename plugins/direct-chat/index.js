@@ -2,7 +2,7 @@
 // Session history isolation does not constitute process or filesystem isolation.
 import { realpathSync } from 'node:fs'
 import { lstat, mkdir, realpath } from 'node:fs/promises'
-import { isAbsolute, join, normalize, sep, toNamespacedPath } from 'node:path'
+import { basename, dirname, isAbsolute, join, normalize, sep, toNamespacedPath } from 'node:path'
 
 export const name = 'abinadwan-direct-chat'
 export const inject = ['profileContext', 'connection', 'tools']
@@ -26,17 +26,24 @@ function isDirectChatCwd(cwd, roots) {
   const underProtectedRoot = value => [...roots].some(root =>
     root !== undefined && (value === root || value.startsWith(root + sep)))
   if (underProtectedRoot(key)) return true
-  // A Workspace cwd may alias the protected directory through an existing
-  // symlink/junction. Textual prefix checks alone would allow tools there.
-  // Resolve on each attempted tool use rather than caching a changeable link.
-  try {
-    const canonical = pathKey(realpathSync.native(cwd))
-    return canonical !== undefined && underProtectedRoot(canonical)
-  } catch {
-    // Preserve existing behavior for unrelated/missing workspaces. The native
-    // executor performs its own filesystem validity and permission checks.
-    return false
+  // A Workspace cwd may alias the protected root through a symlink/junction.
+  // Walk to its closest existing ancestor: the final cwd may be a not-yet-
+  // created child, but tools unrelated to filesystem access must still be denied.
+  const suffix = []
+  let probe = cwd
+  for (let depth = 0; depth < 32; depth++) {
+    try {
+      const canonical = pathKey(join(realpathSync.native(probe), ...suffix))
+      return canonical !== undefined && underProtectedRoot(canonical)
+    } catch (error) {
+      if (error?.code !== 'ENOENT') return false
+      const parent = dirname(probe)
+      if (parent === probe) return false
+      suffix.unshift(basename(probe))
+      probe = parent
+    }
   }
+  return false
 }
 function denyTools(roots) {
   return ({ agent }) => isDirectChatCwd(agent?.session?.header.cwd, roots)
