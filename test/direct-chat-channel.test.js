@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { parse } from 'yaml'
-import { workspaceName } from '../plugins/direct-chat/catalog.js'
+import { workspaceName } from '../plugins/direct-chat/workspace-path.js'
 
 test('Direct Chat remains opt-in with one permanent Workspace and separate native Session histories', () => {
   const [{ insert }] = parse(readFileSync(new URL('../cordis.patch.yml', import.meta.url), 'utf8'))

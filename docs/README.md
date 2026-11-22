@@ -13,11 +13,11 @@
 
 The earlier audit examined **43 existing Markdown files** under `docs/` (before adding this index). All were related to the repository; none warranted permanent deletion. A later organization pass moved **15 superseded research and planning records** to [`archive/`](archive/README.md) without losing their contents or Git history. [`research/`](research/README.md) retains four useful technical reference reports plus original desktop-contract evidence JSON. The archives are **historical**, not instructions for the current implementation.
 
-**Current documentation policy:** the root README focuses on the technology and installation; [DETAIL.md](DETAIL.md) is the single detailed reference for all six component features and limitations. **v1.0.0** has been published from `main`; future `develop` commits are not releases unless separately tagged and published. Historical reports retain their original version and test evidence.
+**Current documentation policy:** the root README focuses on the technology and installation; [DETAIL.md](DETAIL.md) is the single detailed reference for all six component features and limitations. **v1.0.0** has been published from `main`; future feature-branch commits are not releases unless separately approved, merged and tagged. Historical reports retain their original version and test evidence.
 
 ## Current reader-facing documentation
 
-These pages describe the v1.0.0 released source and current UI contracts; unverified Desktop/Host security paths remain explicitly documented.
+These pages describe the current development contracts. Use the v1.0.0 tag for release-specific documentation.
 
 | File | Reason to keep |
 | --- | --- |
@@ -66,6 +66,8 @@ Research items listed here are historical source/Host baselines that may still i
 
 | File | Reason to keep |
 | --- | --- |
+| [research/SECURITY_CODE_AUDIT_2026_11_22.md](research/SECURITY_CODE_AUDIT_2026_11_22.md) | Source-level Direct Chat and My Profile hardening review; known unverified Host boundaries |
+| [research/CHAT_CONTROL_ADAPTIVE_DIRECT_CHAT_V2.md](research/CHAT_CONTROL_ADAPTIVE_DIRECT_CHAT_V2.md) | Consolidated feature matrix, API limitations and Desktop acceptance checklist |
 | [research/ADAPTIVE_REASONING_HANDOVER.md](research/ADAPTIVE_REASONING_HANDOVER.md) | Original adaptive reasoning implementation and limitations |
 | [research/new-plugins-desktop-evidence.json](research/new-plugins-desktop-evidence.json) | Original 2026-11-18 read-only DSH Desktop/SDK contract inventory (data, not current runtime assurance) |
 | [archive/research/DIRECT_CHAT_GLOBAL_CHAT_PHASE1.md](archive/research/DIRECT_CHAT_GLOBAL_CHAT_PHASE1.md) | First native Direct Chat replacement checks |

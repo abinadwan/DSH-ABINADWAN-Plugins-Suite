@@ -1,20 +1,16 @@
-import { lstat, realpath } from 'node:fs/promises'
-import { join, relative } from 'node:path'
+import { realpath } from 'node:fs/promises'
+import { join } from 'node:path'
+import { checkedDirectory, directoryName, workspaceName } from './workspace-path.js'
 
-export const directoryName = 'abinadwan-direct-chat-data'
-export const workspaceName = 'Direct Chat'
 const CREATION_LIMIT = 100
 
 async function existingDirectory(path) {
-  const stat = await lstat(path).catch(error => {
-    if (error.code === 'ENOENT') return undefined
-    throw error
-  })
-  if (!stat) return null
-  if (!stat.isDirectory() || stat.isSymbolicLink()) throw new Error('direct-chat-directory-unavailable')
-  const canonical = await realpath(path)
-  if (relative(path, canonical) !== '') throw new Error('direct-chat-directory-unavailable')
-  return canonical
+  try {
+    return await checkedDirectory(path)
+  } catch (error) {
+    if (error.code !== 'ENOENT') throw error
+    return null
+  }
 }
 
 // Only identity discovery. The native registry still owns membership and the
