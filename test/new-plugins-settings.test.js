@@ -422,3 +422,46 @@ test('Direct Chat history filters authorized metadata, pages it, and keeps nativ
   assert.deepEqual(opened, ['chat-41'])
   assert.equal(dialog(), null)
 })
+
+
+test('Chat Control fails closed when Workspace membership is malformed', async t => {
+  const settings = settingsFixture('conversation-lifecycle',
+    { retention: '7', overrides: [], protectedIds: [], protectedWorkspaces: [] })
+  const { div } = await mount(t, {
+    settings: settings.service,
+    workspaceItems: [{ workspaceId: 'broken', title: 'Malformed test fixture', sessionIds: null }],
+  }, 'conversation-lifecycle', 'settings.section')
+  const preview = [...div.querySelectorAll('button')].find(button => button.textContent === 'Preview cleanup')
+  assert.ok(preview, 'the preview action stays visible')
+  assert.equal(preview.disabled, true, 'never allow preview from unverified catalog membership')
+  assert.match(div.textContent, /Workspace inventory is unavailable/)
+  assert.deepEqual(settings.writes, [])
+})
+
+test('Chat Control refuses stale concurrent policy confirmation and preserves newer protection', async t => {
+  const settings = settingsFixture('conversation-lifecycle',
+    { retention: 'forever', overrides: [], protectedIds: [], protectedWorkspaces: [] })
+  const { div, window, fixture } = await mount(t, { settings: settings.service },
+    'conversation-lifecycle', 'settings.section')
+  const confirmation = () => [...div.querySelectorAll('button')]
+    .find(button => button.textContent === 'Confirm and save')
+  await act(async () => {
+    const retention = div.querySelectorAll('select')[1]
+    retention.value = '7'
+    retention.dispatchEvent(new window.Event('change', { bubbles: true }))
+  })
+  assert.ok(confirmation())
+  const replacement = { record: { retention: 'forever', overrides: [],
+    protectedIds: ['protected-in-another-window'], protectedWorkspaces: [] } }
+  assert.equal((await settings.service.replace('abinadwan-conversation-lifecycle', replacement, 1)).ok, true)
+  await act(async () => { confirmation().click() })
+  assert.match(div.textContent, /Settings changed in another window/)
+  assert.equal(settings.writes.length, 2, 'external write and one rejected stale attempt')
+  assert.equal(settings.writes[1].revision, 1, 'the stale UI did not forge a newer revision')
+  const stored = (await settings.service.describe()).value.namespaces[0]
+  assert.equal(stored.revision, 2)
+  assert.deepEqual(stored.value.record.protectedIds, ['protected-in-another-window'])
+  assert.equal(stored.value.record.retention, 'forever', 'rejected draft did not override current policy')
+  await act(async () => { fixture.ctx.emit('connection/reset') })
+  assert.equal(confirmation(), undefined, 'stale confirmation disappears when the catalog is reloaded')
+})
