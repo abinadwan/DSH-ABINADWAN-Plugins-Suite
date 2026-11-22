@@ -12,7 +12,7 @@
 | Source base | `develop` at `f33b72fa4eca3c26ee4ea21b830de809fd86bd72` (approved Phase 02 PR #40) |
 | Package candidate | `1.0.1-rc.3`, source only; not released |
 | Published stable | `v1.0.0`, unchanged |
-| Pull request | Draft targeting `develop`, pending owner approval |
+| Pull request | [Draft PR #41](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/41) targeting `develop`, pending owner approval |
 | Final integration | Not merged; no final SHA |
 
 ## Scope and real behavior
