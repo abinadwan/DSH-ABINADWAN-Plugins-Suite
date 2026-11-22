@@ -1,0 +1,78 @@
+name: Bug report
+description: Report a reproducible bug in DSH-ABINADWAN-Plugins-Suite.
+title: "[Bug] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for reporting a bug. Search for an existing issue first.
+        **Do not include passwords, API keys, personal profile data, private session transcripts, or unredacted logs.**
+        For security vulnerabilities, follow [SECURITY.md](../../SECURITY.md) instead of filing a public issue.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Affected component
+      options:
+        - Environment & Context
+        - Humanizer
+        - My Profile (Personal Profile)
+        - Direct Chat
+        - Chat Control
+        - Adaptive Reasoning
+        - Multiple components / Other
+    validations:
+      required: true
+  - type: textarea
+    id: summary
+    attributes:
+      label: Bug description
+      description: What went wrong?
+      placeholder: Describe the problem without sensitive information.
+    validations:
+      required: true
+  - type: textarea
+    id: reproduction
+    attributes:
+      label: Steps to reproduce
+      placeholder: |
+        1. Open ...
+        2. Select ...
+        3. Observe ...
+    validations:
+      required: true
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+    validations:
+      required: true
+  - type: input
+    id: suite-version
+    attributes:
+      label: Suite version or commit
+      placeholder: "e.g., v1.0.0 or a commit SHA"
+    validations:
+      required: true
+  - type: input
+    id: dsh-version
+    attributes:
+      label: DeepSeek Harness version
+      placeholder: "e.g., version/build shown in DSH"
+  - type: input
+    id: platform
+    attributes:
+      label: Operating system and environment
+      placeholder: "e.g., Windows 11 Desktop, Node 22"
+  - type: textarea
+    id: diagnostics
+    attributes:
+      label: Redacted logs, screenshots, or other context
+      description: Include only non-sensitive evidence; remove local paths, secrets, identifiers, and profile data.
+    validations:
+      required: false
