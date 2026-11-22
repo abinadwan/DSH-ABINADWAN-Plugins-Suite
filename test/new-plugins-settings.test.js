@@ -519,3 +519,35 @@ test('Adaptive Reasoning composer localizes its accessible menu labels with Arab
   assert.ok(view.item('توصية مستوى الاستدلال…'))
   assert.doesNotMatch(view.div.textContent, /Save current effort/)
 })
+
+
+test('Direct Chat failed preparation offers an explicit retry and never reports a false open', async t => {
+  let attempts = 0
+  const opened = []
+  const { div } = await mount(t, {
+    onOpenSession: id => opened.push(id),
+    onWorkspaceCreate: async input => ({
+      workspaceId: 'synthetic-direct', title: 'Direct Chat', path: input.path,
+    }),
+    onConnectWorkspace: async () => 'synthetic-session',
+    async fetch(url) {
+      assert.equal(url, '/api/abinadwan-direct-chat/prepare')
+      attempts++
+      if (attempts === 1) return Response.json({ code: 'PREPARE_UNAVAILABLE' }, { status: 503 })
+      return Response.json({ path: '/fictional-profile/abinadwan-direct-chat-data/Direct Chat' })
+    },
+    console: { warn() {} },
+  }, 'direct-chat', 'sidebar.session.action')
+  const first = div.querySelector('button[aria-label="Direct Chat"]')
+  assert.ok(first)
+  await act(async () => first.click())
+  assert.deepEqual(opened, [], 'failed preparation cannot open a chat')
+  assert.ok(div.querySelector('[role=alert]'), 'failure must be announced')
+  const retry = div.querySelector('button[aria-label="Retry Direct Chat"]')
+  assert.ok(retry, 'the retry control must be explicit and keyboard accessible')
+  await act(async () => retry.click())
+  assert.equal(attempts, 2)
+  assert.deepEqual(opened, ['synthetic-session'])
+  assert.equal(div.querySelector('[role=alert]'), null, 'successful retry removes stale error')
+  assert.ok(div.querySelector('button[aria-label="Direct Chat"]'))
+})
