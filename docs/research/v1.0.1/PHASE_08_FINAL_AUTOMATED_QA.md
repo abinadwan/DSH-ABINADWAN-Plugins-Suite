@@ -27,3 +27,10 @@ The owner explicitly deferred all native DSH Desktop tests to **one final combin
 
 ## Merge condition
 After four-OS/Node CI jobs and package tests pass, merge this stage PR into develop with owner-directed approval, delete its temporary source branch, and preserve only main and develop. Final Desktop acceptance and a separate, explicit release decision still follow.
+
+## Post-merge automated close-out (2026-11-22)
+
+- Phase 08 PR: [#47](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/47), merged into develop at `cb2cee63418beb987daff24f5573fba7e1754f4c`.
+- Exact candidate PR-head `df070a00818d855b87d60c521d5340e97364504f` passed [push CI 45058958217](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45058958217) and [PR CI 45059003648](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45059003648) on Ubuntu and Windows, Node.js 22 and 24. Each job executed the explicit `npm run check:regression` gate after regular source/package checks and pinned offline Host fixtures.
+- **Scope of approval:** eight implementation/automated-test stages only. Actual Desktop tests in the consolidated checklist remain unexecuted and block promotion to main and any public v1.0.1 release.
+- After merged Phase 08 branch deletion, the long-lived branches are develop and main. Neither a stable v1.0.1 tag nor a deployment was created.
