@@ -24,7 +24,10 @@ function isDirectChatCwd(cwd, roots) {
   // created child, but tools unrelated to filesystem access must still be denied.
   const suffix = []
   let probe = cwd
-  for (let depth = 0; depth < 32; depth++) {
+  // Walk to the filesystem root instead of stopping after an arbitrary depth.
+  // An aliased Workspace with a deep not-yet-created suffix must never bypass
+  // the tool guard merely because the missing path has many components.
+  for (;;) {
     try {
       const canonical = pathKey(join(realpathSync.native(probe), ...suffix))
       return canonical !== undefined && underProtectedRoot(canonical)
