@@ -34,6 +34,16 @@ test('development source metadata, lockfile, client version and documentation ag
   assert.match(read('docs/DETAIL.md'), /GitHub Release/i)
 })
 
+test('installation instructions and package identity reflect the six-component main-only workflow', () => {
+  const readme = read('README.md')
+  assert.doesNotMatch(readme, /git checkout develop|development on `develop`/i)
+  assert.match(readme, /git switch -c feature\/your-change/)
+  for (const name of ['Environment & Context', 'Humanizer', 'My Profile',
+    'Direct Chat', 'Chat Control', 'Adaptive Reasoning']) {
+    assert.ok(packageJson.description.includes(name), 'package description missing ' + name)
+  }
+})
+
 test('README and DETAIL render locally bundled icons for all six components', () => {
   const readme = read('README.md')
   const detail = read('docs/DETAIL.md')
