@@ -3119,7 +3119,7 @@ window.__ModuleLoader__.load({
       const [status, setStatus] = React.useState('idle')
       if (!permitted) return null
       const busy = status === 'pending'
-      const label = 'Direct Chat'
+      const label = status === 'failed' ? 'Retry Direct Chat' : 'Direct Chat'
       async function open() {
         if (inflight.current) return
         inflight.current = true
@@ -3144,7 +3144,7 @@ window.__ModuleLoader__.load({
           suiteGlyph('direct-chat', 16),
           wide ? h('span', null, label) : null),
         status === 'failed' ? h('div', { role: 'alert', style: { fontSize: 12, padding: 8 } },
-          'Unable to open Direct Chat. Check the Workspace list before retrying.') : null)
+          'Unable to finish opening Direct Chat. Check your connection and retry.') : null)
     }
     const directChatCopy = {
       en: {
