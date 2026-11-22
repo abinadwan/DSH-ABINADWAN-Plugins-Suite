@@ -91,6 +91,7 @@ npm run check:package
 - [Component functionality, constraints and troubleshooting](docs/DETAIL.md)
 - [Documentation index and historical archive](docs/README.md)
 - [Release history](CHANGELOG.md) · [Security policy](SECURITY.md) · [Third-party notices](THIRD_PARTY_NOTICES.md)
+- [Accessibility commitment and reporting barriers](ACCESSIBILITY.md)
 - [Artwork provenance](docs/BRANDING.md) · [License](LICENSE)
 
 The suite is an independent community project distributed under the **MIT License**; it is not an official DeepSeek product. DSH and third-party names belong to their respective owners.
