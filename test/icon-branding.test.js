@@ -4,32 +4,33 @@ import { readFileSync } from 'node:fs'
 import { createHash } from 'node:crypto'
 import { PNG } from 'pngjs'
 
-const iconPaths = [
-  'plugins/environment-context/icon.png',
-  'plugins/humanizer/icon.png',
-  'plugins/personal-profile/icon.png',
-  'plugins/direct-chat/assets/png/icon-256.png',
-  'plugins/conversation-lifecycle/assets/png/icon-256.png',
-  'plugins/adaptive-reasoning/assets/png/icon-256.png',
+const pluginIds = [
+  'environment-context', 'humanizer', 'personal-profile',
+  'direct-chat', 'conversation-lifecycle', 'adaptive-reasoning',
 ]
+const sizes = [32, 64, 128, 256, 512]
+const read = path => readFileSync(new URL('../' + path, import.meta.url))
+const { exports: packageExports } = JSON.parse(read('package.json'))
 
-test('all six component badges have valid, distinct transparent 256-pixel PNG artwork', () => {
+test('all six components ship distinct, transparent badges at the five supported sizes', () => {
   const digests = new Set()
-  for (const path of iconPaths) {
-    const bytes = readFileSync(new URL('../' + path, import.meta.url))
-    assert.ok(bytes.length < 256 * 1024, path + ' exceeds DSH icon size budget')
-    assert.equal(bytes.toString('hex', 0, 8), '89504e470d0a1a0a', path + ' is not PNG')
-    const decoded = PNG.sync.read(bytes)
-    assert.equal(decoded.width, 256, path + ' width')
-    assert.equal(decoded.height, 256, path + ' height')
-    assert.equal(decoded.data[3], 0, path + ' top-left corner must be transparent')
-    assert.ok(decoded.data[((128 * 256 + 128) * 4) + 3] >= 250, path + ' center must be visually opaque')
-    let hasOpaque = false
-    for (let i = 3; i < decoded.data.length; i += 4) {
-      if (decoded.data[i] === 255) { hasOpaque = true; break }
+  for (const id of pluginIds) {
+    for (const size of sizes) {
+      const path = 'plugins/' + id + '/assets/png/icon-' + size + '.png'
+      const bytes = read(path)
+      const { data, width, height } = PNG.sync.read(bytes)
+      assert.equal(width, size, path + ' width')
+      assert.equal(height, size, path + ' height')
+      for (const pixel of [0, size - 1, size * (size - 1), size * size - 1]) {
+        assert.equal(data[pixel * 4 + 3], 0, path + ' corners must be transparent')
+      }
+      assert.equal(data[((size / 2 * size + size / 2) * 4) + 3], 255, path + ' center must be opaque')
+      if (size === 256) {
+        assert.ok(bytes.length < 256 * 1024, path + ' exceeds DSH icon size budget')
+        assert.deepEqual(read(packageExports['./' + id + '/icon']), bytes, id + ' export differs from 256 px badge')
+        digests.add(createHash('sha256').update(bytes).digest('hex'))
+      }
     }
-    assert.ok(hasOpaque, path + ' must retain fully opaque foreground pixels')
-    digests.add(createHash('sha256').update(bytes).digest('hex'))
   }
-  assert.equal(digests.size, iconPaths.length, 'every component must have distinct artwork')
+  assert.equal(digests.size, pluginIds.length, 'every component must have distinct artwork')
 })

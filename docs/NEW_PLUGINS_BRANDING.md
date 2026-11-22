@@ -1,25 +1,29 @@
 # New plugin artwork
 
-The three original vector icons share a 24×24 grid, rounded badge geometry, 2-unit foreground strokes, rounded joins and a light foreground. The vector masters are the editable sources. Each `glyph` group supplies the geometry for the future single-color native UI treatment.
+Direct Chat, Conversation Lifecycle, and Adaptive Reasoning use the same badge geometry, gloss, and 24 × 24 glyph grid as the other three components. See the [suite artwork index](BRANDING.md) for all six identities and shipped paths.
 
-| Plugin | Symbol | Palette | SVG master |
-|---|---|---|---|
-| Direct Chat | Conversation bubble with two reply lines | `#2563EB`, `#173A8A`, `#93C5FD` | [Direct Chat](../plugins/direct-chat/assets/icon.svg) |
-| Chat Control (formerly Conversation Lifecycle) | Offset conversation cards and a clock arc | `#15856F`, `#0D5147`, `#8EE0C5` | [Conversation Lifecycle](../plugins/conversation-lifecycle/assets/icon.svg) |
-| Adaptive Reasoning | Rising effort bars and a selection node | `#C43D70`, `#772342`, `#F4A6C4` | [Adaptive Reasoning](../plugins/adaptive-reasoning/assets/icon.svg) |
+| Plugin | Symbol | Badge SVG | Native glyph SVG |
+| --- | --- | --- | --- |
+| Direct Chat | Speech bubble with two reply lines | [Badge](../plugins/direct-chat/assets/icon.svg) | [Glyph](../plugins/direct-chat/assets/glyph.svg) |
+| Conversation Lifecycle (Chat Control) | Speech bubble and clock | [Badge](../plugins/conversation-lifecycle/assets/icon.svg) | [Glyph](../plugins/conversation-lifecycle/assets/glyph.svg) |
+| Adaptive Reasoning | Rising bars and trend line | [Badge](../plugins/adaptive-reasoning/assets/icon.svg) | [Glyph](../plugins/adaptive-reasoning/assets/glyph.svg) |
 
-Each `assets/png/` folder contains transparent RGBA variants at 32, 64, 128, 256 and 512 pixels. The 256-pixel versions are 6,573, 8,012 and 7,799 bytes respectively. The 256-pixel PNGs are already used by the component `/icon` exports and the README/DETAIL component tables. The 512-pixel versions are available for documentation and Plugin Hub artwork. Suite Settings, sidebar and toolbar registrations are implemented in the development baseline; the Direct Chat/Projects visual grouping remains a separate future feature.
+![Light theme with 128, 64, and 32 px badges and 16, 20, and 24 px native glyphs](assets/new-plugins/contact-sheet-light.png)
 
-![Light theme with real 32, 64 and 128 pixel badges and 16, 20 and 24 pixel glyphs](assets/new-plugins/contact-sheet-light.png)
+![Dark theme with 128, 64, and 32 px badges and 16, 20, and 24 px native glyphs](assets/new-plugins/contact-sheet-dark.png)
 
-![Dark theme with real 32, 64 and 128 pixel badges and 16, 20 and 24 pixel glyphs](assets/new-plugins/contact-sheet-dark.png)
+The sheets use simulated theme surfaces. Native controls use `currentColor` so the host can apply its text color, and the controls provide their own accessible labels.
 
-The sheets use simulated theme surfaces. After registration, check native disabled, selected, forced-color and RTL views on Desktop. The glyphs are nondirectional. Surrounding labels and layout follow the application locale. Use `currentColor` for native glyphs and accessible labels for icon-only controls.
+## Regenerate or verify artwork
 
-The artwork is original to this suite under its MIT license. The renderer uses Sharp 0.35.5 and librsvg 2.63.2 from the pinned local Windows Desktop runtime extraction. Contact sheet labels also depend on Windows Segoe UI. See the [Phase C reproduction steps](archive/research/NEW_PLUGINS_PHASE_C.md#reproduce-the-isolated-checks).
+Edit the plugin glyph paths, palettes, and shared badge geometry in [the renderer](../scripts/render-plugin-icons.mjs). It writes all six SVG badge and glyph pairs, 30 PNG variants, the three compatible root PNGs, both contact sheets, and the native glyph geometry in `client.js`.
 
-## Current 256-pixel component badges (feature branch, November 2026)
+Use Windows with Segoe UI for byte-for-byte reproduction of the contact sheets. The renderer uses Sharp 0.35.5 and librsvg 2.63.2. Run these PowerShell commands from the repository root with the matching DeepSeek Harness Desktop runtime installed.
 
-The component `/icon` exports for Direct Chat, Chat Control and Adaptive Reasoning now use refreshed neon-style primary PNG badges, consistent with the three earlier components. The historical 24 × 24 monochrome SVG glyphs and 32/64/128/512 PNG variants above are retained for compatibility and documentation; they **do not yet reproduce** the new 256-pixel artwork.
+```powershell
+$fixture = node qa/extract-new-plugins-runtime.mjs 'C:\Users\Admin\AppData\Local\Programs\DeepSeek Harness\resources\app.asar' | ConvertFrom-Json
+node scripts/render-plugin-icons.mjs $fixture.scratch
+node scripts/render-plugin-icons.mjs $fixture.scratch --check
+```
 
-Do not run the historical renderer and commit regenerated `icon-256.png` files without a brand review: doing so would replace the updated artwork with legacy vector-derived badges.
+The final command verifies that the generated files and native glyphs match the renderer. The renderer and its dependencies are used during development.

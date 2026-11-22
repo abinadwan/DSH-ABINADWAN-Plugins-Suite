@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" role="img" aria-labelledby="title">
+  <title id="title">Direct Chat</title>
+  <g id="glyph" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7.5 6.5h9a2 2 0 0 1 2 2v4.75a2 2 0 0 1-2 2h-6.2L5.5 18V8.5a2 2 0 0 1 2-2Z"/>
+    <path d="M8.8 9.65h6.4m-6.4 2.6h4.2"/>
+  </g>
+</svg>
