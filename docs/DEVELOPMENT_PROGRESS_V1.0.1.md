@@ -1,6 +1,6 @@
 # v1.0.1 development progress — single source of truth
 
-> **State: Phases 01–07 approved on `develop`; Phase 08 final automated candidate `1.0.1-rc.8` under review. Desktop acceptance and publication are separate.** Last baseline review: 2026-11-22. Phase reports originate on temporary branches; merge to `develop` and delete the branch only after explicit owner approval. The published `v1.0.0` tag and `main` remain unchanged by these phases. No release is authorized by this work.
+> **State: Phases 01–08 approved on `develop` for source and automated CI only. Current source candidate `1.0.1-rc.8` is **unreleased**. Native DSH Desktop acceptance and production publication are separate, pending gates.** Last baseline review: 2026-11-22. Phase reports originate on temporary branches; merge to `develop` and delete the branch only after explicit owner approval. The published `v1.0.0` tag and `main` remain unchanged by these phases. No release is authorized by this work.
 
 ## Why this register exists
 
@@ -47,7 +47,7 @@ At each approved phase, update all version-dependent source/metadata **consisten
 | 5 | Arabic complexity classification | **Approved on develop** | [PR #44](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/44) · [four-platform CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45057565826) · [Phase 05 report](research/v1.0.1/PHASE_05_ARABIC_CLASSIFIER.md) | Real provider/Arabic acceptance deferred |
 | 6 | Arabic UI and RTL | **Approved on develop** | [PR #45](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/45) · [four-platform CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45058112897) · [Phase 06 report](research/v1.0.1/PHASE_06_ARABIC_UI_RTL.md) | Real Desktop visuals and keyboard/screen-reader acceptance deferred |
 | 7 | UX failures/loading/retry states | **Approved on develop** | [PR #46](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/46) · [four-platform CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45058558692) · [Phase 07 report](research/v1.0.1/PHASE_07_UX_RELIABILITY.md) | Real Desktop reconnect and screen-reader acceptance deferred |
-| 8 | Cross-platform CI regression coverage | **In progress** | [Phase 08 report](research/v1.0.1/PHASE_08_FINAL_AUTOMATED_QA.md) · [consolidated Desktop acceptance checklist](DSH_DESKTOP_FINAL_ACCEPTANCE_V1.0.1.md) | Final head CI, owner review and one combined real Desktop round before any release |
+| 8 | Cross-platform CI regression coverage | **Approved on develop** | [PR #47](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/47) · [final four-platform CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45059003648) · [Phase 08 report](research/v1.0.1/PHASE_08_FINAL_AUTOMATED_QA.md) | One combined real DSH Desktop acceptance round before any release |
 
 Status vocabulary: `Not started`, `In progress`, `Implemented — needs review`, `Approved on develop`, `Blocked`. A successful CI run is evidence, not proof of real Desktop behavior.
 
@@ -99,7 +99,7 @@ Status vocabulary: `Not started`, `In progress`, `Implemented — needs review`,
 
 **One problem:** the above behaviors must remain protected against regressions on each new commit. Group and run security, performance and component tests, package/source compatibility and pinned offline Host integration. Do not claim Windows Desktop acceptance from GitHub Actions.
 
-**Candidate implementation:** new six-component source/package regression inventory, explicit CI `check:regression` gate, deterministic classifier benchmark and existing full cross-platform CI with pinned offline Host fixtures. [Phase 08 report](research/v1.0.1/PHASE_08_FINAL_AUTOMATED_QA.md) maps coverage; [one final Desktop acceptance checklist](DSH_DESKTOP_FINAL_ACCEPTANCE_V1.0.1.md) captures all deferred checks. **Pending:** final green matrix and owner approval to merge; actual Desktop acceptance and production release remain blocked. No tag, `main` update or automatic cleanup.
+**Approved on `develop` for automated QA:** explicit six-component source/package regression mapping and `check:regression` CI command; deterministic classifier benchmark, existing Windows/Ubuntu Node.js 22/24 matrix and pinned synthetic DSH Host fixtures. [PR #47](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/47) merged at `cb2cee63418beb987daff24f5573fba7e1754f4c`, with [final CI success](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45059003648). [Phase 08 report](research/v1.0.1/PHASE_08_FINAL_AUTOMATED_QA.md) maps evidence; [one final Desktop acceptance checklist](DSH_DESKTOP_FINAL_ACCEPTANCE_V1.0.1.md) tracks all native checks as **NOT TESTED**. **Release remains blocked** until actual Desktop acceptance and separate owner authorization; no tag or `main` update.
 
 ## How to update this document **after each phase**
 
