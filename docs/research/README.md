@@ -1,9 +1,10 @@
 # Technical research — reference material
 
-This directory contains **four Markdown reports and one JSON evidence inventory** retained after the v1.0.0 documentation audit. These are engineering source/contract investigations, **not** a substitute for the [current component reference](../DETAIL.md).
+This directory contains **five Markdown reports and one JSON evidence inventory** (four historical technical references plus one new source-level security review). These are engineering source/contract investigations, **not** a substitute for the [current component reference](../DETAIL.md).
 
 | File | What remains useful | Boundary |
 | --- | --- | --- |
+| [SECURITY_CODE_AUDIT_2026_11_22.md](SECURITY_CODE_AUDIT_2026_11_22.md) | Reproduced Direct Chat path-alias and My Profile disclosure-replay/format-control cases with regression tests | Candidate patch only; not a Desktop security certification or published release. |
 | [ADAPTIVE_REASONING_HANDOVER.md](ADAPTIVE_REASONING_HANDOVER.md) | Benchmarks, reasoning-adapter contract observations, local test setup | Describes an original experimental branch, including adaptive and one-message modes not enabled in today's bundle. Statements like “production-ready” refer only to that branch's local tests; real Windows UI acceptance was blocked. |
 | [DIRECT_CHAT_PHASE2_DESKTOP_ACCEPTANCE.md](DIRECT_CHAT_PHASE2_DESKTOP_ACCEPTANCE.md) | Owner-reported Windows Desktop acceptance of one Workspace, independent Sessions and practical tool denial | Deep Host request-trace, cross-session tool/search isolation and filesystem security were explicitly **deferred**, never passed. |
 | [NEW_PLUGINS_PHASE_A.md](NEW_PLUGINS_PHASE_A.md) | DSH SDK/provider constraints, Windows/Desktop inventory and pinned upstream reference comparisons | An initial pre-integration feasibility snapshot from 2026-11-18; several originally blocked features were implemented differently in later branches. |

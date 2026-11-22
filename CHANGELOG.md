@@ -2,6 +2,15 @@
 
 All notable changes are documented here.
 
+## [Unreleased] — Security hardening candidate (PR #33)
+
+- Harden Direct Chat tool-denial against symlink/junction aliases into protected Workspaces, including aliases with a child folder that does not yet exist.
+- Restrict newly created Direct Chat directories to owner-only permissions on POSIX; do not silently change permissions on existing folders or claim verified Windows ACL isolation.
+- Prevent exception text and absolute Profile paths from leaking into Direct Chat Host error logs; mark successful and failed prepare API responses `Cache-Control: no-store`.
+- Strengthen My Profile replay detection for CR, CRLF and Unicode newline separators; strip additional invisible formatting controls from explicitly shared field values.
+- Add cross-platform security regressions and source-audit report; update main-only development instructions and all-six-component package metadata.
+- **Not in published v1.0.0:** this candidate requires owner review, merge and a separately authorized release. Desktop Host security and request-tracing checks remain open.
+
 ## [1.0.0] — Released (2026-11-22)
 
 - Promoted the six-component suite through [PR #31](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/31) into `main` and published [GitHub Release v1.0.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.0). Package, lockfile and client-displayed version are **1.0.0**. Publication does **not** automatically update installed Desktop copies.
