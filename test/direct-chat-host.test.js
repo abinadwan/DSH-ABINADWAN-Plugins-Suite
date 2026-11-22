@@ -5,19 +5,25 @@ import { tmpdir } from 'node:os'
 import test from 'node:test'
 import * as plugin from '../plugins/direct-chat/index.js'
 
-function fixture(profile) {
-  let handler, guard, preExecute
+function fixture(profile, catalogServices) {
+  let guard, preExecute
+  const routes = new Map()
   const warnings = []
   const ctx = {
     profileContext: { dir: profile },
     on(name, fn) { if (name === 'tools/pre-execute') preExecute = fn },
+    inject(_services, mount) { if (catalogServices) mount({ ...this, ...catalogServices }) },
     effect(fn) { fn() },
     tools: { guard(fn) { guard = fn; return () => {} } },
-    connection: { fetch: { register(value) { handler = value; return () => {} } } },
+    connection: { fetch: { register(value) {
+      assert.ok(!routes.has(value.path), 'one registration per route')
+      routes.set(value.path, value)
+      return () => routes.delete(value.path)
+    } } },
     logger: { warn(...args) { warnings.push(args) } },
   }
   plugin.apply(ctx)
-  return { handler, guard: () => guard, preExecute: () => preExecute, warnings }
+  return { handler: routes.get('/api/abinadwan-direct-chat/prepare'), routes, guard: () => guard, preExecute: () => preExecute, warnings }
 }
 const request = (body = '{}') => new Request('http://localhost/api/abinadwan-direct-chat/prepare', {
   method: 'POST', headers: { 'content-type': 'application/json' }, body,
@@ -184,4 +190,42 @@ test('malformed prepare requests return no cached location information', async t
     assert.equal(response.headers.get('cache-control'), 'no-store')
     assert.equal(JSON.stringify(await response.json()).includes(profile), false)
   }
+})
+
+test('one Host activation discovers the prepared native Workspace and still denies its tools', async t => {
+  const profile = await mkdtemp(join(tmpdir(), 'suite-direct-chat-combined-'))
+  t.after(() => rm(profile, { recursive: true, force: true }))
+  const workspaces = []
+  const reads = []
+  const fx = fixture(profile, {
+    workspaceRegistry: { list: () => workspaces },
+    sessionPersistence: { async stat(id) {
+      reads.push(id)
+      return { header: { id, createdAt: 1000 } }
+    } },
+  })
+  const path = '/api/abinadwan-direct-chat/catalog'
+  const catalog = fx.routes.get(path)
+  assert.ok(catalog, 'the Direct Chat Host must mount the catalog alongside prepare')
+  assert.deepEqual(catalog.methods, ['GET'])
+  const lookup = (query = '') => catalog.fetch(new Request('http://localhost' + path + query))
+
+  assert.deepEqual(await (await lookup()).json(), { workspaceId: null })
+  await assert.rejects(lstat(join(profile, 'abinadwan-direct-chat-data')), { code: 'ENOENT' })
+  const prepared = await fx.handler.fetch(request())
+  assert.equal(prepared.headers.get('cache-control'), 'no-store')
+  const { path: cwd } = await prepared.json()
+  workspaces.push(
+    { id: 'native-direct-chat', path: cwd, sessionIds: ['historic-session'] },
+    { id: 'native-project', path: join(profile, 'Projects'), sessionIds: ['project-session'] },
+  )
+
+  const response = await lookup('?order=creation')
+  assert.equal(response.headers.get('cache-control'), 'no-store')
+  assert.deepEqual(await response.json(), { workspaceId: 'native-direct-chat', createdAt: { 'historic-session': 1000 } })
+  assert.deepEqual(reads, ['historic-session'])
+  const execution = { agent: { session: { header: { cwd } } } }
+  assert.equal(fx.guard()(execution)?.info.code, 'DIRECT_CHAT_TOOL_DENIED')
+  assert.equal((await fx.preExecute()(execution, () => assert.fail('tool execution was admitted'))).kind, 'deny')
+  assert.equal(fx.guard()({ agent: { session: { header: { cwd: workspaces[1].path } } } }), undefined)
 })

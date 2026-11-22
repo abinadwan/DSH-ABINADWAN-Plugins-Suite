@@ -2,14 +2,17 @@
 
 All notable changes are documented here.
 
-## [Unreleased] — Security hardening candidate (PR #33)
+## [Unreleased] — Consolidated development
 
 - Harden Direct Chat tool-denial against symlink/junction aliases into protected Workspaces, including aliases with a child folder that does not yet exist.
 - Restrict newly created Direct Chat directories to owner-only permissions on POSIX; do not silently change permissions on existing folders or claim verified Windows ACL isolation.
 - Prevent exception text and absolute Profile paths from leaking into Direct Chat Host error logs; mark successful and failed prepare API responses `Cache-Control: no-store`.
 - Strengthen My Profile replay detection for CR, CRLF and Unicode newline separators; strip additional invisible formatting controls from explicitly shared field values.
-- Add cross-platform security regressions and source-audit report; update main-only development instructions and all-six-component package metadata.
-- **Not in published v1.0.0:** this candidate requires owner review, merge and a separately authorized release. Desktop Host security and request-tracing checks remain open.
+- Add Direct Chat history alongside New Session with authorized metadata search, last-activity sorting, bounded creation-time sorting, paging, and native reopen and rename. Keep the native Workspace tree.
+- Add Chat Control Workspace protection and individual retention eligibility with UTC previews. Direct Chat uses the same retention settings and preview.
+- Add opt-in, explainable Adaptive Reasoning recommendations that preserve explicit Session effort, and versioned Profile-local aggregate statistics with reset.
+- Reconcile [#33](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/33) and [#34](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/34) in the Direct Chat Host entry point. Prepare and read-only catalog discovery use the same canonical directory checks and retain separate routes. Combined Host tests cover ownership, route disposal, Session identity and tool denial.
+- Destructive cleanup, request-only or subagent effort policies, and process/filesystem confinement remain unavailable. See the [handover](HANDOVER.md) for Desktop acceptance and release gates.
 
 ## [1.0.0] — Released (2026-11-22)
 

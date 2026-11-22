@@ -76,15 +76,15 @@ A local development environment requires **Node.js 22 or 24** and npm:
 ```sh
 git clone https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite.git
 cd DSH-ABINADWAN-Plugins-Suite
-git switch -c feature/your-change
+git switch -c feature/your-change origin/develop
 npm ci --ignore-scripts
 npm test
 npm run check:package
 ```
 
-`npm test` covers component/runtime contracts, UI fixtures, documentation references and the configured safety cases. `npm run check:package` creates and checks the packaged plugin against its source expectations. CI exercises these checks on both Windows and Linux.
+`npm test` covers component/runtime contracts, UI fixtures, documentation references and the configured safety cases. `npm run check:package` creates and checks the packaged plugin against its source expectations. CI runs these checks and pinned offline Harness integration fixtures on Windows and Ubuntu with Node.js 22 and 24. Desktop acceptance requires separate tests.
 
-Changes on a feature branch do not publish a GitHub Release or change an existing Desktop installation. Open a pull request against `main` and merge only after review and passing CI; release publication is a separate, explicitly approved action. Read [CHANGELOG.md](CHANGELOG.md) for changes and [docs/README.md](docs/README.md) to distinguish active documentation from historical research and plans.
+`develop` is the integration branch. It includes Direct Chat tool-denial and My Profile disclosure hardening, authorized Direct Chat history, preview-only retention in Chat Control, and opt-in Adaptive Reasoning recommendations with Profile-local aggregate statistics. Use `develop` as the base for feature PRs. The consolidated changes go to `main` through owner review, and release publication requires separate approval. See the [component details](docs/DETAIL.md), [changelog](CHANGELOG.md) and [development handover](HANDOVER.md).
 
 ## Documentation and project policy
 

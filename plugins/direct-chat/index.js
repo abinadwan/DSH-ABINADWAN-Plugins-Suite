@@ -1,25 +1,18 @@
 // One permanent DSH Workspace; every non-blank chat is a distinct native Session.
 // Session history isolation does not constitute process or filesystem isolation.
 import { realpathSync } from 'node:fs'
-import { lstat, mkdir, realpath } from 'node:fs/promises'
-import { basename, dirname, isAbsolute, join, normalize, sep, toNamespacedPath } from 'node:path'
+import { mkdir, realpath } from 'node:fs/promises'
+import { basename, dirname, isAbsolute, join, sep } from 'node:path'
+import { registerCatalog } from './catalog.js'
+import { checkedDirectory, directoryName, pathKey, workspaceName } from './workspace-path.js'
 
 export const name = 'abinadwan-direct-chat'
 export const inject = ['profileContext', 'connection', 'tools']
 
 const route = '/api/abinadwan-direct-chat/prepare'
-const directoryName = 'abinadwan-direct-chat-data'
-const workspaceName = 'Direct Chat'
 const noStore = { 'cache-control': 'no-store' }
 const responseError = (code, status) => Response.json({ code }, { status, headers: noStore })
 
-function pathKey(path) {
-  if (typeof path !== 'string' || !isAbsolute(path)) return undefined
-  const normalized = normalize(path)
-  // Windows realpath can return extended-length paths (\\\\?\\...) while
-  // DSH supplies ordinary drive/UNC paths. Compare in one namespaced form.
-  return process.platform === 'win32' ? normalize(toNamespacedPath(normalized)).toLowerCase() : normalized
-}
 function isDirectChatCwd(cwd, roots) {
   const key = pathKey(cwd)
   if (key === undefined) return false
@@ -50,21 +43,17 @@ function denyTools(roots) {
     ? { reason: 'Direct chats do not run tools.', info: { name: 'DirectChatPolicy', code: 'DIRECT_CHAT_TOOL_DENIED' } }
     : undefined
 }
-async function checkedDirectory(path) {
+async function ensureDirectory(path) {
   // Restrict newly created directories on POSIX; existing directories are not chmod'ed.
   await mkdir(path, { recursive: true, mode: 0o700 })
-  const [stat, canonical] = await Promise.all([lstat(path), realpath(path)])
-  if (!stat.isDirectory() || stat.isSymbolicLink() || pathKey(canonical) !== pathKey(path)) {
-    throw new Error('The Direct Chat directory is not a dedicated profile-owned directory.')
-  }
-  return canonical
+  return checkedDirectory(path)
 }
 async function prepareWorkspace(profileDir, roots) {
   const profile = await realpath(profileDir)
-  const dataRoot = await checkedDirectory(join(profile, directoryName))
+  const dataRoot = await ensureDirectory(join(profile, directoryName))
   // Guard both existing legacy session-* paths and the new permanent Workspace.
   roots.add(pathKey(dataRoot))
-  return checkedDirectory(join(dataRoot, workspaceName))
+  return ensureDirectory(join(dataRoot, workspaceName))
 }
 export function apply(ctx) {
   const profileDir = ctx.profileContext.dir
@@ -104,4 +93,5 @@ export function apply(ctx) {
       }
     },
   }), 'direct-chat: prepare one permanent native Workspace')
+  registerCatalog(ctx, profileDir)
 }

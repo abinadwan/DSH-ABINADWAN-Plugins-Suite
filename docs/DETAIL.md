@@ -13,7 +13,7 @@
 | <img src="../plugins/personal-profile/icon.png" width="28" alt="My Profile icon"/> **My Profile** | Off | **Settings → My Profile** | Saved profile/preferences and per-field sharing choices |
 | <img src="../plugins/direct-chat/assets/png/icon-256.png" width="28" alt="Direct Chat icon"/> **Direct Chat** | Off | Below native **New Session** | One shared Workspace, independent native chat Sessions |
 | <img src="../plugins/conversation-lifecycle/assets/png/icon-256.png" width="28" alt="Chat Control icon"/> **Chat Control** | Off | **Settings → Chat Control** | Inventory, protection flags, retention configuration and preview |
-| <img src="../plugins/adaptive-reasoning/assets/png/icon-256.png" width="28" alt="Adaptive Reasoning icon"/> **Adaptive Reasoning** | Off | Native composer / model effort settings | Manual eligible Session effort and process-local statistics |
+| <img src="../plugins/adaptive-reasoning/assets/png/icon-256.png" width="28" alt="Adaptive Reasoning icon"/> **Adaptive Reasoning** | Off | Native composer / model effort settings | Manual Session effort, opt-in recommendations and Profile aggregates |
 
 Enabled components preserve their existing internal IDs and saved settings namespaces. Turning a component off removes its active UI/behavior; **disabling is not a data-delete operation**. The icons above are bundled files, not remote services. See [artwork provenance](BRANDING.md) and [new icon artwork](NEW_PLUGINS_BRANDING.md).
 
@@ -51,7 +51,7 @@ Enabling the component registers the runtime Skill `abinadwan-humanizer` through
 
 **Backup and restore:** exports are unencrypted JSON. Manual English/Arabic interface overrides retain compatible **v2** exports; **Follow DSH** and the other five interface languages export **v4** so the choice survives restoration. v1–v4 imports are supported. Review & Merge preserves omitted settings, while Replace All and importing sharing permissions require explicit confirmation. Legacy values migrate without automatically authorizing disclosure. Use an archived Harness configuration or compatible v2 backup before attempting a downgrade; old versions may not understand v4 exports.
 
-**Limits:** a revision-checked Save is required before storing changes. The plugin does not encrypt its local settings or erase information already sent, stored in conversations, logs, provider records, files or summaries. A send-time guard refuses recognizable stale profile-disclosure blocks, but that is not equivalent to a global deletion or full request isolation guarantee. Outgoing-request privacy verification on real Desktop remains a separately tracked acceptance concern.
+**Limits:** a revision-checked Save is required before storing changes. The plugin does not encrypt its local settings or erase information already sent, stored in conversations, logs, provider records, files or summaries. The send-time guard recognizes stale structured disclosure blocks across CR, LF, NEL and Unicode line separators. Shared field values are sanitized in the prompt copy before sending. Outgoing-request privacy verification on real Desktop remains a separately tracked acceptance concern.
 
 [Current settings contract](PERSONAL_PROFILE_LOCAL_SETTINGS.md) · [Settings rename/language change](SETTINGS_NAVIGATION_NAMES_2026_11_21.md) · [Phase 7 acceptance](PERSONAL_PROFILE_PHASE7_WINDOWS_ACCEPTANCE.md)
 
@@ -59,13 +59,13 @@ Enabling the component registers the runtime Skill `abinadwan-humanizer` through
 
 <img src="../plugins/direct-chat/assets/png/icon-256.png" width="64" alt="Blue chat bubble"/>
 
-**Navigation:** enable Direct Chat, then use the button immediately beneath DSH's native **New Session** control. The native New Session control remains intact; the separate top-level **Direct Chat / Projects** tree is a proposed follow-up, not implemented.
+**Navigation:** enable Direct Chat, then use the button immediately beneath DSH's native **New Session** control. **Direct Chat history** opens next to that control. It lists authorized conversations from the registered Direct Chat Workspace, supports metadata search and defaults to last activity. Creation order is available when the Host can verify every creation timestamp for up to 100 registered conversations. Direct Chat history uses pages of 25 and keeps the native Projects tree and **New Session** control available. Use the native Session rename operation from the history dialog when Chat Control's protection settings are available, or use the native Workspace menu.
 
 **Implemented:** a permanent profile-owned directory `abinadwan-direct-chat-data/Direct Chat` is registered as one DSH Workspace. A blank draft Session may be reused. After sending a first message, the next Direct Chat creates another native Session ID with its own history and agent continuation; the plugin does not copy other Sessions' transcripts into new requests. Conversations can be reopened through the native Workspace/Session UI, and the owner reported retention across Windows Desktop restart. Previously created experimental `session-*` directories/registrations are preserved, never automatically deleted or migrated.
 
 **Tool security:** the Host installs pre-execute and guard policies to deny DSH tool execution for Direct Chat paths. A comparative Windows test using the same cloud model observed a normal Workspace run a PowerShell command and Direct Chat return **“Direct chats do not run tools.”** This is accepted **behavioral evidence**, not a complete audit of every Host tool route or third-party/plugin boundary.
 
-**Non-goals / risks:** all Sessions in the one Direct Chat Workspace share the same filesystem `cwd`. Separate histories do **not** imply per-chat file permissions, LPAC/AppContainer isolation or independently encrypted storage. No permanent deletion/retention UI or automatic migration exists. Further cross-session request-trace and deep Host authorization tests were **deferred with owner approval**, not passed. The feature was accepted into `develop` in [PR #25](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/25).
+**Non-goals / risks:** all Sessions in the one Direct Chat Workspace share the same filesystem `cwd`. Separate histories do **not** imply per-chat file permissions, LPAC/AppContainer isolation or independently encrypted storage. Direct Chat uses Chat Control’s Workspace retention policy and dry-run preview when Chat Control is enabled. Automatic cleanup and Session deletion are unavailable. Further cross-session request-trace and deep Host authorization tests were **deferred with owner approval**, not passed. The earlier v1.0.0 behavioral evidence covers the [Phase 2 implementation](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/25). The consolidated changes have separate Desktop acceptance gates.
 
 [Direct Chat design](../plugins/direct-chat/README.md) · [Phase 2 acceptance record](research/DIRECT_CHAT_PHASE2_DESKTOP_ACCEPTANCE.md)
 
@@ -75,7 +75,7 @@ Enabling the component registers the runtime Skill `abinadwan-humanizer` through
 
 **Previously named Conversation Lifecycle.** Enable under Plugins, then open **Settings → Chat Control**. Its component/module ID is still `abinadwan-conversation-lifecycle`; existing saved policy is not renamed or migrated.
 
-**Implemented:** a Workspace conversation inventory, protected conversation identifiers, a default retention preference and optional Workspace-specific overrides. Supported choices include **Forever, 365, 180, 90, 30 and 7 days**. The UI can preview intended cleanup while leaving data unchanged.
+**Implemented:** an authorized Workspace conversation inventory, conversation and Workspace protection, a default retention preference and optional Workspace-specific overrides. Supported choices include **Forever, 365, 180, 90, 30 and 7 days**. The UI previews individual eligibility and retention candidates with known last prompt dates and an explicit UTC cutoff. It uses the catalog’s running state and the current window’s view leases. Other clients’ open views are outside that preview signal.
 
 **Not implemented:** a production deletion worker, automatic scheduled retention, permanent conversation deletion or bulk data removal. Previewing a cleanup must not be presented as a real cleanup. DSH's session persistence and deletion authority remain separate; no automatic destructive action is enabled.
 
@@ -85,11 +85,13 @@ Enabling the component registers the runtime Skill `abinadwan-humanizer` through
 
 <img src="../plugins/adaptive-reasoning/assets/png/icon-256.png" width="64" alt="Pink reasoning bars"/>
 
-**Implemented:** for models supporting reasoning-effort selection, the UI can apply a **manual** eligible effort to the resident root agent/Session using the current model/provider route. The Host validates route identity and capability before changing the session model selection. Model-specific preferences and local statistics can be viewed/reset, but statistics are maintained **in memory** for the running Host and should not be treated as durable billing or provider token usage.
+**Implemented:** for models supporting reasoning-effort selection, the UI can apply a **manual** eligible effort to the resident root agent/Session using the current model/provider route. The Host validates route identity and capability before changing the session model selection. Use **Effort recommendation** to opt in and analyze text with a deterministic classifier on the Harness Host. It considers only the model’s advertised effort levels, preserves an explicit Session selection and returns reason labels without recording the sample. Edit the Session effort using the existing manual control.
 
-**Not implemented:** automated effort prediction, message-only temporary effort, and unsupported subagent effort inheritance/overrides. Those request paths are explicitly rejected rather than silently persisting a misleading selection. Some models do not expose effort options.
+**Statistics:** The owner can view and reset aggregate counts. Hosts with a launcher Profile save bounded provider/model/effort aggregates there. Unsupported Hosts keep counts in memory. Token fields use adapter-reported usage and can be incomplete. Recent buffered counts may be lost during abrupt exit, and the file is independent of the saved effort settings.
 
-[Adaptive Reasoning handover](research/ADAPTIVE_REASONING_HANDOVER.md)
+**Not implemented:** automatic application, message-only temporary effort, and plugin-managed subagent effort policies. Those request paths are explicitly rejected rather than silently persisting a misleading selection. Some models do not expose effort options.
+
+[Chat Control, Adaptive Reasoning and Direct Chat capability review](research/CHAT_CONTROL_ADAPTIVE_DIRECT_CHAT_V2.md) · [Historical Adaptive Reasoning handover](research/ADAPTIVE_REASONING_HANDOVER.md)
 
 ## Installation and updates
 

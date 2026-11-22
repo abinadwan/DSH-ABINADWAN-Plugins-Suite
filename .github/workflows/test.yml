@@ -23,6 +23,16 @@ jobs:
       - run: npm run check:package
 
       - name: Install pinned Harness integration fixtures
-        run: npm install --no-save --package-lock=false --ignore-scripts @deepseek-ai/dsh-system-prompt@0.2.2-rc.3 @deepseek-ai/dsh-agent@0.2.2-rc.3 @deepseek-ai/dsh-agent-loop@0.2.2-rc.3 @deepseek-ai/dsh-session@0.2.2-rc.3 @deepseek-ai/dsh-session-projection@0.2.2-rc.3 @deepseek-ai/dsh-session-persistence@0.2.2-rc.3 @deepseek-ai/dsh-tools@0.2.2-rc.3 @deepseek-ai/dsh-tool-executor-native@0.2.2-rc.3 @deepseek-ai/dsh-llm@0.2.2-rc.3
-      - name: Exercise actual Harness Agent Loop with offline adapter
-        run: node --test qa/profile-host-check.mjs
+        run: >-
+          npm install --no-save --package-lock=false --ignore-scripts
+          @deepseek-ai/dsh-system-prompt@0.2.2-rc.3 @deepseek-ai/dsh-agent@0.2.2-rc.3 @deepseek-ai/dsh-agent-loop@0.2.2-rc.3 @deepseek-ai/dsh-session@0.2.2-rc.3 @deepseek-ai/dsh-session-projection@0.2.2-rc.3 @deepseek-ai/dsh-session-persistence@0.2.2-rc.3 @deepseek-ai/dsh-tools@0.2.2-rc.3 @deepseek-ai/dsh-tool-executor-native@0.2.2-rc.3 @deepseek-ai/dsh-llm@0.2.2-rc.3
+          @deepseek-ai/dsh-client-connection@0.2.2-rc.3 @deepseek-ai/dsh-session-persistence-jsonl@0.2.2-rc.3
+          @deepseek-ai/dsh-storage@0.2.2-rc.3 @deepseek-ai/dsh-storage-json@0.2.2-rc.3 @deepseek-ai/dsh-storage-domain@0.2.2-rc.3
+          @deepseek-ai/dsh-workspace@0.2.2-rc.3 @deepseek-ai/dsh-session-query-sqlite@0.2.2-rc.3 @deepseek-ai/dsh-agent-preset-registry@0.2.2-rc.3
+          @deepseek-ai/dsh-settings@0.2.2-rc.3 @deepseek-ai/dsh-config-editor@0.2.2-rc.3
+      - name: Exercise pinned Harness services with synthetic data
+        env:
+          ABINADWAN_TEST_RUNTIME: ${{ github.workspace }}
+        run: >-
+          node --test qa/profile-host-check.mjs qa/adaptive-reasoning-host-check.mjs
+          qa/direct-chat-catalog-host-check.mjs qa/new-plugins-host-check.mjs
