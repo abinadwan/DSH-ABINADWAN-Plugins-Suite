@@ -3059,7 +3059,7 @@ window.__ModuleLoader__.load({
         order: 'Sort by', loading: 'Loading conversations…', error: 'Direct Chat history is unavailable.',
         empty: 'No Direct Chat conversations yet.', noMatches: 'No conversations match your search.',
         previous: 'Previous', next: 'Next', close: 'Close', retry: 'Retry', archived: 'Archived', protected: 'Protected',
-        creationUnavailable: 'Complete creation times are unavailable. Creation order supports up to 100 registered conversations.',
+        creationUnavailable: 'Complete creation times are unavailable. Creation order supports up to 100 registered conversations. Showing last activity order.',
         rename: 'Rename', title: 'Conversation title', save: 'Save', cancel: 'Cancel',
         renameFailed: 'The name could not be saved.', retention: 'Retention preview', useDefault: 'Use global policy',
         retentionUnavailable: 'Enable Chat Control to manage retention. Automatic cleanup is disabled.',
@@ -3070,12 +3070,25 @@ window.__ModuleLoader__.load({
         order: 'الترتيب حسب', loading: 'جارٍ تحميل المحادثات…', error: 'سجل الدردشة المباشرة غير متاح.',
         empty: 'لا توجد محادثات مباشرة بعد.', noMatches: 'لا توجد محادثات مطابقة للبحث.',
         previous: 'السابق', next: 'التالي', close: 'إغلاق', retry: 'إعادة المحاولة', archived: 'مؤرشفة', protected: 'محمية',
-        creationUnavailable: 'تواريخ الإنشاء الكاملة غير متاحة. يدعم هذا الترتيب حتى ١٠٠ محادثة مسجّلة.',
+        creationUnavailable: 'تواريخ الإنشاء الكاملة غير متاحة. يدعم هذا الترتيب حتى ١٠٠ محادثة مسجّلة. يُعرض ترتيب آخر نشاط بدلاً منه.',
         rename: 'إعادة التسمية', title: 'عنوان المحادثة', save: 'حفظ', cancel: 'إلغاء',
         renameFailed: 'تعذّر حفظ الاسم.', retention: 'معاينة الاحتفاظ', useDefault: 'استخدام السياسة العامة',
         retentionUnavailable: 'فعّل إدارة المحادثات لضبط الاحتفاظ. التنظيف التلقائي معطّل.',
         disabled: 'حذف المحادثات والتنظيف التلقائي غير متاحين.',
       },
+    }
+
+    // Sort only authorized Session metadata. Never load transcripts or fabricate
+    // creation timestamps when the bounded Host catalog cannot provide them.
+    function filterAndSortDirectChat(inventory, search, order, creationReady, createdAt) {
+      const query = search.trim().normalize('NFC').toLowerCase()
+      const matching = inventory.filter(({ id, row }) => !query || [id, row.title, row.displayTitle].some(value =>
+        typeof value === 'string' && value.normalize('NFC').toLowerCase().includes(query)))
+      const useCreation = order === 'creation' && creationReady
+      const timestamp = ({ id, row }) => useCreation ? createdAt[id]
+        : Number.isFinite(row.updatedAt) ? row.updatedAt : 0
+      return matching.sort((a, b) => timestamp(b) - timestamp(a) ||
+        (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
     }
 
     function DirectChatHistory({ onClose, services, useRemoteAccess, copy, language }) {
@@ -3112,14 +3125,8 @@ window.__ModuleLoader__.load({
         [selected, workspace, sessions])
       const createdAt = current?.value?.createdAt
       const creationReady = Boolean(createdAt) && inventory.every(({ id }) => Object.hasOwn(createdAt, id))
-      const rows = React.useMemo(() => {
-        const query = search.trim().normalize('NFC').toLowerCase()
-        const matching = inventory.filter(({ id, row }) => !query || [id, row.title, row.displayTitle].some(value =>
-          typeof value === 'string' && value.normalize('NFC').toLowerCase().includes(query)))
-        const timestamp = ({ id, row }) => order === 'creation' && creationReady ? createdAt[id]
-          : Number.isFinite(row.updatedAt) ? row.updatedAt : 0
-        return matching.sort((a, b) => timestamp(b) - timestamp(a) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
-      }, [inventory, search, order, creationReady, createdAt])
+      const rows = React.useMemo(() => filterAndSortDirectChat(inventory, search, order, creationReady, createdAt),
+        [inventory, search, order, creationReady, createdAt])
       const limit = 25
       const activePage = Math.min(page, Math.max(0, Math.ceil(rows.length / limit) - 1))
       const record = settings.record
