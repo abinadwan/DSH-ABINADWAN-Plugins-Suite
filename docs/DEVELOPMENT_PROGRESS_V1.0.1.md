@@ -39,7 +39,7 @@ At each approved phase, update all version-dependent source/metadata **consisten
 
 | Phase | Primary problem | Status | Evidence / review | Pending |
 | --- | --- | --- | --- | --- |
-| 1 | Integrated security audit and regression | **In progress** | [Phase 01 review record](research/v1.0.1/PHASE_01_SECURITY_INTEGRATION.md) · [red reproduction CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45047616116) | Current candidate CI, owner review, and Windows Desktop/provider checks |
+| 1 | Integrated security audit and regression | **Implemented — needs review** | [Phase 01 review record](research/v1.0.1/PHASE_01_SECURITY_INTEGRATION.md) · [red reproduction](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45047616116) · [passing candidate CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45048161684) | Final PR-head checks, explicit owner approval and real Desktop/provider checks |
 | 2 | Chat Control retention/protection consistency | **Not started** | — | Boundary/permission/concurrency tests |
 | 3 | Direct Chat search/history scale | **Not started** | — | 100 / 1,000 / 10,000 synthetic-item benchmarks |
 | 4 | Adaptive Reasoning statistics persistence/recovery | **Not started** | — | Crash, corruption, concurrent writer and reset tests |
