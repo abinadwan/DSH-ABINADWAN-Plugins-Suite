@@ -2584,7 +2584,7 @@ window.__ModuleLoader__.load({
       workspaces.items.every(item => item && typeof item.workspaceId === 'string' && item.workspaceId.length > 0 &&
         Array.isArray(item.sessionIds) && item.sessionIds.every(id => typeof id === 'string' && id.length > 0)) &&
       sessions?.phase === 'ready' && Array.isArray(sessions.ids) &&
-      sessions.byId && typeof sessions.byId === 'object' && !Array.isArray(sessions.byId) &&
+      !!sessions.byId && typeof sessions.byId === 'object' && !Array.isArray(sessions.byId) &&
       sessions.ids.every(id => typeof id === 'string' && id.length > 0 &&
         (!Object.hasOwn(sessions.byId, id) || !!sessions.byId[id] &&
           typeof sessions.byId[id] === 'object' && !Array.isArray(sessions.byId[id])))
