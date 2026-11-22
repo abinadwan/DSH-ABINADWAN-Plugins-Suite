@@ -1,6 +1,6 @@
 # v1.0.1 development progress — single source of truth
 
-> **State: Phases 01–06 approved on `develop`; Phase 07 candidate `1.0.1-rc.7` under review.** Last baseline review: 2026-11-22. Phase reports originate on temporary branches; merge to `develop` and delete the branch only after explicit owner approval. The published `v1.0.0` tag and `main` remain unchanged by these phases. No release is authorized by this work.
+> **State: Phases 01–07 approved on `develop`; Phase 08 final automated candidate `1.0.1-rc.8` under review. Desktop acceptance and publication are separate.** Last baseline review: 2026-11-22. Phase reports originate on temporary branches; merge to `develop` and delete the branch only after explicit owner approval. The published `v1.0.0` tag and `main` remain unchanged by these phases. No release is authorized by this work.
 
 ## Why this register exists
 
@@ -46,8 +46,8 @@ At each approved phase, update all version-dependent source/metadata **consisten
 | 4 | Adaptive Reasoning statistics persistence/recovery | **Approved on develop** | [PR #43](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/43) · [four-platform CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45056916549) · [Phase 04 report](research/v1.0.1/PHASE_04_REASONING_STATISTICS.md) | Actual Desktop and power-loss acceptance deferred |
 | 5 | Arabic complexity classification | **Approved on develop** | [PR #44](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/44) · [four-platform CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45057565826) · [Phase 05 report](research/v1.0.1/PHASE_05_ARABIC_CLASSIFIER.md) | Real provider/Arabic acceptance deferred |
 | 6 | Arabic UI and RTL | **Approved on develop** | [PR #45](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/45) · [four-platform CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45058112897) · [Phase 06 report](research/v1.0.1/PHASE_06_ARABIC_UI_RTL.md) | Real Desktop visuals and keyboard/screen-reader acceptance deferred |
-| 7 | UX failures/loading/retry states | **In progress** | [Phase 07 report](research/v1.0.1/PHASE_07_UX_RELIABILITY.md) · failing preparation regression and catalog retry fixture | Final CI and owner review; Desktop reconnect/error states deferred |
-| 8 | Cross-platform CI regression coverage | **Not started** | — | CI matrix, package validation, source-vs-Desktop gate report |
+| 7 | UX failures/loading/retry states | **Approved on develop** | [PR #46](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/46) · [four-platform CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45058558692) · [Phase 07 report](research/v1.0.1/PHASE_07_UX_RELIABILITY.md) | Real Desktop reconnect and screen-reader acceptance deferred |
+| 8 | Cross-platform CI regression coverage | **In progress** | [Phase 08 report](research/v1.0.1/PHASE_08_FINAL_AUTOMATED_QA.md) · [consolidated Desktop acceptance checklist](DSH_DESKTOP_FINAL_ACCEPTANCE_V1.0.1.md) | Final head CI, owner review and one combined real Desktop round before any release |
 
 Status vocabulary: `Not started`, `In progress`, `Implemented — needs review`, `Approved on develop`, `Blocked`. A successful CI run is evidence, not proof of real Desktop behavior.
 
@@ -99,7 +99,7 @@ Status vocabulary: `Not started`, `In progress`, `Implemented — needs review`,
 
 **One problem:** the above behaviors must remain protected against regressions on each new commit. Group and run security, performance and component tests, package/source compatibility and pinned offline Host integration. Do not claim Windows Desktop acceptance from GitHub Actions.
 
-**Completed:** none under this phase yet. **Pending:** cross-platform final matrix, regression coverage map, deferred Desktop checklist and release-readiness decision.
+**Candidate implementation:** new six-component source/package regression inventory, explicit CI `check:regression` gate, deterministic classifier benchmark and existing full cross-platform CI with pinned offline Host fixtures. [Phase 08 report](research/v1.0.1/PHASE_08_FINAL_AUTOMATED_QA.md) maps coverage; [one final Desktop acceptance checklist](DSH_DESKTOP_FINAL_ACCEPTANCE_V1.0.1.md) captures all deferred checks. **Pending:** final green matrix and owner approval to merge; actual Desktop acceptance and production release remain blocked. No tag, `main` update or automatic cleanup.
 
 ## How to update this document **after each phase**
 
