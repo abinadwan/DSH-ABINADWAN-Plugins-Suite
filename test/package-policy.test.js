@@ -23,5 +23,8 @@ test('package ships only active documentation, no superseded designs, prototype 
   for (const required of ['docs/DETAIL.md', 'docs/PERSONAL_PROFILE_LOCAL_SETTINGS.md', 'docs/PERSONAL_PROFILE_V072_CHANGE_RECORD.md', 'docs/BRANDING.md',
     'docs/assets/environment-project.webp', 'docs/assets/environment-session.webp']) assert.ok(paths.includes(required), required)
   const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
-  assert.deepEqual(manifest.dependencies, { '@deepseek-ai/schemastery': '3.19.0' }, 'only the Harness rc.3 schema library at runtime')
+  assert.deepEqual(manifest.dependencies, {
+    '@deepseek-ai/dsh-atomic-write': '0.2.2-rc.3',
+    '@deepseek-ai/schemastery': '3.19.0',
+  }, 'only the pinned Harness schema and atomic storage helpers at runtime')
 })
