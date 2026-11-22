@@ -1,6 +1,6 @@
 # v1.0.1 development progress — single source of truth
 
-> **State: Phases 01–03 approved on `develop`; Phase 04 candidate `1.0.1-rc.4` under review.** Last baseline review: 2026-11-22. Phase reports originate on temporary branches; merge to `develop` and delete the branch only after explicit owner approval. The published `v1.0.0` tag and `main` remain unchanged by these phases. No release is authorized by this work.
+> **State: Phases 01–04 approved on `develop`; Phase 05 candidate `1.0.1-rc.5` under review.** Last baseline review: 2026-11-22. Phase reports originate on temporary branches; merge to `develop` and delete the branch only after explicit owner approval. The published `v1.0.0` tag and `main` remain unchanged by these phases. No release is authorized by this work.
 
 ## Why this register exists
 
@@ -43,8 +43,8 @@ At each approved phase, update all version-dependent source/metadata **consisten
 | 1 | Integrated security audit and regression | **Approved on develop** | [PR #39](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/39) · [final four-platform CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45048359692) · [Phase 01 audit](research/v1.0.1/PHASE_01_SECURITY_INTEGRATION.md) | Real Windows Desktop/provider-bound checks remain independently deferred |
 | 2 | Chat Control retention/protection consistency | **Approved on develop** | [PR #40](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/40) · [final PR-head CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45050012849) · [Phase 02 report](research/v1.0.1/PHASE_02_CHAT_CONTROL_RETENTION.md) | Real Desktop permission, archive and concurrent-window acceptance deferred to final Desktop gate |
 | 3 | Direct Chat search/history scale | **Approved on develop** | [merged PR #41](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/41) · [final CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45051062749) · [Phase 03 report](research/v1.0.1/PHASE_03_DIRECT_CHAT_PERFORMANCE.md) | Real 10k-item Desktop responsiveness deferred |
-| 4 | Adaptive Reasoning statistics persistence/recovery | **In progress** | [Phase 04 report](research/v1.0.1/PHASE_04_REASONING_STATISTICS.md) · native Host reset failure regression | Latest CI, owner review, real Desktop restart/crash checks |
-| 5 | Arabic complexity classification | **Not started** | — | Arabic/mixed-language benchmark and no English regression |
+| 4 | Adaptive Reasoning statistics persistence/recovery | **Approved on develop** | [PR #43](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/43) · [four-platform CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45056916549) · [Phase 04 report](research/v1.0.1/PHASE_04_REASONING_STATISTICS.md) | Actual Desktop and power-loss acceptance deferred |
+| 5 | Arabic complexity classification | **In progress** | [Phase 05 report](research/v1.0.1/PHASE_05_ARABIC_CLASSIFIER.md) · bilingual unit fixture | Latest CI, owner approval and provider-bound Desktop checks |
 | 6 | Arabic UI and RTL | **Not started** | — | Translation, keyboard, direction and accessible UI tests |
 | 7 | UX failures/loading/retry states | **Not started** | — | Non-misleading success/error and network failure handling |
 | 8 | Cross-platform CI regression coverage | **Not started** | — | CI matrix, package validation, source-vs-Desktop gate report |
@@ -81,7 +81,7 @@ Status vocabulary: `Not started`, `In progress`, `Implemented — needs review`,
 
 **One problem:** current deterministic classifier recognizes English intent keywords but not equivalent Arabic ones. Add documented Arabic/MSA/Gulf and mixed-language cases without persisting prompt text. Build fixed expected-tier fixtures, measure accuracy and latency against the original English set. Do not enable unsupported automatic effort application.
 
-**Completed:** none under this phase yet. **Pending:** transparent benchmark, observed improvements and failures.
+**Candidate implementation:** transient normalized Arabic/Gulf complexity cues for greetings, continuations, standard explanations, debugging and advanced analysis, including diacritics and mixed language; fenced code does not elevate tiers. Fixed labelled Arabic test corpus and unchanged English latency/accuracy tests. No prompt persistence or automatic effort changes. [Phase 05 report](research/v1.0.1/PHASE_05_ARABIC_CLASSIFIER.md). **Pending:** final CI, owner approval and combined Desktop acceptance.
 
 ### Phase 6 — Arabic UI and RTL
 
