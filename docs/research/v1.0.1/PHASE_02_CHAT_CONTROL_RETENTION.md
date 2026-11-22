@@ -60,7 +60,7 @@ The source-oriented README technology-badge regression deliberately skips readin
 
 - **Red proof:** [test-first CI 45049423963](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45049423963).
 - **Initial repair iteration:** the first code fix rejected malformed membership but exposed a missing-map predicate that returned `undefined` rather than `false`; corrected with an explicit Boolean guard.
-- **Current candidate CI:** [45049778210](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45049778210) was running while the last tests were added. Final PR-head CI (four Windows/Ubuntu Node 22/24 jobs) must be checked and linked before approval.
+- **Passing source and fixture matrix:** commit `cdb9b933d9bbb62ace640cd06023893cde4d2ef5` passed [push CI 45049778210](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45049778210) and [PR CI 45049842042](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45049842042), including Windows/Ubuntu Node.js 22/24 jobs. Post-documentation **final PR-head CI** must also be checked before approval.
 - **Required commands:** `npm ci --ignore-scripts`, `npm test`, `npm run check:package` and pinned offline DSH Host checks, as configured in `.github/workflows/test.yml`.
 - **Local execution:** full repository tests run in GitHub Actions, not in a separately instrumented local Desktop build. Do not invent counts or treat an intermediate green run as final-head proof.
 
