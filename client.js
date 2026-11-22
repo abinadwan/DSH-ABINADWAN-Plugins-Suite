@@ -2579,6 +2579,74 @@ window.__ModuleLoader__.load({
           ...lifecycleDurations.map(days => h('option', { key: days, value: days }, `${days} days`))))
     }
 
+    const catalogReady = (workspaces, sessions) => workspaces?.phase === 'ready' &&
+      workspaces.state !== 'error' && sessions?.phase === 'ready' && Array.isArray(sessions.ids)
+
+    // Both surfaces use DSH's authorized catalog, never local retained-only rows.
+    function conversationInventory(workspaces, sessions, scope) {
+      const admitted = new Set(sessions.ids)
+      const owners = new Map()
+      for (const workspace of workspaces.items) {
+        for (const id of workspace.sessionIds) {
+          const existing = owners.get(id)
+          owners.set(id, existing === undefined || existing === workspace ? workspace : null)
+        }
+      }
+      const selected = scope ? new Set(scope.sessionIds) : null
+      const rows = []
+      let unknown = 0
+      for (const [id, owner] of owners) {
+        if (selected && !selected.has(id)) continue
+        if (!owner || !admitted.has(id) || !Object.hasOwn(sessions.byId, id)) { unknown++; continue }
+        const row = sessions.byId[id]
+        if (row.id !== id || row.origin === 'subagent' || row.blank === true) continue
+        const projection = sessions.projectionsBySession?.[id]?.values
+        const lastPrompt = projection?.sessionListMetadata?.lastPromptAt ?? row.projectionValues?.sessionListMetadata?.lastPromptAt
+        rows.push({ id, row, owner, lastPrompt, legacyDirectChat: projection?.agentPreset === 'abinadwan-direct-chat' ||
+          row.agentPreset === 'abinadwan-direct-chat' })
+      }
+      return { rows, unknown }
+    }
+
+    function retentionRows(inventory, workspace, record, at) {
+      const protectedIds = new Set(record?.protectedIds)
+      const protectedWorkspaces = new Set(record?.protectedWorkspaces)
+      const pinned = new Set(workspace?.pinnedSessionIds)
+      const policy = new Map()
+      for (const { workspace: id, retention } of record?.overrides ?? []) {
+        policy.set(id, policy.has(id) ? 'unknown' : retention)
+      }
+      return inventory.map(item => {
+        const { id, row, owner, lastPrompt } = item
+        const days = policy.get(owner.workspaceId) ?? record?.retention
+        const isProtected = protectedIds.has(id)
+        const workspaceProtected = protectedWorkspaces.has(owner.workspaceId)
+        const active = row.running !== false ||
+          Object.values(row.retainedBy ?? {}).some(count => count > 0)
+        const hasActivity = Number.isSafeInteger(lastPrompt) && lastPrompt > 0 && lastPrompt <= at
+        const reason = isProtected ? 'Protected conversation' : workspaceProtected ? 'Protected Workspace'
+          : pinned.has(id) ? 'Pinned conversation' : active ? 'Active or open conversation'
+          : row.formatStatus === 'migration-required' ? 'Unverified history format'
+          : days === 'forever' ? 'Retained forever' : !lifecycleDurations.includes(days) ? 'Retention policy unavailable'
+          : !hasActivity ? 'Last prompt date unavailable'
+          : lastPrompt > at - Number(days) * 86400000 ? 'Within retention period' : 'Past retention cutoff'
+        return { ...item, isProtected, workspaceProtected, reason, days, candidate: reason === 'Past retention cutoff' }
+      })
+    }
+
+    function CleanupPreview({ rows, at }) {
+      const candidates = rows.filter(row => row.candidate)
+      return h(React.Fragment, null,
+        h('span', { role: 'status', style: { fontSize: 13 } },
+          `${candidates.length} estimated candidate${candidates.length === 1 ? '' : 's'}`),
+        h('p', { style: lifecycleMuted }, `Evaluated at ${new Date(at).toISOString()}. Retention uses 24-hour days.`),
+        candidates.length ? h('ul', { style: { margin: 0, paddingInlineStart: 20, fontSize: 13 } },
+          ...candidates.slice(0, 50).map(({ id, row, owner, lastPrompt, days }) => h('li', { key: id },
+            h('bdi', null, row.displayTitle || id), ' · ', h('bdi', null, owner.title),
+            ` · ${days} days · last prompt ${new Date(lastPrompt).toISOString()}`))) : null,
+        candidates.length > 50 ? h('p', { style: lifecycleMuted }, 'Showing the first 50 candidates. Select a Workspace to narrow the preview.') : null)
+    }
+
     function WorkspaceLifecycle({ services, useRemoteAccess }) {
       const settings = useSuiteRecord(services.settings, 'conversation-lifecycle', useRemoteAccess, services.connection)
       const workspace = suiteWatch(services.workspaces)
@@ -2587,7 +2655,7 @@ window.__ModuleLoader__.load({
       const [proposal, setChange] = React.useState(null)
       const [previewAt, setPreviewAt] = React.useState(null)
       const record = settings.record
-      const ready = workspace?.phase === 'ready' && sessions?.phase === 'ready'
+      const ready = catalogReady(workspace, sessions)
       const workspaces = ready ? workspace.items : []
       const chosen = workspaces.find(item => item.workspaceId === scope)
       const change = proposal && proposal.source === settings.source &&
@@ -2596,36 +2664,17 @@ window.__ModuleLoader__.load({
         if (proposal && !change) { setChange(null); setPreviewAt(null) }
       }, [proposal, change])
       const override = record?.overrides?.find(item => item.workspace === chosen?.workspaceId)?.retention ?? 'inherit'
-      const memberships = new Map()
-      for (const item of workspaces) for (const id of item.sessionIds ?? []) {
-        if (memberships.has(id)) memberships.set(id, null)
-        else memberships.set(id, item.workspaceId)
-      }
-      const archived = new Set(workspace?.archivedSessionIds ?? [])
-      const protectedIds = new Set(record?.protectedIds ?? [])
-      const rows = []
-      let unknown = 0
-      const selectedIds = chosen ? new Set(chosen.sessionIds ?? []) : null
-      for (const [id, member] of memberships) {
-        if (selectedIds && !selectedIds.has(id)) continue
-        if (member === null) { unknown++; continue }
-        const row = sessions.byId?.[id]
-        if (!row) { unknown++; continue }
-        const projection = sessions.projectionsBySession?.[id]?.values
-        if (projection?.agentPreset === 'abinadwan-direct-chat' || row.agentPreset === 'abinadwan-direct-chat') continue
-        const isActive = row.running !== false || row.agentAvailable === true ||
-          Object.values(row.retainedBy ?? {}).some(count => count > 0)
-        const examined = change?.next ?? record
-        const days = examined?.overrides?.find(item => item.workspace === member)?.retention ?? examined?.retention
-        // The installed Session Controller reports max(createdAt, lastPromptAt).
-        // Count only known prompt-derived dates, never an unstarted Session's creation date.
-        const summaryPrompt = Number.isFinite(row.createdAt) && row.updatedAt > row.createdAt ? row.updatedAt : undefined
-        const lastPrompt = projection?.sessionListMetadata?.lastPromptAt ?? summaryPrompt
-        const isProtected = protectedIds.has(id)
-        const candidate = previewAt !== null && !isActive && !isProtected && lifecycleDurations.includes(days) &&
-          Number.isFinite(lastPrompt) && lastPrompt > 0 && lastPrompt <= previewAt - Number(days) * 86400000
-        rows.push({ id, row, isActive, isProtected, candidate })
-      }
+      const archived = new Set(workspace?.archivedSessionIds)
+      const protectedIds = new Set(record?.protectedIds)
+      const protectedWorkspaces = new Set(record?.protectedWorkspaces)
+      const [page, setPage] = React.useState(1)
+      const [selected, setSelected] = React.useState(null)
+      const inventory = React.useMemo(() => ready ? conversationInventory(workspace, sessions, chosen) : { rows: [], unknown: 0 },
+        [ready, workspace, sessions, chosen])
+      const { unknown } = inventory
+      const rows = retentionRows(inventory.rows.filter(row => !row.legacyDirectChat), workspace,
+        change?.next ?? record, previewAt ?? Date.now())
+      const selectedRow = selected && rows.find(row => row.id === selected)
       const update = next => {
         setChange(null)
         setPreviewAt(null)
@@ -2639,7 +2688,6 @@ window.__ModuleLoader__.load({
         setPreviewAt(Date.now())
       }
 
-      const candidates = rows.filter(row => row.candidate)
       const stats = [
         ['Known conversations', ready ? rows.length : 'Unavailable'],
         ['Archived', ready ? rows.filter(row => archived.has(row.id)).length : 'Unavailable'],
@@ -2653,6 +2701,8 @@ window.__ModuleLoader__.load({
           h('label', { style: lifecycleLabel }, 'Workspace',
             h('select', { style: lifecycleSelect, value: chosen ? scope : '', disabled: !ready, onChange: event => {
               setScope(event.target.value)
+              setPage(1)
+              setSelected(null)
               setChange(null)
               setPreviewAt(null)
             } }, h('option', { value: '' }, 'All Workspaces'),
@@ -2677,35 +2727,48 @@ window.__ModuleLoader__.load({
               'Confirm and save'),
             h(Button, { size: 'sm', onClick: () => { setChange(null); setPreviewAt(null) } }, 'Cancel')) : null),
         h(LifecycleGroup, { title: 'Protected Conversations' },
+          chosen ? h(Checkbox, { label: 'Protect this Workspace', checked: protectedWorkspaces.has(chosen.workspaceId),
+            disabled: !settings.writable, onChange: checked => {
+              if (checked) protectedWorkspaces.add(chosen.workspaceId)
+              else protectedWorkspaces.delete(chosen.workspaceId)
+              update({ ...record, protectedWorkspaces: [...protectedWorkspaces] })
+            } }) : null,
           ready && rows.length ? h('ul', { style: { listStyle: 'none', padding: 0, margin: 0,
             maxBlockSize: 185, overflow: 'auto', overflowWrap: 'anywhere' } },
-          ...rows.map(({ id, row, isProtected }) => h('li', { key: id, style: { ...lifecycleActions, minHeight: 32 } },
+          ...rows.slice(0, page * 50).map(({ id, row, isProtected }) => h('li', { key: id, style: { ...lifecycleActions, minHeight: 32 } },
             h(Checkbox, { label: h(React.Fragment, null, 'Protect ', h('bdi', null, row.displayTitle || id)),
               checked: isProtected, disabled: !settings.writable,
               onChange: checked => update({ ...record, protectedIds: checked ? [...protectedIds, id] : [...protectedIds].filter(value => value !== id) }) }),
-            archived.has(id) ? h('small', { style: lifecycleMuted }, 'Archived') : null))) :
-            h('p', { style: { ...lifecycleMuted, margin: 0 } }, ready ? 'No known conversations in this view.' : 'Workspace inventory is unavailable.')),
+            archived.has(id) ? h('small', { style: lifecycleMuted }, 'Archived') : null,
+            h(Button, { size: 'sm', onClick: () => setSelected(id),
+              'aria-label': 'Preview deletion for ' + (row.displayTitle || id) }, 'Preview deletion')))) :
+            h('p', { style: { ...lifecycleMuted, margin: 0 } }, ready ? 'No known conversations in this view.' : 'Workspace inventory is unavailable.'),
+          rows.length > page * 50 ? h(Button, { size: 'sm', onClick: () => setPage(page + 1) }, 'Show more') : null),
         h(LifecycleGroup, { title: 'Cleanup Management' },
           h('strong', { style: { fontSize: 13 } }, 'Preview only'),
           h('p', { style: { ...lifecycleMuted, margin: 0 } },
-            'Estimates use known last prompt dates. Active, protected, Direct Chat, and unverified conversations are excluded.'),
+            'Deletion is unavailable. Automatic cleanup is disabled.'),
           h('p', { style: { ...lifecycleMuted, margin: 0 } },
-            'Permanent deletion and automatic cleanup are unavailable.'),
+            'Estimates use known last prompt dates and the catalog’s running state. Protected or pinned conversations and conversations open in this window are excluded.'),
+          selected ? h('div', { role: 'status', style: lifecycleMuted },
+            selectedRow ? h(React.Fragment, null, h('bdi', null, selectedRow.row.displayTitle || selectedRow.id), ' · ',
+              h('bdi', null, selectedRow.owner.title), ' · ', selectedRow.reason, '. No data will be removed.')
+              : 'Conversation is no longer available in this inventory.',
+            ' ', h(Button, { size: 'sm', onClick: () => setSelected(null) }, 'Close preview')) : null,
           h('div', { style: lifecycleActions },
             h(Button, { size: 'sm', variant: 'outline', disabled: !record || !ready, onClick: () => setPreviewAt(Date.now()) }, 'Preview cleanup'),
-            previewAt !== null ? h('span', { role: 'status', style: { fontSize: 13 } },
-              `${candidates.length} estimated candidate${candidates.length === 1 ? '' : 's'}`) : null),
-          candidates.length ? h('ul', { style: { margin: 0, paddingInlineStart: 20, fontSize: 13 } },
-            ...candidates.map(({ id, row }) => h('li', { key: id }, h('bdi', null, row.displayTitle || id)))) : null))
+            previewAt !== null ? h(Button, { size: 'sm', onClick: () => setPreviewAt(null) }, 'Cancel preview') : null),
+          previewAt !== null && record && ready ? h(CleanupPreview, { rows, at: previewAt }) : null))
+
     }
 
     const reasoningCell = { padding: '4px 8px', textAlign: 'end', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
 
     /** Same-origin POST to an owner-only Adaptive Reasoning route. */
-    async function reasoningPost(path, body) {
+    async function reasoningPost(path, body, signal) {
       const endpoint = new URL(`api/abinadwan-reasoning/${path}`, document.baseURI)
       if (endpoint.origin !== document.location.origin) throw new Error('Cross-origin reasoning endpoint')
-      const result = await fetch(endpoint, { method: 'POST', credentials: 'same-origin', redirect: 'error',
+      const result = await fetch(endpoint, { method: 'POST', credentials: 'same-origin', redirect: 'error', signal,
         headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
       return { ok: result.ok, status: result.status, body: await result.json().catch(() => null) }
     }
@@ -2727,6 +2790,7 @@ window.__ModuleLoader__.load({
         h('span', null, label), h('span', { style: { fontVariantNumeric: 'tabular-nums' } }, value))
       const group = (title, children) => h('section', { key: title, style: { marginBottom: 14 } },
         h('h3', { style: { fontSize: 13, fontWeight: 650, margin: '0 0 6px' } }, title), children)
+      const routeRows = stats?.routes ?? []
       const rows = stats ? ['session', 'subagent'].flatMap(scope => Object.entries(stats.requests?.[scope] || {})
         .map(([effort, row]) => ({ scope, effort, row }))) : []
       const body = state.status === 'loading' ? h('div', { role: 'status' }, 'Loading statistics…')
@@ -2749,14 +2813,74 @@ window.__ModuleLoader__.load({
                 : 'Not reported'),
               h('td', { style: reasoningCell }, row.timed ? `${(row.durationMs / row.timed / 1000).toFixed(1)} s` : '—'))))
           ) : h('div', { style: lifecycleMuted }, 'No requests yet.')),
+          routeRows.length ? group('Requests by provider and model', h('ul', { style: { paddingInlineStart: 20 } },
+            ...routeRows.map(({ scope, provider, model, effort, requests }) => h('li',
+              { key: JSON.stringify([scope, provider, model, effort]) }, h('bdi', null, `${provider} / ${model} · ${effort}`),
+              `${scope === 'subagent' ? ' (subagents)' : ''} · ${count(requests)}`)))) : null,
           h('p', { style: { ...lifecycleMuted, margin: 0 } },
             'Times run on this computer from stream start to the saved reply. Reasoning tokens appear only when the provider reports them. No savings are estimated.'))
       return h(Modal, { open, onClose, title: 'Reasoning statistics', closeLabel: 'Close',
-        description: stats ? `Aggregate counts kept in memory on this computer since ${new Date(stats.since).toLocaleString('en-US')}. Nothing is sent anywhere, and restarting Harness clears them.` : undefined,
+        description: stats ? `Aggregate counts ${stats.persistent ? 'saved in this Profile' : 'kept in memory until Harness restarts'} since ${new Date(stats.since).toLocaleString('en-US')}. Nothing is sent anywhere.` : undefined,
         footer: h('div', { style: lifecycleActions },
           h(Button, { size: 'sm', variant: 'outline', disabled: state.status !== 'ready', onClick: () => load('stats/reset') }, 'Reset statistics'),
           h(Button, { size: 'sm', onClick: onClose }, 'Done')) },
       h('div', { lang: 'en', dir: 'ltr' }, body))
+    }
+
+    const reasoningSignals = {
+      retry: 'Retry or empty input', continuation: 'Continuation', greeting: 'Greeting',
+      length: 'Request length', 'advanced-topic': 'Advanced topic', 'complex-topic': 'Complex topic',
+      'standard-topic': 'Standard topic', code: 'Code block', trace: 'Error trace', 'multi-step': 'Multiple steps',
+      math: 'Math', attachment: 'Attachment', 'asked-deeper': 'Request for deeper analysis',
+      'asked-briefer': 'Request for a shorter answer',
+    }
+
+    function ReasoningRecommendation({ sessionId, selection, settings, onClose, nameOf, connection }) {
+      const [sample, setSample] = React.useState('')
+      const [result, setResult] = React.useState(null)
+      const pending = React.useRef(null)
+      const adaptive = settings.record?.mode === 'adaptive'
+      const generation = suiteWatch(connection)
+      React.useEffect(() => {
+        setResult(null)
+        return () => pending.current?.abort()
+      }, [generation, adaptive])
+
+      async function analyze(event) {
+        event.preventDefault()
+        pending.current?.abort()
+        const controller = new AbortController()
+        pending.current = controller
+        setResult({ loading: true })
+        try {
+          const { provider, model } = selection
+          const response = await reasoningPost('recommend', { sessionId, provider, model, sample },
+            AbortSignal.any([controller.signal, AbortSignal.timeout(10000)]))
+          if (!controller.signal.aborted) setResult(response.ok && typeof response.body?.recommendation === 'string'
+            ? response.body : { error: true })
+        } catch {
+          if (!controller.signal.aborted) setResult({ error: true })
+        }
+      }
+
+      return h(Modal, { open: true, onClose, title: 'Effort recommendation', closeLabel: 'Close',
+        footer: h(Button, { size: 'sm', onClick: onClose }, 'Done') },
+      h('div', { style: { display: 'grid', gap: 8 } },
+        h('p', { style: lifecycleMuted }, 'Recommendations use a local classifier on the Harness Host. The conversation’s reasoning effort stays as selected.'),
+        h('label', { style: lifecycleLabel }, 'Mode', h('select', { style: lifecycleSelect,
+          disabled: !settings.writable, value: adaptive ? 'adaptive' : 'manual', onChange: event => {
+            setResult(null)
+            if (settings.record) void settings.save({ ...settings.record, mode: event.target.value })
+          } }, h('option', { value: 'manual' }, 'Manual'), h('option', { value: 'adaptive' }, 'Automatic recommendation preview'))),
+        h(SuiteRecordStatus, { settings }),
+        adaptive ? h('form', { onSubmit: analyze }, h('label', { style: lifecycleLabel }, 'Text to analyze',
+          h('textarea', { rows: 4, maxLength: 4000, value: sample, dir: 'auto',
+            onChange: event => { pending.current?.abort(); setSample(event.target.value); setResult(null) } })),
+        h(Button, { type: 'submit', size: 'sm', disabled: !sample.trim() || result?.loading }, 'Analyze')) : null,
+        result && adaptive ? h('div', { role: 'status' },
+          result.loading ? 'Analyzing…' : result.error ? 'No recommendation is available for this Session and model.'
+            : `${result.source === 'manual' ? 'Selected effort' : 'Suggested effort'}: ${nameOf(result.recommendation)} · ${result.tier}` +
+              (result.signals?.length ? ' · ' + result.signals.map(signal => reasoningSignals[signal]).filter(Boolean).join(', ') : '')) : null))
     }
 
     function ReasoningComposer({ directory, sessionId, settingsService, connection, useRemoteAccess, useAccess }) {
@@ -2767,6 +2891,7 @@ window.__ModuleLoader__.load({
       const [working, setWorking] = React.useState(false)
       const [notice, setNotice] = React.useState(null)
       const [statsOpen, setStatsOpen] = React.useState(false)
+      const [recommendOpen, setRecommendOpen] = React.useState(false)
       const busy = React.useRef(false)
       const noticeId = React.useRef(0)
       const mounted = React.useRef(false)
@@ -2823,6 +2948,7 @@ window.__ModuleLoader__.load({
         setOpen(false)
         if (id === 'reload') { settings.reload(); return }
         if (id === 'stats') { setStatsOpen(true); return }
+        if (id === 'recommend') { setRecommendOpen(true); return }
         const latest = directory.store.getSnapshot()
         const current = latest.current
         const available = capability(latest)
@@ -2863,7 +2989,8 @@ window.__ModuleLoader__.load({
           { id: 'apply', label: 'Apply saved effort', disabled: !level(saved.effort) || saved.effort === selection.reasoningEffort },
           { id: 'remove', label: 'Remove saved preference', disabled: !settings.writable },
         ] : []),
-        ...(Modal ? [{ type: 'separator', id: 'more-divider' }, { id: 'stats', label: 'Reasoning statistics…' }] : []),
+        ...(Modal ? [{ type: 'separator', id: 'more-divider' }, { id: 'stats', label: 'Reasoning statistics…' },
+          { id: 'recommend', label: 'Effort recommendation…' }] : []),
         ...(['conflict', 'unavailable'].includes(settings.status)
           ? [{ id: 'reload', label: 'Reload preferences' }] : []),
       ]
@@ -2878,13 +3005,13 @@ window.__ModuleLoader__.load({
           portal: true, side: 'top', align: 'end', compact: true, autoFocus: true,
           onClose: () => setOpen(false), onSelect: id => void selectItem(id) }),
         Modal && statsOpen ? h(ReasoningStatistics, { open: statsOpen, onClose: () => setStatsOpen(false), nameOf }) : null,
+        Modal && recommendOpen ? h(ReasoningRecommendation, { key: JSON.stringify([sessionId, selection.provider, selection.model,
+          selection.reasoningEffort]), sessionId, selection, settings, connection, onClose: () => setRecommendOpen(false), nameOf }) : null,
         notice ? h(Toast, { key: notice.id, text: notice.text, tone: notice.success ? 'success' : undefined,
           holdMs: 2400, onDone: () => setNotice(null) }) : null)
     }
 
-    // ---------------------------------------------------------------- Direct Chat (Global Chat PoC)
-    // Uses the supported sidebar action and native Host session-creation route.
-    // Activation is opt-in until a cold Desktop restart verifies the Workspace gate.
+    // ---------------------------------------------------------------- Direct Chat
     const DIRECT_CHAT_ID = 'abinadwan-direct-chat'
     function DirectChatButton({ wide, useRemoteAccess, startChat }) {
       const permitted = typeof useRemoteAccess === 'function' ? useRemoteAccess('session/create') : true
@@ -2900,8 +3027,8 @@ window.__ModuleLoader__.load({
         try {
           await startChat()
           setStatus('idle')
-        } catch (error) {
-          console.warn('[abinadwan-direct-chat] Could not open Direct Chat:', error)
+        } catch {
+          console.warn('[abinadwan-direct-chat] Could not open Direct Chat')
           setStatus('failed')
         } finally {
           inflight.current = false
@@ -2919,18 +3046,230 @@ window.__ModuleLoader__.load({
         status === 'failed' ? h('div', { role: 'alert', style: { fontSize: 12, padding: 8 } },
           'Unable to open Direct Chat. Check the Workspace list before retrying.') : null)
     }
+    const directChatCopy = {
+      en: {
+        history: 'Direct Chat history', search: 'Search Direct Chat', recent: 'Last activity', creation: 'Creation time',
+        order: 'Sort by', loading: 'Loading conversations…', error: 'Direct Chat history is unavailable.',
+        empty: 'No Direct Chat conversations yet.', noMatches: 'No conversations match your search.',
+        previous: 'Previous', next: 'Next', close: 'Close', retry: 'Retry', archived: 'Archived', protected: 'Protected',
+        creationUnavailable: 'Complete creation times are unavailable. Creation order supports up to 100 registered conversations.',
+        rename: 'Rename', title: 'Conversation title', save: 'Save', cancel: 'Cancel',
+        renameFailed: 'The name could not be saved.', retention: 'Retention preview', useDefault: 'Use global policy',
+        retentionUnavailable: 'Enable Chat Control to manage retention. Automatic cleanup is disabled.',
+        disabled: 'Conversation deletion and automatic cleanup are unavailable.',
+      },
+      ar: {
+        history: 'سجل الدردشة المباشرة', search: 'البحث في الدردشة المباشرة', recent: 'آخر نشاط', creation: 'وقت الإنشاء',
+        order: 'الترتيب حسب', loading: 'جارٍ تحميل المحادثات…', error: 'سجل الدردشة المباشرة غير متاح.',
+        empty: 'لا توجد محادثات مباشرة بعد.', noMatches: 'لا توجد محادثات مطابقة للبحث.',
+        previous: 'السابق', next: 'التالي', close: 'إغلاق', retry: 'إعادة المحاولة', archived: 'مؤرشفة', protected: 'محمية',
+        creationUnavailable: 'تواريخ الإنشاء الكاملة غير متاحة. يدعم هذا الترتيب حتى ١٠٠ محادثة مسجّلة.',
+        rename: 'إعادة التسمية', title: 'عنوان المحادثة', save: 'حفظ', cancel: 'إلغاء',
+        renameFailed: 'تعذّر حفظ الاسم.', retention: 'معاينة الاحتفاظ', useDefault: 'استخدام السياسة العامة',
+        retentionUnavailable: 'فعّل إدارة المحادثات لضبط الاحتفاظ. التنظيف التلقائي معطّل.',
+        disabled: 'حذف المحادثات والتنظيف التلقائي غير متاحين.',
+      },
+    }
+
+    function DirectChatHistory({ onClose, services, useRemoteAccess, copy, language }) {
+      const workspace = suiteWatch(services.workspaces)
+      const sessions = suiteWatch(services.sessions)
+      const generation = suiteWatch(services.connection)
+      const settings = useSuiteRecord(services.settings, 'conversation-lifecycle', useRemoteAccess, services.connection)
+      const [search, setSearch] = React.useState('')
+      const [order, setOrder] = React.useState('recent')
+      const [page, setPage] = React.useState(0)
+      const [attempt, setAttempt] = React.useState(0)
+      const [result, setResult] = React.useState(null)
+      const [edit, setEdit] = React.useState(null)
+      const [previewAt, setPreviewAt] = React.useState(null)
+      const [draft, setDraft] = React.useState(null)
+      const mounted = React.useRef(true)
+      React.useEffect(() => {
+        mounted.current = true
+        return () => { mounted.current = false }
+      }, [])
+      React.useEffect(() => {
+        const cancel = new AbortController()
+        services.lookup(order, cancel.signal).then(value => {
+          if (!cancel.signal.aborted) setResult({ value, generation, order, attempt })
+        }).catch(() => {
+          if (!cancel.signal.aborted) setResult({ error: true, generation, order, attempt })
+        })
+        return () => cancel.abort()
+      }, [services, generation, order, attempt])
+      const current = result?.generation === generation && result.order === order && result.attempt === attempt ? result : null
+      const ready = catalogReady(workspace, sessions)
+      const selected = ready && current?.value?.workspaceId ? workspace.items.find(row => row.workspaceId === current.value.workspaceId) : null
+      const inventory = React.useMemo(() => selected ? conversationInventory(workspace, sessions, selected).rows : [],
+        [selected, workspace, sessions])
+      const createdAt = current?.value?.createdAt
+      const creationReady = Boolean(createdAt) && inventory.every(({ id }) => Object.hasOwn(createdAt, id))
+      const rows = React.useMemo(() => {
+        const query = search.trim().normalize('NFC').toLowerCase()
+        const matching = inventory.filter(({ id, row }) => !query || [id, row.title, row.displayTitle].some(value =>
+          typeof value === 'string' && value.normalize('NFC').toLowerCase().includes(query)))
+        const timestamp = ({ id, row }) => order === 'creation' && creationReady ? createdAt[id]
+          : Number.isFinite(row.updatedAt) ? row.updatedAt : 0
+        return matching.sort((a, b) => timestamp(b) - timestamp(a) || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
+      }, [inventory, search, order, creationReady, createdAt])
+      const limit = 25
+      const activePage = Math.min(page, Math.max(0, Math.ceil(rows.length / limit) - 1))
+      const record = settings.record
+      const protectedIds = new Set(record?.protectedIds)
+      const protectedWorkspace = record?.protectedWorkspaces?.includes(selected?.workspaceId)
+      const archived = new Set(workspace?.archivedSessionIds)
+      const error = current?.error || workspace?.state === 'error' || ready && current?.value?.workspaceId && !selected
+      const loaded = ready && current?.value && !error
+      const shown = rows.slice(activePage * limit, (activePage + 1) * limit)
+      const editing = edit && edit.generation === generation && shown.some(item => item.id === edit.id) &&
+        !protectedWorkspace && !protectedIds.has(edit.id) ? edit : null
+      const proposal = draft?.source === settings.source && selected?.workspaceId === draft?.workspaceId ? draft : null
+
+      function changeOrder(event) {
+        setPage(0)
+        setEdit(null)
+        setOrder(event.target.value)
+      }
+
+      async function rename(event) {
+        event.preventDefault()
+        if (!editing || editing.busy || !services.rename || !editing.title.trim()) return
+        setEdit({ ...editing, busy: true, error: false })
+        try {
+          await services.rename(selected.workspaceId, editing.id, editing.title.trim(), generation)
+          if (mounted.current) setEdit(null)
+        } catch {
+          if (mounted.current) setEdit({ ...editing, busy: false, error: true })
+        }
+      }
+
+      return h(Modal, { open: true, onClose, title: copy.history, closeLabel: copy.close,
+        footer: h(Button, { size: 'sm', onClick: onClose }, copy.close) },
+      h('div', { lang: language, dir: language === 'ar' ? 'rtl' : 'ltr',
+        style: { display: 'grid', gap: 8, overflowWrap: 'anywhere' } },
+      h('label', { style: lifecycleLabel }, copy.search, h('input', { type: 'search', dir: 'auto', maxLength: 256,
+        style: lifecycleSelect, value: search, onChange: event => { setSearch(event.target.value); setPage(0); setEdit(null) } })),
+      h('label', { style: lifecycleLabel }, copy.order, h('select', { style: lifecycleSelect, value: order, onChange: changeOrder },
+        h('option', { value: 'recent' }, copy.recent), h('option', { value: 'creation' }, copy.creation))),
+      error ? h('div', { role: 'alert' }, copy.error, ' ', h(Button, { size: 'sm', onClick: () => setAttempt(attempt + 1) }, copy.retry))
+        : !loaded ? h('p', { role: 'status' }, copy.loading)
+        : h(React.Fragment, null,
+          order === 'creation' && selected && !creationReady ? h('p', { role: 'status' }, copy.creationUnavailable) : null,
+          rows.length ? h('ul', { style: { listStyle: 'none', padding: 0, margin: 0 } }, ...shown.map(({ id, row }) => {
+            const guarded = protectedWorkspace || protectedIds.has(id)
+            return h('li', { key: id, style: lifecycleActions },
+              h(Button, { size: 'sm', disabled: archived.has(id), onClick: () => {
+                if (services.open(selected.workspaceId, id, generation)) onClose()
+              } }, h('bdi', null, row.displayTitle || id)),
+              archived.has(id) ? h('small', null, copy.archived) : null,
+              guarded ? h('small', null, copy.protected) : null,
+              !guarded && record && services.rename ? h(Button, { size: 'sm', onClick: () => {
+                setEdit({ id, title: row.title ?? '', generation })
+              }, 'aria-label': copy.rename + ' ' + (row.displayTitle || id) }, copy.rename) : null)
+          })) : h('p', { role: 'status' }, inventory.length ? copy.noMatches : copy.empty),
+          rows.length > limit ? h('div', { style: lifecycleActions },
+            h(Button, { size: 'sm', disabled: activePage === 0, onClick: () => setPage(activePage - 1) }, copy.previous),
+            h('span', { 'aria-live': 'polite' }, `${activePage + 1} / ${Math.ceil(rows.length / limit)}`),
+            h(Button, { size: 'sm', disabled: (activePage + 1) * limit >= rows.length, onClick: () => setPage(activePage + 1) }, copy.next)) : null,
+          editing ? h('form', { onSubmit: rename },
+            h('label', { style: lifecycleLabel }, copy.title, h('input', { style: lifecycleSelect, dir: 'auto', value: editing.title,
+              maxLength: 200, disabled: editing.busy, onChange: event => setEdit({ ...editing, title: event.target.value }) })),
+            h(Button, { size: 'sm', type: 'submit', disabled: editing.busy || !editing.title.trim() }, copy.save),
+            h(Button, { size: 'sm', type: 'button', onClick: () => setEdit(null) }, copy.cancel),
+            editing.error ? h('p', { role: 'alert' }, copy.renameFailed) : null) : null,
+          selected ? h('section', { style: { display: 'grid', gap: 6 } },
+            h('p', { style: lifecycleMuted }, record ? copy.disabled : copy.retentionUnavailable),
+            record ? h(React.Fragment, null,
+              h('label', { style: lifecycleLabel }, copy.retention, h('select', { style: lifecycleSelect,
+                value: proposal?.value ?? record.overrides.find(item => item.workspace === selected.workspaceId)?.retention ?? 'inherit',
+                disabled: !settings.writable, onChange: event => {
+                  setDraft({ value: event.target.value, source: settings.source, workspaceId: selected.workspaceId })
+                  setPreviewAt(null)
+                } },
+              h('option', { value: 'inherit' }, copy.useDefault),
+              ...['forever', ...lifecycleDurations].map(value => h('option', { key: value, value }, value === 'forever'
+                ? language === 'ar' ? 'إلى الأبد' : 'Forever' : value)))),
+              h(SuiteRecordStatus, { settings }),
+              proposal ? h('div', { style: lifecycleActions },
+                h(Button, { size: 'sm', disabled: !settings.writable, onClick: () => {
+                  const overrides = record.overrides.filter(item => item.workspace !== selected.workspaceId)
+                  if (proposal.value !== 'inherit') overrides.push({ workspace: selected.workspaceId, retention: proposal.value })
+                  setDraft(null)
+                  setPreviewAt(null)
+                  void settings.save({ ...record, overrides })
+                } }, copy.save),
+                h(Button, { size: 'sm', onClick: () => setDraft(null) }, copy.cancel)) : null,
+              h(Button, { size: 'sm', onClick: () => setPreviewAt(previewAt === null ? Date.now() : null) },
+                previewAt === null ? copy.retention : copy.cancel),
+              previewAt !== null ? h('div', { lang: 'en', dir: 'ltr' }, h(CleanupPreview, {
+                rows: retentionRows(inventory, workspace, record, previewAt), at: previewAt,
+              })) : null) : null) : null)))
+    }
+
+    function DirectChatHistoryAction({ wide, services, useRemoteAccess }) {
+      const language = suiteWatch(services.locale)?.active === 'ar' ? 'ar' : 'en'
+      const copy = directChatCopy[language]
+      const [open, setOpen] = React.useState(false)
+      return h(React.Fragment, null,
+        h(Button, { size: 'sm', variant: 'toolbar', 'aria-label': copy.history, title: copy.history,
+          'aria-haspopup': 'dialog', 'aria-expanded': open, onClick: () => setOpen(true),
+          icon: suiteGlyph(lifecycleIcon, 16) }, wide ? copy.history : null),
+        open ? h(DirectChatHistory, { onClose: () => setOpen(false), services, useRemoteAccess, copy, language }) : null)
+    }
+
     // Official DSH New Session HOC: mounts immediately beneath the native
     // New Session control, above global Plugins and Workspace/Projects rows.
-    function DirectChatTopAction({ children, wide, useRemoteAccess, startChat }) {
+    function DirectChatTopAction({ children, wide, useRemoteAccess, startChat, services }) {
       return h('div', { 'data-abinadwan-direct-chat-top': '',
         style: { display: 'flex', flexDirection: 'column', gap: 4, width: '100%' } },
         children,
-        h(DirectChatButton, { wide, useRemoteAccess, startChat }))
+        h(DirectChatButton, { wide, useRemoteAccess, startChat }),
+        Modal && services ? h(DirectChatHistoryAction, { wide, services, useRemoteAccess }) : null)
     }
     const directChatPlugin = {
-      inject: ['slots', 'sessions', 'workspaces', 'uiWorkspace', 'layout'],
+      inject: ['slots', 'sessions', 'workspaces', 'uiWorkspace', 'layout', 'remote', 'locale'],
       apply(ctx) {
         const lifetime = new AbortController()
+        const connection = suiteConnection(ctx)
+        const services = { locale: ctx.locale, workspaces: ctx.workspaces.list, sessions: ctx.sessions.list, connection,
+          settings: ctx.get('remote.settings') }
+        const member = (workspaceId, id, generation) => {
+          if (lifetime.signal.aborted || connection.getSnapshot() !== generation) return false
+          const workspaces = services.workspaces.getSnapshot()
+          const sessions = services.sessions.getSnapshot()
+          if (!catalogReady(workspaces, sessions)) return false
+          const claimed = workspaces.items.filter(row => row.sessionIds.includes(id))
+          return claimed.length === 1 && claimed[0].workspaceId === workspaceId && sessions.ids.includes(id) &&
+            Object.hasOwn(sessions.byId, id) && !sessions.byId[id].blank && sessions.byId[id].origin !== 'subagent'
+        }
+        services.lookup = async (order, signal) => {
+          const endpoint = new URL('/api/abinadwan-direct-chat/catalog', document.baseURI)
+          if (endpoint.origin !== document.location.origin) throw new Error('Cross-origin Direct Chat endpoint')
+          if (order === 'creation') endpoint.searchParams.set('order', order)
+          const response = await fetch(endpoint, { credentials: 'same-origin', redirect: 'error',
+            signal: AbortSignal.any([signal, lifetime.signal, AbortSignal.timeout(10000)]) })
+          if (!response.ok) throw new Error('Direct Chat catalog unavailable')
+          const result = await response.json()
+          if (result.workspaceId !== null && (typeof result.workspaceId !== 'string' || !result.workspaceId)) {
+            throw new Error('Invalid Workspace identity')
+          }
+          return result
+        }
+        services.open = (workspaceId, id, generation) => {
+          if (!member(workspaceId, id, generation) ||
+              services.workspaces.getSnapshot().archivedSessionIds?.includes(id)) return false
+          ctx.uiWorkspace.openSession(id)
+          return true
+        }
+        if (typeof ctx.sessions.using === 'function') {
+          services.rename = (workspaceId, id, title, generation) =>
+            ctx.sessions.using(id, { source: 'workspaceOperation', signal: lifetime.signal }, async reference => {
+              if (!member(workspaceId, id, generation)) throw new Error('Direct Chat membership changed')
+              const result = await reference.binding.session.rename(title)
+              if (!result.ok) throw new Error('Direct Chat rename refused')
+            })
+        }
         ctx.effect(() => () => lifetime.abort(), 'direct-chat: abort pending navigation')
         async function startChat() {
           const navigation = AbortSignal.any([ctx.layout.beginNavigation(), lifetime.signal])
@@ -2964,7 +3303,7 @@ window.__ModuleLoader__.load({
         }
         ctx.slots.inject('sidebar.session.action', () => ctx.slots.register({
           name: 'sidebar.session.action', id: DIRECT_CHAT_ID,
-          inject: () => ({ startChat }),
+          inject: () => ({ startChat, services }),
         }, DirectChatTopAction))
       },
     }

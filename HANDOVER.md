@@ -1,51 +1,30 @@
-# ABINADWAN Plugins Suite development handover
+# ABINADWAN Plugins Suite — development handover
 
-> **v1.0.0 source release (2026-11-22):** The owner approved promotion from `develop` to `main` through PR #31 and publication as GitHub Release `v1.0.0`. Direct Chat Phase 2, Settings-based My Profile (Follow DSH and seven UI languages), Chat Control, all six component icons and reorganized documentation are included. CI passed on Windows and Linux Node 22/24. Deep Direct Chat Host tool/request authorization, per-chat filesystem isolation and final My Profile multilingual Desktop checks are still **not verified**; releasing does not change those facts. Historical LPAC companion/encrypted profile designs below are not active.
+> **Published baseline:** [v1.0.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.0), from `main`, tag commit `206f3e814800478f961af05b673a1235ea8ba002`. This is the owner's first official six-component release. The tagged release is **immutable**: subsequent fixes require a new, separately approved release. GitHub Actions on the published commit passed Windows and Ubuntu, Node 22 and 24.
 
-## Baseline and workflow
+## Current workflow and source of truth
 
-**Working branch:** `develop`. **Published release:** [`v1.0.0`](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.0) from `main`; preceding stable release was `v0.7.2`. Future releases still need explicit approval, CI, release notes and tagged commits.
+- `develop` is the integration base. [PR #33](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/33) supplies Direct Chat and My Profile security changes. [PR #34](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/34) supplies the catalog, retention and reasoning changes. The only Git conflict was in the Direct Chat Host entry point. The resolution keeps both tool-denial hooks and the hardened prepare route, adds the owner-only read-only catalog, and shares canonical directory validation between the two.
+- The [component reference](docs/DETAIL.md) describes current behavior. The [security audit](docs/research/SECURITY_CODE_AUDIT_2026_11_22.md) and [architecture review](docs/research/CHAT_CONTROL_ADAPTIVE_DIRECT_CHAT_V2.md) hold evidence, upstream API gaps and acceptance criteria.
+- The `develop` → `main` draft is for owner review. Publication and any version or tag change require separate approval.
 
-This file records the unified development and release history for all six components. Branch future work from `develop`, validate it, and promote it through reviewed pull requests into `main`. The owner explicitly approved v1.0.0 publication with the outstanding validation caveats documented rather than calling those gates passed.
+## Consolidated component status
 
-The integration worktree started at `4faa6fa`, the accepted Direct Chat storage and Windows lifecycle hardening. Merge `cb31863` adds Personal Profile Phase 8 from `5d8ba7b`. Merge `4dff6eb` adds Adaptive Reasoning from `dcfc346`. The only merge conflict was in `test-support/client.js`. The resolved test context contains `TextDecoder`, `Blob` and `crypto`. The earlier Host-only work at `b10610f` is retained as provenance on its original branch.
-
-The older Phase 8 and Adaptive Reasoning reports document their branch snapshots. Use this handover for the feature gates in the unified baseline. The local Project Recovery Audit is preserved in the original recovery worktree.
-
-## Six-component baseline
-
-| Component | Available in this baseline | Open or gated |
+| Component | Implemented on develop | Remaining verification or limit |
 | --- | --- | --- |
-| Environment & Context | Default-on read-only session and Workspace inspector, context pressure and token projections. | Rerun the supported Desktop smoke matrix on the release artifact. |
-| Humanizer | Default-on native Skill registration and independent enable/disable. | Current registration tests cover lifecycle. Model writing quality depends on the configured model and needs release acceptance. |
-| Personal Profile | Candidate on the separate simplification feature branch: one My Information page, two field policies, native v4 settings, v2 backup compatibility, checked-field native prompt contribution. | Source/package and clean rc.5 Desktop request capture, migration/rollback and Workspace/session acceptance must be verified before merge. |
-| Direct Chat | Default-off Windows companion with LPAC, private desktop, broker, separate history, Markdown, quoted UTF-8 attachments, and root-scoped storage, migration, deletion and retention. The accepted `4faa6fa` Windows ownership, quarantine, and retryable cleanup protections remain in the integrated tree. | Final packed Desktop install, restart and uninstall acceptance. General binary/image attachments, history search and web search are outside the currently enabled capabilities. |
-| Conversation Lifecycle | Default-off native Settings for Workspace inventory, protection, global and Workspace retention preferences and a cleanup preview. | Workspace deletion and automatic retention depend on authoritative upstream retirement, artifact coverage and restart-safe reconciliation. Exact storage usage is unavailable. |
-| Adaptive Reasoning | Default-off composer integration for supported manual model effort, saved selection, Apply/Remove and local statistics backed by observed requests. | One-shot reasoning, automatic application and unsupported subagent policies stay gated on rc.3/rc.5. The public native request path offers no safe way to set a temporary effort without persisting it. Classifier evaluation stays synthetic. |
+| Environment & Context | Default **On**. Read-only native Session/Workspace context and usage estimates. | Adapter usage can be incomplete. |
+| Humanizer | Default **On**. On-demand native rewriting Skill. | Already-loaded instructions can remain in a conversation. |
+| My Profile | Default **Off**. Native Settings, existing v4 permissions and backup compatibility. Recognized disclosure replay checks cover additional newline formats, and the shared prompt copy strips additional formatting controls. | Run Desktop provider-bound privacy and multilingual checks. Revocation cannot remove historical or previously sent data. |
+| Direct Chat | Default **Off**. Separate native Session IDs in one permanent Workspace. Owner-gated discovery, search, recent and bounded creation sorting, paging and native management. Tool-denial covers canonical paths and aliases. Prepare uses owner-only POSIX creation, redacted logs and no-store responses. | Sessions share a filesystem cwd. Test actual Windows junctions and ACLs, alternate tool paths, remote authorization and restart/reconnect in disposable Profiles. DSH exposes one native Workspace tree. |
+| Chat Control | Default **Off**. Authorized inventory, conversation and Workspace protection, policy overrides and UTC eligibility previews. | Verify upgrade, protection and reconnect on Desktop. DSH has no recoverable, owner-scoped Session deletion transaction. Automatic and destructive cleanup stay disabled. |
+| Adaptive Reasoning | Default **Off**. Manual native Session effort plus opt-in recommendations that preserve explicit effort. Bounded Profile aggregates with atomic persistence and reset. | Test model changes, restart and reset on Desktop. DSH lacks request-bound effort admission and a plugin policy hook covering all subagents. |
 
 ## Verification
 
-Use synthetic inputs and isolated Harness roots. Run package checks from PowerShell so the tar invocation handles Windows paths. The native fixtures use the bundled Node 24.21.0 and separately pinned Harness rc.3 and rc.5 runtimes. Stop pre-locking Direct Chat Hosts before an upgrade exercise. Existing installations and personal backups are outside the acceptance fixture.
+Run `npm ci --ignore-scripts`, `npm test`, and `npm run check:package`. The Windows and Ubuntu Node.js 22/24 workflow also exercises pinned Harness Host contracts with synthetic data. Disposable Desktop acceptance remains open for the combined changes. Verify component enable/disable and re-enable, keyboard and RTL navigation, native Workspace and Session identity across reconnect and restart, legacy settings and retention exclusions after upgrade, reasoning selection and aggregate reset, and model-bound disclosure across provider switches and replay. See the [acceptance checklist](docs/research/CHAT_CONTROL_ADAPTIVE_DIRECT_CHAT_V2.md#desktop-acceptance-still-required).
 
-| Suite | Coverage |
-| --- | --- |
-| `npm test` | Source, component registration and lifecycle, Profile backup and privacy, reasoning controls and request gating, Direct Chat storage and client contracts. |
-| `npm run check:package` | Package allowlist, version agreement and tests against the extracted package. |
-| `qa/profile-host-check.mjs`, `qa/phase8-disclosure-check.mjs`, `qa/phase8-persistence-check.mjs` | Native preference, structured privacy and persistence checks with an offline adapter and synthetic settings. Use `--import ./qa/runtime-resolve.mjs`. |
-| `qa/adaptive-reasoning-host-check.mjs`, `qa/new-plugins-host-check.mjs` | Native reasoning admission and shared component behavior using offline adapter fixtures. |
-| `qa/direct-chat-appcontainer-check.mjs`, `qa/direct-chat-production-check.mjs` | LPAC and private desktop, competing Hosts, stale storage identity, reparse refusal, retention, verified migration, concurrent deletion and access-cleanup retry. |
+## Historical baseline notes (not current behavior)
 
-The integrated Windows baseline passed **220/220** source tests and **220/220** extracted-package tests on both Node 24.21.0 and 26.10.0. The package has **73** files and excludes QA, tests and Desktop captures. The offline native suites passed **38/38** on each of Harness rc.3 and rc.5 with Node 24.21.0. A synthetic Profile export was also checked against the v2 browser decoder and native schema from main.
+The pre-v1 integration worktree began at `4faa6fa`; merges `cb31863` and `4dff6eb` brought earlier Personal Profile and Adaptive Reasoning branches together. An earlier unified snapshot recorded **220/220** source and package tests and **38/38** pinned offline Host checks. Those counts apply to that earlier snapshot.
 
-Historical evidence remains in [Direct Chat Phase D3](docs/archive/research/NEW_PLUGINS_PHASE_D3.md), the [Phase 8 plan and branch verification](docs/PERSONAL_PROFILE_PHASE8_REPORT.md), and the [Adaptive Reasoning branch handover](docs/research/ADAPTIVE_REASONING_HANDOVER.md).
-
-## v1.0.0 completion order
-
-1. **P0 · Personal Profile simplification acceptance.** On this feature branch, verify independent saved per-field checkboxes on clean and existing sessions, legacy upgrade, backup/rollback, retries, model/provider switches, restart and clean Workspaces. Verify actual request bytes with synthetic data. Keep the existing history limitation visible. Do not merge until owner approval.
-2. **P0 · Direct Chat Windows acceptance.** Exercise a packed install and upgrade with older Hosts stopped, native renderer navigation, recovery after Host termination, and component and suite uninstall. Verify real grant/profile cleanup, previous-root preservation, and failure recovery in disposable profiles. Unknown legacy quarantine remains a manual recovery case.
-3. **P1 · Adaptive Reasoning native contract.** Establish a supported request-local effort at the claim boundary before enabling temporary selection. Verify late and stale bindings, retries, explicit manual precedence, per-route capability changes, shared-step accounting and hard-crash restoration. Accept light/dark composer and DeepSeek transport evidence before expanding scope. Keep unsupported subagent integrations off.
-4. **P1 · Conversation Lifecycle authority.** Finish the external reference review and establish authoritative Workspace ownership, retirement, artifact inventory, recovery and accounting before executing deletions. Test deletion and retention gates on synthetic data.
-5. **P1 · Release candidate regression and documentation.** Run the supported Windows and Linux/Node matrix on the final combined package. Verify the real Desktop update, rollback, localization and lifecycle paths, then align user-facing docs and package metadata with the approved six-component scope.
-6. **Release gate.** Review source history and distribution contents for private artifacts, check notices, confirm supported runtimes and acceptance results, and secure owner approval for the single consolidated pull request and stable version change.
-
-The preceding verification numbers describe the develop baseline, not this feature branch. The simplified candidate needs its own source, package, native and Desktop acceptance. Release approval remains open.
+The owner later approved [Direct Chat Phase 2](docs/research/DIRECT_CHAT_PHASE2_DESKTOP_ACCEPTANCE.md) and [Settings localization/renames](docs/SETTINGS_NAVIGATION_NAMES_2026_11_21.md) before the v1.0.0 release. See [archived Phase D3](docs/archive/research/NEW_PLUGINS_PHASE_D3.md), [My Profile Phase 8 report](docs/PERSONAL_PROFILE_PHASE8_REPORT.md), and [Adaptive Reasoning historical handover](docs/research/ADAPTIVE_REASONING_HANDOVER.md) for the original exploratory records and their limitations.

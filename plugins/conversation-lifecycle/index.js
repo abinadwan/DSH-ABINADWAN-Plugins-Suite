@@ -7,8 +7,9 @@ export const Config = Schema.object({
   record: Schema.object({
     retention: duration.default('forever'),
     overrides: Schema.array(Schema.object({ workspace: identity, retention: duration.required() })).max(1000).default([]),
+    protectedWorkspaces: Schema.array(identity).max(1000).default([]),
     protectedIds: Schema.array(identity).max(10000).default([]),
-  }).default({ retention: 'forever', overrides: [], protectedIds: [] }).volatile(),
+  }).default({ retention: 'forever', overrides: [], protectedIds: [], protectedWorkspaces: [] }).volatile(),
 })
 
 export function apply(ctx) {

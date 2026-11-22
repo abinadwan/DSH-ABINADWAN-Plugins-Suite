@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import test from 'node:test'
 import { parse } from 'yaml'
+import { workspaceName } from '../plugins/direct-chat/workspace-path.js'
 
 test('Direct Chat remains opt-in with one permanent Workspace and separate native Session histories', () => {
   const [{ insert }] = parse(readFileSync(new URL('../cordis.patch.yml', import.meta.url), 'utf8'))
@@ -10,7 +11,7 @@ test('Direct Chat remains opt-in with one permanent Workspace and separate nativ
   assert.equal(row.disabled, true)
   const host = readFileSync(new URL('../plugins/direct-chat/index.js', import.meta.url), 'utf8')
   const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
-  assert.match(host, /workspaceName = 'Direct Chat'/)
+  assert.equal(workspaceName, 'Direct Chat')
   assert.match(host, /prepareWorkspace\(profileDir, roots\)/)
   assert.doesNotMatch(host, /mkdtemp|sessionController\.create|sessionPersistence\.flush|child_process|startCompanion/)
   assert.match(client, /ctx\.workspaces\.create\(\{ path: result\.path \}\)/)

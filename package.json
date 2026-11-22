@@ -1,7 +1,7 @@
 {
   "name": "@abinadwan/dsh-plugins-suite",
   "version": "1.0.0",
-  "description": "DeepSeek Harness suite with Environment & Context, Humanizer and Personal Profile response preferences.",
+  "description": "Six-component DeepSeek Harness suite: Environment & Context, Humanizer, My Profile, Direct Chat, Chat Control and Adaptive Reasoning.",
   "private": true,
   "type": "module",
   "main": "./index.js",
@@ -99,13 +99,15 @@
     "dsh",
     "plugins-suite",
     "abinadwan",
-    "saudi-avatar",
     "environment-sidebar",
     "context-window",
     "token-usage",
     "ai-agents",
     "humanizer",
-    "personal-profile"
+    "my-profile",
+    "direct-chat",
+    "chat-control",
+    "adaptive-reasoning"
   ],
   "repository": {
     "type": "git",
@@ -131,6 +133,7 @@
     "@deepseek-ai/cordis-plugin-loader": ">=1.0.6 <2"
   },
   "dependencies": {
+    "@deepseek-ai/dsh-atomic-write": "0.2.2-rc.3",
     "@deepseek-ai/schemastery": "3.19.0"
   }
 }

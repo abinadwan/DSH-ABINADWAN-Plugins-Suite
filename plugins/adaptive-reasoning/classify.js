@@ -59,7 +59,11 @@ export function classify(text, context = {}) {
   if (math.test(source)) floor(STANDARD, 'math')
   if (attachments > 0) floor(STANDARD, 'attachment')
   if (raise.test(prose)) { tier = Math.min(ADVANCED, Math.max(tier + 1, COMPLEX)); signals.push('asked-deeper') }
-  else if (lower.test(prose)) { tier = Math.max(SIMPLE, tier - 1); signals.push('asked-briefer') }
+  else if (lower.test(prose)) {
+    // Output brevity should not downgrade complex analysis.
+    if (tier < COMPLEX) tier = Math.max(SIMPLE, tier - 1)
+    signals.push('asked-briefer')
+  }
   return { tier, signals }
 }
 
