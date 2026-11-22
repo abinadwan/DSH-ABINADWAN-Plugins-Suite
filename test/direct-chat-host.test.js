@@ -83,6 +83,10 @@ test('symlink aliases into Direct Chat cannot bypass either tool-denial hook', a
   const aliasedCwd = join(alias, 'Direct Chat')
   const execution = { agent: { session: { header: { cwd: aliasedCwd } } } }
   assert.equal(fx.guard()(execution)?.info.code, 'DIRECT_CHAT_TOOL_DENIED')
+  // Even before a nested child directory exists, it still belongs to the
+  // protected Workspace: non-filesystem tools could otherwise run there.
+  const pendingChild = { agent: { session: { header: { cwd: join(aliasedCwd, 'not-created-yet') } } } }
+  assert.equal(fx.guard()(pendingChild)?.info.code, 'DIRECT_CHAT_TOOL_DENIED')
   let executed = false
   const response = await fx.preExecute()(execution, () => {
     executed = true
