@@ -93,7 +93,7 @@ test('README technology badges match the source stack and distinguish published 
   }
   assert.equal(packageJson.type, 'module')
   assert.match(packageJson.devDependencies.react, /^19\./)
-  assert.match(read('.github/workflows/test.yml'), /node: \['22', '24'\]/)
+  if (sourceCheckout) assert.match(read('.github/workflows/test.yml'), /node: \['22', '24'\]/)
   assert.match(readme, /shields\.io\/badge\/release-v1\.0\.0/)
   assert.doesNotMatch(readme, /shields\.io\/badge\/release-v1\.0\.1/)
 })
