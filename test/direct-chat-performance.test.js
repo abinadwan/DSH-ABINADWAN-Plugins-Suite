@@ -70,3 +70,20 @@ test('phase 03: creation ordering never implies complete order when metadata is 
   // No content bodies, transient IDs, or provider calls are consulted.
   assert.equal(source.includes('function filterAndSortDirectChat('), true)
 })
+
+
+test('phase 03: metadata search is Unicode-normalized, case-insensitive, stable and non-mutating', () => {
+  const records = [
+    { id: 'x-2', row: { displayTitle: 'Cafe\u0301 draft', updatedAt: 21 } },
+    { id: 'x-1', row: { title: 'CAFÉ notes', updatedAt: 21 } },
+    { id: 'x-3', row: { title: 'Unrelated', updatedAt: 19 } },
+  ]
+  const before = records.map(x => x.id).join(',')
+  const found = sorter(records, ' café ', 'recent', false, null)
+  assert.deepEqual(found.map(x => x.id).join(','), 'x-1,x-2')
+  assert.equal(records.map(x => x.id).join(','), before, 'sorting must not mutate catalog inventory')
+  const byId = sorter(records, 'X-2', 'recent', false, null)
+  assert.deepEqual(byId.map(x => x.id).join(','), 'x-2')
+  const untouched = sorter(records, '', 'recent', false, null)
+  assert.equal(untouched.length, records.length)
+})
