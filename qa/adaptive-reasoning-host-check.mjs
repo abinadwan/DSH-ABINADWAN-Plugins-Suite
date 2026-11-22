@@ -5,7 +5,7 @@
 //
 // Run: ABINADWAN_TEST_RUNTIME=<extracted runtime> node --test qa/adaptive-reasoning-host-check.mjs
 import assert from 'node:assert/strict'
-import { mkdtemp, rm } from 'node:fs/promises'
+import { mkdtemp, rm, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { createRequire } from 'node:module'
@@ -284,4 +284,32 @@ test('profile aggregate persists across native Host instances, and reset preserv
   const b = await current.create('next-fixture', 'fast-v2')
   const result = await current.call('effort', { sessionId: b.id, ...route, reasoningEffort: 'balanced-v2' })
   assert.equal(result.status, 200, 'reset does not touch existing settings')
+})
+
+
+test('failed persisted reset retains unsaved statistics for a safe retry', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'dsh-ar-reset-failure-'))
+  t.after(() => rm(dir, { recursive: true, force: true }))
+  const h = await host(t, {}, dir)
+  const agent = await h.create('reset-failure-fixture', 'balanced-v2')
+  agent.followup(prompt(ids[0]))
+  await agent.whenIdle()
+  const saved = await h.call('stats', {})
+  assert.equal(saved.status, 200)
+  assert.equal(saved.body.requests.session['balanced-v2'].requests, 1)
+  const filename = join(dir, 'abinadwan-reasoning-stats.json')
+  const valid = await readFile(filename)
+  agent.followup(prompt(ids[1]))
+  await agent.whenIdle()
+  await writeFile(filename, '{corrupt-and-retry')
+  assert.equal((await h.call('stats/reset', {})).status, 503)
+  assert.equal((await readFile(filename, 'utf8')), '{corrupt-and-retry',
+    'failed reset must not overwrite a corrupt backing file')
+  // Repair the fictional test file. A previously counted but unsaved request
+  // must survive the failed reset and be written by the next successful read.
+  await writeFile(filename, valid)
+  const after = await h.call('stats', {})
+  assert.equal(after.status, 200)
+  assert.equal(after.body.requests.session['balanced-v2'].requests, 2,
+    'failed reset must never discard already accumulated requests')
 })

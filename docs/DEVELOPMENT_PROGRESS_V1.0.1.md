@@ -1,6 +1,6 @@
 # v1.0.1 development progress — single source of truth
 
-> **State: Phases 01–02 approved on `develop`; Phase 03 candidate `1.0.1-rc.3` under review.** Last baseline review: 2026-11-22. Phase reports originate on temporary branches; merge to `develop` and delete the branch only after explicit owner approval. The published `v1.0.0` tag and `main` remain unchanged by these phases. No release is authorized by this work.
+> **State: Phases 01–03 approved on `develop`; Phase 04 candidate `1.0.1-rc.4` under review.** Last baseline review: 2026-11-22. Phase reports originate on temporary branches; merge to `develop` and delete the branch only after explicit owner approval. The published `v1.0.0` tag and `main` remain unchanged by these phases. No release is authorized by this work.
 
 ## Why this register exists
 
@@ -42,8 +42,8 @@ At each approved phase, update all version-dependent source/metadata **consisten
 | --- | --- | --- | --- | --- |
 | 1 | Integrated security audit and regression | **Approved on develop** | [PR #39](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/39) · [final four-platform CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45048359692) · [Phase 01 audit](research/v1.0.1/PHASE_01_SECURITY_INTEGRATION.md) | Real Windows Desktop/provider-bound checks remain independently deferred |
 | 2 | Chat Control retention/protection consistency | **Approved on develop** | [PR #40](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/40) · [final PR-head CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45050012849) · [Phase 02 report](research/v1.0.1/PHASE_02_CHAT_CONTROL_RETENTION.md) | Real Desktop permission, archive and concurrent-window acceptance deferred to final Desktop gate |
-| 3 | Direct Chat search/history scale | **Implemented — needs review** | [Draft PR #41](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/41) · [Phase 03 report](research/v1.0.1/PHASE_03_DIRECT_CHAT_PERFORMANCE.md) · [red CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45050660659) · [passing performance CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45050837406) | Final PR-head CI, owner approval, and 10k-item Desktop responsiveness later |
-| 4 | Adaptive Reasoning statistics persistence/recovery | **Not started** | — | Crash, corruption, concurrent writer and reset tests |
+| 3 | Direct Chat search/history scale | **Approved on develop** | [merged PR #41](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/41) · [final CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45051062749) · [Phase 03 report](research/v1.0.1/PHASE_03_DIRECT_CHAT_PERFORMANCE.md) | Real 10k-item Desktop responsiveness deferred |
+| 4 | Adaptive Reasoning statistics persistence/recovery | **In progress** | [Phase 04 report](research/v1.0.1/PHASE_04_REASONING_STATISTICS.md) · native Host reset failure regression | Latest CI, owner review, real Desktop restart/crash checks |
 | 5 | Arabic complexity classification | **Not started** | — | Arabic/mixed-language benchmark and no English regression |
 | 6 | Arabic UI and RTL | **Not started** | — | Translation, keyboard, direction and accessible UI tests |
 | 7 | UX failures/loading/retry states | **Not started** | — | Non-misleading success/error and network failure handling |
@@ -75,7 +75,7 @@ Status vocabulary: `Not started`, `In progress`, `Implemented — needs review`,
 
 **One problem:** concurrent writes, crashes, reset and corrupted Profile-local aggregate can produce partial/lost counts. Cover atomic-replacement boundary, unknown formats, restart/reopening, retry and double-counting, bounded memory and failure transparency. Never promise guaranteed recovery after power loss.
 
-**Completed:** none under this phase yet. **Pending:** run evidence, error-case matrix, actual storage limits.
+**Candidate changes:** repaired premature in-memory statistics loss when a Profile-local persistent reset fails; Host regression covers corrupt storage, recovery and retry. Added oversized/unknown format fail-closed fixtures and bounded cardinality tests (64 route keys, grouped overflow). Preserved atomic file replacement and existing cross-Host locking. Version is `1.0.1-rc.4`; see [Phase 04 report](research/v1.0.1/PHASE_04_REASONING_STATISTICS.md). **Pending:** final CI and owner approval. Sudden power loss and real Desktop remain deferred.
 
 ### Phase 5 — Arabic reasoning classifier
 
