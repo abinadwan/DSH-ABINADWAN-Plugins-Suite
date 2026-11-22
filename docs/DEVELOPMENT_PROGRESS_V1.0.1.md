@@ -1,6 +1,6 @@
 # v1.0.1 development progress — single source of truth
 
-> **State: planning / no v1.0.1 candidate published.** Last baseline review: 2026-11-22. This living register is maintained on `develop` only after an owner-approved phase PR. The published v1.0.0 release and `main` remain unchanged until separately approved.
+> **State: Phase 1 candidate work in progress; no v1.0.1 candidate published.** Last baseline review: 2026-11-22. This living register is updated on the phase branch for owner review and reaches `develop` only after an approved PR. The published v1.0.0 tag remains unchanged. No release is authorized by this work.
 
 ## Why this register exists
 
@@ -27,9 +27,9 @@ At each approved phase, update all version-dependent source/metadata **consisten
 
 ## Known good baseline before phase 1
 
-- **Branch:** `develop` at `8abb5f607e274b574fa1735f51862b76a01b11cc` (merged security PR #33 + feature PR #34).
-- **Review PR:** [#35 develop → main](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/35) — Draft, not merged.
-- **Published main/release:** `206f3e814800478f961af05b673a1235ea8ba002` / `v1.0.0`.
+- **Historical tested runtime baseline:** `develop` at `8abb5f607e274b574fa1735f51862b76a01b11cc` (security PR #33 and feature PR #34).
+- **Phase 1 starting base:** latest `develop` at `9418195ae05cc4a3873eea20f56a02e355dc0c21` after merge of PRs #36–#38; the work branch is `fix/phase-01-security-audit`.
+- **Integration review:** [#35 develop → main](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/35) was merged as `e4c4c762dcba492879438ed34ba4592fa1a098b0`. The **published release tag** remains `v1.0.0` at `206f3e814800478f961af05b673a1235ea8ba002`.
 - **Last consolidated CI evidence:** [Windows/Ubuntu Node 22/24 — successful](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45005085552).
 - **Currently implemented but still needing Desktop acceptance:** Direct Chat owner-authorized catalog/search/sorting and tool-denial hardening; Chat Control safe eligibility preview; Adaptive Reasoning saved statistics and opt-in recommendations; My Profile recognized disclosure-replay protection.
 - **Upstream-dependent and *not implemented*:** real/recoverable Session deletion, automatic destructive cleanup, authenticated per-message effort overrides, universal Subagent effort policy, native second Workspace tree, and OS-grade per-Session filesystem confinement. Do **not** count these as a phase completion or silently activate them.
@@ -39,7 +39,7 @@ At each approved phase, update all version-dependent source/metadata **consisten
 
 | Phase | Primary problem | Status | Evidence / review | Pending |
 | --- | --- | --- | --- | --- |
-| 1 | Integrated security audit and regression | **Not started** | — | Audit, reproduced issue(s), fixes and CI |
+| 1 | Integrated security audit and regression | **Implemented — needs review** | [Phase 01 review record](research/v1.0.1/PHASE_01_SECURITY_INTEGRATION.md) · [red reproduction](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45047616116) · [passing candidate CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45048161684) | Final PR-head checks, explicit owner approval and real Desktop/provider checks |
 | 2 | Chat Control retention/protection consistency | **Not started** | — | Boundary/permission/concurrency tests |
 | 3 | Direct Chat search/history scale | **Not started** | — | 100 / 1,000 / 10,000 synthetic-item benchmarks |
 | 4 | Adaptive Reasoning statistics persistence/recovery | **Not started** | — | Crash, corruption, concurrent writer and reset tests |
@@ -56,7 +56,7 @@ Status vocabulary: `Not started`, `In progress`, `Implemented — needs review`,
 
 **One problem:** previously merged security and product features may interact in ways tests miss. Cover both Direct Chat tool-denial hooks, canonical path aliases and nonexisting suffixes, owner-only prepare/catalog routes, no sensitive path logging, My Profile replay/revocation boundaries, and lifecycle disposal. First reproduce any new defect with a failing test, then fix. Do not treat missing OS sandboxing or Host-owned APIs as bugs this phase can close.
 
-**Completed:** none under this phase yet. **Pending:** audit report, changed-file list, reproduced failures and fixes, full matrix.
+**Implemented on the candidate branch (not approved yet):** reproduced a deep unresolved directory-suffix bypass of Direct Chat's symlink/junction alias tool guard (48 pending segments; original search capped at 32); removed the arbitrary traversal ceiling; added regression checks for both denial hooks and for unrelated deep Workspaces. Updated candidate version metadata consistently to `1.0.1-rc.1`. Extended the pinned offline My Profile Host fixture to check in-history follow-up after revoking permission. [Phase 01 record](research/v1.0.1/PHASE_01_SECURITY_INTEGRATION.md) documents the red CI proof and review scope. **Pending:** full current-head matrix, any follow-up test fixes, independent owner approval, and real Windows Desktop / provider-bound / alternate Host-route checks.
 
 ### Phase 2 — Chat Control retention/protection
 
@@ -124,7 +124,7 @@ In the **same phase PR** (no separate documentation-only follow-up required), up
 6. **Stop for explicit owner approval.** Do not self-merge. After approved merge, verify `develop` commit and update `Approved on develop` evidence. Delete the phase branch only after integration checks pass.
 7. Start the next phase from that new `develop` revision.
 
-**Hard restrictions:** Do not merge into `main`, publish a version/tag, manipulate real user data, enable unsupported destructive cleanup, or claim filesystem isolation/Windows Desktop acceptance. Keep PR #35 as Draft pending an independently approved release decision.
+**Hard restrictions:** Do not merge into `main`, publish a version/tag, manipulate real user data, enable unsupported destructive cleanup, or claim filesystem isolation/Windows Desktop acceptance. PR #35 was merged into `main` without publishing a release; maintain the same separate approval and real-Desktop gates for any future release. Keep [PR #39](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/39) as Draft until Phase 1 owner review.
 
 ## Current decision log
 
@@ -133,3 +133,4 @@ In the **same phase PR** (no separate documentation-only follow-up required), up
 | 2026-11-22 | Use one patch-release train `1.0.1` and sequential `1.0.1-rc.1` through `rc.8` | Each phase gets an identifiable tested artifact without reusing one published version |
 | 2026-11-22 | Keep `main` and published `v1.0.0` unchanged during source-only phases | Final release requires Desktop acceptance and separate authorization |
 | 2026-11-22 | Track completed and pending work in both this living dashboard and per-phase immutable reports | Allows returning to unresolved problems with source, evidence and decision history |
+| 2026-11-22 | Start Phase 1 from `develop` at `9418195`; keep stage in a Draft PR | Security red/green regression and full candidate verification precede owner approval |
