@@ -10,6 +10,8 @@ export const inject = ['profileContext', 'connection', 'tools']
 const route = '/api/abinadwan-direct-chat/prepare'
 const directoryName = 'abinadwan-direct-chat-data'
 const workspaceName = 'Direct Chat'
+const noStore = { 'cache-control': 'no-store' }
+const responseError = (code, status) => Response.json({ code }, { status, headers: noStore })
 
 function pathKey(path) {
   if (typeof path !== 'string' || !isAbsolute(path)) return undefined
@@ -42,7 +44,8 @@ function denyTools(roots) {
     : undefined
 }
 async function checkedDirectory(path) {
-  await mkdir(path, { recursive: true })
+  // Restrict newly created directories on POSIX; existing directories are not chmod'ed.
+  await mkdir(path, { recursive: true, mode: 0o700 })
   const [stat, canonical] = await Promise.all([lstat(path), realpath(path)])
   if (!stat.isDirectory() || stat.isSymbolicLink() || pathKey(canonical) !== pathKey(path)) {
     throw new Error('The Direct Chat directory is not a dedicated profile-owned directory.')
@@ -78,15 +81,19 @@ export function apply(ctx) {
     path: route, methods: ['POST'], requestBody: 'buffered',
     async fetch(request) {
       if (request.headers.get('content-type') !== 'application/json' || await request.text() !== '{}') {
-        return Response.json({ code: 'DIRECT_CHAT_BAD_REQUEST' }, { status: 400 })
+        return responseError('DIRECT_CHAT_BAD_REQUEST', 400)
       }
       try {
         request.signal.throwIfAborted()
         const path = await prepareWorkspace(profileDir, roots)
-        return Response.json({ path }, { headers: { 'cache-control': 'no-store' } })
+        return Response.json({ path }, { headers: noStore })
       } catch (error) {
-        ctx.logger.warn('Direct Chat: permanent Workspace preparation failed: %s', String(error))
-        return Response.json({ code: 'DIRECT_CHAT_PREPARE_FAILED' }, { status: 500 })
+        // Filesystem exception messages can reveal the user's absolute Profile path.
+        // Log only a known error code, never the exception or its stack/message.
+        const reason = ['EACCES', 'EPERM', 'EEXIST', 'ENOTDIR', 'ENOENT', 'ELOOP'].includes(error?.code)
+          ? error.code : 'unknown'
+        ctx.logger.warn('Direct Chat: permanent Workspace preparation failed (%s)', reason)
+        return responseError('DIRECT_CHAT_PREPARE_FAILED', 500)
       }
     },
   }), 'direct-chat: prepare one permanent native Workspace')
