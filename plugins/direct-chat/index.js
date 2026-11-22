@@ -1,5 +1,6 @@
 // One permanent DSH Workspace; every non-blank chat is a distinct native Session.
 // Session history isolation does not constitute process or filesystem isolation.
+import { realpathSync } from 'node:fs'
 import { lstat, mkdir, realpath } from 'node:fs/promises'
 import { isAbsolute, join, normalize, sep } from 'node:path'
 
@@ -18,7 +19,20 @@ function pathKey(path) {
 function isDirectChatCwd(cwd, roots) {
   const key = pathKey(cwd)
   if (key === undefined) return false
-  return [...roots].some(root => root !== undefined && (key === root || key.startsWith(root + sep)))
+  const underProtectedRoot = value => [...roots].some(root =>
+    root !== undefined && (value === root || value.startsWith(root + sep)))
+  if (underProtectedRoot(key)) return true
+  // A Workspace cwd may alias the protected directory through an existing
+  // symlink/junction. Textual prefix checks alone would allow tools there.
+  // Resolve on each attempted tool use rather than caching a changeable link.
+  try {
+    const canonical = pathKey(realpathSync.native(cwd))
+    return canonical !== undefined && underProtectedRoot(canonical)
+  } catch {
+    // Preserve existing behavior for unrelated/missing workspaces. The native
+    // executor performs its own filesystem validity and permission checks.
+    return false
+  }
 }
 function denyTools(roots) {
   return ({ agent }) => isDirectChatCwd(agent?.session?.header.cwd, roots)
