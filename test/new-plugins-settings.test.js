@@ -519,3 +519,66 @@ test('Adaptive Reasoning composer localizes its accessible menu labels with Arab
   assert.ok(view.item('توصية مستوى الاستدلال…'))
   assert.doesNotMatch(view.div.textContent, /Save current effort/)
 })
+
+
+test('Direct Chat failed preparation offers an explicit retry and never reports a false open', async t => {
+  let attempts = 0
+  const opened = []
+  const { div } = await mount(t, {
+    onOpenSession: id => opened.push(id),
+    onWorkspaceCreate: async input => ({
+      workspaceId: 'synthetic-direct', title: 'Direct Chat', path: input.path,
+    }),
+    onConnectWorkspace: async () => 'synthetic-session',
+    async fetch(url) {
+      assert.equal(url, '/api/abinadwan-direct-chat/prepare')
+      attempts++
+      if (attempts === 1) return Response.json({ code: 'PREPARE_UNAVAILABLE' }, { status: 503 })
+      return Response.json({ path: '/fictional-profile/abinadwan-direct-chat-data/Direct Chat' })
+    },
+    console: { warn() {} },
+  }, 'direct-chat', 'sidebar.session.action')
+  const first = div.querySelector('button[aria-label="Direct Chat"]')
+  assert.ok(first)
+  await act(async () => first.click())
+  assert.deepEqual(opened, [], 'failed preparation cannot open a chat')
+  assert.ok(div.querySelector('[role=alert]'), 'failure must be announced')
+  const retry = div.querySelector('button[aria-label="Retry Direct Chat"]')
+  assert.ok(retry, 'the retry control must be explicit and keyboard accessible')
+  await act(async () => retry.click())
+  assert.equal(attempts, 2)
+  assert.deepEqual(opened, ['synthetic-session'])
+  assert.equal(div.querySelector('[role=alert]'), null, 'successful retry removes stale error')
+  assert.ok(div.querySelector('button[aria-label="Direct Chat"]'))
+})
+
+
+test('Direct Chat history retries a failed catalog without leaking nonadmitted Session metadata', async t => {
+  let requests = 0
+  const { div } = await mount(t, {
+    hostLocale: 'en',
+    workspaceItems: [{ workspaceId: 'authorized', title: 'Direct Chat',
+      sessionIds: ['admitted', 'hidden'] }],
+    sessions: { phase: 'ready', ids: ['admitted'],
+      byId: { admitted: { id: 'admitted', displayTitle: 'Known fictional chat', running: false },
+        hidden: { id: 'hidden', displayTitle: 'Hidden private canary', running: false } } },
+    async fetch(url) {
+      assert.equal(url.pathname, '/api/abinadwan-direct-chat/catalog')
+      requests++
+      return requests === 1
+        ? Response.json({ code: 'DIRECT_CHAT_CATALOG_BUSY' }, { status: 409 })
+        : Response.json({ workspaceId: 'authorized' })
+    },
+  }, 'direct-chat', 'sidebar.session.action')
+  const history = div.querySelector('button[aria-label="Direct Chat history"]')
+  assert.ok(history)
+  await act(async () => history.click())
+  assert.ok(div.querySelector('[role=alert]'), 'a server refusal must not look like an empty successful history')
+  const retry = [...div.querySelectorAll('button')].find(button => button.textContent === 'Retry')
+  assert.ok(retry, 'a recovery action must be visible')
+  await act(async () => retry.click())
+  assert.equal(requests, 2)
+  assert.match(div.textContent, /Known fictional chat/)
+  assert.doesNotMatch(div.textContent, /Hidden private canary/)
+  assert.equal(div.querySelector('[role=alert]'), null)
+})

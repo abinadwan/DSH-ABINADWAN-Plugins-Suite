@@ -1,6 +1,6 @@
 # v1.0.1 development progress — single source of truth
 
-> **State: Phases 01–05 approved on `develop`; Phase 06 candidate `1.0.1-rc.6` under review.** Last baseline review: 2026-11-22. Phase reports originate on temporary branches; merge to `develop` and delete the branch only after explicit owner approval. The published `v1.0.0` tag and `main` remain unchanged by these phases. No release is authorized by this work.
+> **State: Phases 01–06 approved on `develop`; Phase 07 candidate `1.0.1-rc.7` under review.** Last baseline review: 2026-11-22. Phase reports originate on temporary branches; merge to `develop` and delete the branch only after explicit owner approval. The published `v1.0.0` tag and `main` remain unchanged by these phases. No release is authorized by this work.
 
 ## Why this register exists
 
@@ -45,8 +45,8 @@ At each approved phase, update all version-dependent source/metadata **consisten
 | 3 | Direct Chat search/history scale | **Approved on develop** | [merged PR #41](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/41) · [final CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45051062749) · [Phase 03 report](research/v1.0.1/PHASE_03_DIRECT_CHAT_PERFORMANCE.md) | Real 10k-item Desktop responsiveness deferred |
 | 4 | Adaptive Reasoning statistics persistence/recovery | **Approved on develop** | [PR #43](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/43) · [four-platform CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45056916549) · [Phase 04 report](research/v1.0.1/PHASE_04_REASONING_STATISTICS.md) | Actual Desktop and power-loss acceptance deferred |
 | 5 | Arabic complexity classification | **Approved on develop** | [PR #44](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/44) · [four-platform CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45057565826) · [Phase 05 report](research/v1.0.1/PHASE_05_ARABIC_CLASSIFIER.md) | Real provider/Arabic acceptance deferred |
-| 6 | Arabic UI and RTL | **In progress** | [Phase 06 report](research/v1.0.1/PHASE_06_ARABIC_UI_RTL.md) · Arabic Host locale and RTL fixture | Final CI, owner review and native Desktop visuals |
-| 7 | UX failures/loading/retry states | **Not started** | — | Non-misleading success/error and network failure handling |
+| 6 | Arabic UI and RTL | **Approved on develop** | [PR #45](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/45) · [four-platform CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45058112897) · [Phase 06 report](research/v1.0.1/PHASE_06_ARABIC_UI_RTL.md) | Real Desktop visuals and keyboard/screen-reader acceptance deferred |
+| 7 | UX failures/loading/retry states | **In progress** | [Phase 07 report](research/v1.0.1/PHASE_07_UX_RELIABILITY.md) · failing preparation regression and catalog retry fixture | Final CI and owner review; Desktop reconnect/error states deferred |
 | 8 | Cross-platform CI regression coverage | **Not started** | — | CI matrix, package validation, source-vs-Desktop gate report |
 
 Status vocabulary: `Not started`, `In progress`, `Implemented — needs review`, `Approved on develop`, `Blocked`. A successful CI run is evidence, not proof of real Desktop behavior.
@@ -93,7 +93,7 @@ Status vocabulary: `Not started`, `In progress`, `Implemented — needs review`,
 
 **One problem:** network/reconnect/rename/save/recommendation workflows may show unclear loading, empty or failure states. Cover cancellation, retry boundaries and error messages without claiming success prematurely. Preserve native Session identity and Settings revision checks.
 
-**Completed:** none under this phase yet. **Pending:** failing-case fixture tests and UX outcome report.
+**Candidate changes:** Direct Chat start explicitly exposes an accessible Retry Direct Chat action when preparation fails and clears the alert upon retry, rather than a generic permanently unsuccessful button. Added mounted React tests covering failed preparation and recovery, plus catalog request denial (409), retry, and unauthorized metadata exclusion. Existing Settings revision checks remain unchanged. [Phase 07 report](research/v1.0.1/PHASE_07_UX_RELIABILITY.md). **Pending:** final CI, owner review and actual Desktop error/reconnect flow checks.
 
 ### Phase 8 — Automated regression/CI
 
