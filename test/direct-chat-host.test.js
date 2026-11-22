@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
+import { realpathSync } from 'node:fs'
 import { lstat, mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { join, toNamespacedPath } from 'node:path'
 import { tmpdir } from 'node:os'
 import test from 'node:test'
 import * as plugin from '../plugins/direct-chat/index.js'
@@ -81,7 +82,13 @@ test('symlink aliases into Direct Chat cannot bypass either tool-denial hook', a
   const fx = fixture(profile)
   const aliasedCwd = join(alias, 'Direct Chat')
   const execution = { agent: { session: { header: { cwd: aliasedCwd } } } }
-  assert.equal(fx.guard()(execution)?.info.code, 'DIRECT_CHAT_TOOL_DENIED')
+  assert.equal(fx.guard()(execution)?.info.code, 'DIRECT_CHAT_TOOL_DENIED', JSON.stringify({
+    path: aliasedCwd,
+    canonicalAlias: realpathSync.native(aliasedCwd),
+    directRoot,
+    canonicalRoot: realpathSync.native(directRoot),
+    namespacedRoot: toNamespacedPath(directRoot),
+  }))
   let executed = false
   const response = await fx.preExecute()(execution, () => {
     executed = true
