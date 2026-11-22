@@ -13,7 +13,7 @@
 
 The earlier audit examined **43 existing Markdown files** under `docs/` (before adding this index). All were related to the repository; none warranted permanent deletion. A later organization pass moved **15 superseded research and planning records** to [`archive/`](archive/README.md) without losing their contents or Git history. [`research/`](research/README.md) retains four useful technical reference reports plus original desktop-contract evidence JSON. The archives are **historical**, not instructions for the current implementation.
 
-**Current documentation policy:** the root README focuses on the technology and installation; [DETAIL.md](DETAIL.md) is the single detailed reference for all six component features and limitations. **v1.0.0** has been published from `main`; future `develop` commits are not releases unless separately tagged and published. Historical reports retain their original version and test evidence.
+**Current documentation policy:** the root README focuses on the technology and installation; [DETAIL.md](DETAIL.md) is the single detailed reference for all six component features and limitations. **v1.0.0** has been published from `main`; future feature-branch commits are not releases unless separately approved, merged and tagged. Historical reports retain their original version and test evidence.
 
 ## Current reader-facing documentation
 
