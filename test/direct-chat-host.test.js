@@ -91,6 +91,31 @@ test('symlink aliases into Direct Chat cannot bypass either tool-denial hook', a
   assert.equal(executed, false)
 })
 
+test('the prepare endpoint rejects symlink/junction replacements for protected directories', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'suite-direct-chat-links-'))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const profile = join(root, 'profile')
+  const foreign = join(root, 'foreign')
+  await mkdir(profile)
+  await mkdir(foreign)
+  const linkType = process.platform === 'win32' ? 'junction' : 'dir'
+  const dataRoot = join(profile, 'abinadwan-direct-chat-data')
+  try {
+    await symlink(foreign, dataRoot, linkType)
+  } catch (error) {
+    if (['EPERM', 'EACCES', 'ENOTSUP'].includes(error?.code)) {
+      t.skip('This filesystem does not allow directory aliases')
+      return
+    }
+    throw error
+  }
+  assert.equal((await fixture(profile).handler.fetch(request())).status, 500)
+  await rm(dataRoot)
+  await mkdir(dataRoot)
+  await symlink(foreign, join(dataRoot, 'Direct Chat'), linkType)
+  assert.equal((await fixture(profile).handler.fetch(request())).status, 500)
+})
+
 test('a file cannot replace the data root or permanent Workspace directory', async t => {
   const root = await mkdtemp(join(tmpdir(), 'suite-direct-chat-'))
   t.after(() => rm(root, { recursive: true, force: true }))
