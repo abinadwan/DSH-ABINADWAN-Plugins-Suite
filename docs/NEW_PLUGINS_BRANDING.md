@@ -17,3 +17,9 @@ Each `assets/png/` folder contains transparent RGBA variants at 32, 64, 128, 256
 The sheets use simulated theme surfaces. After registration, check native disabled, selected, forced-color and RTL views on Desktop. The glyphs are nondirectional. Surrounding labels and layout follow the application locale. Use `currentColor` for native glyphs and accessible labels for icon-only controls.
 
 The artwork is original to this suite under its MIT license. The renderer uses Sharp 0.35.5 and librsvg 2.63.2 from the pinned local Windows Desktop runtime extraction. Contact sheet labels also depend on Windows Segoe UI. See the [Phase C reproduction steps](archive/research/NEW_PLUGINS_PHASE_C.md#reproduce-the-isolated-checks).
+
+## Current 256-pixel component badges (feature branch, November 2026)
+
+The component `/icon` exports for Direct Chat, Chat Control and Adaptive Reasoning now use refreshed neon-style primary PNG badges, consistent with the three earlier components. The historical 24 × 24 monochrome SVG glyphs and 32/64/128/512 PNG variants above are retained for compatibility and documentation; they **do not yet reproduce** the new 256-pixel artwork.
+
+Do not run the historical renderer and commit regenerated `icon-256.png` files without a brand review: doing so would replace the updated artwork with legacy vector-derived badges.
