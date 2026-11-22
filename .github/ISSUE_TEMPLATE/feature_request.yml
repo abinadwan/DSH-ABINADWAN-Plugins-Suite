@@ -6,7 +6,7 @@ body:
     attributes:
       value: |
         Explain the use case and its impact. Check for existing requests first.
-        Proposals affecting stored personal data, access permissions, model instructions, or network access require explicit owner review under [CONTRIBUTING.md](../../CONTRIBUTING.md).
+        Proposals affecting stored personal data, access permissions, model instructions, or network access require explicit owner review under [CONTRIBUTING.md](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/main/CONTRIBUTING.md).
         Do not submit secrets or sensitive personal information.
   - type: dropdown
     id: component
