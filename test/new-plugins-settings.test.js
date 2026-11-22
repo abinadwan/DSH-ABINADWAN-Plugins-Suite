@@ -551,3 +551,34 @@ test('Direct Chat failed preparation offers an explicit retry and never reports 
   assert.equal(div.querySelector('[role=alert]'), null, 'successful retry removes stale error')
   assert.ok(div.querySelector('button[aria-label="Direct Chat"]'))
 })
+
+
+test('Direct Chat history retries a failed catalog without leaking nonadmitted Session metadata', async t => {
+  let requests = 0
+  const { div } = await mount(t, {
+    hostLocale: 'en',
+    workspaceItems: [{ workspaceId: 'authorized', title: 'Direct Chat',
+      sessionIds: ['admitted', 'hidden'] }],
+    sessions: { phase: 'ready', ids: ['admitted'],
+      byId: { admitted: { id: 'admitted', displayTitle: 'Known fictional chat', running: false },
+        hidden: { id: 'hidden', displayTitle: 'Hidden private canary', running: false } } },
+    async fetch(url) {
+      assert.equal(url.pathname, '/api/abinadwan-direct-chat/catalog')
+      requests++
+      return requests === 1
+        ? Response.json({ code: 'DIRECT_CHAT_CATALOG_BUSY' }, { status: 409 })
+        : Response.json({ workspaceId: 'authorized' })
+    },
+  }, 'direct-chat', 'sidebar.session.action')
+  const history = div.querySelector('button[aria-label="Direct Chat history"]')
+  assert.ok(history)
+  await act(async () => history.click())
+  assert.ok(div.querySelector('[role=alert]'), 'a server refusal must not look like an empty successful history')
+  const retry = [...div.querySelectorAll('button')].find(button => button.textContent === 'Retry')
+  assert.ok(retry, 'a recovery action must be visible')
+  await act(async () => retry.click())
+  assert.equal(requests, 2)
+  assert.match(div.textContent, /Known fictional chat/)
+  assert.doesNotMatch(div.textContent, /Hidden private canary/)
+  assert.equal(div.querySelector('[role=alert]'), null)
+})
