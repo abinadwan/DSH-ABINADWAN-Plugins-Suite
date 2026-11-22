@@ -15,7 +15,7 @@
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-22c55e" /></a>
 </p>
 
-> **Latest release: [v1.0.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.0).** The tagged source is published from `main` with the owner’s approval. Consult the release notes for the remaining Windows Desktop and Host-level security verification limits. For installation, use the full commit SHA shown by the published release rather than tracking `develop`.
+> **Latest release: [v1.0.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.0).** The tagged source is published from `main` with the owner’s approval. Consult the release notes for the remaining Windows Desktop and Host-level security verification limits. For installation, use the full commit SHA shown by the published release rather than tracking a development branch.
 
 ## Overview
 
@@ -76,7 +76,7 @@ A local development environment requires **Node.js 22 or 24** and npm:
 ```sh
 git clone https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite.git
 cd DSH-ABINADWAN-Plugins-Suite
-git checkout develop
+git switch -c feature/your-change
 npm ci --ignore-scripts
 npm test
 npm run check:package
@@ -84,7 +84,7 @@ npm run check:package
 
 `npm test` covers component/runtime contracts, UI fixtures, documentation references and the configured safety cases. `npm run check:package` creates and checks the packaged plugin against its source expectations. CI exercises these checks on both Windows and Linux.
 
-Development on `develop` does not publish a GitHub Release or change an existing Desktop installation. Read [CHANGELOG.md](CHANGELOG.md) for changes and [docs/README.md](docs/README.md) to distinguish active documentation from historical research and plans.
+Changes on a feature branch do not publish a GitHub Release or change an existing Desktop installation. Open a pull request against `main` and merge only after review and passing CI; release publication is a separate, explicitly approved action. Read [CHANGELOG.md](CHANGELOG.md) for changes and [docs/README.md](docs/README.md) to distinguish active documentation from historical research and plans.
 
 ## Documentation and project policy
 
