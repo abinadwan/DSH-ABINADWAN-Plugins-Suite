@@ -2555,16 +2555,92 @@ window.__ModuleLoader__.load({
         subscribe: notify => { listeners.add(notify); return () => listeners.delete(notify) } }
     }
 
-    function SuiteRecordStatus({ settings }) {
+    function SuiteRecordStatus({ settings, language = 'en' }) {
       const labels = {
         loading: 'Loading settings…', unavailable: 'Settings unavailable.',
         saving: 'Saving…', saved: 'Saved.', failed: 'Save failed.',
         conflict: 'Settings changed in another window. Reload before saving again.',
       }
-      const label = labels[settings.status]
+      const label = uiCopy(labels[settings.status], language)
       return label ? h('div', { role: 'status', style: lifecycleMuted }, label, ' ',
         ['conflict', 'unavailable'].includes(settings.status) ? h(Button, { size: 'sm',
-          onClick: settings.reload }, 'Reload settings') : null) : null
+          onClick: settings.reload }, uiCopy('Reload settings', language)) : null) : null
+    }
+
+    const uiArabicLabels = {
+        "Chat Control": "إدارة المحادثات",
+        "Overview": "نظرة عامة",
+        "Retention Policy": "سياسة الاحتفاظ",
+        "Protected Conversations": "المحادثات المحمية",
+        "Cleanup Management": "إدارة التنظيف",
+        "Workspace": "مساحة العمل",
+        "All Workspaces": "جميع مساحات العمل",
+        "Known conversations": "المحادثات المعروفة",
+        "Archived": "مؤرشفة",
+        "Storage usage": "استخدام التخزين",
+        "Unavailable": "غير متاح",
+        "Global retention": "الاحتفاظ العام",
+        "Workspace override": "تخصيص مساحة العمل",
+        "Select a Workspace to set its own retention policy.": "اختر مساحة عمل لتعيين سياسة احتفاظ خاصة بها.",
+        "Save this policy for previews?": "هل تريد حفظ سياسة المعاينة هذه؟",
+        "Confirm and save": "تأكيد وحفظ",
+        "Cancel": "إلغاء",
+        "Protect this Workspace": "حماية مساحة العمل هذه",
+        "Protect ": "حماية ",
+        "Preview deletion": "معاينة الحذف",
+        "Preview only": "معاينة فقط",
+        "Deletion is unavailable. Automatic cleanup is disabled.": "الحذف غير متاح. التنظيف التلقائي معطّل.",
+        "Estimates use known last prompt dates and the catalog’s running state. Protected or pinned conversations and conversations open in this window are excluded.": "تستخدم التقديرات تاريخ آخر طلب معروف وحالة التشغيل. تُستبعد المحادثات المحمية والمثبتة والمفتوحة.",
+        "Conversation is no longer available in this inventory.": "لم تعد المحادثة متاحة في القائمة.",
+        "Close preview": "إغلاق المعاينة",
+        "Preview cleanup": "معاينة التنظيف",
+        "Cancel preview": "إلغاء المعاينة",
+        "No known conversations in this view.": "لا توجد محادثات معروفة في هذا العرض.",
+        "Workspace inventory is unavailable.": "قائمة مساحات العمل غير متاحة.",
+        "Show more": "عرض المزيد",
+        "Keep forever": "احتفاظ دائم",
+        "Use global policy": "استخدام السياسة العامة",
+        "Past retention cutoff": "تجاوز مدة الاحتفاظ",
+        "Protected conversation": "محادثة محمية",
+        "Protected Workspace": "مساحة عمل محمية",
+        "Pinned conversation": "محادثة مثبتة",
+        "Active or open conversation": "محادثة نشطة أو مفتوحة",
+        "Unverified history format": "صيغة سجل غير مؤكدة",
+        "Retained forever": "احتفاظ دائم",
+        "Retention policy unavailable": "سياسة الاحتفاظ غير متاحة",
+        "Last prompt date unavailable": "تاريخ آخر طلب غير متاح",
+        "Within retention period": "ضمن مدة الاحتفاظ",
+        "Loading settings…": "جارٍ تحميل الإعدادات…",
+        "Settings unavailable.": "الإعدادات غير متاحة.",
+        "Saving…": "جارٍ الحفظ…",
+        "Saved.": "تم الحفظ.",
+        "Save failed.": "فشل الحفظ.",
+        "Settings changed in another window. Reload before saving again.": "تغيرت الإعدادات في نافذة أخرى. أعد التحميل قبل الحفظ.",
+        "Reload settings": "إعادة تحميل الإعدادات",
+        "Current session": "الجلسة الحالية",
+        "Save current effort": "حفظ مستوى الاستدلال الحالي",
+        "Apply saved effort": "تطبيق مستوى الاستدلال المحفوظ",
+        "Remove saved preference": "حذف التفضيل المحفوظ",
+        "Reasoning statistics…": "إحصائيات الاستدلال…",
+        "Effort recommendation…": "توصية مستوى الاستدلال…",
+        "Reload preferences": "إعادة تحميل التفضيلات",
+        "Provider default": "المستوى الافتراضي للمزوّد",
+        "No saved preference": "لا يوجد تفضيل محفوظ",
+        "Saved preferences unavailable": "التفضيلات المحفوظة غير متاحة",
+        "Preference saved.": "تم حفظ التفضيل.",
+        "Preference removed.": "تم حذف التفضيل.",
+        "Preference could not be updated.": "تعذر تحديث التفضيل.",
+        "Harness could not change the effort.": "تعذر تغيير مستوى الاستدلال.",
+        "Effort changed.": "تم تغيير مستوى الاستدلال.",
+        "Effort applied.": "تم تطبيق مستوى الاستدلال.",
+        "Start or resume this chat before changing its effort.": "ابدأ المحادثة أو استأنفها قبل تغيير مستوى الاستدلال.",
+        "Start or resume this chat before applying the saved effort.": "ابدأ المحادثة أو استأنفها قبل تطبيق المستوى المحفوظ."
+    }
+    const uiCopy = (value, language) => language === 'ar' ? uiArabicLabels[value] ?? value : value
+    const activeUiLanguage = source => {
+      const snapshot = source && typeof source.getSnapshot === 'function' ? suiteWatch(source) : null
+      const current = snapshot?.active ?? document.documentElement.lang
+      return typeof current === 'string' && current.toLowerCase().startsWith('ar') ? 'ar' : 'en'
     }
 
     const lifecycleDurations = ['365', '180', '90', '30', '7']
@@ -2584,11 +2660,11 @@ window.__ModuleLoader__.load({
       h('h2', { style: { margin: 0, fontSize: 14, fontWeight: 600 } }, title), children)
     }
 
-    function RetentionField({ label, value, inherit, disabled, onChange }) {
+    function RetentionField({ label, value, inherit, disabled, onChange, language = 'en' }) {
       return h('label', { style: lifecycleLabel }, label,
         h('select', { style: lifecycleSelect, value, disabled, onChange: event => onChange(event.target.value) },
-          inherit ? h('option', { value: 'inherit' }, 'Use global policy') : null,
-          h('option', { value: 'forever' }, 'Keep forever'),
+          inherit ? h('option', { value: 'inherit' }, uiCopy('Use global policy', language)) : null,
+          h('option', { value: 'forever' }, uiCopy('Keep forever', language)),
           ...lifecycleDurations.map(days => h('option', { key: days, value: days }, `${days} days`))))
     }
 
@@ -2654,7 +2730,7 @@ window.__ModuleLoader__.load({
       })
     }
 
-    function CleanupPreview({ rows, at }) {
+    function CleanupPreview({ rows, at, language = 'en' }) {
       const candidates = rows.filter(row => row.candidate)
       return h(React.Fragment, null,
         h('span', { role: 'status', style: { fontSize: 13 } },
@@ -2668,6 +2744,8 @@ window.__ModuleLoader__.load({
     }
 
     function WorkspaceLifecycle({ services, useRemoteAccess }) {
+      const language = activeUiLanguage(services.locale)
+      const t = value => uiCopy(value, language)
       const settings = useSuiteRecord(services.settings, 'conversation-lifecycle', useRemoteAccess, services.connection)
       const workspace = suiteWatch(services.workspaces)
       const sessions = suiteWatch(services.sessions)
@@ -2709,23 +2787,23 @@ window.__ModuleLoader__.load({
       }
 
       const stats = [
-        ['Known conversations', ready ? rows.length : 'Unavailable'],
-        ['Archived', ready ? rows.filter(row => archived.has(row.id)).length : 'Unavailable'],
-        ['Storage usage', 'Unavailable'],
+        [t('Known conversations'), ready ? rows.length : t('Unavailable')],
+        [t('Archived'), ready ? rows.filter(row => archived.has(row.id)).length : t('Unavailable')],
+        [t('Storage usage'), t('Unavailable')],
       ]
-      return h('section', { lang: 'en', dir: 'ltr', style: { padding: '8px 16px 20px', display: 'grid', gap: 16, minWidth: 0 } },
-        h('header', null, h('h1', { style: { margin: '0 0 4px', fontSize: 18, lineHeight: 1.3 } }, 'Chat Control'),
+      return h('section', { lang: language, dir: language === 'ar' ? 'rtl' : 'ltr', style: { padding: '8px 16px 20px', display: 'grid', gap: 16, minWidth: 0 } },
+        h('header', null, h('h1', { style: { margin: '0 0 4px', fontSize: 18, lineHeight: 1.3 } }, t('Chat Control')),
           h('p', { style: { ...lifecycleMuted, margin: 0 } }, 'Part of the ABINADWAN Plugins Suite.')),
-        h(SuiteRecordStatus, { settings }),
-        h(LifecycleGroup, { title: 'Overview' },
-          h('label', { style: lifecycleLabel }, 'Workspace',
+        h(SuiteRecordStatus, { settings, language }),
+        h(LifecycleGroup, { title: t('Overview') },
+          h('label', { style: lifecycleLabel }, t('Workspace'),
             h('select', { style: lifecycleSelect, value: chosen ? scope : '', disabled: !ready, onChange: event => {
               setScope(event.target.value)
               setPage(1)
               setSelected(null)
               setChange(null)
               setPreviewAt(null)
-            } }, h('option', { value: '' }, 'All Workspaces'),
+            } }, h('option', { value: '' }, t('All Workspaces')),
             ...workspaces.map(item => h('option', { value: item.workspaceId, key: item.workspaceId, dir: 'auto' }, item.title)))),
           h('dl', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(112px, 1fr))', gap: 8, margin: 0 } },
             ...stats.map(([label, value]) => h('div', { key: label, style: { border: lifecycleRule, borderRadius: 8,
@@ -2733,21 +2811,21 @@ window.__ModuleLoader__.load({
             h('dt', { style: lifecycleMuted }, label),
             h('dd', { style: { margin: '3px 0 0', fontSize: 14, fontWeight: 600 } }, value)))),
           unknown > 0 ? h('small', { style: lifecycleMuted }, `${unknown} unavailable or ambiguous`) : null),
-        h(LifecycleGroup, { title: 'Retention Policy' },
+        h(LifecycleGroup, { title: t('Retention Policy') },
           h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 } },
-            h(RetentionField, { label: 'Global retention', value: change && !change.workspaceId ? change.value : record?.retention ?? '',
+            h(RetentionField, { language, label: t('Global retention'), value: change && !change.workspaceId ? change.value : record?.retention ?? '',
               disabled: !settings.writable, onChange: value => propose(value) }),
-            chosen ? h(RetentionField, { label: 'Workspace override', inherit: true,
+            chosen ? h(RetentionField, { label: t('Workspace override'), inherit: true,
               value: change?.workspaceId === chosen.workspaceId ? change.value : override,
               disabled: !settings.writable, onChange: value => propose(value, chosen.workspaceId) }) : null),
-          !chosen ? h('small', { style: lifecycleMuted }, 'Select a Workspace to set its own retention policy.') : null,
+          !chosen ? h('small', { style: lifecycleMuted }, t('Select a Workspace to set its own retention policy.')) : null,
           change ? h('div', { style: lifecycleActions },
-            h('span', { style: lifecycleMuted }, 'Save this policy for previews?'),
+            h('span', { style: lifecycleMuted }, t('Save this policy for previews?')),
             h(Button, { size: 'sm', variant: 'primary', disabled: !settings.writable, onClick: () => update(change.next) },
-              'Confirm and save'),
-            h(Button, { size: 'sm', onClick: () => { setChange(null); setPreviewAt(null) } }, 'Cancel')) : null),
-        h(LifecycleGroup, { title: 'Protected Conversations' },
-          chosen ? h(Checkbox, { label: 'Protect this Workspace', checked: protectedWorkspaces.has(chosen.workspaceId),
+              t('Confirm and save')),
+            h(Button, { size: 'sm', onClick: () => { setChange(null); setPreviewAt(null) } }, t('Cancel'))) : null),
+        h(LifecycleGroup, { title: t('Protected Conversations') },
+          chosen ? h(Checkbox, { label: t('Protect this Workspace'), checked: protectedWorkspaces.has(chosen.workspaceId),
             disabled: !settings.writable, onChange: checked => {
               if (checked) protectedWorkspaces.add(chosen.workspaceId)
               else protectedWorkspaces.delete(chosen.workspaceId)
@@ -2756,29 +2834,29 @@ window.__ModuleLoader__.load({
           ready && rows.length ? h('ul', { style: { listStyle: 'none', padding: 0, margin: 0,
             maxBlockSize: 185, overflow: 'auto', overflowWrap: 'anywhere' } },
           ...rows.slice(0, page * 50).map(({ id, row, isProtected }) => h('li', { key: id, style: { ...lifecycleActions, minHeight: 32 } },
-            h(Checkbox, { label: h(React.Fragment, null, 'Protect ', h('bdi', null, row.displayTitle || id)),
+            h(Checkbox, { label: h(React.Fragment, null, t('Protect '), h('bdi', null, row.displayTitle || id)),
               checked: isProtected, disabled: !settings.writable,
               onChange: checked => update({ ...record, protectedIds: checked ? [...protectedIds, id] : [...protectedIds].filter(value => value !== id) }) }),
-            archived.has(id) ? h('small', { style: lifecycleMuted }, 'Archived') : null,
+            archived.has(id) ? h('small', { style: lifecycleMuted }, t('Archived')) : null,
             h(Button, { size: 'sm', onClick: () => setSelected(id),
-              'aria-label': 'Preview deletion for ' + (row.displayTitle || id) }, 'Preview deletion')))) :
-            h('p', { style: { ...lifecycleMuted, margin: 0 } }, ready ? 'No known conversations in this view.' : 'Workspace inventory is unavailable.'),
-          rows.length > page * 50 ? h(Button, { size: 'sm', onClick: () => setPage(page + 1) }, 'Show more') : null),
-        h(LifecycleGroup, { title: 'Cleanup Management' },
-          h('strong', { style: { fontSize: 13 } }, 'Preview only'),
+              'aria-label': 'Preview deletion for ' + (row.displayTitle || id) }, t('Preview deletion'))))) :
+            h('p', { style: { ...lifecycleMuted, margin: 0 } }, ready ? t('No known conversations in this view.') : t('Workspace inventory is unavailable.')),
+          rows.length > page * 50 ? h(Button, { size: 'sm', onClick: () => setPage(page + 1) }, t('Show more')) : null),
+        h(LifecycleGroup, { title: t('Cleanup Management') },
+          h('strong', { style: { fontSize: 13 } }, t('Preview only')),
           h('p', { style: { ...lifecycleMuted, margin: 0 } },
-            'Deletion is unavailable. Automatic cleanup is disabled.'),
+            t('Deletion is unavailable. Automatic cleanup is disabled.')),
           h('p', { style: { ...lifecycleMuted, margin: 0 } },
-            'Estimates use known last prompt dates and the catalog’s running state. Protected or pinned conversations and conversations open in this window are excluded.'),
+            t('Estimates use known last prompt dates and the catalog’s running state. Protected or pinned conversations and conversations open in this window are excluded.')),
           selected ? h('div', { role: 'status', style: lifecycleMuted },
             selectedRow ? h(React.Fragment, null, h('bdi', null, selectedRow.row.displayTitle || selectedRow.id), ' · ',
               h('bdi', null, selectedRow.owner.title), ' · ', selectedRow.reason, '. No data will be removed.')
-              : 'Conversation is no longer available in this inventory.',
-            ' ', h(Button, { size: 'sm', onClick: () => setSelected(null) }, 'Close preview')) : null,
+              : t('Conversation is no longer available in this inventory.'),
+            ' ', h(Button, { size: 'sm', onClick: () => setSelected(null) }, t('Close preview'))) : null,
           h('div', { style: lifecycleActions },
-            h(Button, { size: 'sm', variant: 'outline', disabled: !record || !ready, onClick: () => setPreviewAt(Date.now()) }, 'Preview cleanup'),
-            previewAt !== null ? h(Button, { size: 'sm', onClick: () => setPreviewAt(null) }, 'Cancel preview') : null),
-          previewAt !== null && record && ready ? h(CleanupPreview, { rows, at: previewAt }) : null))
+            h(Button, { size: 'sm', variant: 'outline', disabled: !record || !ready, onClick: () => setPreviewAt(Date.now()) }, t('Preview cleanup')),
+            previewAt !== null ? h(Button, { size: 'sm', onClick: () => setPreviewAt(null) }, t('Cancel preview')) : null),
+          previewAt !== null && record && ready ? h(CleanupPreview, { rows, at: previewAt, language }) : null))
 
     }
 
@@ -2903,7 +2981,9 @@ window.__ModuleLoader__.load({
               (result.signals?.length ? ' · ' + result.signals.map(signal => reasoningSignals[signal]).filter(Boolean).join(', ') : '')) : null))
     }
 
-    function ReasoningComposer({ directory, sessionId, settingsService, connection, useRemoteAccess, useAccess }) {
+    function ReasoningComposer({ directory, sessionId, settingsService, connection, useRemoteAccess, useAccess, localeSource }) {
+      const language = activeUiLanguage(localeSource)
+      const t = value => uiCopy(value, language)
       const settings = useSuiteRecord(settingsService, 'adaptive-reasoning', useRemoteAccess, connection)
       const directoryState = suiteWatch(directory.store)
       const canSelect = useAccess?.('session/selectModel') === true
@@ -2943,24 +3023,24 @@ window.__ModuleLoader__.load({
       const preferences = record?.preferences ?? []
       const isCurrentRoute = row => row.provider === selection.provider && row.model === selection.model
       const saved = preferences.find(isCurrentRoute)
-      const currentLabel = level(effort)?.name || effort || 'Provider default'
+      const currentLabel = level(effort)?.name || effort || t('Provider default')
       const savedLabel = saved
-        ? `Saved preference: ${nameOf(saved.effort)}${level(saved.effort) ? '' : ' (unavailable)'}`
-        : record ? 'No saved preference' : 'Saved preferences unavailable'
+        ? language === 'ar' ? `التفضيل المحفوظ: ${nameOf(saved.effort)}${level(saved.effort) ? '' : ' (غير متاح)'}` : `Saved preference: ${nameOf(saved.effort)}${level(saved.effort) ? '' : ' (unavailable)'}`
+        : record ? t('No saved preference') : t('Saved preferences unavailable')
 
       async function changeEffort(current, value, manual) {
         const expected = { provider: current.provider, model: current.model, reasoningEffort: value }
         const result = await reasoningPost('effort', { sessionId, ...expected, ...(manual ? { mode: 'manual' } : {}) })
         if (result.status === 409 && result.body?.error === 'session-unavailable') {
-          show(manual ? 'Start or resume this chat before changing its effort.' :
-            'Start or resume this chat before applying the saved effort.')
+          show(manual ? t('Start or resume this chat before changing its effort.') :
+            t('Start or resume this chat before applying the saved effort.'))
           return
         }
         if (result.status === 409 && result.body?.error === 'preference-changed') settings.reload()
         const confirmed = result.body?.selected
         if (!result.ok || confirmed?.provider !== expected.provider || confirmed?.model !== expected.model ||
             confirmed?.reasoningEffort !== value) throw new Error('Effort selection was not accepted')
-        show(manual ? 'Effort changed.' : 'Effort applied.', true)
+        show(manual ? t('Effort changed.') : t('Effort applied.'), true)
       }
 
       async function selectItem(id) {
@@ -2984,15 +3064,15 @@ window.__ModuleLoader__.load({
             const next = id === 'save' ? [...remaining, { provider: current.provider,
               model: current.model, effort: currentEffort }] : remaining
             const savedOk = await settings.save({ ...record, preferences: next })
-            show(savedOk ? (id === 'save' ? 'Preference saved.' : 'Preference removed.') :
-              'Preference could not be updated.', savedOk)
+            show(savedOk ? (id === 'save' ? t('Preference saved.') : t('Preference removed.')) :
+              t('Preference could not be updated.'), savedOk)
           } else {
             const manual = id !== 'apply'
             const value = manual ? available.efforts.find(option => `effort:${option.id}` === id)?.id : saved?.effort
             if (value && value !== current.reasoningEffort && offered(value)) await changeEffort(current, value, manual)
           }
         } catch {
-          show('Harness could not change the effort.')
+          show(t('Harness could not change the effort.'))
         } finally {
           busy.current = false
           setWorking(false)
@@ -3000,27 +3080,27 @@ window.__ModuleLoader__.load({
       }
 
       const items = [
-        { type: 'label', id: 'session-label', text: 'Current session' },
+        { type: 'label', id: 'session-label', text: t('Current session') },
         ...reasoning.efforts.map(option => ({ id: 'effort:' + option.id, label: option.name || option.id })),
         { type: 'separator', id: 'preference-divider' },
         { type: 'label', id: 'preference-label', text: savedLabel },
-        { id: 'save', label: 'Save current effort', disabled: !settings.writable || !level(effort) || saved?.effort === effort },
+        { id: 'save', label: t('Save current effort'), disabled: !settings.writable || !level(effort) || saved?.effort === effort },
         ...(saved ? [
-          { id: 'apply', label: 'Apply saved effort', disabled: !level(saved.effort) || saved.effort === selection.reasoningEffort },
-          { id: 'remove', label: 'Remove saved preference', disabled: !settings.writable },
+          { id: 'apply', label: t('Apply saved effort'), disabled: !level(saved.effort) || saved.effort === selection.reasoningEffort },
+          { id: 'remove', label: t('Remove saved preference'), disabled: !settings.writable },
         ] : []),
-        ...(Modal ? [{ type: 'separator', id: 'more-divider' }, { id: 'stats', label: 'Reasoning statistics…' },
-          { id: 'recommend', label: 'Effort recommendation…' }] : []),
+        ...(Modal ? [{ type: 'separator', id: 'more-divider' }, { id: 'stats', label: t('Reasoning statistics…') },
+          { id: 'recommend', label: t('Effort recommendation…') }] : []),
         ...(['conflict', 'unavailable'].includes(settings.status)
-          ? [{ id: 'reload', label: 'Reload preferences' }] : []),
+          ? [{ id: 'reload', label: t('Reload preferences') }] : []),
       ]
       const selectedIds = level(effort) ? ['effort:' + effort] : []
-      const description = 'Adaptive Reasoning: ' + currentLabel
+      const description = (language === 'ar' ? 'الاستدلال التكيفي: ' : 'Adaptive Reasoning: ') + currentLabel
       const trigger = h(Button, { variant: 'toolbar', size: 'sm', icon: suiteGlyph('adaptive-reasoning', 14),
-        lang: 'en', dir: 'ltr', title: description, 'aria-label': description,
+        lang: language, dir: language === 'ar' ? 'rtl' : 'ltr', title: description, 'aria-label': description,
         'aria-haspopup': 'menu', 'aria-expanded': open, disabled: working || directoryState.pending != null,
         onClick: () => setOpen(value => !value) }, currentLabel)
-      return h('span', { lang: 'en', dir: 'ltr' },
+      return h('span', { lang: language, dir: language === 'ar' ? 'rtl' : 'ltr' },
         h(Menu, { open, anchor: trigger, items, selectedIds,
           portal: true, side: 'top', align: 'end', compact: true, autoFocus: true,
           onClose: () => setOpen(false), onSelect: id => void selectItem(id) }),
@@ -3346,7 +3426,7 @@ window.__ModuleLoader__.load({
           id: 'abinadwan-reasoning-preference', order: 25, inject: sessionId => ({
             directory: sessionId && !sessions.subagentAddress(sessionId) ? modelDirectories.directoryFor(sessionId) : null,
             sessionId,
-          }) }, props => props.directory ? h(ReasoningComposer, { ...props, settingsService, connection }) : null))
+          }) }, props => props.directory ? h(ReasoningComposer, { ...props, settingsService, connection, localeSource: ctx.get?.('locale') }) : null))
       },
     }
 
@@ -3354,7 +3434,7 @@ window.__ModuleLoader__.load({
       inject: ['slots', 'remote', 'remote.settings', 'sessions', 'workspaces'],
       apply(ctx) {
         const services = { settings: ctx.remote.settings, sessions: ctx.sessions.list, workspaces: ctx.workspaces.list,
-          connection: suiteConnection(ctx) }
+          locale: ctx.get?.('locale'), connection: suiteConnection(ctx) }
         const id = 'abinadwan-conversation-lifecycle'
         ctx.slots.inject('settings.section', () => ctx.slots.register({ name: 'settings.section',
           id, label: 'Chat Control', order: 45 }, props => h(WorkspaceLifecycle, { ...props, services })))
