@@ -2765,10 +2765,10 @@ window.__ModuleLoader__.load({
     const reasoningCell = { padding: '4px 8px', textAlign: 'end', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
 
     /** Same-origin POST to an owner-only Adaptive Reasoning route. */
-    async function reasoningPost(path, body) {
+    async function reasoningPost(path, body, signal) {
       const endpoint = new URL(`api/abinadwan-reasoning/${path}`, document.baseURI)
       if (endpoint.origin !== document.location.origin) throw new Error('Cross-origin reasoning endpoint')
-      const result = await fetch(endpoint, { method: 'POST', credentials: 'same-origin', redirect: 'error',
+      const result = await fetch(endpoint, { method: 'POST', credentials: 'same-origin', redirect: 'error', signal,
         headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
       return { ok: result.ok, status: result.status, body: await result.json().catch(() => null) }
     }
@@ -2790,6 +2790,7 @@ window.__ModuleLoader__.load({
         h('span', null, label), h('span', { style: { fontVariantNumeric: 'tabular-nums' } }, value))
       const group = (title, children) => h('section', { key: title, style: { marginBottom: 14 } },
         h('h3', { style: { fontSize: 13, fontWeight: 650, margin: '0 0 6px' } }, title), children)
+      const routeRows = stats?.routes ?? []
       const rows = stats ? ['session', 'subagent'].flatMap(scope => Object.entries(stats.requests?.[scope] || {})
         .map(([effort, row]) => ({ scope, effort, row }))) : []
       const body = state.status === 'loading' ? h('div', { role: 'status' }, 'Loading statistics…')
@@ -2812,14 +2813,71 @@ window.__ModuleLoader__.load({
                 : 'Not reported'),
               h('td', { style: reasoningCell }, row.timed ? `${(row.durationMs / row.timed / 1000).toFixed(1)} s` : '—'))))
           ) : h('div', { style: lifecycleMuted }, 'No requests yet.')),
+          routeRows.length ? group('Requests by provider and model', h('ul', { style: { paddingInlineStart: 20 } },
+            ...routeRows.map(({ scope, provider, model, effort, requests }) => h('li',
+              { key: JSON.stringify([scope, provider, model, effort]) }, h('bdi', null, `${provider} / ${model} · ${effort}`),
+              `${scope === 'subagent' ? ' (subagents)' : ''} · ${count(requests)}`)))) : null,
           h('p', { style: { ...lifecycleMuted, margin: 0 } },
             'Times run on this computer from stream start to the saved reply. Reasoning tokens appear only when the provider reports them. No savings are estimated.'))
       return h(Modal, { open, onClose, title: 'Reasoning statistics', closeLabel: 'Close',
-        description: stats ? `Aggregate counts kept in memory on this computer since ${new Date(stats.since).toLocaleString('en-US')}. Nothing is sent anywhere, and restarting Harness clears them.` : undefined,
+        description: stats ? `Aggregate counts ${stats.persistent ? 'saved in this Profile' : 'kept in memory until Harness restarts'} since ${new Date(stats.since).toLocaleString('en-US')}. Nothing is sent anywhere.` : undefined,
         footer: h('div', { style: lifecycleActions },
           h(Button, { size: 'sm', variant: 'outline', disabled: state.status !== 'ready', onClick: () => load('stats/reset') }, 'Reset statistics'),
           h(Button, { size: 'sm', onClick: onClose }, 'Done')) },
       h('div', { lang: 'en', dir: 'ltr' }, body))
+    }
+
+    const reasoningSignals = {
+      retry: 'Retry or empty input', continuation: 'Continuation', greeting: 'Greeting',
+      length: 'Request length', 'advanced-topic': 'Advanced topic', 'complex-topic': 'Complex topic',
+      'standard-topic': 'Standard topic', code: 'Code block', trace: 'Error trace', 'multi-step': 'Multiple steps',
+      math: 'Math', attachment: 'Attachment', 'asked-deeper': 'Request for deeper analysis',
+      'asked-briefer': 'Request for a shorter answer',
+    }
+
+    function ReasoningRecommendation({ sessionId, selection, settings, onClose, nameOf, connection }) {
+      const [sample, setSample] = React.useState('')
+      const [result, setResult] = React.useState(null)
+      const pending = React.useRef(null)
+      const adaptive = settings.record?.mode === 'adaptive'
+      const generation = suiteWatch(connection)
+      React.useEffect(() => () => pending.current?.abort(), [generation, adaptive, selection.reasoningEffort])
+
+      async function analyze(event) {
+        event.preventDefault()
+        pending.current?.abort()
+        const controller = new AbortController()
+        pending.current = controller
+        setResult({ loading: true })
+        try {
+          const { provider, model } = selection
+          const response = await reasoningPost('recommend', { sessionId, provider, model, sample },
+            AbortSignal.any([controller.signal, AbortSignal.timeout(10000)]))
+          if (!controller.signal.aborted) setResult(response.ok && typeof response.body?.recommendation === 'string'
+            ? response.body : { error: true })
+        } catch {
+          if (!controller.signal.aborted) setResult({ error: true })
+        }
+      }
+
+      return h(Modal, { open: true, onClose, title: 'Effort recommendation', closeLabel: 'Close',
+        footer: h(Button, { size: 'sm', onClick: onClose }, 'Done') },
+      h('div', { style: { display: 'grid', gap: 8 } },
+        h('p', { style: lifecycleMuted }, 'Recommendations use a local classifier on the Harness Host. The conversation’s reasoning effort stays as selected.'),
+        h('label', { style: lifecycleLabel }, 'Mode', h('select', { style: lifecycleSelect,
+          disabled: !settings.writable, value: adaptive ? 'adaptive' : 'manual', onChange: event => {
+            setResult(null)
+            if (settings.record) void settings.save({ ...settings.record, mode: event.target.value })
+          } }, h('option', { value: 'manual' }, 'Manual'), h('option', { value: 'adaptive' }, 'Automatic recommendation preview'))),
+        h(SuiteRecordStatus, { settings }),
+        adaptive ? h('form', { onSubmit: analyze }, h('label', { style: lifecycleLabel }, 'Text to analyze',
+          h('textarea', { rows: 4, maxLength: 4000, value: sample, dir: 'auto',
+            onChange: event => { pending.current?.abort(); setSample(event.target.value); setResult(null) } })),
+        h(Button, { type: 'submit', size: 'sm', disabled: !sample.trim() || result?.loading }, 'Analyze')) : null,
+        result && adaptive ? h('div', { role: 'status' },
+          result.loading ? 'Analyzing…' : result.error ? 'No recommendation is available for this Session and model.'
+            : `${result.source === 'manual' ? 'Selected effort' : 'Suggested effort'}: ${nameOf(result.recommendation)} · ${result.tier}` +
+              (result.signals?.length ? ' · ' + result.signals.map(signal => reasoningSignals[signal]).filter(Boolean).join(', ') : '')) : null))
     }
 
     function ReasoningComposer({ directory, sessionId, settingsService, connection, useRemoteAccess, useAccess }) {
@@ -2830,6 +2888,7 @@ window.__ModuleLoader__.load({
       const [working, setWorking] = React.useState(false)
       const [notice, setNotice] = React.useState(null)
       const [statsOpen, setStatsOpen] = React.useState(false)
+      const [recommendOpen, setRecommendOpen] = React.useState(false)
       const busy = React.useRef(false)
       const noticeId = React.useRef(0)
       const mounted = React.useRef(false)
@@ -2886,6 +2945,7 @@ window.__ModuleLoader__.load({
         setOpen(false)
         if (id === 'reload') { settings.reload(); return }
         if (id === 'stats') { setStatsOpen(true); return }
+        if (id === 'recommend') { setRecommendOpen(true); return }
         const latest = directory.store.getSnapshot()
         const current = latest.current
         const available = capability(latest)
@@ -2926,7 +2986,8 @@ window.__ModuleLoader__.load({
           { id: 'apply', label: 'Apply saved effort', disabled: !level(saved.effort) || saved.effort === selection.reasoningEffort },
           { id: 'remove', label: 'Remove saved preference', disabled: !settings.writable },
         ] : []),
-        ...(Modal ? [{ type: 'separator', id: 'more-divider' }, { id: 'stats', label: 'Reasoning statistics…' }] : []),
+        ...(Modal ? [{ type: 'separator', id: 'more-divider' }, { id: 'stats', label: 'Reasoning statistics…' },
+          { id: 'recommend', label: 'Effort recommendation…' }] : []),
         ...(['conflict', 'unavailable'].includes(settings.status)
           ? [{ id: 'reload', label: 'Reload preferences' }] : []),
       ]
@@ -2941,6 +3002,8 @@ window.__ModuleLoader__.load({
           portal: true, side: 'top', align: 'end', compact: true, autoFocus: true,
           onClose: () => setOpen(false), onSelect: id => void selectItem(id) }),
         Modal && statsOpen ? h(ReasoningStatistics, { open: statsOpen, onClose: () => setStatsOpen(false), nameOf }) : null,
+        Modal && recommendOpen ? h(ReasoningRecommendation, { key: JSON.stringify([sessionId, selection.provider, selection.model,
+          selection.reasoningEffort]), sessionId, selection, settings, connection, onClose: () => setRecommendOpen(false), nameOf }) : null,
         notice ? h(Toast, { key: notice.id, text: notice.text, tone: notice.success ? 'success' : undefined,
           holdMs: 2400, onDone: () => setNotice(null) }) : null)
     }

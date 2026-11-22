@@ -1,6 +1,8 @@
 import Schema from '@deepseek-ai/schemastery'
 import { isSubagent, readObject, sameRoute, uuid } from './http.js'
 import { ReasoningStats } from './stats.js'
+import { classify, effortForTier, TIERS } from './classify.js'
+import { openReasoningStats } from './storage.js'
 
 export const name = 'abinadwan-adaptive-reasoning'
 const identifier = Schema.string().min(1).max(256).required()
@@ -31,23 +33,92 @@ export function apply(ctx, config) {
       request => unavailable(request, [...identity, 'provider', 'model', 'reasoningEffort']))
     route('/api/abinadwan-reasoning/next/status', request => unavailable(request, identity))
     route('/api/abinadwan-reasoning/next/withdraw', request => unavailable(request, identity))
-    route('/api/abinadwan-reasoning/stats', async request => await readObject(request, [])
-      ? Response.json(stats.snapshot()) : Response.json({ error: 'invalid-request' }, { status: 400 }))
-    route('/api/abinadwan-reasoning/stats/reset', async request => {
+    route('/api/abinadwan-reasoning/recommend',
+      request => recommend(request, child.agents, child.llm, record, revisions))
+
+    let storage
+    let timer
+    const profile = child.get('profileContext')
+    const disk = () => storage ??= openReasoningStats(profile.dir)
+    async function snapshot(reset = false) {
+      if (reset) stats.reset()
+      if (!profile) return stats.snapshot()
+      const counters = stats.takeCounters()
+      const target = await disk()
+      return reset ? target.reset() : target.save(counters)
+    }
+    function schedule() {
+      if (!profile || timer || !revisions.active) return
+      timer = setTimeout(() => {
+        timer = undefined
+        void snapshot().catch(() => {})
+      }, 5000)
+      timer.unref()
+    }
+    async function statsResponse(request, reset) {
       if (!await readObject(request, [])) return Response.json({ error: 'invalid-request' }, { status: 400 })
-      stats.reset()
-      return Response.json(stats.snapshot())
-    })
+      try {
+        return Response.json(await snapshot(reset), { headers: { 'cache-control': 'no-store' } })
+      } catch {
+        return Response.json({ error: 'statistics-storage-unavailable' }, { status: 503 })
+      }
+    }
+    route('/api/abinadwan-reasoning/stats', request => statsResponse(request, false))
+    route('/api/abinadwan-reasoning/stats/reset', request => statsResponse(request, true))
     child.on('llm/adapters-updated', () => { revisions.adapters++ })
-    child.on('agent/assistant-stream', ({ agent, frame }) => stats.stream(agent.session, frame))
+    child.on('agent/assistant-stream', ({ agent, frame }) => {
+      stats.stream(agent.session, frame)
+      if (frame.type === 'end') schedule()
+    })
     child.on('session/event', (session, event) => {
       if (event.type === 'model/selection') {
         revisions.selections.set(session, (revisions.selections.get(session) ?? 0) + 1)
       }
       stats.event(session, event)
+      if (event.type === 'assistant/message') schedule()
     })
-    child.effect(() => () => { revisions.active = false })
+    child.effect(() => async () => {
+      revisions.active = false
+      if (timer) {
+        clearTimeout(timer)
+        await snapshot().catch(() => {})
+      }
+    })
   })
+}
+
+async function recommend(request, agents, llm, record, revisions) {
+  const input = await readObject(request, ['sessionId', 'provider', 'model', 'sample'], {},
+    { bytes: 32768, fields: { sample: 4000 } })
+  if (!input || !input.sample.trim()) return Response.json({ error: 'invalid-request' }, { status: 400 })
+  if (record().mode !== 'adaptive') return Response.json({ error: 'recommendations-disabled' }, { status: 409 })
+  const agent = agents.get(input.sessionId)
+  const current = agent?.model.current()
+  if (!agent || isSubagent(agent) || !sameRoute(current, input)) {
+    return Response.json({ error: 'session-unavailable' }, { status: 409 })
+  }
+  const adapterRevision = revisions.adapters
+  const selectionRevision = revisions.selections.get(agent.session)
+  try {
+    const model = await llm.resolveModelInfo(input.provider, input.model, request.signal)
+    request.signal.throwIfAborted()
+    const latest = agent.model.current()
+    if (!revisions.active || agents.get(input.sessionId) !== agent || revisions.adapters !== adapterRevision ||
+        revisions.selections.get(agent.session) !== selectionRevision || record().mode !== 'adaptive' ||
+        !sameRoute(latest, current) || latest.reasoningEffort !== current.reasoningEffort) {
+      return Response.json({ error: 'route-changed' }, { status: 409 })
+    }
+    const efforts = model?.reasoning?.efforts.map(row => row.id) ?? []
+    if (!efforts.length || latest.reasoningEffort !== undefined && !efforts.includes(latest.reasoningEffort)) return Response.json({ error: 'unsupported-effort' }, { status: 422 })
+    const { tier, signals } = classify(input.sample)
+    return Response.json({
+      tier: TIERS[tier], signals,
+      recommendation: latest.reasoningEffort ?? effortForTier(tier, efforts),
+      source: latest.reasoningEffort === undefined ? 'classifier' : 'manual',
+    }, { headers: { 'cache-control': 'no-store' } })
+  } catch {
+    return Response.json({ error: 'selection-unavailable' }, { status: 422 })
+  }
 }
 
 // The rc.3 and rc.5 Agent loops only accept durable model selection. Reject

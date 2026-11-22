@@ -5,6 +5,9 @@
 //
 // Run: ABINADWAN_TEST_RUNTIME=<extracted runtime> node --test qa/adaptive-reasoning-host-check.mjs
 import assert from 'node:assert/strict'
+import { mkdtemp, rm } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
 import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
 import test from 'node:test'
@@ -64,8 +67,9 @@ class ScriptAdapter extends LlmAdapter {
   }
 }
 
-async function host(t, record = {}) {
+async function host(t, record = {}, profileDir) {
   const ctx = new Context()
+  if (profileDir) ctx.provide('profileContext', { dir: profileDir })
   t.after(() => ctx.fiber.dispose())
   for (const plugin of [Llm, Sessions, Projections, SystemPrompt, Tools, Executor, Agents]) await ctx.plugin(plugin).await()
   await ctx.plugin(Loop, { agents: [] }).await()
@@ -237,4 +241,47 @@ test('statistics count committed requests by logged effort with Host timing and 
   const reset = await h.call('stats/reset', {})
   assert.equal(reset.body.messages, 0)
   assert.deepEqual(reset.body.requests, { session: {}, subagent: {} })
+})
+
+test('recommendations use the exact adapter and preserve manual effort or provider defaults', async t => {
+  const h = await host(t, { mode: 'adaptive' })
+  const native = await h.create('recommend-default', null)
+  const explicit = await h.create('recommend-explicit', 'balanced-v2')
+  const sample = 'Audit the security and describe trade-offs for the distributed migration plan.'
+  const recommendation = sessionId => h.call('recommend', { sessionId, ...route, sample })
+  const result = await recommendation(native.id)
+  assert.equal(result.status, 200)
+  assert.equal(result.body.recommendation, 'deliberate-v2')
+  assert.equal(result.body.source, 'classifier')
+  assert.equal((await recommendation(explicit.id)).body.recommendation, 'balanced-v2')
+  assert.equal((await recommendation(explicit.id)).body.source, 'manual')
+  assert.doesNotMatch(JSON.stringify(result), /distributed migration/)
+  h.adapter.efforts = []
+  assert.equal((await recommendation(native.id)).status, 422)
+  assert.equal(native.model.current().reasoningEffort, undefined)
+  assert.equal(explicit.model.current().reasoningEffort, 'balanced-v2')
+  assert.deepEqual(h.adapter.requests, [])
+})
+
+test('profile aggregate persists across native Host instances, and reset preserves v1 preferences', async t => {
+  const dir = await mkdtemp(join(tmpdir(), 'dsh-ar-native-'))
+  t.after(() => rm(dir, { recursive: true, force: true }))
+  const record = { preferences: [{ ...route, effort: 'balanced-v2' }], mode: 'manual' }
+  const previous = await host(t, record, dir)
+  const a = await previous.create('persistent-fixture', 'balanced-v2')
+  a.followup(prompt(ids[0]))
+  await a.whenIdle()
+  await previous.feature.dispose()
+  const current = await host(t, record, dir)
+  const { body, status } = await current.call('stats', {})
+  assert.equal(status, 200)
+  assert.equal(body.persistent, true)
+  assert.equal(body.messages, 1)
+  assert.equal(body.routes[0].provider, route.provider)
+  assert.equal(body.routes[0].model, route.model)
+  assert.equal(body.requests.session['balanced-v2'].requests, 1)
+  assert.equal((await current.call('stats/reset', {})).body.messages, 0)
+  const b = await current.create('next-fixture', 'fast-v2')
+  const result = await current.call('effort', { sessionId: b.id, ...route, reasoningEffort: 'balanced-v2' })
+  assert.equal(result.status, 200, 'reset does not touch existing settings')
 })
