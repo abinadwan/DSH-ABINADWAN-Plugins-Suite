@@ -124,7 +124,7 @@ In the **same phase PR** (no separate documentation-only follow-up required), up
 6. **Stop for explicit owner approval.** Do not self-merge. After approved merge, verify `develop` commit and update `Approved on develop` evidence. Delete the phase branch only after integration checks pass.
 7. Start the next phase from that new `develop` revision.
 
-**Hard restrictions:** Do not merge into `main`, publish a version/tag, manipulate real user data, enable unsupported destructive cleanup, or claim filesystem isolation/Windows Desktop acceptance. Keep PR #35 as Draft pending an independently approved release decision.
+**Hard restrictions:** Do not merge into `main`, publish a version/tag, manipulate real user data, enable unsupported destructive cleanup, or claim filesystem isolation/Windows Desktop acceptance. PR #35 was merged into `main` without publishing a release; maintain the same separate approval and real-Desktop gates for any future release. Keep [PR #39](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/39) as Draft until Phase 1 owner review.
 
 ## Current decision log
 
