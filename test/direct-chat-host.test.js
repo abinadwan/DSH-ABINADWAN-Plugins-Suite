@@ -10,6 +10,7 @@ function fixture(profile) {
   const ctx = {
     profileContext: { dir: profile },
     on(name, fn) { if (name === 'tools/pre-execute') preExecute = fn },
+    inject() {},
     effect(fn) { fn() },
     tools: { guard(fn) { guard = fn; return () => {} } },
     connection: { fetch: { register(value) { handler = value; return () => {} } } },

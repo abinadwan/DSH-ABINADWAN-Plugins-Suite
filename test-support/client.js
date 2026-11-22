@@ -247,7 +247,7 @@ export async function clientHarness(options = {}) {
     archivedSessionIds: options.archivedSessionIds ?? [], pinnedSessionIds: [], state: 'idle', phase: 'ready', error: null,
   })
   ctx.provide('sessions', { list: sessions, refresh: options.refresh || (async () => {}), subagentAddress: () => undefined,
-    binding: id => options.sessionBinding?.(id) })
+    binding: id => options.sessionBinding?.(id), using: options.onSessionUsing })
   ctx.provide('workspaces', {
     list: workspaces,
     create: input => options.onWorkspaceCreate?.(input) ?? { workspaceId: 'direct-workspace', path: input.path, title: 'Direct Chat' },

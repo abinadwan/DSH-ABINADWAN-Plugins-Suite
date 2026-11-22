@@ -2,13 +2,12 @@
 // Session history isolation does not constitute process or filesystem isolation.
 import { lstat, mkdir, realpath } from 'node:fs/promises'
 import { isAbsolute, join, normalize, sep } from 'node:path'
+import { directoryName, registerCatalog, workspaceName } from './catalog.js'
 
 export const name = 'abinadwan-direct-chat'
 export const inject = ['profileContext', 'connection', 'tools']
 
 const route = '/api/abinadwan-direct-chat/prepare'
-const directoryName = 'abinadwan-direct-chat-data'
-const workspaceName = 'Direct Chat'
 
 function pathKey(path) {
   if (typeof path !== 'string' || !isAbsolute(path)) return undefined
@@ -66,4 +65,5 @@ export function apply(ctx) {
       }
     },
   }), 'direct-chat: prepare one permanent native Workspace')
+  registerCatalog(ctx, profileDir)
 }

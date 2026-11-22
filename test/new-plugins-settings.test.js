@@ -360,3 +360,65 @@ test('retention previews enforce all UTC cutoffs and exclude unknown or protecte
   assert.match(div.textContent, /Deletion is unavailable/)
   assert.equal(settings.writes.length, 0)
 })
+
+test('Direct Chat history filters authorized metadata, pages it, and keeps native Session identity', async t => {
+  const ids = Array.from({ length: 60 }, (_, index) => 'chat-' + index)
+  const entries = ids.map((id, index) => [id, { id, title: 'Chat ' + index, displayTitle: 'Chat ' + index,
+    running: false, updatedAt: index + 1 }])
+  const settings = settingsFixture('conversation-lifecycle', { retention: 'forever', overrides: [], protectedIds: ['chat-59'] })
+  const opened = [], renames = []
+  const { div, window } = await mount(t, {
+    settings: settings.service, hostLocale: 'en',
+    workspaceItems: [{ workspaceId: 'real', title: 'Renamed', sessionIds: [...ids, 'hidden'] },
+      { workspaceId: 'decoy', title: 'Direct Chat', sessionIds: ['project'] }],
+    sessions: { phase: 'ready', ids: [...ids, 'project'],
+      byId: Object.fromEntries([...entries, ['hidden', { id: 'hidden', displayTitle: 'Hidden local reference' }],
+        ['project', { id: 'project', displayTitle: 'Unrelated Project' }]]) },
+    onOpenSession: id => opened.push(id),
+    async onSessionUsing(id, options, operation) {
+      assert.equal(options.source, 'workspaceOperation')
+      return operation({ binding: { session: { async rename(title) {
+        renames.push([id, title])
+        return { ok: true }
+      } } } })
+    },
+    async fetch(url) {
+      assert.equal(url.pathname, '/api/abinadwan-direct-chat/catalog')
+      return Response.json({ workspaceId: 'real',
+        createdAt: url.searchParams.get('order') === 'creation'
+          ? Object.fromEntries(ids.map((id, index) => [id, 1000 - index])) : undefined })
+    },
+  }, 'direct-chat', 'sidebar.session.action')
+  const button = label => [...div.querySelectorAll('button')].find(item => item.textContent === label || item.getAttribute('aria-label') === label)
+  const dialog = () => div.querySelector('[role=dialog]')
+  await act(async () => button('Direct Chat history').click())
+  assert.equal(dialog().querySelectorAll('li').length, 25)
+  assert.match(dialog().querySelector('li').textContent, /Chat 59.*Protected/)
+  assert.equal(button('Rename Chat 59'), undefined)
+  await act(async () => button('Rename Chat 58').click())
+  await act(async () => {
+    const input = dialog().querySelector('form input')
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(input, 'Renamed test title')
+    input.dispatchEvent(new window.Event('input', { bubbles: true }))
+  })
+  await act(async () => dialog().querySelector('form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true })))
+  assert.deepEqual(renames, [['chat-58', 'Renamed test title']])
+  assert.doesNotMatch(dialog().textContent, /Hidden local reference|Unrelated Project/)
+  await act(async () => button('Next').click())
+  assert.match(dialog().querySelector('li').textContent, /Chat 34/)
+  await act(async () => {
+    const field = dialog().querySelector('select')
+    field.value = 'creation'
+    field.dispatchEvent(new window.Event('change', { bubbles: true }))
+  })
+  assert.match(dialog().querySelector('li').textContent, /^Chat 0/)
+  await act(async () => {
+    const search = dialog().querySelector('input[type=search]')
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(search, 'cHaT 41')
+    search.dispatchEvent(new window.Event('input', { bubbles: true }))
+  })
+  assert.equal(dialog().querySelectorAll('li').length, 1)
+  await act(async () => button('Chat 41').click())
+  assert.deepEqual(opened, ['chat-41'])
+  assert.equal(dialog(), null)
+})
