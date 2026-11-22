@@ -22,7 +22,7 @@ const icons = [
 
 test('development source metadata, lockfile, client version and documentation agree', () => {
   const client = read('client.js')
-  assert.equal(packageJson.version, '1.0.1-rc.1')
+  assert.equal(packageJson.version, '1.0.1-rc.2')
   if (sourceCheckout) {
     const lock = JSON.parse(read('package-lock.json'))
     assert.equal(lock.version, packageJson.version)
@@ -82,4 +82,18 @@ test('all repository docs Markdown links and embedded local image paths resolve'
       assert.ok(existsSync(target), 'broken local link from ' + document + ': ' + href)
     }
   }
+})
+
+
+test('README technology badges match the source stack and distinguish published release from candidate', () => {
+  const readme = read('README.md')
+  for (const label of ['JavaScript ES modules', 'Node.js 22 and 24 — development and CI',
+    'React 19', 'Cordis plugin framework', 'DeepSeek Harness DSH']) {
+    assert.ok(readme.includes('alt="' + label + '"'), 'missing technology badge: ' + label)
+  }
+  assert.equal(packageJson.type, 'module')
+  assert.match(packageJson.devDependencies.react, /^19\./)
+  if (sourceCheckout) assert.match(read('.github/workflows/test.yml'), /node: \['22', '24'\]/)
+  assert.match(readme, /shields\.io\/badge\/release-v1\.0\.0/)
+  assert.doesNotMatch(readme, /shields\.io\/badge\/release-v1\.0\.1/)
 })

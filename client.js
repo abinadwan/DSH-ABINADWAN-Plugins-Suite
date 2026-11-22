@@ -193,7 +193,7 @@ window.__ModuleLoader__.load({
 
     // Only stable published GitHub Releases may trigger an in-app update offer.
     // This browser-side checker never installs anything without a separate click.
-    const INSTALLED_VERSION = '1.0.1-rc.1'
+    const INSTALLED_VERSION = '1.0.1-rc.2'
     const PACKAGE_NAME = '@abinadwan/dsh-plugins-suite'
     const RELEASE_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/latest'
     const COMMIT_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/commits/'
@@ -2580,7 +2580,14 @@ window.__ModuleLoader__.load({
     }
 
     const catalogReady = (workspaces, sessions) => workspaces?.phase === 'ready' &&
-      workspaces.state !== 'error' && sessions?.phase === 'ready' && Array.isArray(sessions.ids)
+      workspaces.state !== 'error' && Array.isArray(workspaces.items) &&
+      workspaces.items.every(item => item && typeof item.workspaceId === 'string' && item.workspaceId.length > 0 &&
+        Array.isArray(item.sessionIds) && item.sessionIds.every(id => typeof id === 'string' && id.length > 0)) &&
+      sessions?.phase === 'ready' && Array.isArray(sessions.ids) &&
+      !!sessions.byId && typeof sessions.byId === 'object' && !Array.isArray(sessions.byId) &&
+      sessions.ids.every(id => typeof id === 'string' && id.length > 0 &&
+        (!Object.hasOwn(sessions.byId, id) || !!sessions.byId[id] &&
+          typeof sessions.byId[id] === 'object' && !Array.isArray(sessions.byId[id])))
 
     // Both surfaces use DSH's authorized catalog, never local retained-only rows.
     function conversationInventory(workspaces, sessions, scope) {
