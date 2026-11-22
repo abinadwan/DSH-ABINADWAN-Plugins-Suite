@@ -66,6 +66,7 @@ Research items listed here are historical source/Host baselines that may still i
 
 | File | Reason to keep |
 | --- | --- |
+| [research/SECURITY_CODE_AUDIT_2026_11_22.md](research/SECURITY_CODE_AUDIT_2026_11_22.md) | Source-level Direct Chat and My Profile hardening review; known unverified Host boundaries |
 | [research/ADAPTIVE_REASONING_HANDOVER.md](research/ADAPTIVE_REASONING_HANDOVER.md) | Original adaptive reasoning implementation and limitations |
 | [research/new-plugins-desktop-evidence.json](research/new-plugins-desktop-evidence.json) | Original 2026-11-18 read-only DSH Desktop/SDK contract inventory (data, not current runtime assurance) |
 | [archive/research/DIRECT_CHAT_GLOBAL_CHAT_PHASE1.md](archive/research/DIRECT_CHAT_GLOBAL_CHAT_PHASE1.md) | First native Direct Chat replacement checks |
