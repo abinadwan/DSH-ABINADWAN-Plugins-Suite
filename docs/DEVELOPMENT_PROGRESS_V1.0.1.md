@@ -1,6 +1,6 @@
 # v1.0.1 development progress — single source of truth
 
-> **State: Phases 01–04 approved on `develop`; Phase 05 candidate `1.0.1-rc.5` under review.** Last baseline review: 2026-11-22. Phase reports originate on temporary branches; merge to `develop` and delete the branch only after explicit owner approval. The published `v1.0.0` tag and `main` remain unchanged by these phases. No release is authorized by this work.
+> **State: Phases 01–05 approved on `develop`; Phase 06 candidate `1.0.1-rc.6` under review.** Last baseline review: 2026-11-22. Phase reports originate on temporary branches; merge to `develop` and delete the branch only after explicit owner approval. The published `v1.0.0` tag and `main` remain unchanged by these phases. No release is authorized by this work.
 
 ## Why this register exists
 
@@ -44,8 +44,8 @@ At each approved phase, update all version-dependent source/metadata **consisten
 | 2 | Chat Control retention/protection consistency | **Approved on develop** | [PR #40](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/40) · [final PR-head CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45050012849) · [Phase 02 report](research/v1.0.1/PHASE_02_CHAT_CONTROL_RETENTION.md) | Real Desktop permission, archive and concurrent-window acceptance deferred to final Desktop gate |
 | 3 | Direct Chat search/history scale | **Approved on develop** | [merged PR #41](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/41) · [final CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45051062749) · [Phase 03 report](research/v1.0.1/PHASE_03_DIRECT_CHAT_PERFORMANCE.md) | Real 10k-item Desktop responsiveness deferred |
 | 4 | Adaptive Reasoning statistics persistence/recovery | **Approved on develop** | [PR #43](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/43) · [four-platform CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45056916549) · [Phase 04 report](research/v1.0.1/PHASE_04_REASONING_STATISTICS.md) | Actual Desktop and power-loss acceptance deferred |
-| 5 | Arabic complexity classification | **In progress** | [Phase 05 report](research/v1.0.1/PHASE_05_ARABIC_CLASSIFIER.md) · bilingual unit fixture | Latest CI, owner approval and provider-bound Desktop checks |
-| 6 | Arabic UI and RTL | **Not started** | — | Translation, keyboard, direction and accessible UI tests |
+| 5 | Arabic complexity classification | **Approved on develop** | [PR #44](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/44) · [four-platform CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45057565826) · [Phase 05 report](research/v1.0.1/PHASE_05_ARABIC_CLASSIFIER.md) | Real provider/Arabic acceptance deferred |
+| 6 | Arabic UI and RTL | **In progress** | [Phase 06 report](research/v1.0.1/PHASE_06_ARABIC_UI_RTL.md) · Arabic Host locale and RTL fixture | Final CI, owner review and native Desktop visuals |
 | 7 | UX failures/loading/retry states | **Not started** | — | Non-misleading success/error and network failure handling |
 | 8 | Cross-platform CI regression coverage | **Not started** | — | CI matrix, package validation, source-vs-Desktop gate report |
 
@@ -87,7 +87,7 @@ Status vocabulary: `Not started`, `In progress`, `Implemented — needs review`,
 
 **One problem:** parts of Direct Chat, Chat Control and Adaptive Reasoning still behave as English-only regardless of DSH locale. Add compatible translations/RTL, correct mixed-direction content, and keyboard/accessible labels. Preserve English and existing language fallback. Verify UI through synthetic fixtures; mark Desktop visual validation open.
 
-**Completed:** none under this phase yet. **Pending:** Arabic and English component tests, keyboard/a11y evidence.
+**Candidate changes:** Chat Control and Adaptive Reasoning composer now follow active Host Arabic locale, expose RTL container/accessible labels and translated common controls; English remains when locale is English. Existing Direct Chat Arabic history remains in place; retention preview uses locale and isolates mixed-direction Session titles with bdi. React fixture tests check Arabic headings, language switch and composer menu; standalone DSH Desktop visual/keyboard checks remain deferred. [Phase 06 report](research/v1.0.1/PHASE_06_ARABIC_UI_RTL.md).
 
 ### Phase 7 — UX failure handling
 
