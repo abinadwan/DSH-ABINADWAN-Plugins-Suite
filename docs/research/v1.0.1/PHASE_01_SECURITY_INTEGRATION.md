@@ -12,7 +12,7 @@
 | Target | `develop` |
 | Base SHA | `9418195ae05cc4a3873eea20f56a02e355dc0c21` |
 | Candidate version | `1.0.1-rc.1` (source metadata only; **not published**) |
-| Pull request | Draft PR targeting `develop`; review link to be recorded when opened |
+| Pull request | [Draft PR #39](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/39) targeting `develop` |
 | Final review SHA | Pending final CI and owner decision; inspect PR head, do not treat the intermediate commits below as final approval |
 | Maintainer review | Pending explicit approval |
 
@@ -49,7 +49,7 @@ No migration, new setting, new field, new permission grant, new network request,
 - **Expected failure before fix:** [CI run 45047616116](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45047616116), four OS/Node jobs failed at the deep-alias regression.
 - **Intermediate version assertion failure:** [CI run 45047727494](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45047727494) found a stale hard-coded `1.0.0` expectation in the old Host-schema test; the candidate version expectation was updated.
 - **Passing repaired intermediate candidate:** [CI run 45047951960](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45047951960) completed successfully on Windows and Ubuntu, Node 22 and 24, after the path fix and candidate-version alignment.
-- **Added native My Profile in-history replay test:** commit `6d1bf851815a35545fd07d466c7cc70ed6fd9e11`; current-head test outcome remains to be recorded after all checks finish.
+- **Native My Profile in-history replay check:** commit `6d1bf851815a35545fd07d466c7cc70ed6fd9e11` passed in the [Windows/Ubuntu Node 22/24 matrix](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45048013901). Final PR-head CI is still a separate required gate.
 - **What CI runs:** `npm ci --ignore-scripts`, `npm test`, `npm run check:package`, followed by pinned DSH/Host service fixtures in `qa/`. Do not report that GitHub's Windows runner is equivalent to hands-on Windows Desktop testing.
 - **Local execution:** a minimal isolated Node 22 reproduction of the original 32-step predicate returned `false` for a 48-level pending alias; the full repository test suite was executed in GitHub Actions, not in an independent local checkout.
 
