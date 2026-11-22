@@ -3159,7 +3159,7 @@ window.__ModuleLoader__.load({
           rows.length ? h('ul', { style: { listStyle: 'none', padding: 0, margin: 0 } }, ...shown.map(({ id, row }) => {
             const guarded = protectedWorkspace || protectedIds.has(id)
             return h('li', { key: id, style: lifecycleActions },
-              h(Button, { size: 'sm', onClick: () => {
+              h(Button, { size: 'sm', disabled: archived.has(id), onClick: () => {
                 if (services.open(selected.workspaceId, id, generation)) onClose()
               } }, h('bdi', null, row.displayTitle || id)),
               archived.has(id) ? h('small', null, copy.archived) : null,
@@ -3257,7 +3257,8 @@ window.__ModuleLoader__.load({
           return result
         }
         services.open = (workspaceId, id, generation) => {
-          if (!member(workspaceId, id, generation)) return false
+          if (!member(workspaceId, id, generation) ||
+              services.workspaces.getSnapshot().archivedSessionIds?.includes(id)) return false
           ctx.uiWorkspace.openSession(id)
           return true
         }

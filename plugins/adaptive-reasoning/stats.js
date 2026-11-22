@@ -107,6 +107,7 @@ export class ReasoningStats {
    */
   request(scope, effort, usage, durationMs, route) {
     if (scope !== 'session' && scope !== 'subagent') return
+    if (typeof effort !== 'string' || !effort.length || effort.length > 256) effort = 'other'
     const table = this.requests[scope]
     const key = Object.hasOwn(table, effort) || Object.keys(table).length < MAX_KEYS ? effort : 'other'
     addUsage(table[key] ??= bucket(), usage, durationMs)

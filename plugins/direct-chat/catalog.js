@@ -18,7 +18,7 @@ async function existingDirectory(path) {
 }
 
 // Only identity discovery. The native registry still owns membership and the
-// tool guard still owns tool admission. This route never reads session logs.
+// tool guard still owns tool admission. Sorting requests native header metadata, never message bodies.
 export async function findWorkspace(profileDir, list) {
   return (await registeredWorkspace(profileDir, list))?.id ?? null
 }
@@ -38,42 +38,58 @@ async function creationMetadata(workspace, persistence, signal) {
   const ids = [...workspace.sessionIds]
   if (ids.length > CREATION_LIMIT || !persistence) return null
   const entries = []
-  for (let index = 0; index < ids.length; index += 8) {
+  for (let index = 0; index < ids.length; index += 4) {
     signal.throwIfAborted()
-    const batch = await Promise.all(ids.slice(index, index + 8).map(async id => {
-      const snapshot = await persistence.stat(id)
+    const batch = await Promise.allSettled(ids.slice(index, index + 4).map(async id => {
+      const snapshot = await persistence.stat(id, { signal })
       const value = snapshot?.header
       return value?.id === id && Number.isSafeInteger(value.createdAt) && value.createdAt > 0 ? [id, value.createdAt] : null
     }))
-    if (batch.includes(null)) return null
-    entries.push(...batch)
+    signal.throwIfAborted()
+    if (batch.some(outcome => outcome.status === 'rejected' || outcome.value === null)) return null
+    entries.push(...batch.map(outcome => outcome.value))
   }
   return Object.fromEntries(entries)
 }
 
 export function registerCatalog(ctx, profileDir) {
-  ctx.inject(['workspaceRegistry', 'sessionPersistence'], child => child.effect(() => child.connection.fetch.register({
-    path: '/api/abinadwan-direct-chat/catalog', methods: ['GET'],
-    async fetch(request) {
-      const headers = { 'cache-control': 'no-store' }
-      try {
-        request.signal.throwIfAborted()
-        const list = () => child.workspaceRegistry.list()
-        const workspace = await registeredWorkspace(profileDir, list)
-        let createdAt
-        if (workspace && new URL(request.url).searchParams.get('order') === 'creation') {
-          createdAt = await creationMetadata(workspace, child.sessionPersistence, request.signal)
-          const latest = await registeredWorkspace(profileDir, list)
-          if (latest?.id !== workspace.id || createdAt && (latest.sessionIds.length !== Object.keys(createdAt).length ||
-              latest.sessionIds.some(id => !Object.hasOwn(createdAt, id)))) {
-            return Response.json({ code: 'DIRECT_CHAT_CATALOG_CHANGED' }, { status: 409, headers })
+  ctx.inject(['workspaceRegistry', 'sessionPersistence'], child => {
+    const lifetime = new AbortController()
+    child.effect(() => () => lifetime.abort())
+    let sorting = false
+    child.effect(() => child.connection.fetch.register({
+      path: '/api/abinadwan-direct-chat/catalog', methods: ['GET'],
+      async fetch(request) {
+        const headers = { 'cache-control': 'no-store' }
+        try {
+          request.signal.throwIfAborted()
+          const list = () => child.workspaceRegistry.list()
+          const workspace = await registeredWorkspace(profileDir, list)
+          let createdAt
+          if (workspace && new URL(request.url).searchParams.get('order') === 'creation') {
+            if (sorting) return Response.json({ code: 'DIRECT_CHAT_CATALOG_BUSY' }, { status: 409, headers })
+            sorting = true
+            const signal = AbortSignal.any([request.signal, lifetime.signal, AbortSignal.timeout(2000)])
+            try {
+              createdAt = await creationMetadata(workspace, child.sessionPersistence, signal)
+            } catch (error) {
+              if (signal.reason?.name !== 'TimeoutError') throw error
+              createdAt = null
+            } finally {
+              sorting = false
+            }
+            const latest = await registeredWorkspace(profileDir, list)
+            if (latest?.id !== workspace.id || createdAt && (latest.sessionIds.length !== Object.keys(createdAt).length ||
+                latest.sessionIds.some(id => !Object.hasOwn(createdAt, id)))) {
+              return Response.json({ code: 'DIRECT_CHAT_CATALOG_CHANGED' }, { status: 409, headers })
+            }
           }
+          request.signal.throwIfAborted()
+          return Response.json({ workspaceId: workspace?.id ?? null, createdAt }, { headers })
+        } catch {
+          return Response.json({ code: 'DIRECT_CHAT_CATALOG_UNAVAILABLE' }, { status: 503, headers })
         }
-        request.signal.throwIfAborted()
-        return Response.json({ workspaceId: workspace?.id ?? null, createdAt }, { headers })
-      } catch {
-        return Response.json({ code: 'DIRECT_CHAT_CATALOG_UNAVAILABLE' }, { status: 503, headers })
-      }
-    },
-  }), 'direct-chat: discover the registered native Workspace'))
+      },
+    }), 'direct-chat: discover the registered native Workspace')
+  })
 }
