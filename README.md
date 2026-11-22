@@ -1,12 +1,20 @@
 <p align="center">
-  <img src="icon.png" alt="ABINADWAN Plugins Suite" width="112" height="112" />
+  <img src="docs/assets/abinadwan-plugins-suite-banner.webp" alt="ABINADWAN Plugins Suite — a modular, open-source plugin bundle for DeepSeek Harness (DSH)" width="900" />
 </p>
 
-<h1 align="center">ABINADWAN Plugins Suite</h1>
+<table align="center">
+  <tr>
+    <td align="center" width="130"><a href="docs/DETAIL.md#environment--context"><img src="plugins/environment-context/icon.png" alt="Environment &amp; Context icon" width="70" height="70" /></a><br/><sub><b>Environment &amp;<br/>Context</b></sub></td>
+    <td align="center" width="130"><a href="docs/DETAIL.md#humanizer"><img src="plugins/humanizer/icon.png" alt="Humanizer icon" width="70" height="70" /></a><br/><sub><b>Humanizer</b></sub></td>
+    <td align="center" width="130"><a href="docs/DETAIL.md#my-profile"><img src="plugins/personal-profile/icon.png" alt="My Profile icon" width="70" height="70" /></a><br/><sub><b>My Profile</b></sub></td>
+    <td align="center" width="130"><a href="docs/DETAIL.md#direct-chat"><img src="plugins/direct-chat/assets/png/icon-256.png" alt="Direct Chat icon" width="70" height="70" /></a><br/><sub><b>Direct Chat</b></sub></td>
+    <td align="center" width="130"><a href="docs/DETAIL.md#chat-control"><img src="plugins/conversation-lifecycle/assets/png/icon-256.png" alt="Chat Control icon" width="70" height="70" /></a><br/><sub><b>Chat Control</b></sub></td>
+    <td align="center" width="130"><a href="docs/DETAIL.md#adaptive-reasoning"><img src="plugins/adaptive-reasoning/assets/png/icon-256.png" alt="Adaptive Reasoning icon" width="70" height="70" /></a><br/><sub><b>Adaptive<br/>Reasoning</b></sub></td>
+  </tr>
+</table>
 
 <p align="center">
-  A modular, open-source plugin bundle for
-  <a href="https://github.com/deepseek-ai/deepseek-harness">DeepSeek Harness (DSH)</a>.
+  <sub>A modular, open-source plugin bundle for <a href="https://github.com/deepseek-ai/deepseek-harness">DeepSeek Harness (DSH)</a>. Independent community project, not an official DeepSeek product.</sub>
 </p>
 
 <p align="center">

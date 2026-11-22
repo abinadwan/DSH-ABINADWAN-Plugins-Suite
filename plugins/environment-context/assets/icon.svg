@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" role="img" aria-labelledby="title">
+  <title id="title">Environment &amp; Context</title>
+  <defs>
+    <linearGradient id="ring" x1="0" y1="0" x2=".8" y2="1">
+      <stop stop-color="#B9FFFA"/>
+      <stop offset=".4" stop-color="#29E4DA"/>
+      <stop offset="1" stop-color="#0D8EAA"/>
+    </linearGradient>
+    <linearGradient id="face" x2=".26" y2="1">
+      <stop stop-color="#187D8A"/>
+      <stop offset=".51" stop-color="#0C505F"/>
+      <stop offset="1" stop-color="#062632"/>
+    </linearGradient>
+    <radialGradient id="sheen" cx=".46" cy="0" r=".76" gradientTransform="scale(1 .56)">
+      <stop stop-color="#B9FFFA" stop-opacity=".34"/>
+      <stop offset="1" stop-color="#B9FFFA" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="1" y="1" width="22" height="22" rx="6" fill="url(#ring)"/>
+  <rect x="2.3" y="2.3" width="19.4" height="19.4" rx="4.8" fill="url(#face)"/>
+  <rect x="2.3" y="2.3" width="19.4" height="19.4" rx="4.8" fill="url(#sheen)"/>
+  <rect x="2.55" y="2.55" width="18.9" height="18.9" rx="4.55" fill="none" stroke="#B9FFFA" stroke-opacity=".24" stroke-width=".3"/>
+  <path d="M8.8 2.6h6.4" fill="none" stroke="#B9FFFA" stroke-opacity=".72" stroke-width=".45" stroke-linecap="round"/>
+  <g id="glyph" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7.2 6.5h9.6a1.7 1.7 0 0 1 1.7 1.7v5.35a1.7 1.7 0 0 1-1.7 1.7H7.2a1.7 1.7 0 0 1-1.7-1.7V8.2a1.7 1.7 0 0 1 1.7-1.7Z"/>
+    <path d="M12 15.25v2.5m-3 0h6M8.4 9.4l1.6 1.5-1.6 1.5m4.1 0h2.65"/>
+  </g>
+</svg>

@@ -29,7 +29,7 @@ Enabled components preserve their existing internal IDs and saved settings names
 
 ## Humanizer
 
-<img src="../plugins/humanizer/icon.png" width="64" alt="Purple feather"/>
+<img src="../plugins/humanizer/icon.png" width="64" alt="Purple writing pencil"/>
 
 Enabling the component registers the runtime Skill `abinadwan-humanizer` through DSH's public Skill service. Supply text and request an edit for clarity, natural wording, audience, tone or language. The instructions require retaining facts, citations, uncertainty and the author's intent; they prohibit unsupported detection-evasion guarantees or false claims of human authorship.
 

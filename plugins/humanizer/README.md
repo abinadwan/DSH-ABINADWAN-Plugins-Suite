@@ -2,7 +2,7 @@
 
 **Runtime Skill available in suite 0.5.0. Enabled by default.**
 
-<img src="icon.png" width="96" alt="Purple Humanizer feather"/>
+<img src="icon.png" width="96" alt="Purple Humanizer writing pencil"/>
 
 ## Use it
 

@@ -1,10 +1,29 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" role="img" aria-labelledby="title">
   <title id="title">Conversation Lifecycle</title>
-  <rect x="1" y="1" width="22" height="22" rx="6" fill="#15856F"/>
-  <rect x="2.5" y="2.5" width="19" height="19" rx="4.5" fill="#0D5147"/>
-  <path d="M9 2.5h6" fill="none" stroke="#8EE0C5" stroke-width="1" stroke-linecap="round"/>
-  <g id="glyph" fill="none" stroke="#F8FAFC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M10 13H6V7a1 1 0 0 1 1-1h8m-9 7-1 2m3.5-3.5v-2H15"/>
-    <path d="M18.25 11.25a4.5 4.5 0 1 1-6.5 1.25m3.75.75v2.25h2"/>
+  <defs>
+    <linearGradient id="ring" x1="0" y1="0" x2=".8" y2="1">
+      <stop stop-color="#CCFFE5"/>
+      <stop offset=".4" stop-color="#5DECAA"/>
+      <stop offset="1" stop-color="#138F70"/>
+    </linearGradient>
+    <linearGradient id="face" x2=".26" y2="1">
+      <stop stop-color="#247E65"/>
+      <stop offset=".51" stop-color="#165344"/>
+      <stop offset="1" stop-color="#0A3029"/>
+    </linearGradient>
+    <radialGradient id="sheen" cx=".46" cy="0" r=".76" gradientTransform="scale(1 .56)">
+      <stop stop-color="#CCFFE5" stop-opacity=".34"/>
+      <stop offset="1" stop-color="#CCFFE5" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="1" y="1" width="22" height="22" rx="6" fill="url(#ring)"/>
+  <rect x="2.3" y="2.3" width="19.4" height="19.4" rx="4.8" fill="url(#face)"/>
+  <rect x="2.3" y="2.3" width="19.4" height="19.4" rx="4.8" fill="url(#sheen)"/>
+  <rect x="2.55" y="2.55" width="18.9" height="18.9" rx="4.55" fill="none" stroke="#CCFFE5" stroke-opacity=".24" stroke-width=".3"/>
+  <path d="M8.8 2.6h6.4" fill="none" stroke="#CCFFE5" stroke-opacity=".72" stroke-width=".45" stroke-linecap="round"/>
+  <g id="glyph" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="m7.75 13.2-2.1 2.1V7.75c0-.9.75-1.65 1.65-1.65h7.25c.9 0 1.65.75 1.65 1.65v.55M8.2 9.4h4.4"/>
+    <path d="M18.8 14.85a3.95 3.95 0 1 1-7.9 0 3.95 3.95 0 1 1 7.9 0Z"/>
+    <path d="M14.85 12.9v2.2h1.55"/>
   </g>
 </svg>
