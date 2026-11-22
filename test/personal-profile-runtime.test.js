@@ -120,6 +120,9 @@ test('P8 synthetic policy: empty or unspecified values are omitted; values are s
   const r=disclosureRecord()
   r.information={preferredName:'  A\nB C‮D\tE  ',nationality:'',gender:'unspecified'}
   assert.equal(profileDisclosure(r),DISCLOSURE_HEADER+'\nPreferred name: A B C D E','control, line and bidi characters cannot add lines')
+  r.information.preferredName='  A\u061c\u200e\u200f\u206a\u206b\u206c\u206d\u206e\u206fB  '
+  assert.equal(profileDisclosure(r),DISCLOSURE_HEADER+'\nPreferred name: A B',
+    'remaining bidi control characters must not appear in a shared profile prompt')
   r.information={preferredName:'   ',nationality:'',gender:''}
   assert.equal(profileDisclosure(r),'','nothing to share')
   const ok=disclosureRecord()
@@ -144,6 +147,11 @@ test('P8 send-time guard: refuses a request whose block differs from what curren
   assert.equal(staleDisclosure(sent,null),true,'unreadable settings fail closed')
   assert.equal(staleDisclosure(requestWith('Base prompt.'),null),false,'requests without a block are never touched')
   assert.equal(staleDisclosure({system:block,messages:[]},{...r,policies:profile.emptyPolicies()}),true,'one-shot system text is checked')
+  const revoked={...r,policies:profile.emptyPolicies()}
+  for(const separator of ['\r\n','\r']){
+    assert.equal(staleDisclosure({system:block.replaceAll('\n',separator),messages:[]},revoked),true,
+      'a historical disclosure with alternate line endings must be refused')
+  }
   assert.equal(staleDisclosure({messages:[{role:'developer',content:block}]},{...r,policies:profile.emptyPolicies()}),true,'developer text is checked')
   assert.equal(staleDisclosure({messages:[{role:'system',content:[{type:'text',text:'x'+block}]}]},{...r,policies:profile.emptyPolicies()}),false,'only an exact header line counts')
 })
