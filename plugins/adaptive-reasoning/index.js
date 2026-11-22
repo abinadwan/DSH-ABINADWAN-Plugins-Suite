@@ -2,7 +2,7 @@ import Schema from '@deepseek-ai/schemastery'
 import { isSubagent, readObject, sameRoute, uuid } from './http.js'
 import { ReasoningStats } from './stats.js'
 import { classify, effortForTier, TIERS } from './classify.js'
-import { openReasoningStats } from './storage.js'
+import { mergeCounters, openReasoningStats } from './storage.js'
 
 export const name = 'abinadwan-adaptive-reasoning'
 const identifier = Schema.string().min(1).max(256).required()
@@ -36,16 +36,44 @@ export function apply(ctx, config) {
     route('/api/abinadwan-reasoning/recommend',
       request => recommend(request, child.agents, child.llm, record, revisions))
 
-    let storage
     let timer
+    let storage
+    let carry
+    let operations = Promise.resolve()
     const profile = child.get('profileContext')
-    const disk = () => storage ??= openReasoningStats(profile.dir)
-    async function snapshot(reset = false) {
-      if (reset) stats.reset()
-      if (!profile) return stats.snapshot()
-      const counters = stats.takeCounters()
-      const target = await disk()
-      return reset ? target.reset() : target.save(counters)
+    function disk() {
+      return storage ??= openReasoningStats(profile.dir).catch(error => {
+        storage = undefined
+        throw error
+      })
+    }
+    // Record the reset generation at activation and allow a later retry if
+    // the file is temporarily unavailable.
+    if (profile) void disk().catch(() => {})
+
+    function snapshot(reset = false) {
+      if (!profile) {
+        if (reset) stats.reset()
+        return Promise.resolve(stats.snapshot())
+      }
+      const operation = operations.then(async () => {
+        const target = await disk()
+        const counters = stats.takeCounters()
+        if (carry) mergeCounters(counters, carry)
+        if (reset) stats.reset()
+        try {
+          const result = await (reset ? target.reset() : target.save(counters))
+          carry = null
+          return result
+        } catch (error) {
+          // Preserve deltas on failures before the atomic replacement began.
+          // An ambiguous write must never be replayed.
+          carry = error.mayHaveWritten ? null : counters
+          throw error
+        }
+      })
+      operations = operation.catch(() => {})
+      return operation
     }
     function schedule() {
       if (!profile || timer || !revisions.active) return
@@ -82,6 +110,8 @@ export function apply(ctx, config) {
       if (timer) {
         clearTimeout(timer)
         await snapshot().catch(() => {})
+      } else {
+        await operations
       }
     })
   })

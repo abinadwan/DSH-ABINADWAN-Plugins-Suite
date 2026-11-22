@@ -69,7 +69,7 @@ function add(target, source) {
   for (const key of fields) target[key] = Math.min(Number.MAX_SAFE_INTEGER, target[key] + source[key])
 }
 
-function merge(target, delta) {
+export function mergeCounters(target, delta) {
   target.messages = Math.min(Number.MAX_SAFE_INTEGER, target.messages + delta.messages)
   for (const key of SOURCES) target.sources[key] = Math.min(Number.MAX_SAFE_INTEGER, target.sources[key] + delta.sources[key])
   for (const scope of scopes) {
@@ -104,6 +104,7 @@ export async function openReasoningStats(profileDir) {
   let { epoch } = await locked(() => readState(filename))
   let queue = Promise.resolve()
   function transact(delta, reset = false) {
+    let writeStarted = false
     const operation = queue.then(() => locked(async () => {
       const state = await readState(filename)
       const hasData = delta && (delta.messages || scopes.some(scope => Object.keys(delta.requests[scope]).length))
@@ -112,17 +113,21 @@ export async function openReasoningStats(profileDir) {
         state.epoch = randomUUID()
         state.counters = readCounters(new ReasoningStats().snapshot())
       } else if (append) {
-        merge(state.counters, readCounters(delta))
+        mergeCounters(state.counters, readCounters(delta))
       }
       if (reset || append) {
+        writeStarted = true
         await writeFileAtomic(filename, JSON.stringify(state), { mode: 0o600, dirMode: 0o700 })
       }
       epoch = state.epoch
       return { ...new ReasoningStats().snapshot(), ...state.counters, persistent: true }
     }))
-    // Stop on an ambiguous write outcome. Reopening reads the committed state.
-    queue = operation
-    return operation
+    queue = operation.catch(() => {})
+    return operation.catch(cause => {
+      const error = new Error('statistics-transaction-failed', { cause })
+      error.mayHaveWritten = writeStarted
+      throw error
+    })
   }
   return { save: delta => transact(delta), reset: () => transact(null, true) }
 }

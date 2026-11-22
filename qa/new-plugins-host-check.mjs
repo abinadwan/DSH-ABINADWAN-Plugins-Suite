@@ -405,6 +405,7 @@ test('native Settings persists new feature preferences and rejects a stale numer
   const lifecycleId = 'abinadwan-conversation-lifecycle'
   const reasoningId = 'abinadwan-adaptive-reasoning'
   const retention = { retention: '30', overrides: [], protectedIds: ['fixture'] }
+  const migratedRetention = { ...retention, protectedWorkspaces: [] }
   const preferences = [{ ...route, effort: 'deliberate-v2' }]
   let ctx = await start()
   try {
@@ -417,7 +418,7 @@ test('native Settings persists new feature preferences and rejects a stale numer
     assert.ok(Number.isSafeInteger(lifecycle.revision))
     await ctx.settings.replace(lifecycle.ns, { record: retention }, lifecycle.revision)
     const changed = describe(ctx, lifecycleId)
-    assert.deepEqual(changed.value.record, retention)
+    assert.deepEqual(changed.value.record, migratedRetention)
     assert.ok(changed.revision > lifecycle.revision)
     await assert.rejects(ctx.settings.replace(lifecycle.ns, { record: { retention: '7' } }, lifecycle.revision),
       { name: 'SettingsConflictError' })
@@ -428,7 +429,7 @@ test('native Settings persists new feature preferences and rejects a stale numer
     await ctx.fiber.dispose()
 
     ctx = await start()
-    assert.deepEqual(describe(ctx, lifecycleId).value.record, retention)
+    assert.deepEqual(describe(ctx, lifecycleId).value.record, migratedRetention)
     assert.deepEqual(describe(ctx, reasoningId).value.record.preferences, preferences)
   } finally {
     await ctx.fiber.dispose()

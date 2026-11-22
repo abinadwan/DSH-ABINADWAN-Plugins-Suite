@@ -2621,7 +2621,7 @@ window.__ModuleLoader__.load({
         const days = policy.get(owner.workspaceId) ?? record?.retention
         const isProtected = protectedIds.has(id)
         const workspaceProtected = protectedWorkspaces.has(owner.workspaceId)
-        const active = row.running !== false || row.agentAvailable === true ||
+        const active = row.running !== false ||
           Object.values(row.retainedBy ?? {}).some(count => count > 0)
         const hasActivity = Number.isSafeInteger(lastPrompt) && lastPrompt > 0 && lastPrompt <= at
         const reason = isProtected ? 'Protected conversation' : workspaceProtected ? 'Protected Workspace'
@@ -2749,7 +2749,7 @@ window.__ModuleLoader__.load({
           h('p', { style: { ...lifecycleMuted, margin: 0 } },
             'Deletion is unavailable. Automatic cleanup is disabled.'),
           h('p', { style: { ...lifecycleMuted, margin: 0 } },
-            'Estimates use known last prompt dates. Active, protected, pinned, and unverified conversations are excluded.'),
+            'Estimates use known last prompt dates and the catalog’s running state. Protected or pinned conversations and conversations open in this window are excluded.'),
           selected ? h('div', { role: 'status', style: lifecycleMuted },
             selectedRow ? h(React.Fragment, null, h('bdi', null, selectedRow.row.displayTitle || selectedRow.id), ' · ',
               h('bdi', null, selectedRow.owner.title), ' · ', selectedRow.reason, '. No data will be removed.')
@@ -2841,7 +2841,10 @@ window.__ModuleLoader__.load({
       const pending = React.useRef(null)
       const adaptive = settings.record?.mode === 'adaptive'
       const generation = suiteWatch(connection)
-      React.useEffect(() => () => pending.current?.abort(), [generation, adaptive, selection.reasoningEffort])
+      React.useEffect(() => {
+        setResult(null)
+        return () => pending.current?.abort()
+      }, [generation, adaptive])
 
       async function analyze(event) {
         event.preventDefault()
@@ -3024,8 +3027,8 @@ window.__ModuleLoader__.load({
         try {
           await startChat()
           setStatus('idle')
-        } catch (error) {
-          console.warn('[abinadwan-direct-chat] Could not open Direct Chat:', error)
+        } catch {
+          console.warn('[abinadwan-direct-chat] Could not open Direct Chat')
           setStatus('failed')
         } finally {
           inflight.current = false

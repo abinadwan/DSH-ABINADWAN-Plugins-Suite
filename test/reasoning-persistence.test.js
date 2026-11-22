@@ -48,3 +48,16 @@ test('reset fences a concurrent old aggregate and corrupt or newer state stays i
     assert.equal(await readFile(path, 'utf8'), content)
   }
 })
+
+test('a transient invalid read does not poison later transactions', async t => {
+  const dir = await profile(t)
+  const store = await openReasoningStats(dir)
+  const stats = new ReasoningStats()
+  stats.request('session', 'high', {})
+  const delta = stats.takeCounters()
+  const path = join(dir, 'abinadwan-reasoning-stats.json')
+  await writeFile(path, '{bad')
+  await assert.rejects(store.save(delta), error => error.mayHaveWritten === false)
+  await rm(path)
+  assert.equal((await store.save(delta)).requests.session.high.requests, 1)
+})

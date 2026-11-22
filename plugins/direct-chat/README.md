@@ -11,3 +11,9 @@ This version shows **Direct Chat** under the standard DSH Workspaces browser. Th
 ## Sidebar placement
 
 The button is now mounted via DSH's public `sidebar.session.action` HOC immediately below the native New Session button, **above Plugins and the Workspace browser**, without replacing DSH's New Session control. It does not render at the footer. DSH exposes no public arbitrary header row seat; this is the highest supported native control region. The full Direct Chat / Projects separate-session-tree split is still a distinct phase.
+
+## Direct Chat history
+
+The history action by **New Session** opens the authorized native catalog for the permanent Direct Chat Workspace. The latest activity appears first. Search uses titles and other catalog metadata. Requesting creation order reads metadata for up to 100 registered conversations. Chat Control supplies retention settings, protection labels and dry-run previews. The existing Workspace list and Session context menu continue to serve normal navigation and historical registrations.
+
+[Capability and security review](../../docs/research/CHAT_CONTROL_ADAPTIVE_DIRECT_CHAT_V2.md)
