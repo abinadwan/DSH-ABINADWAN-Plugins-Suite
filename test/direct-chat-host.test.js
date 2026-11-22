@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { lstat, mkdir, mkdtemp, realpath, rm, writeFile } from 'node:fs/promises'
+import { lstat, mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import test from 'node:test'
@@ -60,6 +60,35 @@ test('tool guard denies the new shared Directory AND previous experimental per-c
   })
   assert.equal(res.kind, 'deny')
   assert.equal(called, false)
+})
+
+test('symlink aliases into Direct Chat cannot bypass either tool-denial hook', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'suite-direct-chat-alias-'))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const profile = join(root, 'profile')
+  const directRoot = join(profile, 'abinadwan-direct-chat-data')
+  await mkdir(join(directRoot, 'Direct Chat'), { recursive: true })
+  const alias = join(root, 'unrelated-workspace-alias')
+  try {
+    await symlink(directRoot, alias, process.platform === 'win32' ? 'junction' : 'dir')
+  } catch (error) {
+    if (['EPERM', 'EACCES', 'ENOTSUP'].includes(error?.code)) {
+      t.skip('This filesystem does not allow directory aliases')
+      return
+    }
+    throw error
+  }
+  const fx = fixture(profile)
+  const aliasedCwd = join(alias, 'Direct Chat')
+  const execution = { agent: { session: { header: { cwd: aliasedCwd } } } }
+  assert.equal(fx.guard()(execution)?.info.code, 'DIRECT_CHAT_TOOL_DENIED')
+  let executed = false
+  const response = await fx.preExecute()(execution, () => {
+    executed = true
+    return Promise.resolve({ kind: 'allow' })
+  })
+  assert.equal(response.kind, 'deny')
+  assert.equal(executed, false)
 })
 
 test('a file cannot replace the data root or permanent Workspace directory', async t => {
