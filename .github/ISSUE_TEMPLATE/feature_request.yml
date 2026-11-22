@@ -1,0 +1,55 @@
+name: Feature request
+description: Suggest an improvement or new behavior for the suite.
+title: "[Feature] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Explain the use case and its impact. Check for existing requests first.
+        Proposals affecting stored personal data, access permissions, model instructions, or network access require explicit owner review under [CONTRIBUTING.md](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/main/CONTRIBUTING.md).
+        Do not submit secrets or sensitive personal information.
+  - type: dropdown
+    id: component
+    attributes:
+      label: Relevant component
+      options:
+        - Environment & Context
+        - Humanizer
+        - My Profile (Personal Profile)
+        - Direct Chat
+        - Chat Control
+        - Adaptive Reasoning
+        - Suite-wide / Other
+    validations:
+      required: true
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem or use case
+      description: What is missing today, and why does it matter?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed behavior
+      description: Describe the user-facing change, not only an implementation.
+    validations:
+      required: true
+  - type: textarea
+    id: alternatives
+    attributes:
+      label: Alternatives considered
+      description: Existing workarounds or other solutions.
+  - type: textarea
+    id: criteria
+    attributes:
+      label: Acceptance criteria
+      description: How would we know the feature works?
+  - type: textarea
+    id: implications
+    attributes:
+      label: Privacy, permissions, compatibility, and security impact
+      description: State any new data storage, agent access, network traffic, DSH API dependency, or possible regression; write "None known" if applicable.
+    validations:
+      required: true
