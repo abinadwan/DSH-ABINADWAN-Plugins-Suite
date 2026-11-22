@@ -7,16 +7,17 @@ import * as plugin from '../plugins/direct-chat/index.js'
 
 function fixture(profile) {
   let handler, guard, preExecute
+  const warnings = []
   const ctx = {
     profileContext: { dir: profile },
     on(name, fn) { if (name === 'tools/pre-execute') preExecute = fn },
     effect(fn) { fn() },
     tools: { guard(fn) { guard = fn; return () => {} } },
     connection: { fetch: { register(value) { handler = value; return () => {} } } },
-    logger: { warn() {} },
+    logger: { warn(...args) { warnings.push(args) } },
   }
   plugin.apply(ctx)
-  return { handler, guard: () => guard, preExecute: () => preExecute }
+  return { handler, guard: () => guard, preExecute: () => preExecute, warnings }
 }
 const request = (body = '{}') => new Request('http://localhost/api/abinadwan-direct-chat/prepare', {
   method: 'POST', headers: { 'content-type': 'application/json' }, body,
@@ -127,4 +128,56 @@ test('a file cannot replace the data root or permanent Workspace directory', asy
   await mkdir(join(profile, 'abinadwan-direct-chat-data'))
   await writeFile(join(profile, 'abinadwan-direct-chat-data', 'Direct Chat'), 'occupied')
   assert.equal((await fixture(profile).handler.fetch(request())).status, 500)
+})
+
+test('prepare failures never log the profile path or exception text', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'suite-direct-chat-private-'))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const profile = join(root, 'profile-SECRET-CANARY')
+  await mkdir(profile)
+  await writeFile(join(profile, 'abinadwan-direct-chat-data'), 'conflicting sensitive path')
+  const fx = fixture(profile)
+  const response = await fx.handler.fetch(request())
+  assert.equal(response.status, 500)
+  assert.equal(response.headers.get('cache-control'), 'no-store')
+  assert.equal(fx.warnings.length, 1)
+  const log = fx.warnings[0].map(String).join(' ')
+  assert.doesNotMatch(log, /profile-SECRET-CANARY|conflicting sensitive path|suite-direct-chat-private-/)
+  assert.match(log, /Direct Chat: permanent Workspace preparation failed/)
+})
+
+test('new Direct Chat directories use owner-only permissions on POSIX', async t => {
+  if (process.platform === 'win32') return t.skip('Windows ACLs require real Desktop validation')
+  const root = await mkdtemp(join(tmpdir(), 'suite-direct-chat-mode-'))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const profile = join(root, 'profile')
+  await mkdir(profile)
+  const fx = fixture(profile)
+  const response = await fx.handler.fetch(request())
+  assert.equal(response.status, 200)
+  const direct = join(profile, 'abinadwan-direct-chat-data')
+  const workspace = join(direct, 'Direct Chat')
+  for (const dir of [direct, workspace]) {
+    const stat = await lstat(dir)
+    assert.equal(stat.mode & 0o077, 0,
+      'newly created Direct Chat directories must not grant group/other permissions')
+  }
+})
+
+test('malformed prepare requests return no cached location information', async t => {
+  const root = await mkdtemp(join(tmpdir(), 'suite-direct-chat-bad-request-'))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  const profile = join(root, 'profile')
+  await mkdir(profile)
+  const fx = fixture(profile)
+  for (const req of [
+    request('{"unexpected":true}'),
+    new Request('http://localhost/api/abinadwan-direct-chat/prepare',
+      {method:'POST',headers:{'content-type':'text/plain'},body:'{}'}),
+  ]) {
+    const response = await fx.handler.fetch(req)
+    assert.equal(response.status, 400)
+    assert.equal(response.headers.get('cache-control'), 'no-store')
+    assert.equal(JSON.stringify(await response.json()).includes(profile), false)
+  }
 })
