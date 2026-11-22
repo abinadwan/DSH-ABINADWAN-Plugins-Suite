@@ -7,7 +7,7 @@ body:
       value: |
         Thanks for reporting a bug. Search for an existing issue first.
         **Do not include passwords, API keys, personal profile data, private session transcripts, or unredacted logs.**
-        For security vulnerabilities, follow [SECURITY.md](../../SECURITY.md) instead of filing a public issue.
+        For security vulnerabilities, follow [SECURITY.md](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/main/SECURITY.md) instead of filing a public issue.
   - type: dropdown
     id: component
     attributes:
