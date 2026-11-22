@@ -2665,7 +2665,7 @@ window.__ModuleLoader__.load({
         h('select', { style: lifecycleSelect, value, disabled, onChange: event => onChange(event.target.value) },
           inherit ? h('option', { value: 'inherit' }, uiCopy('Use global policy', language)) : null,
           h('option', { value: 'forever' }, uiCopy('Keep forever', language)),
-          ...lifecycleDurations.map(days => h('option', { key: days, value: days }, `${days} days`))))
+          ...lifecycleDurations.map(days => h('option', { key: days, value: days }, language === 'ar' ? `${days} يوم` : `${days} days`))))
     }
 
     const catalogReady = (workspaces, sessions) => workspaces?.phase === 'ready' &&
@@ -2734,13 +2734,13 @@ window.__ModuleLoader__.load({
       const candidates = rows.filter(row => row.candidate)
       return h(React.Fragment, null,
         h('span', { role: 'status', style: { fontSize: 13 } },
-          `${candidates.length} estimated candidate${candidates.length === 1 ? '' : 's'}`),
-        h('p', { style: lifecycleMuted }, `Evaluated at ${new Date(at).toISOString()}. Retention uses 24-hour days.`),
+          language === 'ar' ? `${candidates.length} محادثة مرشحة تقديريًا` : `${candidates.length} estimated candidate${candidates.length === 1 ? '' : 's'}`),
+        h('p', { style: lifecycleMuted }, language === 'ar' ? `تاريخ المعاينة ${new Date(at).toISOString()}. تستخدم سياسة الاحتفاظ أيامًا من 24 ساعة.` : `Evaluated at ${new Date(at).toISOString()}. Retention uses 24-hour days.`),
         candidates.length ? h('ul', { style: { margin: 0, paddingInlineStart: 20, fontSize: 13 } },
           ...candidates.slice(0, 50).map(({ id, row, owner, lastPrompt, days }) => h('li', { key: id },
             h('bdi', null, row.displayTitle || id), ' · ', h('bdi', null, owner.title),
-            ` · ${days} days · last prompt ${new Date(lastPrompt).toISOString()}`))) : null,
-        candidates.length > 50 ? h('p', { style: lifecycleMuted }, 'Showing the first 50 candidates. Select a Workspace to narrow the preview.') : null)
+            language === 'ar' ? ` · ${days} يوم · آخر طلب ${new Date(lastPrompt).toISOString()}` : ` · ${days} days · last prompt ${new Date(lastPrompt).toISOString()}`))) : null,
+        candidates.length > 50 ? h('p', { style: lifecycleMuted }, language === 'ar' ? 'تعرض أول 50 محادثة مرشحة. اختر مساحة عمل لتضييق المعاينة.' : 'Showing the first 50 candidates. Select a Workspace to narrow the preview.') : null)
     }
 
     function WorkspaceLifecycle({ services, useRemoteAccess }) {
@@ -2850,7 +2850,7 @@ window.__ModuleLoader__.load({
             t('Estimates use known last prompt dates and the catalog’s running state. Protected or pinned conversations and conversations open in this window are excluded.')),
           selected ? h('div', { role: 'status', style: lifecycleMuted },
             selectedRow ? h(React.Fragment, null, h('bdi', null, selectedRow.row.displayTitle || selectedRow.id), ' · ',
-              h('bdi', null, selectedRow.owner.title), ' · ', selectedRow.reason, '. No data will be removed.')
+              h('bdi', null, selectedRow.owner.title), ' · ', uiCopy(selectedRow.reason, language), language === 'ar' ? '. لن تُحذف أي بيانات.' : '. No data will be removed.')
               : t('Conversation is no longer available in this inventory.'),
             ' ', h(Button, { size: 'sm', onClick: () => setSelected(null) }, t('Close preview'))) : null,
           h('div', { style: lifecycleActions },
@@ -3309,8 +3309,8 @@ window.__ModuleLoader__.load({
                 h(Button, { size: 'sm', onClick: () => setDraft(null) }, copy.cancel)) : null,
               h(Button, { size: 'sm', onClick: () => setPreviewAt(previewAt === null ? Date.now() : null) },
                 previewAt === null ? copy.retention : copy.cancel),
-              previewAt !== null ? h('div', { lang: 'en', dir: 'ltr' }, h(CleanupPreview, {
-                rows: retentionRows(inventory, workspace, record, previewAt), at: previewAt,
+              previewAt !== null ? h('div', { lang: language, dir: language === 'ar' ? 'rtl' : 'ltr' }, h(CleanupPreview, {
+                rows: retentionRows(inventory, workspace, record, previewAt), at: previewAt, language,
               })) : null) : null) : null)))
     }
 
