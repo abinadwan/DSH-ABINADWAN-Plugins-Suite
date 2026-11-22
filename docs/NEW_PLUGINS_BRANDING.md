@@ -1,16 +1,19 @@
-# New plugin artwork
+# Plugin artwork
 
-Direct Chat, Conversation Lifecycle, and Adaptive Reasoning use the same badge geometry, gloss, and 24 × 24 glyph grid as the other three components. See the [suite artwork index](BRANDING.md) for all six identities and shipped paths.
+All six components share the same badge geometry, gloss, and 24 × 24 glyph grid. The contact sheets show each component at three badge sizes and three native UI glyph sizes. See the [suite artwork index](BRANDING.md) for the shipped paths.
 
 | Plugin | Symbol | Badge SVG | Native glyph SVG |
 | --- | --- | --- | --- |
+| Environment & Context | Terminal monitor | [Badge](../plugins/environment-context/assets/icon.svg) | [Glyph](../plugins/environment-context/assets/glyph.svg) |
+| Humanizer | Writing pencil | [Badge](../plugins/humanizer/assets/icon.svg) | [Glyph](../plugins/humanizer/assets/glyph.svg) |
+| My Profile | Person silhouette | [Badge](../plugins/personal-profile/assets/icon.svg) | [Glyph](../plugins/personal-profile/assets/glyph.svg) |
 | Direct Chat | Speech bubble with two reply lines | [Badge](../plugins/direct-chat/assets/icon.svg) | [Glyph](../plugins/direct-chat/assets/glyph.svg) |
 | Conversation Lifecycle (Chat Control) | Speech bubble and clock | [Badge](../plugins/conversation-lifecycle/assets/icon.svg) | [Glyph](../plugins/conversation-lifecycle/assets/glyph.svg) |
 | Adaptive Reasoning | Rising bars and trend line | [Badge](../plugins/adaptive-reasoning/assets/icon.svg) | [Glyph](../plugins/adaptive-reasoning/assets/glyph.svg) |
 
-![Light theme with 128, 64, and 32 px badges and 16, 20, and 24 px native glyphs](assets/new-plugins/contact-sheet-light.png)
+![All six components in the light theme with 128, 64, and 32 px badges and 16, 20, and 24 px native glyphs](assets/new-plugins/contact-sheet-light.png)
 
-![Dark theme with 128, 64, and 32 px badges and 16, 20, and 24 px native glyphs](assets/new-plugins/contact-sheet-dark.png)
+![All six components in the dark theme with 128, 64, and 32 px badges and 16, 20, and 24 px native glyphs](assets/new-plugins/contact-sheet-dark.png)
 
 The sheets use simulated theme surfaces. Native controls use `currentColor` so the host can apply its text color, and the controls provide their own accessible labels.
 

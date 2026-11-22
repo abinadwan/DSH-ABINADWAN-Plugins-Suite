@@ -44,7 +44,7 @@ const plugins = [
     ],
   },
   {
-    id: 'direct-chat', label: 'Direct Chat', contactSheet: true,
+    id: 'direct-chat', label: 'Direct Chat',
     palette: { highlight: '#C7F2FF', accent: '#5DA8FF', edge: '#304BE8', top: '#3667C4', middle: '#203D8D', base: '#131D53' },
     glyph: [
       'M7.5 6.5h9a2 2 0 0 1 2 2v4.75a2 2 0 0 1-2 2h-6.2L5.5 18V8.5a2 2 0 0 1 2-2Z',
@@ -52,7 +52,7 @@ const plugins = [
     ],
   },
   {
-    id: 'conversation-lifecycle', label: 'Conversation Lifecycle', contactSheet: true,
+    id: 'conversation-lifecycle', label: 'Conversation Lifecycle',
     palette: { highlight: '#CCFFE5', accent: '#5DECAA', edge: '#138F70', top: '#247E65', middle: '#165344', base: '#0A3029' },
     glyph: [
       'm7.75 13.2-2.1 2.1V7.75c0-.9.75-1.65 1.65-1.65h7.25c.9 0 1.65.75 1.65 1.65v.55M8.2 9.4h4.4',
@@ -61,7 +61,7 @@ const plugins = [
     ],
   },
   {
-    id: 'adaptive-reasoning', label: 'Adaptive Reasoning', contactSheet: true,
+    id: 'adaptive-reasoning', label: 'Adaptive Reasoning',
     palette: { highlight: '#FFCEE9', accent: '#FF78BB', edge: '#C43F91', top: '#A04378', middle: '#69254F', base: '#36152E' },
     glyph: [
       'M6.5 15.45V18m5.5-5.3V18m5.5-6.5V18M6.5 11.55c4.1 0 5.1-4.55 9.15-4.55',
@@ -169,35 +169,43 @@ function text(x, y, value, color, size, weight = 400, anchor = 'start') {
 await renderClientGlyphs()
 
 const artwork = []
-for (const icon of plugins) {
-  const rendered = await renderIcons(icon)
-  if (icon.contactSheet) artwork.push(rendered)
-}
+for (const icon of plugins) artwork.push(await renderIcons(icon))
+
+const columns = 3
+const cardWidth = 280
+const cardHeight = 244
+const cardGap = 20
+const sideMargin = 28
+const cardsTop = 92
+const rows = Math.ceil(artwork.length / columns)
+const sheetWidth = 2 * sideMargin + columns * cardWidth + (columns - 1) * cardGap
+const sheetHeight = cardsTop + rows * cardHeight + (rows - 1) * cardGap + sideMargin
 
 for (const [theme, bg, panel, ink, muted, border] of [
   ['light', '#F1F5F9', '#FFFFFF', '#172033', '#4B5B70', '#D9E2EC'],
   ['dark', '#111827', '#1C2637', '#F1F5F9', '#B7C5D6', '#344357'],
 ]) {
   const markup = [
-    `<svg xmlns="${svgNamespace}" width="936" height="364" viewBox="0 0 936 364">`,
-    `<rect width="936" height="364" fill="${bg}"/>`,
+    `<svg xmlns="${svgNamespace}" width="${sheetWidth}" height="${sheetHeight}" viewBox="0 0 ${sheetWidth} ${sheetHeight}">`,
+    `<rect width="${sheetWidth}" height="${sheetHeight}" fill="${bg}"/>`,
     text(28, 45, 'ABINADWAN Suite', ink, 26, 700),
     text(28, 72, `${theme === 'light' ? 'Light' : 'Dark'} theme · badge artwork and native UI glyph sizes`, muted, 15),
   ]
   for (const [index, icon] of artwork.entries()) {
-    const x = 28 + 300 * index
-    markup.push(`<rect x="${x}" y="92" width="280" height="244" rx="15" fill="${panel}" stroke="${border}"/>`)
-    markup.push(text(x + 16, 120, icon.label, ink, 17, 650))
+    const x = sideMargin + (index % columns) * (cardWidth + cardGap)
+    const y = cardsTop + Math.floor(index / columns) * (cardHeight + cardGap)
+    markup.push(`<rect x="${x}" y="${y}" width="${cardWidth}" height="${cardHeight}" rx="15" fill="${panel}" stroke="${border}"/>`)
+    markup.push(text(x + 16, y + 28, icon.label, ink, 17, 650))
     for (const [size, offset] of [[128, 16], [64, 155], [32, 232]]) {
-      markup.push(`<image x="${x + offset}" y="${220 - size / 2}" width="${size}" height="${size}" href="data:image/png;base64,${icon.pngs.get(size).toString('base64')}"/>`)
-      markup.push(text(x + offset + size / 2, 292, size, muted, 12, 400, 'middle'))
+      markup.push(`<image x="${x + offset}" y="${y + 128 - size / 2}" width="${size}" height="${size}" href="data:image/png;base64,${icon.pngs.get(size).toString('base64')}"/>`)
+      markup.push(text(x + offset + size / 2, y + 200, size, muted, 12, 400, 'middle'))
     }
-    markup.push(`<path d="M${x + 16} 303h248" stroke="${border}"/>`)
-    markup.push(text(x + 16, 324, 'UI glyph', muted, 12))
+    markup.push(`<path d="M${x + 16} ${y + 211}h248" stroke="${border}"/>`)
+    markup.push(text(x + 16, y + 232, 'UI glyph', muted, 12))
     for (const [i, size] of [16, 20, 24].entries()) {
       const left = x + 91 + i * 59 - size / 2
-      markup.push(`<svg x="${left}" y="${319 - size / 2}" width="${size}" height="${size}" viewBox="${iconGrid}" color="${ink}">${glyphGroup(icon, 'currentColor')}</svg>`)
-      markup.push(text(x + 109 + i * 59, 324, size, muted, 11))
+      markup.push(`<svg x="${left}" y="${y + 227 - size / 2}" width="${size}" height="${size}" viewBox="${iconGrid}" color="${ink}">${glyphGroup(icon, 'currentColor')}</svg>`)
+      markup.push(text(x + 109 + i * 59, y + 232, size, muted, 11))
     }
   }
   markup.push('</svg>')
