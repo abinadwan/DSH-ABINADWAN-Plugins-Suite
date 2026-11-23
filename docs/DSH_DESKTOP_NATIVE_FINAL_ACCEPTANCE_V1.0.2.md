@@ -2,6 +2,25 @@
 
 **23 November 2026, Asia/Riyadh**
 
+## Current v1.0.2 acceptance dispositions
+
+The owner agreed to the following scope decisions on 23 November 2026. Sections A–L record the original Windows acceptance run, including its verdicts, counts, observations and release assessment at the time. The current dispositions below apply to release-gate tracking. No new native retest was run for these decisions.
+
+| Task | Original native verdict | Owner disposition for v1.0.2 | Suite responsibility |
+| --- | --- | --- | --- |
+| 02 — Peer and Windows ACL | BLOCKED | **Out of Scope — Upstream DSH Host / Windows.** General Peer authentication and isolation, effective Windows ACLs and OS security are outside suite acceptance. | Suite-owned Settings and Direct Chat routes must enforce the applicable Host authorization and deny unauthorized reads and writes. The owner-route results and fixture checks retain their original coverage. Native non-owner route behavior remains unverified. |
+| 03 — Host diagnostic logs | BLOCKED | **Out of Scope — Upstream DSH Host.** Internal Host diagnostic sinks and Host-generated log redaction are outside suite acceptance. | Suite-owned logs and warnings must redact sensitive data, including when handling Host errors. PR #55 covers synthetic browser warnings. Installed suite-warning coverage remains unverified. Provider Error Exposure is tracked separately under Task 09. |
+| 04 — Host Session-log upload and process-wide network egress | BLOCKED | **Out of Scope — Upstream DSH Host.** Host upload defaults and consent, Host-originated connections and process-wide traffic attribution are outside suite acceptance. | Suite-initiated connections and data transfers remain in scope and require authorization. Loopback captures cover the sampled provider requests. The two observed nonloopback HTTPS connections remain unclassified, with no confirmed Session-log upload. |
+| 05 — Native two-client Settings UI | BLOCKED | **Waived — Not Applicable to the supported My Profile UI workflow.** The supported workflow does not allow two independent instances of the My Profile Settings page to edit the same Profile simultaneously. Reopen the test if DSH adds supported multi-window or multi-client editing for one Profile. | Keep revision checks and the existing stale-write, draft-preservation and retry tests. Fixture results retain their original scope. The native two-client case has no Pass verdict. |
+
+[Suite Settings revision regression](../test/personal-profile-sidebar.test.js#L81) · [rc.4 Settings evidence](DSH_DESKTOP_SETTINGS_RETENTION_RECOVERY_V1.0.2_RC4.md) · [Source authorization and warning evidence](DSH_SOURCE_ACCEPTANCE_HARDENING_V1.0.2.md)
+
+- **H04 remains closed** by owner acceptance of the 1,000-Session supported scope. The original 10,000-Session stress test retains **Fail**, with 8,185 titles searchable before opening. [H04 decision](DSH_H04_SEARCH_SCOPE_AND_HIGH_LOAD_RESULT_V1.0.2.md)
+- **MP02 remains closed** under the owner-approved fail-closed privacy contract. The original structured historical provider-wire criterion retains **Blocked**. [MP02 decision](DSH_MP02_FAIL_CLOSED_PRIVACY_ACCEPTANCE_V1.0.2.md)
+- **Provider Error Exposure remains Fail and an open release gate.** Task 09 recorded all five fictional provider-error canaries in the failed-turn UI. The Host diagnostic-log scope decision does not change that result. [Task 09 evidence](#provider-error-exposure--upstream-source-review-documentation-only)
+
+[Issue #53](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/issues/53) remains open for the remaining gates. This record covers only the four scope decisions above and grants no release approval.
+
 ## A. Executive summary
 
 **NOT READY.** The installed Windows run confirmed a suite privacy defect and an upstream provider-error display failure. The suite fix stopped the previously leaking custom-preference continuation before the provider on the same Session after a cold restart. A continuation through the native custom OpenAI-compatible adapter completed with the revoked preference absent. The installed Host displayed all five fictional canaries from a provider rejection. The remaining gates include the original MP02 structured historical-wire criterion, live Peer and Windows ACL boundaries, diagnostic redaction, process-wide egress attribution, native fault timing, and assistive technology.
