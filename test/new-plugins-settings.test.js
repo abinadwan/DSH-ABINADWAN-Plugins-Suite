@@ -174,6 +174,59 @@ test('v1.1.0 phase 01: archived cleanup preview does not execute deletes or writ
   assert.equal(settings.writes.length, 0)
 })
 
+test('v1.1.0 phase 02: archive preview requests owner-only Host inspection without deleting', async t => {
+  const settings = settingsFixture('conversation-lifecycle', {
+    retention: 'forever', overrides: [], protectedIds: [], protectedWorkspaces: [],
+  })
+  const sent = []
+  const { div } = await mount(t, {
+    settings: settings.service, archivedSessionIds: ['archived'],
+    workspaceItems: [{ workspaceId: 'workspace-a', title: 'A workspace', sessionIds: ['archived', 'active'] }],
+    sessions: { phase: 'ready', ids: ['archived', 'active'], byId: {
+      archived: { id: 'archived', displayTitle: 'Archived chat', running: false },
+      active: { id: 'active', displayTitle: 'Active chat', running: true },
+    } },
+    async fetch(url, options) {
+      sent.push({ path: url.pathname, body: JSON.parse(options.body), method: options.method,
+        credentials: options.credentials, redirect: options.redirect })
+      assert.equal(url.pathname, '/api/abinadwan-chat-control/inspect')
+      assert.equal(options.method, 'POST')
+      return Response.json({ mode: 'read-only', executable: false, inspected: 1,
+        rows: [{ id: 'archived', code: 'requires-deletion-transaction', storedBytes: 300,
+          deletable: false }] })
+    },
+  }, 'conversation-lifecycle', 'settings.section')
+  const button = label => [...div.querySelectorAll('button')].find(row => row.textContent === label)
+  await act(async () => button('Preview archived cleanup').click())
+  await act(async () => { button('Inspect archived candidates with Host').click() })
+  assert.deepEqual(sent, [{
+    path: '/api/abinadwan-chat-control/inspect', method: 'POST',
+    credentials: 'same-origin', redirect: 'error', body: { sessionIds: ['archived'] },
+  }])
+  assert.match(div.textContent, /Host inspection is read-only and cannot authorize deletion/)
+  assert.match(div.textContent, /Deletion transaction unavailable/)
+  assert.match(div.textContent, /Storage metadata \(not reclaimable bytes\): 300 B/)
+  assert.equal(settings.writes.length, 0)
+})
+
+test('v1.1.0 phase 02: protected archive rows cannot trigger Host inspection', async t => {
+  const settings = settingsFixture('conversation-lifecycle', {
+    retention: 'forever', overrides: [], protectedIds: ['archived'], protectedWorkspaces: [],
+  })
+  const { div } = await mount(t, {
+    settings: settings.service, archivedSessionIds: ['archived'],
+    workspaceItems: [{ workspaceId: 'workspace-a', title: 'A workspace', sessionIds: ['archived'] }],
+    sessions: { phase: 'ready', ids: ['archived'], byId: {
+      archived: { id: 'archived', displayTitle: 'Protected archive', running: false },
+    } },
+    async fetch() { assert.fail('protected archived Session must not be sent to Host') },
+  }, 'conversation-lifecycle', 'settings.section')
+  await act(async () => [...div.querySelectorAll('button')].find(row => row.textContent === 'Preview archived cleanup').click())
+  assert.equal([...div.querySelectorAll('button')].find(row =>
+    row.textContent === 'Inspect archived candidates with Host').disabled, true)
+  assert.equal(settings.writes.length, 0)
+})
+
 test('retention confirmation expires when the underlying settings revision is reloaded', async t => {
   const settings = settingsFixture('conversation-lifecycle', { retention: 'forever', overrides: [], protectedIds: [] })
   const { div, window, fixture } = await mount(t, { settings: settings.service }, 'conversation-lifecycle', 'settings.section')
