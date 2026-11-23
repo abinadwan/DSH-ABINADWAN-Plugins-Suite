@@ -219,7 +219,7 @@ window.__ModuleLoader__.load({
 
     // Only stable published GitHub Releases may trigger an in-app update offer.
     // This browser-side checker never installs anything without a separate click.
-    const INSTALLED_VERSION = '1.0.2-rc.3'
+    const INSTALLED_VERSION = '1.0.2-rc.4'
     const PACKAGE_NAME = '@abinadwan/dsh-plugins-suite'
     const RELEASE_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/latest'
     const COMMIT_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/commits/'
@@ -2670,6 +2670,8 @@ window.__ModuleLoader__.load({
         "Done": "تم",
         "Loading statistics…": "جارٍ تحميل الإحصائيات…",
         "Statistics are unavailable.": "الإحصائيات غير متاحة.",
+        "Statistics reset could not be confirmed.": "تعذر تأكيد إعادة ضبط الإحصائيات.",
+        "Reload statistics": "إعادة تحميل الإحصائيات",
         "Messages": "الرسائل",
         "Total": "الإجمالي",
         "Session effort": "مستوى استدلال الجلسة",
@@ -2895,7 +2897,7 @@ window.__ModuleLoader__.load({
           !chosen ? h('small', { style: lifecycleMuted }, t('Select a Workspace to set its own retention policy.')) : null,
           change ? h('div', { style: lifecycleActions },
             h('span', { style: lifecycleMuted }, t('Save this policy for previews?')),
-            h(Button, { size: 'sm', variant: 'primary', disabled: !settings.writable, onClick: () => update(change.next) },
+            h(Button, { size: 'sm', variant: 'primary', disabled: !settings.writable, onClick: () => { void settings.save(change.next) } },
               t('Confirm and save')),
             h(Button, { size: 'sm', onClick: () => { setChange(null); setPreviewAt(null) } }, t('Cancel'))) : null),
         h(LifecycleGroup, { title: t('Protected Conversations') },
@@ -2956,9 +2958,10 @@ window.__ModuleLoader__.load({
       function load(path) {
         const id = ++request.current
         setState({ status: 'loading' })
+        const failure = { status: 'failed', reset: path === 'stats/reset' }
         reasoningPost(path, {}).then(result => {
-          if (id === request.current) setState(result.ok && result.body ? { status: 'ready', stats: result.body } : { status: 'failed' })
-        }).catch(() => { if (id === request.current) setState({ status: 'failed' }) })
+          if (id === request.current) setState(result.ok && result.body ? { status: 'ready', stats: result.body } : failure)
+        }).catch(() => { if (id === request.current) setState(failure) })
       }
       React.useEffect(() => { if (open) load('stats'); return () => { request.current++ } }, [open])
       const stats = state.stats
@@ -2975,7 +2978,8 @@ window.__ModuleLoader__.load({
       const rows = stats ? ['session', 'subagent'].flatMap(scope => Object.entries(stats.requests?.[scope] || {})
         .map(([effort, row]) => ({ scope, effort, row }))) : []
       const body = state.status === 'loading' ? h('div', { role: 'status' }, t('Loading statistics…'))
-        : state.status === 'failed' ? h('div', { role: 'status' }, t('Statistics are unavailable.'))
+        : state.status === 'failed' ? h('div', { role: 'status' },
+          t(state.reset ? 'Statistics reset could not be confirmed.' : 'Statistics are unavailable.'))
         : h('div', { style: { fontSize: 13, lineHeight: 1.6 } },
           group(t('Messages'), [line(t('Total'), count(stats.messages)),
             line(t('Session effort'), count(stats.sources?.manual)),
@@ -3017,6 +3021,8 @@ window.__ModuleLoader__.load({
         className: 'abinadwan-reasoning-statistics' + (dir === 'rtl' ? ' abinadwan-reasoning-statistics-rtl' : ''),
         footer: h('div', { style: lifecycleActions },
           h(Button, { size: 'sm', variant: 'outline', disabled: state.status !== 'ready', onClick: () => load('stats/reset') }, t('Reset statistics')),
+          state.status === 'failed' ? h(Button, { size: 'sm', variant: 'outline',
+            onClick: () => load('stats') }, t('Reload statistics')) : null,
           h(Button, { size: 'sm', onClick: onClose }, t('Done'))) },
       h('style', null, reasoningStatisticsStyle),
       h('div', { lang: language, dir, style: { minWidth: 0 } }, body))

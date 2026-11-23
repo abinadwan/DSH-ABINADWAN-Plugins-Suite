@@ -364,7 +364,10 @@ test('Arabic statistics localizes the dialog, makes all columns keyboard-scrolla
   assert.doesNotMatch(dialog.textContent, /Aggregate counts|Nothing is sent|subagents|Provider default/)
   const reset = [...dialog.querySelectorAll('button')].find(button => button.textContent === 'إعادة ضبط الإحصائيات')
   await act(async () => reset.click())
-  assert.match(dialog.querySelector('[role=status]').textContent, /الإحصائيات غير متاحة/)
+  assert.match(dialog.querySelector('[role=status]').textContent, /تعذر تأكيد إعادة ضبط الإحصائيات/)
+  const reload = [...dialog.querySelectorAll('button')].find(button => button.textContent === 'إعادة تحميل الإحصائيات')
+  await act(async () => reload.click())
+  assert.deepEqual(fixture.calls.map(call => call.path), ['stats', 'stats/reset', 'stats'])
 })
 
 test('retention previews enforce all UTC cutoffs and exclude unknown or protected records', async t => {
@@ -693,4 +696,56 @@ test('Direct Chat history retries a failed catalog without leaking nonadmitted S
   assert.match(div.textContent, /Known fictional chat/)
   assert.doesNotMatch(div.textContent, /Hidden private canary/)
   assert.equal(div.querySelector('[role=alert]'), null)
+})
+
+test('Chat Control keeps a failed policy proposal for an explicit revision-checked retry', async t => {
+  const settings = settingsFixture('conversation-lifecycle', { retention: 'forever', overrides: [], protectedIds: [] })
+  const replace = settings.service.replace
+  const revisions = []
+  settings.service.replace = async (ns, value, revision) => {
+    revisions.push(revision)
+    if (revisions.length === 1) return refused('settings/unavailable', 'fixture write failure')
+    return replace(ns, value, revision)
+  }
+  const { div, window } = await mount(t, { settings: settings.service }, 'conversation-lifecycle', 'settings.section')
+  const retention = div.querySelectorAll('select')[1]
+  const confirm = () => [...div.querySelectorAll('button')].find(button => button.textContent === 'Confirm and save')
+  await act(async () => {
+    retention.value = '30'
+    retention.dispatchEvent(new window.Event('change', { bubbles: true }))
+  })
+  await act(async () => confirm().click())
+  assert.match(div.textContent, /Save failed/)
+  assert.doesNotMatch(div.textContent, /Saved\./)
+  assert.equal((await settings.service.describe()).value.namespaces[0].value.record.retention, 'forever')
+  assert.equal(retention.value, '30')
+  await act(async () => confirm().click())
+  assert.deepEqual(revisions, [1, 1])
+  assert.equal((await settings.service.describe()).value.namespaces[0].value.record.retention, '30')
+  assert.equal(confirm(), undefined)
+})
+
+test('a failed statistics reset requires an authoritative reload before an explicit retry', async t => {
+  const counts = { since: '2026-11-20T08:00:00.000Z', persistent: true, messages: 3,
+    requests: { session: {}, subagent: {} } }
+  let attempts = 0
+  const fixture = reasoningFixture({ handlers: {
+    stats: () => Response.json(counts),
+    'stats/reset': () => ++attempts === 1 ? Response.json({}, { status: 503 })
+      : Response.json({ ...counts, messages: 0 }),
+  } })
+  const view = await openReasoning(t, fixture)
+  await view.open()
+  await act(async () => view.item('Reasoning statistics…').click())
+  const dialog = view.div.querySelector('[role=dialog]')
+  const button = label => [...dialog.querySelectorAll('button')].find(node => node.textContent === label)
+  await act(async () => button('Reset statistics').click())
+  assert.match(dialog.textContent, /Statistics reset could not be confirmed/)
+  assert.equal(button('Reset statistics').disabled, true)
+  await act(async () => button('Reload statistics').click())
+  assert.deepEqual(fixture.calls.map(call => call.path), ['stats', 'stats/reset', 'stats'])
+  assert.match(dialog.textContent, /Total3/)
+  await act(async () => button('Reset statistics').click())
+  assert.deepEqual(fixture.calls.map(call => call.path), ['stats', 'stats/reset', 'stats', 'stats/reset'])
+  assert.match(dialog.textContent, /Total0/)
 })
