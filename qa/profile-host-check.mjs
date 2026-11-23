@@ -84,11 +84,15 @@ test('rc.3 real loop: committed config, new and existing sessions, disable and c
     delete next.preferences.sendCustom
     next.preferences.style='candid'
     await fiber.update({record:next})
-    await send(b,history,'in history update')
+    const beforeCustomRevocation=history.requests.length
+    b.followup(createUserMessage({content:[{type:'text',text:'Continue after custom consent was revoked'}],source:{kind:'user'}}))
+    await b.whenIdle()
+    assert.equal(history.requests.length,beforeCustomRevocation,'revoked custom Preferences must stop before the adapter')
+    const clean=await ctx.agentLoop.create(SessionId('profile-custom-revoked'),{provider:'history',model:'test'})
+    installModelSelection(clean.ctx)
+    await send(clean,history,'Fresh after custom revocation')
     assert.match(latest(history),/candid/)
     assert.doesNotMatch(latest(history),/FICTIONAL_CUSTOM/)
-    // In-history mode may retain old authorized text: assert the documented limit.
-    assert.ok(systemTexts(history.requests.at(-1)).some(t=>t.includes(custom)))
     await fiber.dispose()
     await send(a,plain,'disabled')
     assert.doesNotMatch(latest(plain),/Response preferences/)
