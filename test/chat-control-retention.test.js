@@ -55,12 +55,13 @@ test('phase 02: incomplete or malformed authorized catalogs are not considered r
 test('phase 02: all policy boundaries use last-prompt timestamps and exclude future dates', () => {
   const { workspaces, sessions } = fixture()
   for (const days of [7, 30, 90, 180, 365]) {
-    for (const [age, candidate] of [[days - 1, false], [days, true], [days + 1, true]]) {
-      sessions.projectionsBySession.eligible.values.sessionListMetadata.lastPromptAt = AT - age * DAY
+    const cutoff = AT - days * DAY
+    for (const [offset, candidate] of [[-1, true], [0, true], [1, false]]) {
+      sessions.projectionsBySession.eligible.values.sessionListMetadata.lastPromptAt = cutoff + offset
       const inventory = conversationInventory(workspaces, sessions, null)
       const result = retentionRows(inventory.rows, workspaces, { retention: String(days) }, AT)
       assert.equal(result.length, 1)
-      assert.equal(result[0].candidate, candidate, `${days} days; age ${age}`)
+      assert.equal(result[0].candidate, candidate, `${days} days; offset from UTC cutoff ${offset}`)
     }
   }
   sessions.projectionsBySession.eligible.values.sessionListMetadata.lastPromptAt = AT - 400 * DAY

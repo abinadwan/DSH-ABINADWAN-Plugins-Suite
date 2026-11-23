@@ -1,0 +1,159 @@
+# Windows Desktop Settings, Retention and Recovery — v1.0.2-rc.4
+
+## Identity and baseline
+
+23 November 2026, Asia/Riyadh. Task branch `fix/settings-retention-recovery-v1.0.2-rc.4` from `develop` at `de94fab4583617037943de442c98fb5034125383`. Candidate package 1.0.2-rc.4. Installed runtime source SHA `738888691d6aa40a5e8a43bda2472a05d81f9bc4`. The documentation-only delivery head is identified at the [task branch head](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/commits/fix/settings-retention-recovery-v1.0.2-rc.4/). [Draft PR #52](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/52) targets develop. Published stable v1.0.0. GitHub confirms PRs [#50](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/50) and [#51](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/51) were merged. At intake there were zero open issues and no branch or PR under the requested rc.4 name. Remote `main` was `e4c4c762dcba492879438ed34ba4592fa1a098b0`.
+
+## Acceptance matrix
+
+Mapped before behavior changes from the current [component reference](DETAIL.md), [My Profile contract](PERSONAL_PROFILE_LOCAL_SETTINGS.md), [security policy](../SECURITY.md), [handover](../HANDOVER.md) and [CI workflow](../.github/workflows/test.yml). The [Phase 02](research/v1.0.1/PHASE_02_CHAT_CONTROL_RETENTION.md) and [Phase 04](research/v1.0.1/PHASE_04_REASONING_STATISTICS.md) reports supply historical test evidence. The architecture review used AR-03 for subagent policy and AR-04 for statistics. This matrix uses the Task 3 IDs. Chat Control confirmation applies to policy proposals. Checking a protection box is its explicit save action and also carries a revision. Unsupported deletion and per-message effort remain unavailable. My Profile imports v1–v4. English and Arabic overrides can export v2 for compatibility, while Follow DSH and the five additional locale overrides export v4.
+
+| Case ID | Requirement | Expected result | Test level | Actual status | Evidence | Finding |
+| --- | --- | --- | --- | --- | --- | --- |
+| S01 | Supported settings, explicit Save and cold restart | Native Settings restores committed values only. Environment reads native context, Humanizer registers a Skill, Direct Chat uses native identity and Chat Control policy, and the other component-specific settings are tested separately. | Pinned Host and installed Desktop | Pass | Native My Profile, Chat Control and effort records reopened in A. Source tests cover component contracts. | Native component-specific behavior and separate RC01 controls passed. |
+| S02 | Independent lifecycle of all six components | Disable withdraws future registrations. Other components and existing data survive. Re-enable restores one entry and restart preserves activation. | Source, React and installed Desktop | Pass | Native Plugin Manager initially showed two on and four off. Each toggle was cycled independently. All six were still enabled on restart. Client lifecycle suites verify duplicate-registration guards. | Native verification covered row state and visible entry points. Internal listener counts come from fixtures. |
+| S03 | Two revisions and concurrent drafts | Old revision cannot replace newer data. Visible conflict, no success and explicit reload before retry. | React, pinned Host and installed Desktop | Pass (React, pinned Host); Blocked (Desktop) | Outdated policy tests and native Settings fixture rejected the old revision and retained the newer record. | Authenticated parallel Settings-client reproduction was unavailable in the installed test. |
+| S04 | Failed Save, Reload and Reset | Failed write preserves the supported draft. Reload follows each surface's contract. Reset only affects documented fields or statistics. | React, pinned Host and installed Desktop | Pass | Native Profile Keep Editing / Discard, held Config Editor lock, and statistics failure/reload. React checks exercise failures and reset scopes. | One refused retention Save kept the proposal and left the committed patch intact. |
+| S05 | Settings permissions | Read-only or denied identity cannot write. Native authenticated roles require separate evidence. | React, pinned Host and installed Desktop | Pass (React); Blocked (Desktop) | React permission fixtures with denied Settings access and read-only describes. Pinned Host owner/Peer route authorization evidence is separate. | No authenticated native non-owner Peer or Windows ACL principal was available. |
+| MP-S01 | Defaults and opt-in | Component starts disabled. Fields start Private. Only committed v4 permission can authorize injection. | Source, React, pinned Host and installed Desktop | Pass | Native default switch off, clean Profile B fields blank and Private. Source privacy tests and pinned Host committed-prompt tests. | Native defaults were observed. Provider-wire field permission cases remain tracked separately. |
+| MP-S02 | Persistent My Profile settings | Identity, preferences, response and UI languages, traits, presets, custom text and policies persist on Save. Editing, restore or reset clears affected custom consent. | React, pinned Host and installed Desktop | Pass | Native revision-confirmed Save and cold UI reload for all scoped field groups and custom consent. | The unsaved draft was absent after exit and the saved consent remained effective. |
+| MP-S03 | v1, v2 and v3 migration | Compatible values survive. Legacy choices are inert. Review and explicit Save precede conversion. | Source, React and disposable installed Desktop | Pass | React and installed B boots with fictional v1, v2 and v3. Verified original Settings patch stayed byte-identical until Save. | All three converted to v4 only after Save. v1 Workspace-specific choices required acknowledgment. |
+| MP-S04 | Plain JSON export/import | Copy/download and merge/replace follow version and review rules. Reject malformed and oversized input. Cancel and restore do not write. | React and installed Desktop | Pass | Native v2 review/restore and v4 file download and Windows clipboard paste. React covers sizes/formats. The completed file matched the export view and the clipboard matched that JSON. | Native Settings stayed byte-identical through draft export. |
+| MP-S05 | Separate disposable Profiles | Profile B starts without Profile A's values under normal Host authorization. | Pinned Host and installed Desktop | Pass | Two distinct disposable DSH homes and Electron profiles. A retained fictional data and B initially remained blank and Private. | One local owner in each separate Profile. |
+| MP-S06 | Storage and revocation disclosure | Native Settings, plaintext files/backups, OS and Profile permissions, and effects on previously disclosed data are described accurately. | Source, React and installed Desktop | Pass | Native Privacy & Security and updated plaintext JSON disclosure. Current security and Profile contract describe the OS and previous-data boundary. | A draft export includes unsaved values and permissions. Export never writes native Settings. |
+| CC01 | UTC cutoff for 7, 30, 90, 180 and 365 days, plus Forever | At or before the cutoff qualifies if otherwise eligible. One millisecond newer, future, missing and invalid fail eligibility. Forever excludes. | Source, React and installed Desktop | Pass | Native matched production for every finite cutoff ±1 ms, equality, and Forever. Future, missing and invalid timestamps exercised at source level. | A one-millisecond advance confirmed the initially excluded native rows. |
+| CC02 | Global, Workspace, inheritance and Forever | One valid override replaces the global policy. Duplicate overrides give an unavailable policy. Working scope and policies survive Save/restart. | Source, React, pinned Host and installed Desktop | Pass | Source duplicate override, React inheritance/override and native 30-day global, inherited Workspace then explicit Forever. Cold restart retained both. | Duplicate/conflicting override data tested in source. |
+| CC03 | Session and Workspace protections | Protected, pinned, running, retained/open, unauthorized, ambiguous, unverifiable and legacy Direct Chat records are excluded. Archive alone is not an exemption. | Source, React and installed Desktop | Pass (native controls and fail-closed behavior); Blocked (native ambiguous row in a usable catalog) | Old eligible, protected, archived, pinned, running, orphaned and missing-log native cases. A duplicate persisted registration made the native catalog unavailable. | Source fixtures exercise per-row ambiguity and other catalog permutations. |
+| CC04 | Preview and preservation | Malformed catalogs disable preview. Unknown individual entries are excluded. No data removal, job scheduling or deletion completion message. Compare fixture IDs and file counts. | Source, React and installed Desktop | Pass | Native preview-only UI. The follow-up preserved all 24 Session files and three Workspace registrations. Native dangling membership and duplicate-registry checks preserved file lists and registry hashes. | Source and React fixtures separately exercise authorization and malformed catalogs. |
+| CC05 | Explicit policy confirmation and revision-checked protection | Policy changes require confirmation. Protection controls save explicitly with a revision. Stale and denied writes cannot succeed. | React, pinned Host and installed Desktop | Pass (React, pinned Host); Blocked (Desktop stale/denied) | Native explicit confirmation and protection saves. React/pinned fixtures reject stale and denied writes. | Known native conflict and authenticated Peer prerequisites remain open. |
+| RC01 | Exit Desktop and Host, then relaunch | Committed settings, protection, preferences, registered identity and persisted statistics are available again. | Pinned Host and installed Desktop | Pass | Native restarted Desktop/Host, reopened same Direct Chat, compared Workspace IDs and Session files, checked protection and persisted reasoning usage. | Cold settings confirmed independently of the earlier preview. |
+| RC02 | Controlled disconnect/reconnect | Stale replies cannot overwrite current state. Preserve supported drafts and re-read authorized data without duplicate mutation. | React and installed Desktop | Pass (React); Blocked (Desktop) | Component tests for stale replies across refresh and resets, access withdrawal and dirty-draft retention. | No controlled installed transport disconnect/reconnect was established. |
+| RC03 | Interrupted persistence | Committed supported data recovers in the documented scope. Buffered statistics can be lost on abrupt exit. | Pinned Host and installed Desktop | Pass (pinned recovery fixture); Blocked (Desktop fault timing) | Atomic fixture restart and corrupt-state recovery. Native orderly cold restart separately passed. | Interrupted mid-commit persistence and power-loss guarantees were not verified. |
+| RC04 | Invalid, truncated, unknown and oversized data | Preserve invalid originals and fail safely. No deletion inference from missing data. | Source, React, pinned Host and installed Desktop | Pass | Real installed Host refused unknown-version and truncated statistics and preserved their bytes. Source and fixture tests cover oversized data, malformed settings, backup and catalog input. | Only the fictional test file was temporarily substituted and restored. |
+| RC05 | Retry after failure | Explicit retry uses the appropriate revision or authoritative read. No duplicate operation or false success. | React, pinned Host and installed Desktop | Pass | Installed Chat Control lock failure then explicit confirm, and statistics failure then explicit authoritative reload and reset. React and Host regressions cover stale revisions and duplicate saves. | No automatic retry or duplicate confirmed mutation observed. |
+| AR03 | Statistics | Track committed request usage, exclude failed/cancelled request usage, bound and persist aggregates, preserve live counters through failed reset, retry and isolate Profiles. No prompts or fabricated savings. | Source, React, pinned Host and installed Desktop | Pass | Real Host statistics reopened after cold restart and reset only the counters. Pinned Host and storage suites cover failed/cancelled usage exclusion, bounded aggregates, simultaneous store handles and failed reset with unsaved counters. | Native simultaneous writers and failed/cancelled accounting were not separately measured. |
+
+## Installed Windows Desktop results
+
+| Scenario | Status | Observation |
+| --- | --- | --- |
+| 1. Install and activate six components | Pass | Embedded CLI installed the local tarball in the disposable Desktop Profile. Native Plugin Manager activated the suite and all six rows. |
+| 2. Disable and re-enable independently | Pass | Toggled each native row Off and back to Running while the other five stayed enabled. All six remained on after restart. Duplicate internal subscriptions and hooks were exercised in source fixtures. |
+| 3. Save and cold restart | Pass | Saved My Profile, retention/protection, and the reasoning preference. Unsaved My Profile text was absent after restart. |
+| 4. Profile persistence, backup and safe restore | Pass | Native v2 export view, invalid JSON/schema/policy rejection, cancel, merge, separately confirmed Replace All and draft-only restore. Follow-up completed a v4 file download and Windows clipboard paste without a Settings write. |
+| 5. Legacy migration | Pass | v1, v2 and v3 reviewed on three boots of disposable B. All preserved compatible values, kept three Private fields and wrote v4 only after Save. |
+| 6. Chat Control policy persistence | Pass | Global 30 days, Workspace Forever override and protection survived restart. |
+| 7. Native UTC retention edges | Pass | All five finite policies matched production at cutoff ±1 ms and equality. Forever showed zero candidates. |
+| 8. Native protection exclusion and fail-closed membership | Pass | The installed UI handled the requested protection, archive, pin, running and membership controls. Per-row ambiguity in a separately usable catalog remains blocked by the Host. |
+| 9. Preview-only and no deletion | Pass | The follow-up compared all 24 Session files and three Workspace registrations before and after native preview. |
+| 10. Concurrent native Settings conflict | Blocked | No supported second authorized Desktop Settings client was established on the same Profile. React and pinned native service fixtures covered stale writes. |
+| 11. Native read-only/denied access | Blocked | No authenticated non-owner Peer was available. React permissions and the pinned Host owner/Peer route fixtures are separate. |
+| 12. Controlled Host disconnect/reconnect | Blocked | No supported installed transport fault was established. Stale-response and reconnect guards ran in React tests. |
+| 13. Recoverable failure and retry | Pass | Real Config Editor lock caused a failed retention Save. Retry committed after lock release. Installed statistics refused invalid state, then reloaded and reset explicitly. |
+| 14. Statistics durability and reset | Pass | Native usage persisted across restart and reset cleared the aggregate while preserving the effort preference. Unknown-version and truncated inputs survived refused reset. |
+| 15. Separate Profiles | Pass | A and B used distinct DSH homes and Electron data. Blank B did not inherit from A. |
+| 16. Direct Chat history preservation | Pass | Same dedicated Workspace and direct Session ID after restart. History reopened the completed fictional conversation. Unrelated Workspace and Session retained their IDs. |
+| 17. English and Arabic errors | Pass | Installed statistics reset error and reload verified in both languages. Native retention Save failure was visible in Arabic. |
+| 18. Version and installed parity | Pass | All 94 packed files matched the candidate source bytes in A. Native suite displayed Host/browser package 1.0.2-rc.4 and published stable v1.0.0. |
+
+**Native scenario totals after follow-up** 15 Pass, 0 Fail on retest, 3 Blocked, 0 Not Tested across the original 18 scenarios. The detailed follow-up documents the Host limit for per-row ambiguity. Initial reproduced failures appear below. The independent lifecycle and clean control cases began on earlier rc.4 runtime commits. Final runtime coverage includes candidate installation and parity, Profile migration, cold recovery, preview, native retention failure/retry, statistics reset/reload and the effort acknowledgement retest.
+
+## Final review follow-up on installed Windows Desktop
+
+23 November 2026, Asia/Riyadh. The follow-up used installed DSH Desktop and Host 0.2.2-rc.5 on Windows Professional x64 26H2, build 26300.10075. A fresh disposable DSH home, Electron profile and fictional Workspace tree used the same installed suite source `738888691d6aa40a5e8a43bda2472a05d81f9bc4` and tarball SHA-256 listed below. All 94 installed package files matched the candidate. The runner used bundled Node 24.21.0. The owner Profile was outside the fixture.
+
+### Retention boundaries
+
+With the disposable Host stopped, the fixture seeded 23 fictional native-format v4 compressed Session logs and matching projection checkpoints across three Workspace registrations. A normal startup log was also present during comparison. The fresh installed Desktop read the real Host catalog. For each duration, the test saved the policy in Chat Control and used **Preview cleanup**. It fixed the renderer's `Date.now()` only for the preview click and restored it immediately. The Host clock, access checks, and catalog responses remained live. The installed preview displayed the evaluation instant `2026-11-23T10:00:00.000Z` and the actual admitted last-prompt timestamps. A separate source evaluation ran the unmodified production predicate over the corresponding admitted fixture rows and independently matched every displayed list and count.
+
+| Policy | 1 ms older than cutoff | At cutoff | 1 ms newer than cutoff | Displayed candidates | Installed status |
+| --- | --- | --- | --- | ---: | --- |
+| 7 days | Eligible | Eligible | Excluded | 18 | Pass |
+| 30 days | Eligible | Eligible | Excluded | 15 | Pass |
+| 90 days | Eligible | Eligible | Excluded | 12 | Pass |
+| 180 days | Eligible | Eligible | Excluded | 9 | Pass |
+| 365 days | Eligible | Eligible | Excluded | 6 | Pass |
+| Forever | No cutoff | No cutoff | No cutoff | 0 | Pass |
+
+All five newer rows became eligible when the preview instant advanced exactly 1 ms to `2026-11-23T10:00:00.001Z`. Each newly eligible row displayed the expected millisecond timestamp. Candidate counts include other older eligible fixture rows.
+
+### Protection and preservation
+
+| Installed case | Status | Observed result |
+| --- | --- | --- |
+| Unprotected eligible Session | Pass | An idle 400-day-old Session was listed with “Past retention cutoff.” |
+| Protected Session | Pass | The old Session qualified before protection. After the checkbox save it left the candidate list and showed “Protected conversation.” |
+| Protected Workspace | Pass | The old member qualified before protection. After the Workspace checkbox save it left the candidate list and showed “Protected Workspace.” |
+| Archived Session | Pass | The 400-day-old row showed the native Archived badge and still qualified without another exclusion. |
+| Pinned Session | Pass | The 400-day-old pinned row was absent from candidates and showed “Pinned conversation.” |
+| Running Session | Pass | A fresh native Session displayed “Stop generating” while its authenticated fictional loopback turn was in progress. The seven-day preview used a UI evaluation instant nine days ahead as the age control. The row was excluded and showed “Active or open conversation.” |
+| Session log without Workspace membership | Pass | The fixture log remained on disk without a Workspace reference. Desktop showed an Ungrouped section, and Chat Control excluded the orphan from its inventory and candidates. |
+| Registry membership without a log | Pass | The registry still contained the single dangling reference. Its Session was absent from the authorized Chat Control rows and candidates. Other rows remained previewable. |
+| Duplicate Workspace membership and fail-closed preview | Pass | Both persisted fixture references remained present. Native catalog became unavailable and the installed preview button was disabled. The clean registry restored catalog availability. |
+| Isolated per-row ambiguous membership | Blocked | The installed Host did not emit a usable catalog with duplicate membership. A Host-supported partial catalog that admits ambiguity in one row is required to exercise that specific UI branch natively. The source fixture covers it. |
+| No Session or Workspace removal | Pass | All 24 Session files and three Workspace registrations, including membership, pin and archive identifiers, matched before and after the saved policy/previews. The two single-fault checks also preserved file lists and registry hashes. |
+
+### Backup completion
+
+| Installed case | Status | Observed result |
+| --- | --- | --- |
+| Download completes | Pass | A trusted click on **Download JSON file** produced an actual 519-byte `personal-profile-backup.json` in the isolated Chromium download directory. Its complete UTF-8 bytes matched **View JSON**, parsed as v4, and contained the unsaved fictional value. |
+| Clipboard copy and paste | Pass | A trusted click on **Copy JSON** updated the Windows clipboard and reported success. A disposable Windows Forms text editor pasted the same JSON, allowing its native CRLF normalization. Existing clipboard formats were snapshotted in memory and restored after the probe. |
+| Draft disclosure and no Settings commit | Pass | The installed pane described the current draft and unsaved changes. The committed Harness settings patch was byte-identical through download and clipboard export. A native reload/discard restored the blank committed field. |
+
+Local evidence includes the policy and shifted-edge results, per-row explanations, fixture inventories, membership fault and clipboard results, file hash comparison, and screenshots of the installed UI. Raw Session logs, downloaded JSON and paths remain local. The source and React follow-up command `node --test test/chat-control-retention.test.js test/personal-profile-settings.test.js test/new-plugins-settings.test.js` passed 108 tests without a failure or skip. These tests and the prior pinned Host results are separate from installed evidence. The follow-up found no additional suite defect and changes only this report. A fresh pack reproduced the installed tarball SHA-256.
+
+
+
+## Reproduced defects and fixes
+
+| Defect | Reproduction and root cause | Change and proof |
+| --- | --- | --- |
+| Failed retention Save discarded the policy proposal | Select 30 days, hold or refuse the Settings write, then confirm. The field reverted to Forever while Save failed. High confidence. The handler cleared the proposal before the result. | `client.js` preserves the proposal until an authoritative view replaces it. `test/new-plugins-settings.test.js` went red then green and verifies the retry sends the same revision. Installed retest held the actual disposable Config Editor lock. One failed Save left the patch unchanged, Arabic feedback was visible, and explicit retry succeeded. |
+| Statistics reset failure gave no direct recovery action | Open statistics and make reset return 503. The dialog displayed generic unavailable feedback and disabled reset until dialog reopen. High confidence. The failed state omitted a read/reload action and the mutation context. | `client.js` shows unconfirmed reset and an explicit read-only Reload action. Component regressions verify the English and Arabic paths and that retry requires an intentional second reset. Installed wrong-version and truncated-file retests preserved the file, reloaded the authoritative count, then reset successfully. |
+| My Profile export mislabeled the Settings draft as saved data | Save, edit custom text and access choices, then View JSON. The draft appeared in the JSON under a saved-data warning. High confidence. The serializer intentionally reads the current draft, as preserved in the historical change record. The disclosure copy described the wrong source. | `client.js` corrects all seven translations. `docs/PERSONAL_PROFILE_LOCAL_SETTINGS.md` documents the draft contract. `test/personal-profile-settings.test.js` reproduces an unsaved export and verifies the disclosure. Installed retest showed the corrected copy and captured draft without committing. |
+| Native reasoning preference committed but reported failure | Save current effort. The composer showed “Preference could not be updated,” while the persisted patch and reopened menu showed the saved effort. High confidence. The same connection's Settings document event invalidated the combined generation before the valid write reply. | `client.js` recognizes a same-connection acknowledgement without replacing a concurrently refreshed view. A transport reset still fences the old reply. Two component tests exercise both orderings and preservation of a newer revision. Installed retest displayed “Preference removed” and “Preference saved” with the corresponding committed values. |
+
+The boundary tests in `test/chat-control-retention.test.js` now pin the three millisecond offsets around each UTC cutoff. Settings and storage schemas are unchanged.
+
+## Security and privacy
+
+The Desktop fixtures used fictional fields, Workspaces, Sessions and a loopback provider with a fixture credential. No real user data was used or deleted. Cleanup remains preview-only and schedules no deletion. Diff and pack checks exclude fixture data and raw evidence. The suite has the same authorization and OS boundaries. My Profile uses native Harness Settings. The Settings file and unencrypted JSON exports rely on Profile and OS file access. Restores stage a draft, and disclosure remains governed by separately saved consent. Revocation cannot recall information from a provider or erase historical conversation content.
+
+## Open cases
+
+- **MP02 Blocked.** Historical provider-wire verification remains open under the stricter rc.2 criterion. The prior fail-closed refusal did not yield a serialized historical provider request. [rc.2 acceptance](DSH_DESKTOP_SECURITY_ACCEPTANCE_V1.0.2_RC2.md)
+- **H04 Fail, open.** The rc.3 10,000-Session native run observed 8,185 available titles before opening. Full ID search worked. This is observed Host metadata availability. [H04 follow-up](DSH_DESKTOP_DIRECT_CHAT_H04_FOLLOWUP_V1.0.2_RC3.md)
+- Native concurrent Settings clients, authenticated non-owner Peer isolation, Windows effective ACL checks, native controlled disconnect and mid-write interruption remain outstanding. Per-row ambiguity with an otherwise usable native catalog remains blocked by the Host. Existing Direct Chat Host timeout, native rename refusal/retry, 409 CHANGED and warning-log redaction cases retain their previous status. [rc.3 acceptance](DSH_DESKTOP_DIRECT_CHAT_ACCEPTANCE_V1.0.2_RC3.md)
+
+## Verification and environment
+
+| Identity | Observed value |
+| --- | --- |
+| OS | Windows Professional x64, 26H2, build 26300.10075 |
+| Installed DSH Desktop | 0.2.2-rc.5, executable product resource 0.2.2.0, packaged build `3f85d888b1297107937d9bd5b853f7e733e179a4` |
+| Embedded Host and native CLI | 0.2.2-rc.5, installed archive and CLI checked |
+| Developer toolchain | Node 26.10.0 and npm 11.19.1 for initial lockfile and fixture install. Bundled Node 24.21.0, npm 11.19.1 for full local gates. Native pnpm 11.28.5. |
+| Install and fixtures | `dsh plugin --profile desktop add --ignore-scripts --store-dir <disposable-store> <candidate-tarball>` through the installed CLI after an initial native boot and exit. Fresh DSH homes and Electron data for Profile A and Profile B. Both used local owner roles. Installer reported a peer-dependency warning and exited successfully. |
+| Candidate tarball SHA-256 | `03009360e3803fde1dfaaef54a3eb4528f88b03e9aebe00bde64b8a80872ce65` |
+| Desktop app archive SHA-256 | `5ec8acd9e72b93b6680c953c1be44a729fd3a5170e472e8025690a1713d20f69` |
+| Installed parity | Raw SHA-256 comparison of 94 installed files against the packed source. UI confirmed the same version for browser and Host. |
+
+| Command | Pass | Fail | Skip |
+| --- | ---: | ---: | ---: |
+| `npm ci --ignore-scripts` | 82 locked packages installed | 0 | 0 |
+| `npm test` | 265 | 0 | 1 |
+| `npm run check:regression` | 4 | 0 | 0 |
+| `npm run check:package` | 264 | 0 | 2 |
+| `node --test qa/profile-host-check.mjs qa/adaptive-reasoning-host-check.mjs qa/direct-chat-catalog-host-check.mjs qa/new-plugins-host-check.mjs` | 25 | 0 | 0 |
+| `node --import ./qa/runtime-resolve.mjs --test qa/phase8-persistence-check.mjs` | 2 | 0 | 0 |
+
+The Windows source run skipped the POSIX-only directory-permission check. The packed run also skipped the source-only documentation check. The regression classifier scored 56/57 with zero two-tier misses. Host runs used `ABINADWAN_TEST_RUNTIME` set to the checkout and installed all nineteen workflow-pinned `@deepseek-ai` packages at 0.2.2-rc.3 via `npm install --no-save --package-lock=false --ignore-scripts`, using the exact list in [Plugin checks](../.github/workflows/test.yml). Tarball command was `npm pack --ignore-scripts --pack-destination <evidence-directory> --json`. The final-head Windows and Ubuntu Node.js 22/24 results are attached to [PR #52 checks](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/52/checks) and [GitHub Actions](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions?query=branch%3Afix%2Fsettings-retention-recovery-v1.0.2-rc.4).
+
+On delivery head `7c770d52402d59dba58941d9dacfc7967a5b9415`, all four matrix jobs passed on both [PR CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45143877686) and [push CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45143869172). In each PR job, Windows source was 265 Pass / 0 Fail / 1 Skip and package was 264 Pass / 0 Fail / 2 Skip. Ubuntu source was 266 Pass / 0 Fail / 0 Skip and package was 265 Pass / 0 Fail / 1 Skip on both Node versions. Every matrix job ran 25 pinned Host and 4 regression tests with zero failures or skips. This evidence-only report update triggers its own [final-head checks](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/52/checks).
+
+External local evidence includes package manifests and hash comparisons, candidate/CLI/Host logs, red-and-green test summaries, native activation states, Profile migration and return-to-Private checks, cold registry and Session comparisons, synthetic provider summaries, and English/Arabic error screenshots. Raw browser output, traces, backups and paths stay local.
+
+## Recommendation
+
+**REVIEW REQUIRED WITH OPEN GAPS.** The candidate fixes four reproduced defects. The installed tests demonstrated cold persistence, recovery, Profile isolation, exact retention boundaries, protection and safe membership handling, and completed backup download and clipboard paste. Per-row ambiguity with a usable native catalog remains a Host prerequisite. The native authorization, concurrent-client and controlled transport/interruption gates remain open, along with MP02 and H04. The owner must approve any merge to `develop`. This is the Task 3 candidate review only.
