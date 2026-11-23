@@ -2661,6 +2661,17 @@ window.__ModuleLoader__.load({
         "Close preview": "إغلاق المعاينة",
         "Preview cleanup": "معاينة التنظيف",
         "Preview archived cleanup": "معاينة تنظيف الأرشيف",
+        "Inspect archived candidates with Host": "التحقق من المحادثات المؤرشفة عبر DSH",
+        "Inspecting archived candidates…": "جارٍ التحقق من المحادثات المؤرشفة…",
+        "Host inspection unavailable. No data changed.": "تعذر فحص المحادثات عبر النظام. لم تتغير أي بيانات.",
+        "Host inspection is read-only and cannot authorize deletion.": "فحص النظام للقراءة فقط ولا يمنح تصريحًا بالحذف.",
+        "Storage metadata (not reclaimable bytes)": "حجم سجل التخزين (ليس حجمًا مضمون التحرير)",
+        "Host check": "فحص النظام",
+        "Deletion transaction unavailable": "معاملة الحذف غير متاحة",
+        "Host format not verified": "صيغة التخزين غير متحقَّق منها",
+        "Host record unavailable": "سجل التخزين غير متاح",
+        "Host membership unavailable": "الملكية غير متاحة",
+        "Host inspection refused": "رُفض فحص النظام",
         "Close archived preview": "إغلاق معاينة الأرشيف",
         "Not a deletion operation. Final eligibility requires a safe Host deletion contract and a new confirmation.": "هذه ليست عملية حذف. يتطلب التحقق النهائي محرك حذف آمنًا وتأكيدًا جديدًا.",
         "Preliminary archive candidate": "محادثة محتملة للتنظيف",
@@ -2897,7 +2908,7 @@ window.__ModuleLoader__.load({
       })
     }
 
-    function ArchivedCleanupPreview({ rows, language = 'en' }) {
+    function ArchivedCleanupPreview({ rows, inspection, language = 'en' }) {
       const t = value => uiCopy(value, language)
       if (!rows) return h('p', { role: 'status', style: lifecycleMuted }, t('Archived inventory unavailable'))
       const candidates = rows.filter(item => item.previewCandidate)
@@ -2906,6 +2917,19 @@ window.__ModuleLoader__.load({
           language === 'ar' ? `${candidates.length} محادثة محتملة من أصل ${rows.length} مؤرشفة`
             : `${candidates.length} preliminary candidates of ${rows.length} archived conversations`),
         h('p', { style: lifecycleMuted }, t('Not a deletion operation. Final eligibility requires a safe Host deletion contract and a new confirmation.')),
+        inspection?.phase === 'loading' ? h('p', { role: 'status', style: lifecycleMuted }, t('Inspecting archived candidates…')) : null,
+        inspection?.phase === 'failed' ? h('p', { role: 'status', style: lifecycleMuted }, t('Host inspection unavailable. No data changed.')) : null,
+        inspection?.phase === 'ready' ? h('div', { role: 'status', style: lifecycleMuted },
+          h('strong', null, t('Host inspection is read-only and cannot authorize deletion.')),
+          h('ul', { style: { paddingInlineStart: 20, margin: '8px 0' } },
+            ...inspection.rows.map(item => h('li', { key: item.id },
+              h('bdi', null, item.id), ' · ',
+              t(item.code === 'requires-deletion-transaction' ? 'Deletion transaction unavailable'
+                : item.code === 'format-unverified' ? 'Host format not verified'
+                : item.code === 'storage-unavailable' ? 'Host record unavailable'
+                : item.code === 'membership-unavailable' ? 'Host membership unavailable' : 'Host inspection refused'),
+              Number.isSafeInteger(item.storedBytes) ? ' · ' + t('Storage metadata (not reclaimable bytes)') + ': ' +
+                item.storedBytes.toLocaleString(language === 'ar' ? 'ar' : 'en-US') + ' B' : null)))) : null,
         rows.length ? h('ul', { style: { margin: 0, paddingInlineStart: 20, fontSize: 13 } },
           ...rows.slice(0, 50).map(({ id, row, owner, reason }) => h('li', { key: id },
             h('bdi', null, row.displayTitle || id), ' · ', h('bdi', null, owner.title), ' · ',
@@ -2937,6 +2961,10 @@ window.__ModuleLoader__.load({
       const [proposal, setChange] = React.useState(null)
       const [previewAt, setPreviewAt] = React.useState(null)
       const [archivedPreview, setArchivedPreview] = React.useState(false)
+      const [archiveInspection, setArchiveInspection] = React.useState(null)
+      const inspectionRun = React.useRef(0)
+      const inspectionAbort = React.useRef(null)
+      React.useEffect(() => () => { inspectionRun.current++; inspectionAbort.current?.abort() }, [])
       const record = settings.record
       const ready = catalogReady(workspace, sessions)
       const workspaces = ready ? workspace.items : []
@@ -2959,6 +2987,39 @@ window.__ModuleLoader__.load({
         change?.next ?? record, previewAt ?? Date.now())
       const selectedRow = selected && rows.find(row => row.id === selected)
       const archivedRows = ready ? archivedCleanupRows(inventory.rows, workspace, record) : null
+      React.useEffect(() => {
+        inspectionRun.current++
+        inspectionAbort.current?.abort()
+        inspectionAbort.current = null
+        setArchiveInspection(null)
+      }, [scope, workspace, sessions, settings.source])
+      async function inspectArchived() {
+        const ids = (archivedRows ?? []).filter(item => item.previewCandidate)
+          .slice(0, 20).map(item => item.id)
+        if (!archivedPreview || !ready || !settings.writable || !ids.length) return
+        const run = ++inspectionRun.current
+        inspectionAbort.current?.abort()
+        const abort = new AbortController()
+        inspectionAbort.current = abort
+        setArchiveInspection({ phase: 'loading' })
+        try {
+          const endpoint = new URL('api/abinadwan-chat-control/inspect', document.baseURI)
+          if (endpoint.origin !== document.location.origin) throw new Error('cross-origin')
+          const response = await fetch(endpoint, { method: 'POST', credentials: 'same-origin',
+            redirect: 'error', signal: abort.signal,
+            headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sessionIds: ids }) })
+          const value = await response.json()
+          if (!response.ok || value?.mode !== 'read-only' || value.executable !== false ||
+              !Array.isArray(value.rows) || value.rows.length !== ids.length ||
+              value.rows.some((item, index) => item.id !== ids[index] || item.deletable !== false ||
+                typeof item.code !== 'string')) throw new Error('unverified-inspection')
+          if (run === inspectionRun.current && !abort.signal.aborted) {
+            setArchiveInspection({ phase: 'ready', rows: value.rows })
+          }
+        } catch {
+          if (run === inspectionRun.current && !abort.signal.aborted) setArchiveInspection({ phase: 'failed' })
+        }
+      }
       const update = next => {
         setChange(null)
         setPreviewAt(null)
@@ -2990,6 +3051,9 @@ window.__ModuleLoader__.load({
               setChange(null)
               setPreviewAt(null)
               setArchivedPreview(false)
+              inspectionRun.current++
+              inspectionAbort.current?.abort()
+              setArchiveInspection(null)
             } }, h('option', { value: '' }, t('All Workspaces')),
             ...workspaces.map(item => h('option', { value: item.workspaceId, key: item.workspaceId, dir: 'auto' }, item.title)))),
           h('dl', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(112px, 1fr))', gap: 8, margin: 0 } },
@@ -3033,9 +3097,19 @@ window.__ModuleLoader__.load({
           h('strong', { style: { fontSize: 13 } }, t('Preview only')),
           h('div', { style: lifecycleActions },
             h(Button, { size: 'sm', variant: 'outline', disabled: !ready || !record ||
-              !Array.isArray(workspace?.archivedSessionIds), onClick: () => setArchivedPreview(value => !value) },
-              t(archivedPreview ? 'Close archived preview' : 'Preview archived cleanup'))),
-          archivedPreview ? h(ArchivedCleanupPreview, { rows: archivedRows, language }) : null,
+              !Array.isArray(workspace?.archivedSessionIds), onClick: () => {
+                inspectionRun.current++
+                inspectionAbort.current?.abort()
+                setArchiveInspection(null)
+                setArchivedPreview(value => !value)
+              } }, t(archivedPreview ? 'Close archived preview' : 'Preview archived cleanup')),
+            archivedPreview ? h(Button, { size: 'sm', variant: 'outline',
+              disabled: !settings.writable || archiveInspection?.phase === 'loading' ||
+                !(archivedRows ?? []).some(item => item.previewCandidate),
+              onClick: () => { void inspectArchived() } },
+              t('Inspect archived candidates with Host')) : null),
+          archivedPreview ? h(ArchivedCleanupPreview, { rows: archivedRows,
+            inspection: archiveInspection, language }) : null,
           h('p', { style: { ...lifecycleMuted, margin: 0 } },
             t('Deletion is unavailable. Automatic cleanup is disabled.')),
           h('p', { style: { ...lifecycleMuted, margin: 0 } },
