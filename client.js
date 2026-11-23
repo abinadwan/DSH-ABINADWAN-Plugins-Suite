@@ -2535,17 +2535,21 @@ window.__ModuleLoader__.load({
         if (!writable || busy.current || connection.getSnapshot() !== generationAtRender ||
             !access.current.mayRead || !access.current.mayWrite) return false
         const generation = epoch.current
+        const resetAtStart = connection.getResetGeneration()
         busy.current = true
         setState({ ...state, status: 'saving' })
         try {
           const result = await settings.replace(ns, { record }, state.view.revision)
-          if (generation !== epoch.current || connection.getSnapshot() !== generationAtRender || !access.current.mayRead) return false
+          if (connection.getResetGeneration() !== resetAtStart || !access.current.mayRead) return false
           const view = result?.ok && suiteSettingsView(result.value)
-          if (view && view.ns === ns) {
-            setState({ ...state, status: 'saved', view })
-            return true
+          const confirmed = view && view.ns === ns
+          // A document update can precede the write reply. Acknowledge the
+          // reply without replacing a view already being refreshed.
+          if (generation === epoch.current && connection.getSnapshot() === generationAtRender) {
+            setState(confirmed ? { ...state, status: 'saved', view }
+              : { ...state, status: result?.error?.code === 'settings/conflict' ? 'conflict' : 'failed' })
           }
-          setState({ ...state, status: result?.error?.code === 'settings/conflict' ? 'conflict' : 'failed' })
+          return Boolean(confirmed)
         } catch {
           if (generation === epoch.current && connection.getSnapshot() === generationAtRender && access.current.mayRead) {
             setState({ ...state, status: 'failed' })
@@ -2561,11 +2565,12 @@ window.__ModuleLoader__.load({
 
     function suiteConnection(ctx) {
       let generation = 0
+      let resetGeneration = 0
       const listeners = new Set()
       const invalidate = () => { generation++; for (const notify of listeners) notify() }
-      ctx.on('connection/reset', invalidate)
+      ctx.on('connection/reset', () => { resetGeneration++; invalidate() })
       ctx.effect(() => ctx.remote.$on('settings/document-updated', invalidate))
-      return { getSnapshot: () => generation,
+      return { getSnapshot: () => generation, getResetGeneration: () => resetGeneration,
         subscribe: notify => { listeners.add(notify); return () => listeners.delete(notify) } }
     }
 

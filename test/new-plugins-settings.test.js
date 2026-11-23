@@ -749,3 +749,35 @@ test('a failed statistics reset requires an authoritative reload before an expli
   assert.deepEqual(fixture.calls.map(call => call.path), ['stats', 'stats/reset', 'stats', 'stats/reset'])
   assert.match(dialog.textContent, /Total0/)
 })
+
+test('effort save acknowledges its Host reply after a document notification without replacing refreshed state', async t => {
+  const fixture = reasoningFixture()
+  const replace = fixture.settings.service.replace
+  const { div, fixture: browser } = await mount(t, fixture.options, 'adaptive-reasoning', 'conversation.input.right')
+  fixture.settings.service.replace = async (ns, value, revision) => {
+    const response = await replace(ns, value, revision)
+    await replace(ns, { record: { preferences: [{ provider: 'provider', model: 'model', effort: 'wide-v2' }] } }, revision + 1)
+    browser.events.get('settings/document-updated')()
+    return response
+  }
+  const trigger = div.querySelector('button[aria-haspopup=menu]')
+  await act(async () => trigger.click())
+  await act(async () => [...div.querySelectorAll('[role=menuitem]')].find(row => row.textContent === 'Save current effort').click())
+  assert.match(div.textContent, /Preference saved\./)
+  await act(async () => trigger.click())
+  assert.match(div.textContent, /Saved preference: Wide/)
+})
+
+test('effort save ignores a reply from before a connection reset', async t => {
+  const fixture = reasoningFixture()
+  const replace = fixture.settings.service.replace
+  const { div, fixture: browser } = await mount(t, fixture.options, 'adaptive-reasoning', 'conversation.input.right')
+  fixture.settings.service.replace = async (...args) => {
+    const response = await replace(...args)
+    browser.ctx.emit('connection/reset')
+    return response
+  }
+  await act(async () => div.querySelector('button[aria-haspopup=menu]').click())
+  await act(async () => [...div.querySelectorAll('[role=menuitem]')].find(row => row.textContent === 'Save current effort').click())
+  assert.doesNotMatch(div.textContent, /Preference saved\./)
+})
