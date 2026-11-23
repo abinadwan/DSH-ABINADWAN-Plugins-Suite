@@ -2662,6 +2662,8 @@ window.__ModuleLoader__.load({
         "Preview cleanup": "معاينة التنظيف",
         "Preview archived cleanup": "معاينة تنظيف الأرشيف",
         "Inspect archived candidates with Host": "التحقق من المحادثات المؤرشفة عبر DSH",
+        "Inspect selected archived conversation with Host": "فحص المحادثة المؤرشفة المحددة عبر النظام",
+        "Archive this conversation before Host inspection.": "أرشف هذه المحادثة قبل طلب فحص النظام.",
         "Inspecting archived candidates…": "جارٍ التحقق من المحادثات المؤرشفة…",
         "Host inspection unavailable. No data changed.": "تعذر فحص المحادثات عبر النظام. لم تتغير أي بيانات.",
         "Host inspection is read-only and cannot authorize deletion.": "فحص النظام للقراءة فقط ولا يمنح تصريحًا بالحذف.",
@@ -2967,9 +2969,17 @@ window.__ModuleLoader__.load({
       const [previewAt, setPreviewAt] = React.useState(null)
       const [archivedPreview, setArchivedPreview] = React.useState(false)
       const [archiveInspection, setArchiveInspection] = React.useState(null)
+      const [singleInspection, setSingleInspection] = React.useState(null)
       const inspectionRun = React.useRef(0)
       const inspectionAbort = React.useRef(null)
-      React.useEffect(() => () => { inspectionRun.current++; inspectionAbort.current?.abort() }, [])
+      const singleInspectionRun = React.useRef(0)
+      const singleInspectionAbort = React.useRef(null)
+      React.useEffect(() => () => {
+        inspectionRun.current++
+        inspectionAbort.current?.abort()
+        singleInspectionRun.current++
+        singleInspectionAbort.current?.abort()
+      }, [])
       const record = settings.record
       const ready = catalogReady(workspace, sessions)
       const workspaces = ready ? workspace.items : []
@@ -2992,12 +3002,33 @@ window.__ModuleLoader__.load({
         change?.next ?? record, previewAt ?? Date.now())
       const selectedRow = selected && rows.find(row => row.id === selected)
       const archivedRows = ready ? archivedCleanupRows(inventory.rows, workspace, record) : null
+      const selectedArchived = selected && archivedRows?.find(item => item.id === selected)
       React.useEffect(() => {
         inspectionRun.current++
         inspectionAbort.current?.abort()
         inspectionAbort.current = null
         setArchiveInspection(null)
       }, [scope, workspace, sessions, settings.source])
+      React.useEffect(() => {
+        singleInspectionRun.current++
+        singleInspectionAbort.current?.abort()
+        singleInspectionAbort.current = null
+        setSingleInspection(null)
+      }, [selected, scope, workspace, sessions, settings.source])
+      // Reuse one bounded, read-only Host contract for both archive and single-chat previews.
+      async function fetchArchiveInspection(ids, signal) {
+        const endpoint = new URL('api/abinadwan-chat-control/inspect', document.baseURI)
+        if (endpoint.origin !== document.location.origin) throw new Error('cross-origin')
+        const response = await fetch(endpoint, { method: 'POST', credentials: 'same-origin',
+          redirect: 'error', signal,
+          headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sessionIds: ids }) })
+        const value = await response.json()
+        if (!response.ok || value?.mode !== 'read-only' || value.executable !== false ||
+            !Array.isArray(value.rows) || value.rows.length !== ids.length ||
+            value.rows.some((item, index) => item.id !== ids[index] || item.deletable !== false ||
+              typeof item.code !== 'string')) throw new Error('unverified-inspection')
+        return value.rows
+      }
       async function inspectArchived() {
         const ids = (archivedRows ?? []).filter(item => item.previewCandidate)
           .slice(0, 20).map(item => item.id)
@@ -3008,21 +3039,32 @@ window.__ModuleLoader__.load({
         inspectionAbort.current = abort
         setArchiveInspection({ phase: 'loading' })
         try {
-          const endpoint = new URL('api/abinadwan-chat-control/inspect', document.baseURI)
-          if (endpoint.origin !== document.location.origin) throw new Error('cross-origin')
-          const response = await fetch(endpoint, { method: 'POST', credentials: 'same-origin',
-            redirect: 'error', signal: abort.signal,
-            headers: { 'content-type': 'application/json' }, body: JSON.stringify({ sessionIds: ids }) })
-          const value = await response.json()
-          if (!response.ok || value?.mode !== 'read-only' || value.executable !== false ||
-              !Array.isArray(value.rows) || value.rows.length !== ids.length ||
-              value.rows.some((item, index) => item.id !== ids[index] || item.deletable !== false ||
-                typeof item.code !== 'string')) throw new Error('unverified-inspection')
+          const rows = await fetchArchiveInspection(ids, abort.signal)
           if (run === inspectionRun.current && !abort.signal.aborted) {
-            setArchiveInspection({ phase: 'ready', rows: value.rows })
+            setArchiveInspection({ phase: 'ready', rows })
           }
         } catch {
           if (run === inspectionRun.current && !abort.signal.aborted) setArchiveInspection({ phase: 'failed' })
+        }
+      }
+      async function inspectSingle() {
+        const id = selected
+        if (!id || !selectedRow || !selectedArchived?.previewCandidate ||
+            !ready || !settings.writable) return
+        const run = ++singleInspectionRun.current
+        singleInspectionAbort.current?.abort()
+        const abort = new AbortController()
+        singleInspectionAbort.current = abort
+        setSingleInspection({ phase: 'loading' })
+        try {
+          const rows = await fetchArchiveInspection([id], abort.signal)
+          if (run === singleInspectionRun.current && !abort.signal.aborted) {
+            setSingleInspection({ phase: 'ready', rows })
+          }
+        } catch {
+          if (run === singleInspectionRun.current && !abort.signal.aborted) {
+            setSingleInspection({ phase: 'failed' })
+          }
         }
       }
       const update = next => {
@@ -3119,11 +3161,31 @@ window.__ModuleLoader__.load({
             t('Deletion is unavailable. Automatic cleanup is disabled.')),
           h('p', { style: { ...lifecycleMuted, margin: 0 } },
             t('Estimates use known last prompt dates and the catalog’s running state. Protected or pinned conversations and conversations open in this window are excluded.')),
-          selected ? h('div', { role: 'status', style: lifecycleMuted },
-            selectedRow ? h(React.Fragment, null, h('bdi', null, selectedRow.row.displayTitle || selectedRow.id), ' · ',
-              h('bdi', null, selectedRow.owner.title), ' · ', uiCopy(selectedRow.reason, language), language === 'ar' ? '. لن تُحذف أي بيانات.' : '. No data will be removed.')
-              : t('Conversation is no longer available in this inventory.'),
-            ' ', h(Button, { size: 'sm', onClick: () => setSelected(null) }, t('Close preview'))) : null,
+          selected ? h('div', { style: { display: 'grid', gap: 6 } },
+            h('div', { role: 'status', style: lifecycleMuted },
+              selectedRow ? h(React.Fragment, null,
+                h('bdi', null, selectedRow.row.displayTitle || selectedRow.id), ' · ',
+                h('bdi', null, selectedRow.owner.title), ' · ',
+                uiCopy(selectedRow.reason, language),
+                language === 'ar' ? '. لن تُحذف أي بيانات.' : '. No data will be removed.')
+                : t('Conversation is no longer available in this inventory.')),
+            selectedRow ? h('div', { style: lifecycleActions },
+              h(Button, { size: 'sm', variant: 'outline',
+                disabled: !settings.writable || !selectedArchived?.previewCandidate ||
+                  singleInspection?.phase === 'loading',
+                onClick: () => { void inspectSingle() } },
+                t('Inspect selected archived conversation with Host')),
+              !selectedArchived ? h('small', { style: lifecycleMuted },
+                t('Archive this conversation before Host inspection.')) : null) : null,
+            singleInspection?.phase === 'loading' ? h('p', { role: 'status', style: lifecycleMuted },
+              t('Inspecting archived candidates…')) : null,
+            singleInspection?.phase === 'failed' ? h('p', { role: 'status', style: lifecycleMuted },
+              t('Host inspection unavailable. No data changed.')) : null,
+            singleInspection?.phase === 'ready' ? h('p', { role: 'status', style: lifecycleMuted },
+              t('Host inspection is read-only and cannot authorize deletion.'), ' · ',
+              t(singleInspection.rows[0]?.code === 'requires-deletion-transaction'
+                ? 'Deletion transaction unavailable' : 'Host inspection refused')) : null,
+            h(Button, { size: 'sm', onClick: () => setSelected(null) }, t('Close preview'))) : null,
           h('div', { style: lifecycleActions },
             h(Button, { size: 'sm', variant: 'outline', disabled: !record || !ready, onClick: () => setPreviewAt(Date.now()) }, t('Preview cleanup')),
             previewAt !== null ? h(Button, { size: 'sm', onClick: () => setPreviewAt(null) }, t('Cancel preview')) : null),
