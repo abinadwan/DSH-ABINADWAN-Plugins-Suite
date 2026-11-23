@@ -35,6 +35,6 @@ jobs:
           ABINADWAN_TEST_RUNTIME: ${{ github.workspace }}
         run: >-
           node --test qa/profile-host-check.mjs qa/adaptive-reasoning-host-check.mjs
-          qa/direct-chat-catalog-host-check.mjs qa/new-plugins-host-check.mjs
+          qa/direct-chat-catalog-host-check.mjs qa/new-plugins-host-check.mjs qa/chat-control-inspect-host-check.mjs
       - name: Final candidate regression map and deterministic classifier benchmark
         run: npm run check:regression
