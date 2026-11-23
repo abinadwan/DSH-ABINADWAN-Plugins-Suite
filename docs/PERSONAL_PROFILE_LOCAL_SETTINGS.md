@@ -22,7 +22,7 @@ The plugin uses native settings.describe and settings.replace with a revision ch
 
 ## Backup & Restore
 
-Exports remain complete and unencrypted JSON. Explicit English/Arabic interface overrides use the compatible **v2** export shape (with the old sharing switches Off); **Follow DSH** and the five additional UI languages use **v4** to preserve the interface-language selection. Imports accept v1–v4. Merge preserves omitted values; imported changed information defaults to private unless its permissions are separately selected and acknowledged. Replace All starts Private and requires a separate confirmation. Legacy Ask First maps to Private. An explicitly acknowledged imported Allow choice applies only after Save. Custom-text permission clears on restore. No encryption, passwords or new consent registry.
+Exports contain the current draft, including unsaved information, instructions and access choices, as unencrypted JSON. Exporting does not save the draft to Harness. Explicit English/Arabic interface overrides use the compatible **v2** export shape (with the old sharing switches Off); **Follow DSH** and the five additional UI languages use **v4** to preserve the interface-language selection. Imports accept v1–v4. Merge preserves omitted values; imported changed information defaults to private unless its permissions are separately selected and acknowledged. Replace All starts Private and requires a separate confirmation. Legacy Ask First maps to Private. An explicitly acknowledged imported Allow choice applies only after Save. Custom-text permission clears on restore. No encryption, passwords or new consent registry.
 
 ## Context boundary and acceptance
 
