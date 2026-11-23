@@ -2,9 +2,13 @@
 
 All notable changes are documented here.
 
-## [Unreleased] — Consolidated development
+## [Unreleased]
 
-- Candidate 1.0.2-rc.5 adds keyboard arrow, Home and End navigation to My Profile tabs.
+- Next planned feature work targets v1.1.0. Safe permanent Session deletion and archived-chat cleanup are **not** available in v1.0.2 and require an approved DSH storage/deletion contract.
+
+## [1.0.2] — Released (2026-11-23)
+
+- Added keyboard arrow, Home and End navigation to My Profile tabs. Native Windows acceptance and owner-approved release-scope dispositions are recorded in [the final acceptance report](docs/DSH_DESKTOP_NATIVE_FINAL_ACCEPTANCE_V1.0.2.md); historical native `FAIL`/`BLOCKED` evidence is retained.
 - Localize the Direct Chat action and retry feedback and the Adaptive Reasoning recommendation dialog in Arabic. Keep keyboard focus on the Direct Chat action during preparation.
 - Suppress Adaptive Reasoning acknowledgements from an earlier provider/model route or connection.
 
