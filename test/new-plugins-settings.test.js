@@ -488,12 +488,53 @@ test('Direct Chat title search reacts when the Host supplies previously unavaila
   const title = 'Recovered fictional title'
   await type(title)
   assert.match(dialog.textContent, /No conversations match your search/)
+  assert.match(dialog.textContent, /Some conversations have no title metadata/,
+    'missing Host metadata must not be presented as exhaustive title search')
   const snapshot = fixture.sessions.getSnapshot()
   await act(async () => fixture.sessions.set({ ...snapshot,
     byId: { [id]: { ...summary, title, displayTitle: title } } }))
   assert.equal(dialog.querySelector('li bdi').textContent, title)
+  assert.doesNotMatch(dialog.textContent, /Some conversations have no title metadata/)
 })
 
+test('Direct Chat uses an authorized cached projection title without opening a Session', async t => {
+  const id = 'fictional-cold-session'
+  const other = 'foreign-project-session'
+  const { div, window } = await mount(t, {
+    workspaceItems: [
+      { workspaceId: 'direct', title: 'Direct Chat', sessionIds: [id] },
+      { workspaceId: 'foreign', title: 'Other Workspace', sessionIds: [other] },
+    ],
+    sessions: { phase: 'ready', ids: [id, other],
+      byId: {
+        [id]: { id, displayTitle: 'Direct Chat', blank: false },
+        [other]: { id: other, displayTitle: 'Other Workspace', blank: false },
+      },
+      projectionsBySession: {
+        [id]: { values: { title: 'Pre-open native projection title' } },
+        [other]: { values: { title: 'Foreign unapproved secret' } },
+      },
+    },
+    fetch: async () => Response.json({ workspaceId: 'direct' }),
+  }, 'direct-chat', 'sidebar.session.action')
+  await act(async () => div.querySelector('button[aria-label="Direct Chat history"]').click())
+  const dialog = div.querySelector('[role=dialog]')
+  const search = dialog.querySelector('input[type=search]')
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')
+      .set.call(search, 'native projection')
+    search.dispatchEvent(new window.Event('input', { bubbles: true }))
+  })
+  assert.equal(dialog.querySelector('li bdi')?.textContent, 'Pre-open native projection title')
+  assert.doesNotMatch(dialog.textContent, /Some conversations have no title metadata/)
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')
+      .set.call(search, 'Foreign unapproved secret')
+    search.dispatchEvent(new window.Event('input', { bubbles: true }))
+  })
+  assert.equal(dialog.querySelectorAll('li').length, 0,
+    'search must never include a foreign Workspace projection')
+})
 
 test('Chat Control fails closed when Workspace membership is malformed', async t => {
   const settings = settingsFixture('conversation-lifecycle',
