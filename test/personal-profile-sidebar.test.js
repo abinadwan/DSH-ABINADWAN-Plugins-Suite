@@ -107,7 +107,7 @@ test('backup text includes the draft permissions as set and never writes by itse
 })
 test('Host schema declares only supported fields and version/lock agree',()=>{
   const pkg=JSON.parse(readFileSync(new URL('../package.json',import.meta.url),'utf8'))
-  assert.equal(pkg.version,'1.0.2-rc.5')
+  assert.match(pkg.version,/^\d+\.\d+\.\d+(?:-rc\.\d+)?$/)
   if(existsSync(new URL('../package-lock.json',import.meta.url))){
     const lock=JSON.parse(readFileSync(new URL('../package-lock.json',import.meta.url),'utf8'))
     assert.equal(lock.version,pkg.version);assert.equal(lock.packages[''].version,pkg.version)

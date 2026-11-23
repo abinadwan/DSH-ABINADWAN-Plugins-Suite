@@ -1,12 +1,12 @@
 # ABINADWAN Plugins Suite — development handover
 
-> **Published baseline:** [v1.0.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.0), from `main`, tag commit `206f3e814800478f961af05b673a1235ea8ba002`. This is the owner's first official six-component release. The tagged release is **immutable**: subsequent fixes require a new, separately approved release. GitHub Actions on the published commit passed Windows and Ubuntu, Node 22 and 24.
+> **Published stable:** [v1.0.2](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.2), from `main`. The prior [v1.0.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.0) remains an immutable historical release. `v1.0.2` preserves the final owner-approved native acceptance dispositions, including documented upstream DSH limitations. The next development cycle is `v1.1.0` on `develop`; permanent Chat Control deletion is not shipped in `v1.0.2`.
 
 ## Current workflow and source of truth
 
 - `develop` is the integration base. [PR #33](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/33) supplies Direct Chat and My Profile security changes. [PR #34](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/34) supplies the catalog, retention and reasoning changes. The only Git conflict was in the Direct Chat Host entry point. The resolution keeps both tool-denial hooks and the hardened prepare route, adds the owner-only read-only catalog, and shares canonical directory validation between the two.
 - The [component reference](docs/DETAIL.md) describes current behavior. The [security audit](docs/research/SECURITY_CODE_AUDIT_2026_11_22.md) and [architecture review](docs/research/CHAT_CONTROL_ADAPTIVE_DIRECT_CHAT_V2.md) hold evidence, upstream API gaps and acceptance criteria.
-- The `develop` → `main` draft is for owner review. Publication and any version or tag change require separate approval.
+- Changes move from `develop` to `main` through a reviewed PR. A public release is created from an explicitly approved stable commit. New `v1.1.0` work returns to `develop`; deletion requires independent architecture and safety acceptance before release.
 
 ## Consolidated component status
 
