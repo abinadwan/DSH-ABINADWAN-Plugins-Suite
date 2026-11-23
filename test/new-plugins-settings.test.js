@@ -416,7 +416,7 @@ test('Direct Chat history filters authorized metadata, pages it, and keeps nativ
       assert.equal(options.source, 'workspaceOperation')
       return operation({ binding: { session: { async rename(title) {
         renames.push([id, title])
-        return { ok: true }
+        return { ok: renames.length > 1 }
       } } } })
     },
     async fetch(url) {
@@ -440,6 +440,12 @@ test('Direct Chat history filters authorized metadata, pages it, and keeps nativ
   })
   await act(async () => dialog().querySelector('form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true })))
   assert.deepEqual(renames, [['chat-58', 'Renamed test title']])
+  assert.match(dialog().querySelector('form [role=alert]').textContent, /The name could not be saved/)
+  assert.equal(dialog().querySelector('form input').value, 'Renamed test title')
+  assert.match(dialog().querySelectorAll('li')[1].textContent, /^Chat 58/)
+  await act(async () => dialog().querySelector('form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true })))
+  assert.deepEqual(renames, [['chat-58', 'Renamed test title'], ['chat-58', 'Renamed test title']])
+  assert.equal(dialog().querySelector('form'), null)
   assert.doesNotMatch(dialog().textContent, /Hidden local reference|Unrelated Project/)
   await act(async () => button('Next').click())
   assert.match(dialog().querySelector('li').textContent, /Chat 34/)
@@ -458,6 +464,34 @@ test('Direct Chat history filters authorized metadata, pages it, and keeps nativ
   await act(async () => button('Chat 41').click())
   assert.deepEqual(opened, ['chat-41'])
   assert.equal(dialog(), null)
+})
+
+test('Direct Chat title search reacts when the Host supplies previously unavailable metadata', async t => {
+  const id = 'fictional-tail-session'
+  const summary = { id, displayTitle: 'Direct Chat', blank: false }
+  const { div, window, fixture } = await mount(t, {
+    workspaceItems: [{ workspaceId: 'direct', title: 'Direct Chat', sessionIds: [id] }],
+    sessions: { phase: 'ready', ids: [id], byId: { [id]: summary } },
+    fetch: async () => Response.json({ workspaceId: 'direct' }),
+  }, 'direct-chat', 'sidebar.session.action')
+  await act(async () => div.querySelector('button[aria-label="Direct Chat history"]').click())
+  const dialog = div.querySelector('[role=dialog]')
+  const search = dialog.querySelector('input[type=search]')
+  async function type(query) {
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(search, query)
+      search.dispatchEvent(new window.Event('input', { bubbles: true }))
+    })
+  }
+  await type(id)
+  assert.equal(dialog.querySelector('li bdi').textContent, 'Direct Chat')
+  const title = 'Recovered fictional title'
+  await type(title)
+  assert.match(dialog.textContent, /No conversations match your search/)
+  const snapshot = fixture.sessions.getSnapshot()
+  await act(async () => fixture.sessions.set({ ...snapshot,
+    byId: { [id]: { ...summary, title, displayTitle: title } } }))
+  assert.equal(dialog.querySelector('li bdi').textContent, title)
 })
 
 
