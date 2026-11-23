@@ -28,6 +28,7 @@ test('phase 03: 100/1000/10000 Session inventories bound native metadata reads',
   }
   registerCatalog(ctx, profile)
   assert.deepEqual(route.methods, ['GET'])
+  assert.equal(route.requestBody, 'buffered', 'DSH HTTP bridge must construct the catalog GET without a body')
   const get = (order = '') => route.fetch(new Request('http://localhost/api/abinadwan-direct-chat/catalog' +
     (order ? '?order=' + order : '')))
   for (const count of [100, 1000, 10000]) {

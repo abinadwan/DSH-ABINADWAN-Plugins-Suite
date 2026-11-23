@@ -5,6 +5,7 @@
 ## Where to start
 
 - [Root README](../README.md): installation, components and development/release distinction.
+- [v1.0.2 Desktop remediation handoff](DSH_DESKTOP_REMEDIATION_V1.0.2.md): targeted fixes, regression gates, native evidence and the blocked historical revocation case.
 - [v1.0.1 development progress tracker](DEVELOPMENT_PROGRESS_V1.0.1.md): eight phase candidates, completed/pending work, verified checks, blockers and deferred Desktop acceptance.
 - [Current feature reference](DETAIL.md): **all six** component behaviors, default states, icons, security limitations, updates, supported installations and known gaps.
 - [My Profile contract](PERSONAL_PROFILE_LOCAL_SETTINGS.md): settings and privacy rules.

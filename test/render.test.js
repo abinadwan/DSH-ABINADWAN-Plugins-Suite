@@ -5,7 +5,7 @@ import { renderToStaticMarkup } from 'react-dom/server'
 import { clientHarness, base } from '../test-support/client.js'
 
 test('real React renders the Environment and the My Profile settings summary', async t => {
-  const app = await clientHarness({ React })
+  const app = await clientHarness({ React, hostLocale: 'en' })
   t.after(() => app.dispose())
   const body = app.slot('sidebar.right.pane.tab')
   const sidebar = renderToStaticMarkup(React.createElement(body, {
@@ -29,8 +29,9 @@ test('real React renders the Environment and the My Profile settings summary', a
   assert.doesNotMatch(html.replace('without plugin-level encryption', ''), /encrypt|DPAPI|Argon|protected|secure storage/i)
   // Default-private access policies.
   assert.match(html, /All access is Private by default/)
-  // Structured fields stay local.
-  assert.match(html, /Personal information sharing is disabled in this build/)
+  assert.match(html, /Only saved personal details you explicitly allow can be included in supported native agent requests/)
+  assert.match(html, /including requests to cloud providers/)
+  assert.match(html, /Revoking access does not erase information already sent/)
   assert.doesNotMatch(html, /design draft|preview only|synthetic/i)
   assert.doesNotMatch(html, /<(?:form|input|textarea|select)\b/)
   // The summary follows the Host row state and never renders for unrelated subjects.

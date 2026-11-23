@@ -31,7 +31,7 @@ test('phase 08: all six independent components remain exported and ship their ic
 })
 
 test('phase 08: release remains stable while source is a prerelease candidate', () => {
-  assert.equal(pkg.version, '1.0.1-rc.8')
+  assert.equal(pkg.version, '1.0.2-rc.1')
   assert.match(read('README.md'), /release-v1\.0\.0/)
   assert.doesNotMatch(read('README.md'), /release-v1\.0\.1/)
   if (sourceCheckout) {

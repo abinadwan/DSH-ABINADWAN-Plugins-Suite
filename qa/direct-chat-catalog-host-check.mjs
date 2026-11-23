@@ -31,6 +31,7 @@ test('native Host connection gates Direct Chat preparation, discovery and metada
   await fiber.await()
   const transport = ctx.connection.createSharedFetchHandler('/api')
   const base = 'http://localhost/api/abinadwan-direct-chat/catalog'
+  assert.equal(transport.requestBodyMode({ method: 'GET', url: new URL(base) }), 'buffered')
   const fetch = (query = '', peer = ctx.connection.browserPeer) => transport.fetch(new Request(base + query), peer)
   const prepare = (peer = ctx.connection.browserPeer) => transport.fetch(new Request(
     'http://localhost/api/abinadwan-direct-chat/prepare', {
