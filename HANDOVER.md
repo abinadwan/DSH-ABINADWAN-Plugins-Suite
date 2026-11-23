@@ -1,6 +1,6 @@
 # ABINADWAN Plugins Suite — development handover
 
-> **Published stable:** [v1.0.2](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.2), from `main`. The prior [v1.0.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.0) remains an immutable historical release. `v1.0.2` preserves the final owner-approved native acceptance dispositions, including documented upstream DSH limitations. The next development cycle is `v1.1.0` on `develop`; permanent Chat Control deletion is not shipped in `v1.0.2`.
+> **Published stable:** [v1.0.3](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.3), from `main`. Patch v1.0.3 fixes My Profile built-in preset recognition (Issue #69 / PR #70), preserving its privacy-revocation guard and the native acceptance limitations documented for v1.0.2. The earlier releases remain historical; next feature development is v1.1.0 on `develop`. Permanent Chat Control deletion is not shipped in v1.0.3.
 
 ## Current workflow and source of truth
 

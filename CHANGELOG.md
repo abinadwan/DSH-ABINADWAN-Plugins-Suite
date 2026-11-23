@@ -6,6 +6,12 @@ All notable changes are documented here.
 
 - Next planned feature work targets v1.1.0. Safe permanent Session deletion and archived-chat cleanup are **not** available in v1.0.2 and require an approved DSH storage/deletion contract.
 
+## [1.0.3] — Released (2026-11-24)
+
+- **My Profile hotfix:** Fix the preset instruction catalog mismatch that rejected all eight built-in behavior presets as unauthorized custom instructions, returning `INVALID_REQUEST` even in fresh chats. Recognize the same instruction element used by the renderer while preserving historical sharing revocation checks.
+- Add source-level and pinned DSH Agent Loop regressions with synthetic profile fields for every preset, fresh and historical model requests, explicit field permissions, edited/revoked fields, custom-text consent and Windows/Unicode line endings.
+- Align suite, lockfile, client update metadata and release documentation with the patch version. No new profile fields or data migration; this change does not guarantee a local model will follow injected instructions.
+
 ## [1.0.2] — Released (2026-11-23)
 
 - Added keyboard arrow, Home and End navigation to My Profile tabs. Native Windows acceptance and owner-approved release-scope dispositions are recorded in [the final acceptance report](docs/DSH_DESKTOP_NATIVE_FINAL_ACCEPTANCE_V1.0.2.md); historical native `FAIL`/`BLOCKED` evidence is retained.
