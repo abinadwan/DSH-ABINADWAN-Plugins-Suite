@@ -85,7 +85,7 @@ function catalog(registry, record) {
     protectedIds: new Set(record.protectedIds),
     protectedWorkspaces: new Set(record.protectedWorkspaces ?? []),
     signature: JSON.stringify([
-      workspaces.map(w => [w.id, [...w.sessionIds]]),
+      workspaces.map(w => [w.id, w.path, [...w.sessionIds]]),
       [...archived], [...pinned], [...record.protectedIds],
       [...record.protectedWorkspaces ?? []],
     ]),
