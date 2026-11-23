@@ -124,7 +124,7 @@ test('v1.1.0 phase 01: archived cleanup preview is independent of age and retent
     [{ id: 'eligible', previewCandidate: true }])
   assert.equal(result[0].reason, 'Preliminary archive candidate')
   workspaces.archivedSessionIds = []
-  assert.deepEqual(archivedCleanupRows(inventory.rows, workspaces, { protectedIds: [] }), [])
+  assert.deepEqual(normalized(archivedCleanupRows(inventory.rows, workspaces, { protectedIds: [] })), [])
 })
 
 test('v1.1.0 phase 01: archived preview excludes protected, pinned, active, retained, Direct and dependent Sessions', () => {
