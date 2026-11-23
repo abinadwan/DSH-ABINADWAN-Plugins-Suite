@@ -83,7 +83,7 @@ export function registerCatalog(ctx, profileDir) {
             const latest = await registeredWorkspace(profileDir, list)
             const latestMembers = new Set(latest?.sessionIds)
             if (latest?.id !== workspace.id || originalMembers.size !== originalCount ||
-                latestMembers.size !== originalCount ||
+                latest?.sessionIds?.length !== originalCount || latestMembers.size !== originalCount ||
                 [...latestMembers].some(id => !originalMembers.has(id)) ||
                 (createdAt && (latest.sessionIds.length !== Object.keys(createdAt).length ||
                   latest.sessionIds.some(id => !Object.hasOwn(createdAt, id))))) {
