@@ -120,3 +120,27 @@ permission to call `fs.rm`, mutate storage SQLite rows, detach Workspaces,
 or claim reclaimed disk space. The pinned DSH Host has no supported
 single-Session delete transaction. Real permanent deletion still requires a
 separately proven backend/registry concurrency and recovery contract.
+
+## Phase 04 — Single-Session archived preflight (implemented on feature branch)
+
+The existing **Preview deletion** row for an individual Session can now request
+the same owner-only, read-only Host route, but only when that Session is archived
+and passes the browser's preliminary exclusion checks. The new control is
+**Inspect selected archived conversation with Host**; it does not say Delete.
+
+The selected Session ID is the only ID sent to the Host. Results are accepted
+only when the response is explicitly `mode:'read-only'`, `executable:false`,
+contains the exact requested ID in order and `deletable:false`. The UI cannot
+turn the inspection into a deletion command.
+
+- Protected, non-archived, active, retained and unverified rows are disabled.
+- A selection change, scope change, host inventory update or settings reload
+  aborts the previous request and discards its outcome.
+- Host rejection and unavailable service are shown as failure/refusal, never
+  success. No settings, registry, Session files or indexes are mutated.
+- Mounted React tests cover one-Session request scope, exclusion, non-mutation
+  and a stale asynchronous response after changing selections.
+
+**Remaining gate:** a truly safe persistent Session delete transaction is still
+unavailable from the DSH Host. This phase increases user-visible inspection and
+safety only; it does not implement the permanent delete requested in issue #67.
