@@ -130,6 +130,12 @@ test('Host detects catalog and policy changes while waiting on storage metadata'
   h.archived.splice(0, 1)
   resume()
   await assert.rejects(running, { code: 'catalog-changed' })
+  const pathChange = h.inspect([ID2])
+  await Promise.resolve()
+  h.workspaces[0].path = DIRECT_PATH
+  resume()
+  await assert.rejects(pathChange, { code: 'catalog-changed' })
+  h.workspaces[0].path = WORKSPACE_PATH
   const original = { protectedIds: [], protectedWorkspaces: [] }
   const changed = { protectedIds: [ID1], protectedWorkspaces: [] }
   h.archived.push(ID1)
