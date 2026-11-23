@@ -90,3 +90,33 @@ Before enabling even single deletion:
 - Expand to selected bulk and empty archive only after single-item deletion succeeds; auto-cleanup is separate explicit opt-in.
 
 **Do not call any preliminary preview result a real deletion or a native deletion acceptance Pass.** Keep stable `main` and `v1.0.2` untouched.
+
+## Phase 03 — Direct Chat and Workspace-origin fail-closed hardening (implemented on feature branch)
+
+A review of the Phase 02 Host inspection found a gap: the browser classified
+Direct Chat sessions before making the request, but the **Host route did not
+independently exclude the Direct Chat storage tree**. Consequently a manually
+crafted owner request could receive the preliminary
+`requires-deletion-transaction` result for a Direct Chat Session. This
+must not become a future deletion-authorization bypass.
+
+The read-only Host preflight now:
+
+- Requires an absolute registered Workspace path and an absolute stored
+  Session `header.cwd`; missing/relative paths report
+  `workspace-path-unverified`.
+- Excludes the entire `abinadwan-direct-chat-data` path segment, covering
+  the permanent Direct Chat Workspace and legacy `session-*` directories;
+  it reports `direct-chat-requires-separate-verification`. This is a
+  **negative exclusion only**, not positive ownership authorization of
+  other filesystem paths. No content, paths or files are returned to clients.
+- Includes Workspace paths in the before/after catalog signature so a
+  concurrent identity/path change invalidates the pending read-only result.
+- Displays the two new refusal reasons in the English and Arabic UI, and
+  tests both server exclusion cases and path-revision conflicts.
+
+**Still blocked:** This is deliberately not a Session deletion engine or
+permission to call `fs.rm`, mutate storage SQLite rows, detach Workspaces,
+or claim reclaimed disk space. The pinned DSH Host has no supported
+single-Session delete transaction. Real permanent deletion still requires a
+separately proven backend/registry concurrency and recovery contract.
