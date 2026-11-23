@@ -27,7 +27,7 @@ const icons = [
 
 test('development source metadata, lockfile, client version and documentation agree', () => {
   const client = read('client.js')
-  assert.equal(packageJson.version, '1.0.2-rc.4')
+  assert.equal(packageJson.version, '1.0.2-rc.5')
   if (sourceCheckout) {
     const lock = JSON.parse(read('package-lock.json'))
     assert.equal(lock.version, packageJson.version)

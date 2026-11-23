@@ -24,6 +24,7 @@ test('Direct Chat reuses one Workspace but distinct completed conversations have
   const registered = [], connected = [], opened = [], deleted = [], requests = []
   let firstChatSubmitted = false
   const app = await clientHarness({
+    hostLocale: 'en',
     onWorkspaceCreate: async input => { registered.push(input.path); return {
       workspaceId: 'direct-chat-workspace', title: 'Direct Chat', path: input.path,
     } },
@@ -62,6 +63,7 @@ test('Direct Chat reuses one Workspace but distinct completed conversations have
 test('an already-registered Workspace is renamed only when its title differs', async t => {
   const renamed = []
   const app = await clientHarness({
+    hostLocale: 'en',
     onWorkspaceCreate: async input => ({ workspaceId: 'existing-chat', title: 'Old name', path: input.path }),
     onWorkspaceRename: async (id, title) => { renamed.push([id, title]) },
     fetch: async () => Response.json({ path: '/profile/abinadwan-direct-chat-data/Direct Chat' }),
@@ -78,6 +80,7 @@ test('an already-registered Workspace is renamed only when its title differs', a
 test('registration failure cannot delete user Workspaces or existing chat histories', async t => {
   const deleted = [], warnings = []
   const app = await clientHarness({
+    hostLocale: 'en',
     console: { warn: (...args) => warnings.push(args) },
     onWorkspaceCreate: async () => { throw new Error('Workspace registration refused') },
     onWorkspaceDelete: async id => { deleted.push(id) },

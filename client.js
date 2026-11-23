@@ -219,7 +219,7 @@ window.__ModuleLoader__.load({
 
     // Only stable published GitHub Releases may trigger an in-app update offer.
     // This browser-side checker never installs anything without a separate click.
-    const INSTALLED_VERSION = '1.0.2-rc.4'
+    const INSTALLED_VERSION = '1.0.2-rc.5'
     const PACKAGE_NAME = '@abinadwan/dsh-plugins-suite'
     const RELEASE_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/latest'
     const COMMIT_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/commits/'
@@ -2412,16 +2412,31 @@ window.__ModuleLoader__.load({
               h('button',{id:'pp-reload-confirm',type:'button',style:btn,disabled:busy||!canRead,onClick:()=>{void load()}},t('discardConfirm')),
               h('button',{id:'pp-reload-cancel',type:'button',style:btn,onClick:()=>setConfirmReload(false)},t('discardCancel')))):null,
           migrationCard,
-          h('fieldset',{disabled:!editable,style:{border:0,margin:0,padding:0,minWidth:0}},
           h('nav',{role:'tablist','aria-label':t('title'),
             style:{display:'flex',gap:6,flexWrap:'wrap',marginBottom:20}},
             ...sections.map(id=>h('button',{key:id,type:'button',role:'tab',
               id:'pp-tab-'+id,'aria-selected':page===id,
-              'aria-controls':'pp-content',onClick:()=>setPage(id),
+              'aria-controls':'pp-content',tabIndex:page===id?0:-1,onClick:()=>setPage(id),
+              onKeyDown:event=>{
+                const index = sections.indexOf(id)
+                let next
+                switch (event.key) {
+                  case 'ArrowLeft': next = index + (rtl ? 1 : -1); break
+                  case 'ArrowRight': next = index + (rtl ? -1 : 1); break
+                  case 'Home': next = 0; break
+                  case 'End': next = sections.length - 1; break
+                  default: return
+                }
+                event.preventDefault()
+                next = (next + sections.length) % sections.length
+                setPage(sections[next])
+                event.currentTarget.parentElement.querySelectorAll('[role="tab"]')[next]?.focus()
+              },
               style:{...btn,background:page===id?'rgba(128,128,128,.22)':'transparent',
                 fontWeight:page===id?700:500}},t(id)))),
           h('div',{role:'tabpanel',id:'pp-content','aria-labelledby':'pp-tab-'+page},
-            page==='backup'?backupStatus:null,contents))))
+            page==='backup'?backupStatus:null,
+            h('fieldset',{disabled:!editable,style:{border:0,margin:0,padding:0,minWidth:0}},contents))))
     }
 
     // Contains a Personal Profile render failure inside the page. Without it the
@@ -2697,6 +2712,35 @@ window.__ModuleLoader__.load({
         "Aggregate counts kept in memory until Harness restarts since {date}. Nothing is sent anywhere.": "تبقى الأعداد الإجمالية المسجّلة منذ {date} في الذاكرة حتى إعادة تشغيل Harness. لا تُرسل الإحصائيات إلى أي جهة.",
         "Reset statistics": "إعادة ضبط الإحصائيات",
         "Effort recommendation…": "توصية مستوى الاستدلال…",
+        "Effort recommendation": "توصية مستوى الاستدلال",
+        "Recommendations use a local classifier on the Harness Host. The conversation’s reasoning effort stays as selected.": "تُحتسب التوصيات بواسطة مصنّف محلي على مضيف Harness. يبقى مستوى الاستدلال المحدد للمحادثة كما هو.",
+        "Mode": "الوضع",
+        "Manual": "يدوي",
+        "Automatic recommendation preview": "معاينة التوصية التلقائية",
+        "Text to analyze": "النص المراد تحليله",
+        "Analyze": "تحليل",
+        "Analyzing…": "جارٍ التحليل…",
+        "No recommendation is available for this Session and model.": "لا تتوفر توصية لهذه الجلسة وهذا الموديل.",
+        "Selected effort": "المستوى المحدد",
+        "Suggested effort": "المستوى المقترح",
+        "simple": "بسيط",
+        "standard": "عادي",
+        "complex": "معقّد",
+        "advanced": "متقدم",
+        "Retry or empty input": "إعادة محاولة أو إدخال فارغ",
+        "Continuation": "متابعة",
+        "Greeting": "تحية",
+        "Request length": "طول الطلب",
+        "Advanced topic": "موضوع متقدم",
+        "Complex topic": "موضوع معقّد",
+        "Standard topic": "موضوع عادي",
+        "Code block": "كتلة شيفرة",
+        "Error trace": "تتبّع الخطأ",
+        "Multiple steps": "خطوات متعددة",
+        "Math": "رياضيات",
+        "Attachment": "مرفق",
+        "Request for deeper analysis": "طلب تحليل أعمق",
+        "Request for a shorter answer": "طلب إجابة أقصر",
         "Reload preferences": "إعادة تحميل التفضيلات",
         "Provider default": "المستوى الافتراضي للمزوّد",
         "No saved preference": "لا يوجد تفضيل محفوظ",
@@ -3041,7 +3085,8 @@ window.__ModuleLoader__.load({
       'asked-briefer': 'Request for a shorter answer',
     }
 
-    function ReasoningRecommendation({ sessionId, selection, settings, onClose, nameOf, connection }) {
+    function ReasoningRecommendation({ sessionId, selection, settings, onClose, nameOf, connection, language }) {
+      const t = value => uiCopy(value, language)
       const [sample, setSample] = React.useState('')
       const [result, setResult] = React.useState(null)
       const pending = React.useRef(null)
@@ -3069,24 +3114,27 @@ window.__ModuleLoader__.load({
         }
       }
 
-      return h(Modal, { open: true, onClose, title: 'Effort recommendation', closeLabel: 'Close',
-        footer: h(Button, { size: 'sm', onClick: onClose }, 'Done') },
-      h('div', { style: { display: 'grid', gap: 8 } },
-        h('p', { style: lifecycleMuted }, 'Recommendations use a local classifier on the Harness Host. The conversation’s reasoning effort stays as selected.'),
-        h('label', { style: lifecycleLabel }, 'Mode', h('select', { style: lifecycleSelect,
+      return h(Modal, { open: true, onClose, title: t('Effort recommendation'), closeLabel: t('Close'),
+        footer: h(Button, { size: 'sm', onClick: onClose }, t('Done')) },
+      h('div', { lang: language, dir: language === 'ar' ? 'rtl' : 'ltr',
+        style: { display: 'grid', gap: 8, minWidth: 0, overflowWrap: 'anywhere' } },
+        h('p', { style: lifecycleMuted }, t('Recommendations use a local classifier on the Harness Host. The conversation’s reasoning effort stays as selected.')),
+        h('label', { style: lifecycleLabel }, t('Mode'), h('select', { style: lifecycleSelect,
           disabled: !settings.writable, value: adaptive ? 'adaptive' : 'manual', onChange: event => {
             setResult(null)
             if (settings.record) void settings.save({ ...settings.record, mode: event.target.value })
-          } }, h('option', { value: 'manual' }, 'Manual'), h('option', { value: 'adaptive' }, 'Automatic recommendation preview'))),
-        h(SuiteRecordStatus, { settings }),
-        adaptive ? h('form', { onSubmit: analyze }, h('label', { style: lifecycleLabel }, 'Text to analyze',
+          } }, h('option', { value: 'manual' }, t('Manual')),
+          h('option', { value: 'adaptive' }, t('Automatic recommendation preview')))),
+        h(SuiteRecordStatus, { settings, language }),
+        adaptive ? h('form', { onSubmit: analyze }, h('label', { style: lifecycleLabel }, t('Text to analyze'),
           h('textarea', { rows: 4, maxLength: 4000, value: sample, dir: 'auto',
             onChange: event => { pending.current?.abort(); setSample(event.target.value); setResult(null) } })),
-        h(Button, { type: 'submit', size: 'sm', disabled: !sample.trim() || result?.loading }, 'Analyze')) : null,
-        result && adaptive ? h('div', { role: 'status' },
-          result.loading ? 'Analyzing…' : result.error ? 'No recommendation is available for this Session and model.'
-            : `${result.source === 'manual' ? 'Selected effort' : 'Suggested effort'}: ${nameOf(result.recommendation)} · ${result.tier}` +
-              (result.signals?.length ? ' · ' + result.signals.map(signal => reasoningSignals[signal]).filter(Boolean).join(', ') : '')) : null))
+        h(Button, { type: 'submit', size: 'sm', disabled: !sample.trim() || result?.loading }, t('Analyze'))) : null,
+        result && adaptive ? h('div', { role: result.error ? 'alert' : 'status' },
+          result.loading ? t('Analyzing…') : result.error ? t('No recommendation is available for this Session and model.')
+            : h(React.Fragment, null, t(result.source === 'manual' ? 'Selected effort' : 'Suggested effort'), ': ',
+              h('bdi', null, nameOf(result.recommendation)), ' · ', t(result.tier),
+              (result.signals?.length ? ' · ' + result.signals.map(signal => reasoningSignals[signal]).filter(Boolean).map(t).join(language === 'ar' ? '، ' : ', ') : ''))) : null))
     }
 
     function ReasoningComposer({ directory, sessionId, settingsService, connection, useRemoteAccess, useAccess, localeSource }) {
@@ -3103,7 +3151,12 @@ window.__ModuleLoader__.load({
       const busy = React.useRef(false)
       const noticeId = React.useRef(0)
       const mounted = React.useRef(false)
+      const routeRevision = React.useRef(0)
       const selection = directoryState.current
+      React.useEffect(() => {
+        routeRevision.current++
+        setNotice(null)
+      }, [sessionId, selection?.provider, selection?.model, directoryState.routable])
       React.useEffect(() => { void directory.load().catch(() => {}) }, [directory])
       React.useEffect(() => {
         mounted.current = true
@@ -3136,9 +3189,10 @@ window.__ModuleLoader__.load({
         ? language === 'ar' ? `التفضيل المحفوظ: ${nameOf(saved.effort)}${level(saved.effort) ? '' : ' (غير متاح)'}` : `Saved preference: ${nameOf(saved.effort)}${level(saved.effort) ? '' : ' (unavailable)'}`
         : record ? t('No saved preference') : t('Saved preferences unavailable')
 
-      async function changeEffort(current, value, manual) {
+      async function changeEffort(current, value, manual, stillCurrent) {
         const expected = { provider: current.provider, model: current.model, reasoningEffort: value }
         const result = await reasoningPost('effort', { sessionId, ...expected, ...(manual ? { mode: 'manual' } : {}) })
+        if (!stillCurrent()) return
         if (result.status === 409 && result.body?.error === 'session-unavailable') {
           show(manual ? t('Start or resume this chat before changing its effort.') :
             t('Start or resume this chat before applying the saved effort.'))
@@ -3163,6 +3217,14 @@ window.__ModuleLoader__.load({
         if (!current || !isCurrentRoute(current) || !available || latest.pending != null) return
         const offered = value => available.efforts.some(option => option.id === value)
         const currentEffort = current.reasoningEffort ?? available.defaultEffort
+        const revision = routeRevision.current
+        const reset = connection.getResetGeneration()
+        const stillCurrent = () => {
+          const snapshot = directory.store.getSnapshot()
+          return mounted.current && routeRevision.current === revision &&
+            connection.getResetGeneration() === reset && snapshot.routable === true &&
+            snapshot.current && isCurrentRoute(snapshot.current)
+        }
         busy.current = true
         setWorking(true)
         try {
@@ -3172,15 +3234,15 @@ window.__ModuleLoader__.load({
             const next = id === 'save' ? [...remaining, { provider: current.provider,
               model: current.model, effort: currentEffort }] : remaining
             const savedOk = await settings.save({ ...record, preferences: next })
-            show(savedOk ? (id === 'save' ? t('Preference saved.') : t('Preference removed.')) :
+            if (stillCurrent()) show(savedOk ? (id === 'save' ? t('Preference saved.') : t('Preference removed.')) :
               t('Preference could not be updated.'), savedOk)
           } else {
             const manual = id !== 'apply'
             const value = manual ? available.efforts.find(option => `effort:${option.id}` === id)?.id : saved?.effort
-            if (value && value !== current.reasoningEffort && offered(value)) await changeEffort(current, value, manual)
+            if (value && value !== current.reasoningEffort && offered(value)) await changeEffort(current, value, manual, stillCurrent)
           }
         } catch {
-          show(t('Harness could not change the effort.'))
+          if (stillCurrent()) show(t('Harness could not change the effort.'))
         } finally {
           busy.current = false
           setWorking(false)
@@ -3214,20 +3276,21 @@ window.__ModuleLoader__.load({
           onClose: () => setOpen(false), onSelect: id => void selectItem(id) }),
         Modal && statsOpen ? h(ReasoningStatistics, { open: statsOpen, onClose: () => setStatsOpen(false), nameOf, language }) : null,
         Modal && recommendOpen ? h(ReasoningRecommendation, { key: JSON.stringify([sessionId, selection.provider, selection.model,
-          selection.reasoningEffort]), sessionId, selection, settings, connection, onClose: () => setRecommendOpen(false), nameOf }) : null,
+          selection.reasoningEffort]), sessionId, selection, settings, connection, language, onClose: () => setRecommendOpen(false), nameOf }) : null,
         notice ? h(Toast, { key: notice.id, text: notice.text, tone: notice.success ? 'success' : undefined,
           holdMs: 2400, onDone: () => setNotice(null) }) : null)
     }
 
     // ---------------------------------------------------------------- Direct Chat
     const DIRECT_CHAT_ID = 'abinadwan-direct-chat'
-    function DirectChatButton({ wide, useRemoteAccess, startChat }) {
+    function DirectChatButton({ wide, useRemoteAccess, startChat, language }) {
       const permitted = typeof useRemoteAccess === 'function' ? useRemoteAccess('session/create') : true
       const inflight = React.useRef(false)
       const [status, setStatus] = React.useState('idle')
       if (!permitted) return null
       const busy = status === 'pending'
-      const label = status === 'failed' ? 'Retry Direct Chat' : 'Direct Chat'
+      const copy = directChatCopy[language]
+      const label = status === 'failed' ? copy.retryOpen : copy.open
       async function open() {
         if (inflight.current) return
         inflight.current = true
@@ -3242,9 +3305,10 @@ window.__ModuleLoader__.load({
           inflight.current = false
         }
       }
-      return h('div', { 'data-abinadwan-direct-chat': '', style: { padding: '2px 4px' } },
-        h('button', { type: 'button', disabled: busy, onClick: open,
-          'aria-label': busy ? 'Opening Direct Chat' : label, 'aria-busy': busy,
+      return h('div', { 'data-abinadwan-direct-chat': '', lang: language, dir: language === 'ar' ? 'rtl' : 'ltr',
+        style: { padding: '2px 4px', overflowWrap: 'anywhere' } },
+        h('button', { type: 'button', 'aria-disabled': busy, onClick: open,
+          'aria-label': busy ? copy.opening : label, 'aria-busy': busy,
           title: label, style: { display: 'inline-flex', gap: 7, alignItems: 'center',
             cursor: busy ? 'wait' : 'pointer', border: 0, borderRadius: 8,
             padding: '8px 10px', color: 'inherit', background: 'transparent', font: 'inherit',
@@ -3252,10 +3316,12 @@ window.__ModuleLoader__.load({
           suiteGlyph('direct-chat', 16),
           wide ? h('span', null, label) : null),
         status === 'failed' ? h('div', { role: 'alert', style: { fontSize: 12, padding: 8 } },
-          'Unable to finish opening Direct Chat. Check your connection and retry.') : null)
+          copy.openFailed) : null)
     }
     const directChatCopy = {
       en: {
+        open: 'Direct Chat', opening: 'Opening Direct Chat', retryOpen: 'Retry Direct Chat',
+        openFailed: 'Unable to finish opening Direct Chat. Check your connection and retry.',
         history: 'Direct Chat history', search: 'Search Direct Chat', recent: 'Last activity', creation: 'Creation time',
         order: 'Sort by', loading: 'Loading conversations…', error: 'Direct Chat history is unavailable.',
         empty: 'No Direct Chat conversations yet.', noMatches: 'No conversations match your search.',
@@ -3268,6 +3334,8 @@ window.__ModuleLoader__.load({
         disabled: 'Conversation deletion and automatic cleanup are unavailable.',
       },
       ar: {
+        open: 'الدردشة المباشرة', opening: 'جارٍ فتح الدردشة المباشرة', retryOpen: 'إعادة محاولة فتح الدردشة المباشرة',
+        openFailed: 'تعذّر فتح الدردشة المباشرة. تحقّق من الاتصال وحاول مرة أخرى.',
         history: 'سجل الدردشة المباشرة', search: 'البحث في الدردشة المباشرة', recent: 'آخر نشاط', creation: 'وقت الإنشاء',
         order: 'الترتيب حسب', loading: 'جارٍ تحميل المحادثات…', error: 'سجل الدردشة المباشرة غير متاح.',
         empty: 'لا توجد محادثات مباشرة بعد.', noMatches: 'لا توجد محادثات مطابقة للبحث.',
@@ -3426,8 +3494,7 @@ window.__ModuleLoader__.load({
               })) : null) : null) : null)))
     }
 
-    function DirectChatHistoryAction({ wide, services, useRemoteAccess }) {
-      const language = suiteWatch(services.locale)?.active === 'ar' ? 'ar' : 'en'
+    function DirectChatHistoryAction({ wide, services, useRemoteAccess, language }) {
       const copy = directChatCopy[language]
       const [open, setOpen] = React.useState(false)
       return h(React.Fragment, null,
@@ -3440,11 +3507,12 @@ window.__ModuleLoader__.load({
     // Official DSH New Session HOC: mounts immediately beneath the native
     // New Session control, above global Plugins and Workspace/Projects rows.
     function DirectChatTopAction({ children, wide, useRemoteAccess, startChat, services }) {
+      const language = useUiLanguage(services?.locale)
       return h('div', { 'data-abinadwan-direct-chat-top': '',
         style: { display: 'flex', flexDirection: 'column', gap: 4, width: '100%' } },
         children,
-        h(DirectChatButton, { wide, useRemoteAccess, startChat }),
-        Modal && services ? h(DirectChatHistoryAction, { wide, services, useRemoteAccess }) : null)
+        h(DirectChatButton, { wide, useRemoteAccess, startChat, language }),
+        Modal && services ? h(DirectChatHistoryAction, { wide, services, useRemoteAccess, language }) : null)
     }
     const directChatPlugin = {
       inject: ['slots', 'sessions', 'workspaces', 'uiWorkspace', 'layout', 'remote', 'locale'],

@@ -118,3 +118,20 @@ test('a render failure inside the page shows a visible error instead of a blank 
   assert.match(alert.textContent, /My Profile/)
   assert.match(alert.textContent, /No settings were saved or changed/)
 })
+
+test('My Profile tabs support RTL arrow navigation and one tab stop', async t => {
+  const { d } = await mountInHostSlot(t)
+  const tabs = [...d.querySelectorAll('[role=tab]')]
+  const key = (tab, value) => act(async () => tab.dispatchEvent(
+    new d.defaultView.KeyboardEvent('keydown', { key: value, bubbles: true, cancelable: true })))
+  tabs[0].focus()
+  await key(tabs[0], 'ArrowLeft')
+  assert.equal(d.activeElement.id, tabs[1].id)
+  assert.equal(tabs[1].getAttribute('aria-selected'), 'true')
+  assert.deepEqual(tabs.map(tab => tab.tabIndex), [-1, 0, -1, -1])
+  assert.equal(d.querySelector('[role=tabpanel]').getAttribute('aria-labelledby'), tabs[1].id)
+  await key(tabs[1], 'End')
+  assert.equal(d.activeElement.id, tabs[3].id)
+  await key(tabs[3], 'Home')
+  assert.equal(d.activeElement.id, tabs[0].id)
+})

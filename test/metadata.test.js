@@ -11,6 +11,8 @@ test('English metadata is exported for Plugin Manager', () => {
   assert.equal(p.exports['./locale/*.json'], './locale/*.json')
   assert.equal(locale.meta.title, 'ABINADWAN Plugins Suite')
   assert.equal(locale.meta.detail, 'docs/DETAIL.md')
+  assert.match(locale.meta.description, /\bsix independently switchable components\b/i)
+  assert.match(JSON.parse(read('locale/ar.json')).meta.description, /ستة مكوّنات/)
   for (const f of ['icon.svg', 'locale/en.json', 'docs/DETAIL.md']) assert.ok(read(f).length > 0)
   assert.equal(p.name, '@abinadwan/dsh-plugins-suite')
   assert.equal(p.repository.url, 'git+https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite.git')
