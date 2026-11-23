@@ -6,9 +6,11 @@ const ID1 = '10000000-0000-4000-8000-000000000001'
 const ID2 = '10000000-0000-4000-8000-000000000002'
 const ID3 = '10000000-0000-4000-8000-000000000003'
 const policy = { protectedIds: [], protectedWorkspaces: [] }
+const WORKSPACE_PATH = 'C:\\profile\\workspace-a'
+const DIRECT_PATH = 'C:\\profile\\abinadwan-direct-chat-data\\Direct Chat'
 
 function fixture() {
-  const workspaces = [{ id: 'owned', sessionIds: [ID1, ID2, ID3] }]
+  const workspaces = [{ id: 'owned', path: WORKSPACE_PATH, sessionIds: [ID1, ID2, ID3] }]
   const archived = [ID1, ID2, ID3]
   const pinned = []
   const calls = []
@@ -20,7 +22,7 @@ function fixture() {
   const persistence = {
     async stat(id) {
       calls.push(id)
-      return { header: { id, origin: 'user', isSeeded: false },
+      return { header: { id, cwd: WORKSPACE_PATH, origin: 'user', isSeeded: false },
         formatStatus: 'current', sizeBytes: 2048, revision: Symbol('synthetic') }
     },
   }
@@ -69,7 +71,7 @@ test('Host rejects protected, non-archived, pinned, ambiguous and missing Sessio
   assert.deepEqual(h.calls, [])
   assert.deepEqual((await h.inspect([ID2, ID3])).rows.map(r => r.code),
     ['not-archived', 'pinned-session'])
-  h.workspaces.push({ id: 'other', sessionIds: [ID1] })
+  h.workspaces.push({ id: 'other', path: 'C:\\profile\\other', sessionIds: [ID1] })
   assert.equal((await h.inspect([ID1])).rows[0].code, 'membership-unavailable')
   assert.deepEqual(h.calls, [])
   assert.equal((await h.inspect(['nonexistent'])).rows[0].code, 'membership-unavailable')
@@ -81,13 +83,13 @@ test('Host rejects protected, non-archived, pinned, ambiguous and missing Sessio
 
 test('Host refuses derived and unknown storage without guessing a deletable path', async () => {
   const h = fixture()
-  h.persistence.stat = async id => ({ header: { id, origin: 'subagent' }, formatStatus: 'current' })
+  h.persistence.stat = async id => ({ header: { id, cwd: WORKSPACE_PATH, origin: 'subagent' }, formatStatus: 'current' })
   assert.equal((await h.inspect([ID1])).rows[0].code, 'dependent-session')
-  h.persistence.stat = async id => ({ header: { id, parentSession: ID2 }, formatStatus: 'current' })
+  h.persistence.stat = async id => ({ header: { id, cwd: WORKSPACE_PATH, parentSession: ID2 }, formatStatus: 'current' })
   assert.equal((await h.inspect([ID1])).rows[0].code, 'dependent-session')
-  h.persistence.stat = async id => ({ header: { id, isSeeded: true }, formatStatus: 'current' })
+  h.persistence.stat = async id => ({ header: { id, cwd: WORKSPACE_PATH, isSeeded: true }, formatStatus: 'current' })
   assert.equal((await h.inspect([ID1])).rows[0].code, 'dependent-session')
-  h.persistence.stat = async id => ({ header: { id }, formatStatus: 'migration-required' })
+  h.persistence.stat = async id => ({ header: { id, cwd: WORKSPACE_PATH }, formatStatus: 'migration-required' })
   assert.equal((await h.inspect([ID1])).rows[0].code, 'format-unverified')
   h.persistence.stat = async () => undefined
   assert.equal((await h.inspect([ID1])).rows[0].code, 'storage-unavailable')
@@ -95,12 +97,33 @@ test('Host refuses derived and unknown storage without guessing a deletable path
   assert.equal((await h.inspect([ID1])).rows[0].code, 'storage-unavailable')
 })
 
+test('Host inspection excludes registered and legacy Direct Chat without authorizing deletion', async () => {
+  const h = fixture()
+  h.workspaces[0].path = DIRECT_PATH
+  const registered = await h.inspect([ID1])
+  assert.equal(registered.rows[0].code, 'direct-chat-requires-separate-verification')
+  assert.deepEqual(h.calls, [], 'registered Direct Chat must be rejected before stat')
+  h.workspaces[0].path = WORKSPACE_PATH
+  h.persistence.stat = async id => ({
+    header: { id, cwd: 'C:\\profile\\abinadwan-direct-chat-data\\session-legacy' },
+    formatStatus: 'current',
+  })
+  const legacy = await h.inspect([ID1])
+  assert.equal(legacy.rows[0].code, 'direct-chat-requires-separate-verification')
+  assert.equal(legacy.executable, false)
+  assert.equal(legacy.rows[0].deletable, false)
+  h.persistence.stat = async id => ({ header: { id }, formatStatus: 'current' })
+  assert.equal((await h.inspect([ID1])).rows[0].code, 'workspace-path-unverified')
+  h.workspaces[0].path = 'relative/path'
+  assert.equal((await h.inspect([ID1])).rows[0].code, 'workspace-path-unverified')
+})
+
 test('Host detects catalog and policy changes while waiting on storage metadata', async () => {
   const h = fixture()
   let resume
   h.persistence.stat = async id => {
     await new Promise(resolve => { resume = resolve })
-    return { header: { id }, formatStatus: 'current' }
+    return { header: { id, cwd: WORKSPACE_PATH }, formatStatus: 'current' }
   }
   const running = h.inspect([ID1])
   await Promise.resolve()
@@ -110,7 +133,7 @@ test('Host detects catalog and policy changes while waiting on storage metadata'
   const original = { protectedIds: [], protectedWorkspaces: [] }
   const changed = { protectedIds: [ID1], protectedWorkspaces: [] }
   h.archived.push(ID1)
-  h.persistence.stat = async id => ({ header: { id }, formatStatus: 'current' })
+  h.persistence.stat = async id => ({ header: { id, cwd: WORKSPACE_PATH }, formatStatus: 'current' })
   await assert.rejects(h.inspect([ID1], original, () => changed), { code: 'catalog-changed' })
 })
 
