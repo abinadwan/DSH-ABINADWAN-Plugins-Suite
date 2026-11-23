@@ -144,3 +144,60 @@ turn the inspection into a deletion command.
 **Remaining gate:** a truly safe persistent Session delete transaction is still
 unavailable from the DSH Host. This phase increases user-visible inspection and
 safety only; it does not implement the permanent delete requested in issue #67.
+
+## Phase 05 — Fixture-only deletion transaction and recovery spike
+
+This phase adds **test-support/chat-control-delete-transaction-spike.js** and
+**test/chat-control-delete-spike.test.js**. The engine is **only imported by
+the Node test suite**. It is not packaged into the DSH Host plugin, not
+registered on the Connection bridge, and cannot delete production Sessions.
+It accepts only a temporary path whose canonical basename starts with
+`chat-control-delete-fixture-` and contains the exact sentinel
+`fixture-only.marker`. Its fake storage layout and JSON manifest are
+**not** the real DSH JSONL/SQLite storage format.
+
+The disposable fixture models an explicit Profile + Session ID + manifest
+revision + typed confirmation (`DELETE <id>`) and rejects ambiguous
+membership, running work, pin/protection, non-archival, derived/child
+histories, inbound references, unknown fake search-index entries, missing
+logs, cross-Profile requests, concurrent writers, and uncommitted
+transactions. The sample includes two Workspaces and shared attachment
+bytes to verify that deleting one fictional log changes neither another
+Workspace's log nor a shared attachment.
+
+**Illustrative transaction stages:**
+
+1. Write an intent journal to a fixture-owned directory.
+2. Atomically rename the one fictional log into a fixture-only quarantine.
+3. Commit one fake manifest revision that removes Session membership, archive
+   entry and fake search index, and creates a tombstone for recovery.
+4. Remove the quarantined log and journal. An interruption **before** step 3
+   restores the log; one **after** step 3 finishes cleanup. Recovery refuses
+   conflicting or foreign journal records rather than guessing.
+
+Test interruption hooks simulate failures **between awaited operations**;
+they are not physical power-loss tests, Windows disk durability guarantees,
+or verified races against real DSH live writers. This model deliberately
+uses a single fake JSON manifest for data structures that real DSH stores
+across different services, backends and independent transactions.
+
+### Real DSH readiness gates — status after Phase 05
+
+| Gate | Fixture-only evidence | Live DSH status |
+| --- | --- | --- |
+| Exact Profile, Session, revision, typed confirmation | Simulated | No Host transaction admission |
+| Serialize activity/jobs/reminders/open handles | Simulated flags/fixture lock | **Blocked:** no Host-wide delete fence |
+| Workspace account and archive reconciliation | Fake manifest atomic update | **Blocked:** DSH registry has no Session-detach-delete transaction |
+| Physical JSONL/SQLite history + generations | One fictional .jsonl per Session | **Blocked:** no provider delete contract |
+| Search index and attachments | Fake index removed; shared file retained | **Blocked:** cannot prove real cross-service sync/reference ownership |
+| Restart and interruption | Simulated checkpoint recovery | **Blocked:** no native Desktop crash/power-loss proof |
+| Space reclamation | Not measured | **Blocked:** no authoritative cross-backend reclaimed-byte count |
+
+**Decision:** The fixture spike establishes a candidate failure-handling
+pattern, not permission to implement raw `fs.rm` or SQLite `DELETE` on
+a live Profile. No UI Delete or bulk/automatic removal has been enabled.
+To ship actual deletion, we require a supported, owner-authorized transaction
+that fences all Host writers and atomically/or recoverably reconciles
+registry, persisted generations, live caches, query index and shared assets.
+Until those capabilities exist, leave `executable:false` and
+`deletable:false` intact and keep Issue #67 open.
