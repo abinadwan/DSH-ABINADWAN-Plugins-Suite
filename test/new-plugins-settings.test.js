@@ -781,3 +781,73 @@ test('effort save ignores a reply from before a connection reset', async t => {
   await act(async () => [...div.querySelectorAll('[role=menuitem]')].find(row => row.textContent === 'Save current effort').click())
   assert.doesNotMatch(div.textContent, /Preference saved\./)
 })
+
+test('compact Arabic Direct Chat retains focus and localizes retry during a refused open', async t => {
+  let finish, attempts = 0
+  const { div } = await mount(t, { hostLocale: 'ar', fetch(url) {
+    if (!String(url).includes('/api/abinadwan-direct-chat/prepare')) return Response.json({}, { status: 404 })
+    attempts++
+    return new Promise(resolve => { finish = resolve })
+  } }, 'direct-chat', 'sidebar.session.action')
+  const trigger = div.querySelector('[data-abinadwan-direct-chat] button')
+  assert.equal(trigger.getAttribute('aria-label'), 'الدردشة المباشرة')
+  trigger.focus()
+  await act(async () => trigger.click())
+  assert.equal(document.activeElement, trigger)
+  assert.equal(trigger.disabled, false)
+  assert.equal(trigger.getAttribute('aria-disabled'), 'true')
+  await act(async () => trigger.click())
+  assert.equal(attempts, 1)
+  await act(async () => finish(Response.json({}, { status: 503 })))
+  assert.equal(document.activeElement, trigger)
+  assert.equal(trigger.getAttribute('aria-label'), 'إعادة محاولة فتح الدردشة المباشرة')
+  assert.match(div.querySelector('[role=alert]').textContent, /تعذّر فتح/)
+})
+
+test('Arabic reasoning recommendation localizes dialog and status and isolates the effort label', async t => {
+  const fixture = reasoningFixture({ record: { preferences: [], mode: 'adaptive' }, handlers: {
+    recommend: () => Response.json({ recommendation: 'wide-v2', tier: 'complex', signals: ['math'] }),
+  } })
+  fixture.options.hostLocale = 'ar'
+  const { div, open, item } = await openReasoning(t, fixture)
+  await open()
+  await act(async () => item('توصية مستوى الاستدلال…').click())
+  const dialog = div.querySelector('[role=dialog]')
+  assert.match(dialog.textContent, /توصية مستوى الاستدلال/)
+  assert.ok(dialog.querySelector('[lang=ar][dir=rtl]'))
+  const sample = dialog.querySelector('textarea')
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(Object.getPrototypeOf(sample), 'value').set.call(sample, 'احسب هذا المثال')
+    sample.dispatchEvent(new document.defaultView.Event('input', { bubbles: true }))
+  })
+  await act(async () => dialog.querySelector('form').dispatchEvent(
+    new document.defaultView.Event('submit', { bubbles: true, cancelable: true })))
+  const result = [...dialog.querySelectorAll('[role=status]')].at(-1)
+  assert.match(result.textContent, /المستوى المقترح.*معقّد.*رياضيات/)
+  assert.equal(result.querySelector('bdi').textContent, 'Wide')
+  assert.deepEqual(fixture.calls.map(call => call.path), ['recommend'])
+})
+
+test('a delayed effort acknowledgement cannot appear on a different route', async t => {
+  let acknowledge
+  const fixture = reasoningFixture({ handlers: {
+    effort: body => new Promise(resolve => {
+      acknowledge = () => resolve(Response.json({ selected: {
+        provider: body.provider, model: body.model, reasoningEffort: body.reasoningEffort,
+      } }))
+    }),
+  } })
+  const { div, open, item } = await openReasoning(t, fixture)
+  await open()
+  await act(async () => item('Wide').click())
+  const { store } = fixture.options.modelDirectories.directoryFor()
+  const snapshot = store.getSnapshot()
+  const current = { ...snapshot.current, model: 'alternate' }
+  const groups = [{ ...snapshot.groups[0], models: [
+    ...snapshot.groups[0].models, { ...snapshot.groups[0].models[0], id: current.model },
+  ] }]
+  await act(async () => store.set({ ...snapshot, current, groups }))
+  await act(async () => acknowledge())
+  assert.equal(div.querySelector('button[aria-haspopup=menu]').textContent, 'Balanced')
+  assert.doesNotMatch(div.textContent, /Effort changed\.|Harness could not change the effort/)
+})
