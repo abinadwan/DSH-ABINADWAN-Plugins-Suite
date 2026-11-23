@@ -66,6 +66,11 @@ export function registerCatalog(ctx, profileDir) {
           if (workspace && new URL(request.url).searchParams.get('order') === 'creation') {
             if (sorting) return Response.json({ code: 'DIRECT_CHAT_CATALOG_BUSY' }, { status: 409, headers })
             sorting = true
+            // Snapshot membership before any asynchronous metadata reads. A null
+            // metadata result (timeout, unreadable header, or >100 Sessions)
+            // must not hide registration changes during the request.
+            const originalMembers = new Set(workspace.sessionIds)
+            const originalCount = workspace.sessionIds.length
             const signal = AbortSignal.any([request.signal, lifetime.signal, AbortSignal.timeout(2000)])
             try {
               createdAt = await creationMetadata(workspace, child.sessionPersistence, signal)
@@ -76,8 +81,12 @@ export function registerCatalog(ctx, profileDir) {
               sorting = false
             }
             const latest = await registeredWorkspace(profileDir, list)
-            if (latest?.id !== workspace.id || createdAt && (latest.sessionIds.length !== Object.keys(createdAt).length ||
-                latest.sessionIds.some(id => !Object.hasOwn(createdAt, id)))) {
+            const latestMembers = new Set(latest?.sessionIds)
+            if (latest?.id !== workspace.id || originalMembers.size !== originalCount ||
+                latestMembers.size !== originalCount ||
+                [...latestMembers].some(id => !originalMembers.has(id)) ||
+                (createdAt && (latest.sessionIds.length !== Object.keys(createdAt).length ||
+                  latest.sessionIds.some(id => !Object.hasOwn(createdAt, id))))) {
               return Response.json({ code: 'DIRECT_CHAT_CATALOG_CHANGED' }, { status: 409, headers })
             }
           }

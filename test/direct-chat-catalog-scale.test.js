@@ -58,3 +58,39 @@ test('phase 03: 100/1000/10000 Session inventories bound native metadata reads',
     t.diagnostic(`Direct Chat Host discovery ${count}: ${elapsed.toFixed(2)} ms, metadata reads ${counters.reads}`)
   }
 })
+
+
+test('creation lookup fails closed when Workspace membership changes despite unavailable headers', async t => {
+  const profile = await mkdtemp(join(tmpdir(), 'dsh-catalog-changed-null-'))
+  t.after(() => rm(profile, { recursive: true, force: true }))
+  const path = join(profile, 'abinadwan-direct-chat-data', 'Direct Chat')
+  await mkdir(path, { recursive: true })
+  const canonical = await realpath(path)
+
+  for (const scenario of [
+    { label: 'unchanged membership', next: ['first'], expected: 200 },
+    { label: 'same-size replacement', next: ['second'], expected: 409 },
+    { label: 'membership added', next: ['first', 'second'], expected: 409 },
+    { label: 'duplicated registration', next: ['first', 'first'], expected: 409 },
+  ]) {
+    let lookups = 0
+    let route
+    const initial = { id: 'direct', path: canonical, sessionIds: ['first'] }
+    const changed = { ...initial, sessionIds: scenario.next }
+    const ctx = {
+      inject(_requirements, mount) { mount({
+        workspaceRegistry: { list: () => [lookups++ === 0 ? initial : changed] },
+        sessionPersistence: { async stat() { return null } },
+        effect(fn) { fn() },
+        connection: { fetch: { register(handler) { route = handler; return () => {} } } },
+      }) },
+    }
+    registerCatalog(ctx, profile)
+    const response = await route.fetch(new Request('http://localhost/api/abinadwan-direct-chat/catalog?order=creation'))
+    assert.equal(response.status, scenario.expected, scenario.label)
+    assert.equal(response.headers.get('cache-control'), 'no-store')
+    assert.deepEqual(await response.json(), scenario.expected === 200
+      ? { workspaceId: 'direct', createdAt: null }
+      : { code: 'DIRECT_CHAT_CATALOG_CHANGED' }, scenario.label)
+  }
+})

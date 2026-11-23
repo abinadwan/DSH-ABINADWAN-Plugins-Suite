@@ -698,9 +698,10 @@ window.__ModuleLoader__.load({
             const timeout = setTimeout(() => {
               timers.delete(timeout)
               if (done || ctx.sidebarRight.mounted.getSnapshot() !== id) return
-              try { open() } catch (e) {
+              try { open() } catch {
                 visited.delete(id)
-                console.warn('[environment-sidebar] auto-open unavailable:', e)
+                // Host errors can include private Session IDs, paths or provider data.
+                console.warn('[environment-sidebar] auto-open unavailable')
               }
             }, 0)
             timers.add(timeout)
@@ -3656,14 +3657,14 @@ window.__ModuleLoader__.load({
             }
           } catch (error) {
             for (const dispose of disposers.reverse()) {
-              try { dispose() } catch (cleanupError) { console.warn('[abinadwan-suite] Arabic locale cleanup failed', cleanupError) }
+              try { dispose() } catch { console.warn('[abinadwan-suite] Arabic locale cleanup failed') }
             }
             throw error
           }
           return () => {
             // Unregister dictionaries before the language itself on suite unload.
             for (const dispose of disposers.reverse()) {
-              try { dispose() } catch (error) { console.warn('[abinadwan-suite] Arabic locale cleanup failed', error) }
+              try { dispose() } catch { console.warn('[abinadwan-suite] Arabic locale cleanup failed') }
             }
           }
         }, 'suite: Arabic UI language registration')
@@ -3732,11 +3733,10 @@ window.__ModuleLoader__.load({
             try {
               rows = remoteValue(await pluginManager.listPlugins(), 'Plugin inventory')
               if (!Array.isArray(rows)) throw new Error('Invalid plugin inventory')
-            } catch (error) {
+            } catch {
               rows = []
               if (!stopped && request === generation) {
-                console.warn('[abinadwan-suite] Component inventory unavailable. UI paused until the next inventory refresh.',
-                  String(error?.message || error))
+                console.warn('[abinadwan-suite] Component inventory unavailable. UI paused until the next inventory refresh.')
               }
             }
             pending = pending.then(async () => {
@@ -3752,8 +3752,8 @@ window.__ModuleLoader__.load({
                 if (stopped || request !== generation) return
                 if (active && !fiber) fibers.set(moduleName, ctx.plugin(plugin))
               }
-            }).catch(error => {
-              console.warn('[abinadwan-suite] Component UI transition failed:', error)
+            }).catch(() => {
+              console.warn('[abinadwan-suite] Component UI transition failed')
             })
             await pending
           }
