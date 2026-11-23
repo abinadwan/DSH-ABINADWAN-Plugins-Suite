@@ -87,3 +87,33 @@ test('phase 03: metadata search is Unicode-normalized, case-insensitive, stable 
   const untouched = sorter(records, '', 'recent', false, null)
   assert.equal(untouched.length, records.length)
 })
+
+
+test('Direct Chat searches titles from authorized summary projections without opening logs', () => {
+  const { workspace, workspaces, sessions } = build(100)
+  const recovered = 'direct-00099'
+  const missing = 'direct-00098'
+  const current = 'direct-00097'
+  sessions.byId[recovered] = { id: recovered, displayTitle: 'Direct Chat', running: false, updatedAt: 3 }
+  sessions.byId[missing] = { id: missing, displayTitle: 'Direct Chat', running: false, updatedAt: 2 }
+  sessions.byId[current] = {
+    id: current, title: 'Newest approved title', displayTitle: 'Newest approved title',
+    projectionValues: { title: 'Stale projected title' }, running: false, updatedAt: 4,
+  }
+  sessions.projectionsBySession[recovered] = { values: { title: 'Cold résumé مثال عربي' } }
+  sessions.projectionsBySession['secret-project'] = { values: { title: 'Foreign hidden needle' } }
+  const inventory = conversationInventory(workspaces, sessions, workspace).rows
+  const byId = Object.fromEntries(inventory.map(item => [item.id, item]))
+  assert.equal(byId[recovered].searchTitle, 'Cold résumé مثال عربي')
+  assert.equal(byId[missing].searchTitle, undefined, 'Host title omission stays explicit')
+  assert.equal(byId[current].searchTitle, 'Newest approved title',
+    'an authoritative row title wins over an older projection')
+  assert.equal(sorter(inventory, 'RÉSUMÉ مثال', 'recent', false, null).length, 1)
+  assert.equal(sorter(inventory, 'RÉSUMÉ مثال', 'recent', false, null)[0].id, recovered)
+  assert.equal(sorter(inventory, missing, 'recent', false, null)[0].id, missing,
+    'full ID search must still work without a title')
+  assert.equal(sorter(inventory, 'Foreign hidden needle', 'recent', false, null).length, 0,
+    'title projections from unrelated Workspaces are not searchable')
+  assert.equal(sorter(inventory, 'Stale projected title', 'recent', false, null).length, 0,
+    'a stale projection cannot displace a current row title')
+})
