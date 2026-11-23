@@ -2671,6 +2671,8 @@ window.__ModuleLoader__.load({
         "Host format not verified": "صيغة التخزين غير متحقَّق منها",
         "Host record unavailable": "سجل التخزين غير متاح",
         "Host membership unavailable": "الملكية غير متاحة",
+        "Direct Chat requires separate Host verification": "تتطلب الدردشة المباشرة تحققًا مستقلاً من النظام",
+        "Host Workspace path unverified": "مسار مساحة العمل غير متحقق منه",
         "Host inspection refused": "رُفض فحص النظام",
         "Close archived preview": "إغلاق معاينة الأرشيف",
         "Not a deletion operation. Final eligibility requires a safe Host deletion contract and a new confirmation.": "هذه ليست عملية حذف. يتطلب التحقق النهائي محرك حذف آمنًا وتأكيدًا جديدًا.",
@@ -2927,7 +2929,10 @@ window.__ModuleLoader__.load({
               t(item.code === 'requires-deletion-transaction' ? 'Deletion transaction unavailable'
                 : item.code === 'format-unverified' ? 'Host format not verified'
                 : item.code === 'storage-unavailable' ? 'Host record unavailable'
-                : item.code === 'membership-unavailable' ? 'Host membership unavailable' : 'Host inspection refused'),
+                : item.code === 'membership-unavailable' ? 'Host membership unavailable'
+                : item.code === 'direct-chat-requires-separate-verification' ? 'Direct Chat requires separate Host verification'
+                : item.code === 'workspace-path-unverified' ? 'Host Workspace path unverified'
+                : 'Host inspection refused'),
               Number.isSafeInteger(item.storedBytes) ? ' · ' + t('Storage metadata (not reclaimable bytes)') + ': ' +
                 item.storedBytes.toLocaleString(language === 'ar' ? 'ar' : 'en-US') + ' B' : null)))) : null,
         rows.length ? h('ul', { style: { margin: 0, paddingInlineStart: 20, fontSize: 13 } },
