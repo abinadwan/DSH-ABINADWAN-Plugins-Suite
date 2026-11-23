@@ -137,3 +137,17 @@ test('suite disposal releases every registration, listener and timer', async () 
   assert.equal(app.mountedListeners.size, 0)
   assert.equal(app.sessions.listeners.size, 0)
 })
+
+
+test('inventory failure logs omit sensitive Host exception content', async t => {
+  const warnings = []
+  const app = await clientHarness({ fetch: notFound,
+    console: { ...quiet, warn: (...parts) => warnings.push(parts.map(String).join(' ')) } })
+  t.after(() => app.dispose())
+  const canary = 'SYNTHETIC_SECRET_ERROR_PATH_AND_TOKEN'
+  app.inventory(() => { throw new Error('Private Host failure: ' + canary) })
+  await app.changed()
+  assert.ok(warnings.some(line => line.includes('Component inventory unavailable')),
+    'the user can still diagnose an unavailable inventory')
+  assert.ok(!warnings.join('\n').includes(canary), 'raw Host exception text must not reach browser logs')
+})
