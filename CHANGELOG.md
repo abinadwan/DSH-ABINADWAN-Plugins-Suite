@@ -2,9 +2,11 @@
 
 All notable changes are documented here.
 
-## [Unreleased]
+## [Unreleased] — v1.1.0 development
 
-- Next planned feature work targets v1.1.0. Safe permanent Session deletion and archived-chat cleanup are **not** available in v1.0.2 and require an approved DSH storage/deletion contract.
+- Development candidate: `1.1.0-rc.1`. This is not a published stable release.
+- Planned: safe permanent Session deletion, archive cleanup and measured disk-reclamation reporting in Chat Control, subject to a supported/reviewed DSH deletion contract, confirmation, authorization and recovery evidence. **Not implemented yet.**
+- The published stable `v1.0.2` retains preview-only retention and remains unchanged.
 
 ## [1.0.2] — Released (2026-11-23)
 
