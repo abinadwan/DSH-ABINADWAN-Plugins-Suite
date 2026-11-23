@@ -28,6 +28,56 @@ There is no verified user-authorized atomic Session delete contract in the inspe
 4. Clear disclaimer in UI: the preliminary list is not an executable deletion plan; no permanent-delete action, automatic timer or approval recording exists.
 5. Source-predicate and mounted React tests for archive-only behavior, protection, ambiguity and zero mutation.
 
+## Phase 02 — Host read-only storage verification (implemented on this feature branch)
+
+The plugin now registers an owner-only, local DSH Connection Fetch route at
+`POST /api/abinadwan-chat-control/inspect`. Only the **user-authorized owner Peer** may
+call it; viewers are refused by the Host connection boundary. Requests are
+strictly limited to a set of 1–20 unique, validated Session IDs in a small
+JSON body. The route does not accept file paths, a delete flag or a mutation
+intent.
+
+**What the server actually checks:**
+
+- Exact one-to-one Workspace membership from `workspaceRegistry.list()`;
+  invalid or duplicate registry entries fail closed.
+- Current archival and pin flags from the Host registry, plus the plugin's
+  stored protected Session/Workspace policy.
+- A metadata-only `sessionPersistence.stat(id)` lookup for the exact ID.
+  Missing artifacts, migration-required formats and subagent/fork-derived
+  records cannot pass this preliminary check.
+- The catalog/protection snapshot is rechecked after asynchronous reads and
+  a changed result returns a conflict; unknown storage errors return a
+  generic unavailable response, not an absolute path or raw exception text.
+- When the backend exposes `sizeBytes`, the UI may show the **stored
+  per-Session artifact size only**. This is **not** measured disk recovery:
+  shared attachments, legacy generations and derived SQLite indexes are
+  outside that number.
+
+Every returned row has `deletable: false` and the response has
+`executable: false`. The best possible result is
+`requires-deletion-transaction`; it explicitly means that the Host has
+**no verified authorized transaction** to execute deletion. The button
+**Inspect archived candidates with Host** in Chat Control runs this
+read-only request after the user opens the archived preview. The request
+does not change profile settings, archive state or Session history.
+
+Tests include malformed requests, duplicated IDs, protected and absent
+rows, changed registry/policy, JSONL-style metadata, owner-vs-viewer
+admission through the *native* pinned DSH Connection service, route disposal,
+and mounted React UI. See
+`plugins/conversation-lifecycle/inspect.js`,
+`test/chat-control-inspect.test.js`,
+`qa/chat-control-inspect-host-check.mjs` and
+`test/new-plugins-settings.test.js`.
+
+**Open architectural blocker:** No public atomic deletion operation exists
+in the observed DSH SessionPersistence/Workspace lifecycle contract.
+A plugin-only transaction design must still prove safe synchronization
+with the *Host-owned* in-memory membership, archive and persistence state.
+A filesystem unlink alone is not a valid solution, and this stage does
+not take any destructive action.
+
 ## Subsequent execution gate (not implemented)
 
 Before enabling even single deletion:
