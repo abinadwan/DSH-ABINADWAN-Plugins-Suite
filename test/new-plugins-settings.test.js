@@ -227,6 +227,94 @@ test('v1.1.0 phase 02: protected archive rows cannot trigger Host inspection', a
   assert.equal(settings.writes.length, 0)
 })
 
+test('v1.1.0 phase 04: a single archived chat can request read-only Host inspection', async t => {
+  const settings = settingsFixture('conversation-lifecycle', {
+    retention: 'forever', overrides: [], protectedIds: [], protectedWorkspaces: [],
+  })
+  const sent = []
+  const { div } = await mount(t, {
+    settings: settings.service, archivedSessionIds: ['archived'],
+    workspaceItems: [{ workspaceId: 'workspace-a', title: 'Fictional Workspace', sessionIds: ['archived', 'live'] }],
+    sessions: { phase: 'ready', ids: ['archived', 'live'], byId: {
+      archived: { id: 'archived', displayTitle: 'Archived single chat', running: false },
+      live: { id: 'live', displayTitle: 'Current chat', running: false },
+    } },
+    async fetch(url, options) {
+      assert.equal(url.pathname, '/api/abinadwan-chat-control/inspect')
+      assert.equal(options.method, 'POST')
+      assert.equal(options.credentials, 'same-origin')
+      assert.equal(options.redirect, 'error')
+      sent.push(JSON.parse(options.body))
+      return Response.json({ mode: 'read-only', executable: false, inspected: 1,
+        rows: [{ id: 'archived', code: 'requires-deletion-transaction', storedBytes: 1000,
+          deletable: false }] })
+    },
+  }, 'conversation-lifecycle', 'settings.section')
+  const button = label => [...div.querySelectorAll('button')].find(row =>
+    row.textContent === label || row.getAttribute('aria-label') === label)
+  await act(async () => button('Preview deletion for Archived single chat').click())
+  assert.equal(button('Inspect selected archived conversation with Host').disabled, false)
+  await act(async () => button('Inspect selected archived conversation with Host').click())
+  assert.deepEqual(sent, [{ sessionIds: ['archived'] }])
+  assert.match(div.textContent, /Host inspection is read-only and cannot authorize deletion/)
+  assert.match(div.textContent, /Deletion transaction unavailable/)
+  assert.equal(settings.writes.length, 0)
+})
+
+test('v1.1.0 phase 04: protected and unarchived chats cannot request single Host inspection', async t => {
+  const settings = settingsFixture('conversation-lifecycle', {
+    retention: 'forever', overrides: [], protectedIds: ['protected'], protectedWorkspaces: [],
+  })
+  const { div } = await mount(t, {
+    settings: settings.service, archivedSessionIds: ['protected'],
+    workspaceItems: [{ workspaceId: 'workspace-a', title: 'Workspace', sessionIds: ['protected', 'live'] }],
+    sessions: { phase: 'ready', ids: ['protected', 'live'], byId: {
+      protected: { id: 'protected', displayTitle: 'Protected chat', running: false },
+      live: { id: 'live', displayTitle: 'Live chat', running: false },
+    } },
+    async fetch() { assert.fail('protected or unarchived Session must not be inspected') },
+  }, 'conversation-lifecycle', 'settings.section')
+  const button = label => [...div.querySelectorAll('button')].find(row =>
+    row.textContent === label || row.getAttribute('aria-label') === label)
+  await act(async () => button('Preview deletion for Protected chat').click())
+  assert.equal(button('Inspect selected archived conversation with Host').disabled, true)
+  await act(async () => button('Preview deletion for Live chat').click())
+  assert.equal(button('Inspect selected archived conversation with Host').disabled, true)
+  assert.match(div.textContent, /Archive this conversation before Host inspection/)
+  assert.equal(settings.writes.length, 0)
+})
+
+test('v1.1.0 phase 04: changing the selected chat invalidates a pending single inspection', async t => {
+  const settings = settingsFixture('conversation-lifecycle', {
+    retention: 'forever', overrides: [], protectedIds: [], protectedWorkspaces: [],
+  })
+  let resolveFirst
+  const { div } = await mount(t, {
+    settings: settings.service, archivedSessionIds: ['first', 'second'],
+    workspaceItems: [{ workspaceId: 'workspace-a', title: 'Workspace', sessionIds: ['first', 'second'] }],
+    sessions: { phase: 'ready', ids: ['first', 'second'], byId: {
+      first: { id: 'first', displayTitle: 'First archived chat', running: false },
+      second: { id: 'second', displayTitle: 'Second archived chat', running: false },
+    } },
+    async fetch(url, options) {
+      assert.equal(url.pathname, '/api/abinadwan-chat-control/inspect')
+      assert.deepEqual(JSON.parse(options.body), { sessionIds: ['first'] })
+      return new Promise(resolve => { resolveFirst = resolve })
+    },
+  }, 'conversation-lifecycle', 'settings.section')
+  const button = label => [...div.querySelectorAll('button')].find(row =>
+    row.textContent === label || row.getAttribute('aria-label') === label)
+  await act(async () => button('Preview deletion for First archived chat').click())
+  await act(async () => button('Inspect selected archived conversation with Host').click())
+  assert.equal(typeof resolveFirst, 'function')
+  await act(async () => button('Preview deletion for Second archived chat').click())
+  await act(async () => resolveFirst(Response.json({ mode: 'read-only', executable: false,
+    rows: [{ id: 'first', code: 'requires-deletion-transaction', deletable: false }] })))
+  assert.doesNotMatch(div.textContent, /Host inspection is read-only and cannot authorize deletion/)
+  assert.equal(button('Inspect selected archived conversation with Host').disabled, false)
+  assert.equal(settings.writes.length, 0)
+})
+
 test('retention confirmation expires when the underlying settings revision is reloaded', async t => {
   const settings = settingsFixture('conversation-lifecycle', { retention: 'forever', overrides: [], protectedIds: [] })
   const { div, window, fixture } = await mount(t, { settings: settings.service }, 'conversation-lifecycle', 'settings.section')
