@@ -10,7 +10,7 @@ const SESSION = '10000000-0000-4000-8000-000000000001'
 test('native DSH connection authenticates read-only Chat Control inspection and disposes route', async t => {
   const ctx = new Context()
   t.after(() => ctx.fiber.dispose())
-  const workspaces = [{ id: 'workspace-a', sessionIds: [SESSION] }]
+  const workspaces = [{ id: 'workspace-a', path: 'C:\\profile\\workspace-a', sessionIds: [SESSION] }]
   const archived = [SESSION]
   const stats = []
   const registry = {
@@ -22,7 +22,7 @@ test('native DSH connection authenticates read-only Chat Control inspection and 
   ctx.provide('sessionPersistence', {
     async stat(id) {
       stats.push(id)
-      return { header: { id }, formatStatus: 'current', sizeBytes: 300 }
+      return { header: { id, cwd: 'C:\\profile\\workspace-a' }, formatStatus: 'current', sizeBytes: 300 }
     },
   })
   await ctx.plugin({ name: 'fixture-connection', apply(child) { new HostConnectionService(child, [], {}) } }).await()
