@@ -127,6 +127,17 @@ for (const [label, edit, code] of refused) {
   })
 }
 
+test('Phase 05 fixture-only: missing or altered log metadata is refused without registry changes', async t => {
+  const root = await fixture(t)
+  const before = await stateOf(root)
+  await rm(join(root, 'logs', SESSION + '.jsonl'))
+  await assert.rejects(deleteOne(root), { code: 'log-unverified' })
+  assert.deepEqual(await stateOf(root), before)
+  assert.equal(await readFile(join(root, 'logs', OTHER + '.jsonl'), 'utf8'),
+    'fixture-record-two\\n')
+  assert.deepEqual(await readdir(join(root, 'transactions')), [])
+})
+
 test('Phase 05 fixture-only: false confirmation, wrong Profile, stale revision and traversal cannot delete', async t => {
   const root = await fixture(t)
   const before = await snapshot(root)
