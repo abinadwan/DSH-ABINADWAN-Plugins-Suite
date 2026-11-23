@@ -768,15 +768,17 @@ window.__ModuleLoader__.load({
         traits:Object.fromEntries(PROFILE_TRAITS.map(([key])=>[key,1])),
         presets:[], custom:''}
     }
+    const PREFERENCES_HEADER='Response preferences (follow the current request and higher-priority host/safety/tool requirements; custom guidance takes precedence over other style preferences where compatible).'
+    function languageInstruction(language) {
+      const native=language[1].split(' — ')[0]
+      return 'Write your response in '+language[3]+(native===language[3]?'':' ('+native+')')+' even when the user writes in another language, unless the user explicitly asks for a different language.'
+    }
     function previewProfilePreferences(pref) {
       const lines = []
       const style = PROFILE_STYLES.find(item=>item[0]===pref.style)
       const language = PROFILE_LANGUAGES.find(item=>item[0]===pref.responseLanguage)
       if(style?.[3]) lines.push(style[3])
-      if(language?.[3]) {
-        const native=language[1].split(' — ')[0]
-        lines.push('Write your response in '+language[3]+(native===language[3]?'':' ('+native+')')+' even when the user writes in another language, unless the user explicitly asks for a different language.')
-      }
+      if(language?.[3]) lines.push(languageInstruction(language))
       for(const [key,,,less,more] of PROFILE_TRAITS) {
         if(pref.traits[key]===0) lines.push(less)
         if(pref.traits[key]===2) lines.push(more)
@@ -785,7 +787,7 @@ window.__ModuleLoader__.load({
         if(pref.presets.includes(key)) lines.push(instruction)
       }
       if(pref.sendCustom===true && pref.custom.trim()) lines.push(pref.custom)
-      return lines.length ? ['Response preferences (follow the current request and higher-priority host/safety/tool requirements; custom guidance takes precedence over other style preferences where compatible).',...new Set(lines)].join('\n') : ''
+      return lines.length ? [PREFERENCES_HEADER,...new Set(lines)].join('\n') : ''
     }
     const PROFILE_NS = 'abinadwan-personal-profile'
     const PERSONAL_FIELDS = ['preferredName','nationality','gender']

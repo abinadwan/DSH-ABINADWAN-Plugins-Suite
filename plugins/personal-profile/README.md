@@ -14,7 +14,7 @@ Preferred name, nationality and gender are on one page, each beside an independe
 
 ## Agent Instructions
 
-Response preferences, style, language, traits, presets and custom instructions are unchanged. Editing or restoring custom instructions clears their separate sending consent.
+Custom instructions require separate saved consent. Editing or restoring them clears that consent. While My Profile is enabled, the send-time guard refuses recognizable historical custom instructions that the current saved settings no longer authorize.
 
 ## Compatibility and storage
 

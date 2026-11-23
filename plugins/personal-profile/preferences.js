@@ -42,15 +42,17 @@ function neutralProfilePreferences() {
     traits:Object.fromEntries(PROFILE_TRAITS.map(([key])=>[key,1])),
     presets:[], custom:''}
 }
+const PREFERENCES_HEADER='Response preferences (follow the current request and higher-priority host/safety/tool requirements; custom guidance takes precedence over other style preferences where compatible).'
+function languageInstruction(language) {
+  const native=language[1].split(' — ')[0]
+  return 'Write your response in '+language[3]+(native===language[3]?'':' ('+native+')')+' even when the user writes in another language, unless the user explicitly asks for a different language.'
+}
 export function previewProfilePreferences(pref) {
   const lines = []
   const style = PROFILE_STYLES.find(item=>item[0]===pref.style)
   const language = PROFILE_LANGUAGES.find(item=>item[0]===pref.responseLanguage)
   if(style?.[3]) lines.push(style[3])
-  if(language?.[3]) {
-    const native=language[1].split(' — ')[0]
-    lines.push('Write your response in '+language[3]+(native===language[3]?'':' ('+native+')')+' even when the user writes in another language, unless the user explicitly asks for a different language.')
-  }
+  if(language?.[3]) lines.push(languageInstruction(language))
   for(const [key,,,less,more] of PROFILE_TRAITS) {
     if(pref.traits[key]===0) lines.push(less)
     if(pref.traits[key]===2) lines.push(more)
@@ -59,9 +61,18 @@ export function previewProfilePreferences(pref) {
     if(pref.presets.includes(key)) lines.push(instruction)
   }
   if(pref.sendCustom===true && pref.custom.trim()) lines.push(pref.custom)
-  return lines.length ? ['Response preferences (follow the current request and higher-priority host/safety/tool requirements; custom guidance takes precedence over other style preferences where compatible).',...new Set(lines)].join('\n') : ''
+  return lines.length ? [PREFERENCES_HEADER,...new Set(lines)].join('\n') : ''
 }
 export const RECORD_VERSION=4
+
+const PROMPT_LINE_BREAK=/\r\n?|\n|[\u0085\u2028\u2029]/
+const normalizePromptText=text=>text.split(PROMPT_LINE_BREAK).join('\n')
+const BUILT_IN_PREFERENCES=new Set([
+  ...PROFILE_STYLES.map(item=>item[3]),
+  ...PROFILE_LANGUAGES.filter(item=>item[3]).map(languageInstruction),
+  ...PROFILE_TRAITS.flatMap(([, , , less, more])=>[less,more]),
+  ...PROFILE_PRESETS.map(item=>item[5]),
+].filter(Boolean))
 
 // Structured fields are optional profile data, not instructions.
 const PROFILE_DISCLOSURE_HEADER='Personal details the user chose to share (use them only when relevant to the request):'
@@ -105,8 +116,7 @@ export function profileDisclosure(record) {
   return previewProfileDisclosure(record)
 }
 const DISCLOSURE_LINE=new RegExp('^('+PROFILE_DISCLOSURE_FIELDS.map(([,label])=>label).join('|')+'): .')
-/** Every shared-details block carried by system-level text of one model request. */
-export function disclosureBlocks(request) {
+function systemPromptTexts(request) {
   const texts=[]
   if(typeof request?.system==='string')texts.push(request.system)
   for(const message of Array.isArray(request?.messages)?request.messages:[]){
@@ -114,29 +124,62 @@ export function disclosureBlocks(request) {
     if(typeof message.content==='string')texts.push(message.content)
     else if(Array.isArray(message.content))for(const block of message.content)if(typeof block?.text==='string')texts.push(block.text)
   }
+  return texts
+}
+
+/** Every shared-details block carried by system-level text of one model request. */
+export function disclosureBlocks(request) {
+  return systemPromptTexts(request).flatMap(detailsBlocksInText)
+}
+function detailsBlocksInText(text) {
   const blocks=[]
-  for(const text of texts){
-    const lines=text.split(/\r\n?|\n|[\u0085\u2028\u2029]/)
-    for(let i=0;i<lines.length;i++){
-      if(lines[i]!==PROFILE_DISCLOSURE_HEADER)continue
-      let end=i+1
-      while(end<lines.length&&DISCLOSURE_LINE.test(lines[end]))end++
-      blocks.push(lines.slice(i,end).join('\n'))
-      i=end-1
-    }
+  const lines=text.split(PROMPT_LINE_BREAK)
+  for(let i=0;i<lines.length;i++){
+    if(lines[i]!==PROFILE_DISCLOSURE_HEADER)continue
+    let end=i+1
+    while(end<lines.length&&DISCLOSURE_LINE.test(lines[end]))end++
+    blocks.push(lines.slice(i,end).join('\n'))
+    i=end-1
   }
   return blocks
 }
+function staleCustomPreferences(text,allowedCustom) {
+  if(!text.includes(PREFERENCES_HEADER))return false
+  const prompt='\n'+normalizePromptText(text)
+  const heading='\n'+PREFERENCES_HEADER+'\n'
+  for(let start=prompt.indexOf(heading);start!==-1;start=prompt.indexOf(heading,start+heading.length-1)){
+    const section=prompt.slice(start+heading.length)
+    // Host joins sections with blank lines. Within the first paragraph,
+    // the suite emits catalog lines first, followed by optional custom text.
+    const firstParagraph=section.split('\n\n',1)[0]
+    let offset=0
+    for(const line of firstParagraph.split('\n')){
+      const remaining=section.slice(offset)
+      if(allowedCustom&&(remaining===allowedCustom||remaining.startsWith(allowedCustom+'\n\n'))){
+        start+=offset+allowedCustom.length
+        break
+      }
+      if(line&&!BUILT_IN_PREFERENCES.has(line))return true
+      offset+=line.length+1
+    }
+  }
+  return false
+}
+
 /** Send-time check for recognizable prior Profile sections against saved choices. */
 export function staleDisclosure(request,record) {
-  const blocks=disclosureBlocks(request)
-  if(!blocks.length)return false
-  const allowed=profileDisclosure(record)
-  return blocks.some(block=>block!==allowed)
+  const texts=systemPromptTexts(request)
+  const details=texts.flatMap(detailsBlocksInText)
+  const allowedDetails=details.length ? profileDisclosure(record) : ''
+  if(details.some(block=>block!==allowedDetails))return true
+
+  const allowedCustom=record?.preferences?.sendCustom===true&&responsePreferences(record)
+    ? normalizePromptText(record.preferences.custom) : ''
+  return texts.some(text=>staleCustomPreferences(text,allowedCustom))
 }
 const REFUSAL={
-  en:'Personal Profile stopped this request: the conversation contains personal details that your current settings no longer share. Start a new chat to continue.',
-  ar:'أوقف الملف الشخصي هذا الطلب: تحتوي المحادثة على معلومات شخصية لم تعد إعداداتك الحالية تسمح بمشاركتها. ابدأ محادثة جديدة للمتابعة.',
+  en:'Personal Profile stopped this request: the conversation contains Profile content that your current settings no longer share. Start a new chat to continue.',
+  ar:'أوقف الملف الشخصي هذا الطلب: تحتوي المحادثة على محتوى من الملف الشخصي لم تعد إعداداتك الحالية تسمح بمشاركته. ابدأ محادثة جديدة للمتابعة.',
 }
 /** Terminal, non-retryable outcome in the native stream protocol. Never names a value. */
 export async function* refuseStaleDisclosure(locale) {
