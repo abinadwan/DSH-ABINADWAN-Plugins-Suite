@@ -2,6 +2,9 @@
 // This module intentionally has no deletion capability or filesystem access.
 // It is not an authorization token for future destructive operations.
 
+import { isAbsolute, win32 } from 'node:path'
+import { directoryName as directChatDirectory } from '../direct-chat/workspace-path.js'
+
 const MAX_IDS = 20
 const MAX_BODY_BYTES = 4096
 const SESSION_ID = /^[A-Za-z0-9][A-Za-z0-9_-]{0,127}$/
@@ -13,6 +16,13 @@ export class InspectionUnavailable extends Error {
     this.code = code
   }
 }
+
+// A negative-only boundary: any registered/legacy Direct Chat root is excluded
+// from general Chat Control inspection. This does NOT authorize other paths.
+const absolutePath = value => typeof value === 'string' &&
+  (isAbsolute(value) || win32.isAbsolute(value))
+const directChatPath = value => absolutePath(value) &&
+  value.split(/[\\/]+/).some(part => part.toLowerCase() === directChatDirectory.toLowerCase())
 
 const textId = value => typeof value === 'string' && SESSION_ID.test(value)
 const textArray = value => Array.isArray(value) && value.every(textId)
@@ -85,6 +95,8 @@ function catalog(registry, record) {
 function reasonFor(id, state) {
   const owner = state.owners.get(id)
   if (!owner) return 'membership-unavailable'
+  if (!absolutePath(owner.path)) return 'workspace-path-unverified'
+  if (directChatPath(owner.path)) return 'direct-chat-requires-separate-verification'
   if (!state.archived.has(id)) return 'not-archived'
   if (state.protectedIds.has(id)) return 'protected-session'
   if (state.protectedWorkspaces.has(owner.id)) return 'protected-workspace'
@@ -107,6 +119,8 @@ export async function inspectArchivedCandidates({ ids, registry, persistence, re
       const stored = await persistence.stat(id, { signal })
       signal?.throwIfAborted()
       if (!stored || stored.header?.id !== id) reason = 'storage-unavailable'
+      else if (!absolutePath(stored.header.cwd)) reason = 'workspace-path-unverified'
+      else if (directChatPath(stored.header.cwd)) reason = 'direct-chat-requires-separate-verification'
       else if (stored.header.origin === 'subagent' || stored.header.parentSession || stored.header.isSeeded === true) {
         reason = 'dependent-session'
       } else if (stored.formatStatus !== 'current') {
