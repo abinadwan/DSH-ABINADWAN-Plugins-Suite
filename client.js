@@ -219,7 +219,7 @@ window.__ModuleLoader__.load({
 
     // Only stable published GitHub Releases may trigger an in-app update offer.
     // This browser-side checker never installs anything without a separate click.
-    const INSTALLED_VERSION = '1.0.2-rc.2'
+    const INSTALLED_VERSION = '1.0.2-rc.3'
     const PACKAGE_NAME = '@abinadwan/dsh-plugins-suite'
     const RELEASE_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/latest'
     const COMMIT_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/commits/'
@@ -2767,7 +2767,12 @@ window.__ModuleLoader__.load({
         if (row.id !== id || row.origin === 'subagent' || row.blank === true) continue
         const projection = sessions.projectionsBySession?.[id]?.values
         const lastPrompt = projection?.sessionListMetadata?.lastPromptAt ?? row.projectionValues?.sessionListMetadata?.lastPromptAt
-        rows.push({ id, row, owner, lastPrompt, legacyDirectChat: projection?.agentPreset === 'abinadwan-direct-chat' ||
+        // Only the already-authorized Session list's projection metadata may
+        // supplement a missing summary title. Never fetch logs to index titles.
+        const projectedTitle = projection?.title ?? row.projectionValues?.title
+        const searchTitle = typeof row.title === 'string' && row.title.trim()
+          ? row.title : typeof projectedTitle === 'string' && projectedTitle.trim() ? projectedTitle : undefined
+        rows.push({ id, row, owner, lastPrompt, searchTitle, legacyDirectChat: projection?.agentPreset === 'abinadwan-direct-chat' ||
           row.agentPreset === 'abinadwan-direct-chat' })
       }
       return { rows, unknown }
@@ -3247,6 +3252,7 @@ window.__ModuleLoader__.load({
         creationUnavailable: 'Complete creation times are unavailable. Creation order supports up to 100 registered conversations. Showing last activity order.',
         rename: 'Rename', title: 'Conversation title', save: 'Save', cancel: 'Cancel',
         renameFailed: 'The name could not be saved.', retention: 'Retention preview', useDefault: 'Use global policy',
+        incompleteTitles: 'Some conversations have no title metadata in the Host catalog. Title search may be incomplete; try a Session ID.',
         retentionUnavailable: 'Enable Chat Control to manage retention. Automatic cleanup is disabled.',
         disabled: 'Conversation deletion and automatic cleanup are unavailable.',
       },
@@ -3258,6 +3264,7 @@ window.__ModuleLoader__.load({
         creationUnavailable: 'تواريخ الإنشاء الكاملة غير متاحة. يدعم هذا الترتيب حتى ١٠٠ محادثة مسجّلة. يُعرض ترتيب آخر نشاط بدلاً منه.',
         rename: 'إعادة التسمية', title: 'عنوان المحادثة', save: 'حفظ', cancel: 'إلغاء',
         renameFailed: 'تعذّر حفظ الاسم.', retention: 'معاينة الاحتفاظ', useDefault: 'استخدام السياسة العامة',
+        incompleteTitles: 'بعض المحادثات لا تتوفر عناوينها في فهرس المضيف. قد لا يشملها البحث بالعنوان؛ جرّب معرّف الجلسة.',
         retentionUnavailable: 'فعّل إدارة المحادثات لضبط الاحتفاظ. التنظيف التلقائي معطّل.',
         disabled: 'حذف المحادثات والتنظيف التلقائي غير متاحين.',
       },
@@ -3267,7 +3274,7 @@ window.__ModuleLoader__.load({
     // creation timestamps when the bounded Host catalog cannot provide them.
     function filterAndSortDirectChat(inventory, search, order, creationReady, createdAt) {
       const query = search.trim().normalize('NFC').toLowerCase()
-      const matching = inventory.filter(({ id, row }) => !query || [id, row.title, row.displayTitle].some(value =>
+      const matching = inventory.filter(({ id, row, searchTitle }) => !query || [id, searchTitle, row.title, row.displayTitle].some(value =>
         typeof value === 'string' && value.normalize('NFC').toLowerCase().includes(query)))
       const useCreation = order === 'creation' && creationReady
       const timestamp = ({ id, row }) => useCreation ? createdAt[id]
@@ -3310,6 +3317,7 @@ window.__ModuleLoader__.load({
         [selected, workspace, sessions])
       const createdAt = current?.value?.createdAt
       const creationReady = Boolean(createdAt) && inventory.every(({ id }) => Object.hasOwn(createdAt, id))
+      const incompleteTitles = inventory.some(({ searchTitle }) => searchTitle === undefined)
       const rows = React.useMemo(() => filterAndSortDirectChat(inventory, search, order, creationReady, createdAt),
         [inventory, search, order, creationReady, createdAt])
       const limit = 25
@@ -3355,17 +3363,18 @@ window.__ModuleLoader__.load({
         : !loaded ? h('p', { role: 'status' }, copy.loading)
         : h(React.Fragment, null,
           order === 'creation' && selected && !creationReady ? h('p', { role: 'status' }, copy.creationUnavailable) : null,
-          rows.length ? h('ul', { style: { listStyle: 'none', padding: 0, margin: 0 } }, ...shown.map(({ id, row }) => {
+          search.trim() && incompleteTitles ? h('p', { role: 'status' }, copy.incompleteTitles) : null,
+          rows.length ? h('ul', { style: { listStyle: 'none', padding: 0, margin: 0 } }, ...shown.map(({ id, row, searchTitle }) => {
             const guarded = protectedWorkspace || protectedIds.has(id)
             return h('li', { key: id, style: lifecycleActions },
               h(Button, { size: 'sm', disabled: archived.has(id), onClick: () => {
                 if (services.open(selected.workspaceId, id, generation)) onClose()
-              } }, h('bdi', null, row.displayTitle || id)),
+              } }, h('bdi', null, searchTitle || row.displayTitle || id)),
               archived.has(id) ? h('small', null, copy.archived) : null,
               guarded ? h('small', null, copy.protected) : null,
               !guarded && record && services.rename ? h(Button, { size: 'sm', onClick: () => {
-                setEdit({ id, title: row.title ?? '', generation })
-              }, 'aria-label': copy.rename + ' ' + (row.displayTitle || id) }, copy.rename) : null)
+                setEdit({ id, title: row.title ?? searchTitle ?? '', generation })
+              }, 'aria-label': copy.rename + ' ' + (searchTitle || row.displayTitle || id) }, copy.rename) : null)
           })) : h('p', { role: 'status' }, inventory.length ? copy.noMatches : copy.empty),
           rows.length > limit ? h('div', { style: lifecycleActions },
             h(Button, { size: 'sm', disabled: activePage === 0, onClick: () => setPage(activePage - 1) }, copy.previous),
