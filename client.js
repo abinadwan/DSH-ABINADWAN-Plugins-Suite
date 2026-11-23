@@ -2660,6 +2660,15 @@ window.__ModuleLoader__.load({
         "Conversation is no longer available in this inventory.": "لم تعد المحادثة متاحة في القائمة.",
         "Close preview": "إغلاق المعاينة",
         "Preview cleanup": "معاينة التنظيف",
+        "Preview archived cleanup": "معاينة تنظيف الأرشيف",
+        "Close archived preview": "إغلاق معاينة الأرشيف",
+        "Not a deletion operation. Final eligibility requires a safe Host deletion contract and a new confirmation.": "هذه ليست عملية حذف. يتطلب التحقق النهائي محرك حذف آمنًا وتأكيدًا جديدًا.",
+        "Preliminary archive candidate": "محادثة محتملة للتنظيف",
+        "Direct Chat requires separate verification": "تتطلب الدردشة المباشرة تحققًا منفصلًا",
+        "Dependent or derived Session": "جلسة مرتبطة أو مشتقة",
+        "Unverified activity": "نشاط غير مؤكد",
+        "Archived inventory unavailable": "قائمة الأرشيف غير متاحة",
+        "Showing the first 50 archived conversations.": "تُعرض أول 50 محادثة مؤرشفة.",
         "Cancel preview": "إلغاء المعاينة",
         "No known conversations in this view.": "لا توجد محادثات معروفة في هذا العرض.",
         "Workspace inventory is unavailable.": "قائمة مساحات العمل غير متاحة.",
@@ -2858,6 +2867,53 @@ window.__ModuleLoader__.load({
       })
     }
 
+    // Preview only. Browser snapshots cannot authorize irreversible Session deletion.
+    function archivedCleanupRows(inventory, workspace, record) {
+      if (!Array.isArray(workspace?.archivedSessionIds) ||
+          !Array.isArray(workspace?.pinnedSessionIds) || !record ||
+          !Array.isArray(record.protectedIds) ||
+          (record.protectedWorkspaces !== undefined && !Array.isArray(record.protectedWorkspaces))) return null
+      const archive = new Set(workspace.archivedSessionIds)
+      const pinned = new Set(workspace.pinnedSessionIds)
+      const protectedIds = new Set(record.protectedIds)
+      const protectedWorkspaces = new Set(record.protectedWorkspaces ?? [])
+      return inventory.filter(item => archive.has(item.id)).map(item => {
+        const { id, row, owner } = item
+        const retained = row.retainedBy
+        const invalidRetained = retained !== undefined &&
+          (!retained || typeof retained !== 'object' || Array.isArray(retained) ||
+            Object.values(retained).some(value => !Number.isSafeInteger(value) || value < 0))
+        const reason = protectedIds.has(id) ? 'Protected conversation'
+          : protectedWorkspaces.has(owner.workspaceId) ? 'Protected Workspace'
+          : pinned.has(id) ? 'Pinned conversation'
+          : item.legacyDirectChat ? 'Direct Chat requires separate verification'
+          : row.origin === 'subagent' || row.parentSessionId ? 'Dependent or derived Session'
+          : invalidRetained ? 'Unverified activity'
+          : row.running !== false || Object.values(retained ?? {}).some(count => count > 0)
+            ? 'Active or open conversation'
+          : row.formatStatus === 'migration-required' ? 'Unverified history format'
+          : 'Preliminary archive candidate'
+        return { ...item, reason, previewCandidate: reason === 'Preliminary archive candidate' }
+      })
+    }
+
+    function ArchivedCleanupPreview({ rows, language = 'en' }) {
+      const t = value => uiCopy(value, language)
+      if (!rows) return h('p', { role: 'status', style: lifecycleMuted }, t('Archived inventory unavailable'))
+      const candidates = rows.filter(item => item.previewCandidate)
+      return h('div', { style: { display: 'grid', gap: 8 } },
+        h('div', { role: 'status', style: lifecycleMuted },
+          language === 'ar' ? `${candidates.length} محادثة محتملة من أصل ${rows.length} مؤرشفة`
+            : `${candidates.length} preliminary candidates of ${rows.length} archived conversations`),
+        h('p', { style: lifecycleMuted }, t('Not a deletion operation. Final eligibility requires a safe Host deletion contract and a new confirmation.')),
+        rows.length ? h('ul', { style: { margin: 0, paddingInlineStart: 20, fontSize: 13 } },
+          ...rows.slice(0, 50).map(({ id, row, owner, reason }) => h('li', { key: id },
+            h('bdi', null, row.displayTitle || id), ' · ', h('bdi', null, owner.title), ' · ',
+            t(reason)))) : null,
+        rows.length > 50 ? h('small', { style: lifecycleMuted },
+          t('Showing the first 50 archived conversations.')) : null)
+    }
+
     function CleanupPreview({ rows, at, language = 'en' }) {
       const candidates = rows.filter(row => row.candidate)
       return h(React.Fragment, null,
@@ -2880,6 +2936,7 @@ window.__ModuleLoader__.load({
       const [scope, setScope] = React.useState('')
       const [proposal, setChange] = React.useState(null)
       const [previewAt, setPreviewAt] = React.useState(null)
+      const [archivedPreview, setArchivedPreview] = React.useState(false)
       const record = settings.record
       const ready = catalogReady(workspace, sessions)
       const workspaces = ready ? workspace.items : []
@@ -2901,6 +2958,7 @@ window.__ModuleLoader__.load({
       const rows = retentionRows(inventory.rows.filter(row => !row.legacyDirectChat), workspace,
         change?.next ?? record, previewAt ?? Date.now())
       const selectedRow = selected && rows.find(row => row.id === selected)
+      const archivedRows = ready ? archivedCleanupRows(inventory.rows, workspace, record) : null
       const update = next => {
         setChange(null)
         setPreviewAt(null)
@@ -2931,6 +2989,7 @@ window.__ModuleLoader__.load({
               setSelected(null)
               setChange(null)
               setPreviewAt(null)
+              setArchivedPreview(false)
             } }, h('option', { value: '' }, t('All Workspaces')),
             ...workspaces.map(item => h('option', { value: item.workspaceId, key: item.workspaceId, dir: 'auto' }, item.title)))),
           h('dl', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(112px, 1fr))', gap: 8, margin: 0 } },
@@ -2972,6 +3031,11 @@ window.__ModuleLoader__.load({
           rows.length > page * 50 ? h(Button, { size: 'sm', onClick: () => setPage(page + 1) }, t('Show more')) : null),
         h(LifecycleGroup, { title: t('Cleanup Management') },
           h('strong', { style: { fontSize: 13 } }, t('Preview only')),
+          h('div', { style: lifecycleActions },
+            h(Button, { size: 'sm', variant: 'outline', disabled: !ready || !record ||
+              !Array.isArray(workspace?.archivedSessionIds), onClick: () => setArchivedPreview(value => !value) },
+              t(archivedPreview ? 'Close archived preview' : 'Preview archived cleanup'))),
+          archivedPreview ? h(ArchivedCleanupPreview, { rows: archivedRows, language }) : null,
           h('p', { style: { ...lifecycleMuted, margin: 0 } },
             t('Deletion is unavailable. Automatic cleanup is disabled.')),
           h('p', { style: { ...lifecycleMuted, margin: 0 } },

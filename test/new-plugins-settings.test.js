@@ -151,6 +151,29 @@ test('retention previews archived Workspace chats, excludes active and Direct ch
   assert.equal(settings.writes[1].revision, 2)
 })
 
+test('v1.1.0 phase 01: archived cleanup preview does not execute deletes or write settings', async t => {
+  const settings = settingsFixture('conversation-lifecycle', {
+    retention: 'forever', overrides: [], protectedIds: ['protected'], protectedWorkspaces: [],
+  })
+  const { div } = await mount(t, {
+    settings: settings.service, archivedSessionIds: ['archived', 'protected'],
+    workspaceItems: [{ workspaceId: 'workspace-a', title: 'A workspace', sessionIds: ['archived', 'protected', 'live'] }],
+    sessions: { phase: 'ready', ids: ['archived', 'protected', 'live'], byId: {
+      archived: { id: 'archived', displayTitle: 'Archived chat', running: false },
+      protected: { id: 'protected', displayTitle: 'Protected chat', running: false },
+      live: { id: 'live', displayTitle: 'Live chat', running: true },
+    } },
+  }, 'conversation-lifecycle', 'settings.section')
+  const button = [...div.querySelectorAll('button')].find(row => row.textContent === 'Preview archived cleanup')
+  assert.ok(button, 'must expose an archive-only preview')
+  await act(async () => button.click())
+  assert.match(div.textContent, /1 preliminary candidates of 2 archived conversations/)
+  assert.match(div.textContent, /Archived chat.*Preliminary archive candidate/s)
+  assert.match(div.textContent, /Protected chat.*Protected conversation/s)
+  assert.match(div.textContent, /Not a deletion operation/)
+  assert.equal(settings.writes.length, 0)
+})
+
 test('retention confirmation expires when the underlying settings revision is reloaded', async t => {
   const settings = settingsFixture('conversation-lifecycle', { retention: 'forever', overrides: [], protectedIds: [] })
   const { div, window, fixture } = await mount(t, { settings: settings.service }, 'conversation-lifecycle', 'settings.section')

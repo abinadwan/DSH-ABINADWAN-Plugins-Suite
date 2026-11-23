@@ -8,9 +8,9 @@ const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
 const start = client.indexOf('    const catalogReady =')
 const end = client.indexOf('    function CleanupPreview', start)
 assert.ok(start > 0 && end > start, 'the Chat Control source contract must stay identifiable')
-const { catalogReady, conversationInventory, retentionRows } = runInNewContext(
+const { catalogReady, conversationInventory, retentionRows, archivedCleanupRows } = runInNewContext(
   "const lifecycleDurations = ['365', '180', '90', '30', '7'];\n" +
-    client.slice(start, end) + '\n({ catalogReady, conversationInventory, retentionRows })',
+    client.slice(start, end) + '\n({ catalogReady, conversationInventory, retentionRows, archivedCleanupRows })',
 )
 const normalized = value => JSON.parse(JSON.stringify(value))
 const DAY = 86400000
@@ -111,4 +111,60 @@ test('phase 02: per-Workspace policy overrides and duplicate conflicts never sil
     { workspace: 'w', retention: '7' }, { workspace: 'w', retention: '365' },
   ] }
   assert.equal(retentionRows(rows, workspaces, duplicate, AT)[0].candidate, false)
+})
+
+test('v1.1.0 phase 01: archived cleanup preview is independent of age and retention duration', () => {
+  const { workspaces, sessions } = fixture()
+  workspaces.archivedSessionIds = ['eligible']
+  const inventory = conversationInventory(workspaces, sessions, null)
+  const result = archivedCleanupRows(inventory.rows, workspaces, {
+    retention: 'forever', protectedIds: [], protectedWorkspaces: [],
+  })
+  assert.deepEqual(normalized(result.map(({ id, previewCandidate }) => ({ id, previewCandidate }))),
+    [{ id: 'eligible', previewCandidate: true }])
+  assert.equal(result[0].reason, 'Preliminary archive candidate')
+  workspaces.archivedSessionIds = []
+  assert.deepEqual(archivedCleanupRows(inventory.rows, workspaces, { protectedIds: [] }), [])
+})
+
+test('v1.1.0 phase 01: archived preview excludes protected, pinned, active, retained, Direct and dependent Sessions', () => {
+  const { workspaces, sessions } = fixture()
+  const ids = ['eligible', 'protected', 'pinned', 'running', 'retained', 'direct', 'dependent', 'migration', 'unknownActivity', 'wrongOwner']
+  workspaces.items[0].sessionIds = ids
+  workspaces.archivedSessionIds = ids
+  workspaces.pinnedSessionIds = ['pinned']
+  sessions.ids = ids
+  for (const id of ids) {
+    sessions.byId[id] = { id, running: false }
+    sessions.projectionsBySession[id] = { values: { sessionListMetadata: { lastPromptAt: AT - 90 * DAY } } }
+  }
+  sessions.byId.running.running = true
+  sessions.byId.retained.retainedBy = { window: 1 }
+  sessions.byId.direct.agentPreset = 'abinadwan-direct-chat'
+  sessions.byId.dependent.parentSessionId = 'some-parent'
+  sessions.byId.migration.formatStatus = 'migration-required'
+  sessions.byId.unknownActivity.retainedBy = { window: -1 }
+  workspaces.items.push({ workspaceId: 'second', title: 'Other', sessionIds: ['wrongOwner'] })
+  const inventory = conversationInventory(workspaces, sessions, null)
+  const rows = archivedCleanupRows(inventory.rows, workspaces, {
+    protectedIds: ['protected'], protectedWorkspaces: [],
+  })
+  assert.deepEqual(normalized(rows.filter(row => row.previewCandidate).map(row => row.id)), ['eligible'])
+  assert.equal(inventory.unknown, 1)
+  for (const row of rows.filter(row => row.id !== 'eligible')) {
+    assert.equal(row.previewCandidate, false, `excluded ${row.id}`)
+  }
+})
+
+test('v1.1.0 phase 01: unavailable and invalid archive/protection catalogs fail closed', () => {
+  const { workspaces, sessions } = fixture()
+  workspaces.archivedSessionIds = ['eligible']
+  const inventory = conversationInventory(workspaces, sessions, null)
+  for (const invalid of [
+    { ...workspaces, archivedSessionIds: undefined },
+    { ...workspaces, pinnedSessionIds: null },
+  ]) assert.equal(archivedCleanupRows(inventory.rows, invalid, { protectedIds: [] }), null)
+  for (const invalid of [undefined, { protectedIds: null }, { protectedIds: [], protectedWorkspaces: false }]) {
+    assert.equal(archivedCleanupRows(inventory.rows, workspaces, invalid), null)
+  }
 })
