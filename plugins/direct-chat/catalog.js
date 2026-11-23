@@ -54,7 +54,8 @@ export function registerCatalog(ctx, profileDir) {
     child.effect(() => () => lifetime.abort())
     let sorting = false
     child.effect(() => child.connection.fetch.register({
-      path: '/api/abinadwan-direct-chat/catalog', methods: ['GET'],
+      // The DSH HTTP bridge uses the buffered branch to construct a bodyless GET.
+      path: '/api/abinadwan-direct-chat/catalog', methods: ['GET'], requestBody: 'buffered',
       async fetch(request) {
         const headers = { 'cache-control': 'no-store' }
         try {

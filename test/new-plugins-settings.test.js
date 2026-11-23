@@ -330,6 +330,43 @@ test('statistics open in a native dialog with honest reasoning-token labels and 
   assert.match(view.div.querySelector('[role=dialog]').textContent, /No requests yet/)
 })
 
+test('Arabic statistics localizes the dialog, makes all columns keyboard-scrollable, and wraps long route names', async t => {
+  const provider = 'fictional-provider-'.repeat(18)
+  const model = 'fictional-model-'.repeat(18)
+  const fixture = reasoningFixture({ handlers: {
+    stats: () => Response.json({ since: '2026-11-20T08:00:00.000Z', persistent: true, messages: 2,
+      requests: { subagent: { default: { requests: 2, inputTokens: 1200, outputTokens: 30,
+        reasoningTokens: 100, reasoningReported: 1, durationMs: 3000, timed: 2 } } },
+      routes: [{ scope: 'subagent', provider, model, effort: 'default', requests: 2 }] }),
+    'stats/reset': () => Response.json({}, { status: 503 }),
+  } })
+  fixture.options.hostLocale = 'ar'
+  const view = await openReasoning(t, fixture)
+  await view.open()
+  await act(async () => view.item('إحصائيات الاستدلال…').click())
+  const dialog = view.div.querySelector('[role=dialog]')
+  assert.equal(dialog.getAttribute('aria-label'), 'إحصائيات الاستدلال')
+  assert.equal(document.defaultView.getComputedStyle(dialog).direction, 'rtl')
+  assert.equal(dialog.querySelector('[lang=ar]').dir, 'rtl')
+  const table = dialog.querySelector('table')
+  assert.equal(table.parentElement.getAttribute('role'), 'region')
+  assert.equal(table.parentElement.getAttribute('aria-label'), 'الطلبات حسب مستوى الاستدلال')
+  assert.equal(table.parentElement.tabIndex, 0)
+  assert.equal(table.parentElement.style.overflowX, 'auto')
+  assert.deepEqual([...table.querySelectorAll('th[scope=col]')].map(cell => cell.textContent),
+    ['المستوى', 'الطلبات', 'رموز الإدخال', 'رموز الإخراج', 'رموز الاستدلال', 'متوسط الوقت'])
+  assert.match(table.textContent, /المستوى الافتراضي للمزوّد/)
+  assert.match(table.textContent, /من/)
+  const route = dialog.querySelector('li')
+  assert.match(route.textContent, /المستوى الافتراضي للمزوّد/)
+  assert.equal(route.querySelector('bdi').textContent, provider + ' / ' + model)
+  assert.equal(route.querySelector('bdi').style.overflowWrap, 'anywhere')
+  assert.doesNotMatch(dialog.textContent, /Aggregate counts|Nothing is sent|subagents|Provider default/)
+  const reset = [...dialog.querySelectorAll('button')].find(button => button.textContent === 'إعادة ضبط الإحصائيات')
+  await act(async () => reset.click())
+  assert.match(dialog.querySelector('[role=status]').textContent, /الإحصائيات غير متاحة/)
+})
+
 test('retention previews enforce all UTC cutoffs and exclude unknown or protected records', async t => {
   const now = Date.now()
   const day = 86400000

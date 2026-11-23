@@ -40,8 +40,8 @@ class Slots extends Service {
   register(options, component) {
     // Real Slots partition cells by slot name. Keep the historic lookup keys,
     // but refuse a duplicate cell exactly as SlotCore.register does.
-    const key = ['sidebar.panellist', 'settings.section.icon'].includes(options.name)
-      ? options.name + ':' + options.id : options.id || options.key || options.name
+    const key = ['sidebar.panellist', 'settings.section.icon', 'sidebar.right.pane.tab.title'].includes(options.name)
+      ? options.name + ':' + (options.id || options.key) : options.id || options.key || options.name
     if (options.name === 'sidebar.panellist' || options.name === 'plugins.detail.section') {
       if (options.id === undefined) throw new Error(`list slot "${options.name}" requires options.id`)
     }
@@ -295,7 +295,7 @@ export async function clientHarness(options = {}) {
               onClick: () => { if (!item.submenu) onSelect(item.id) } }, item.label), ...item.submenu ? rows(item.submenu) : []])
           return h('span', null, anchor, open && h('div', { role: 'menu' }, ...rows(items)))
         },
-        Modal: ({ open, title, description, children, footer }) => open ? h('div', { role: 'dialog', 'aria-label': title },
+        Modal: ({ open, title, description, children, footer, className }) => open ? h('div', { role: 'dialog', 'aria-label': title, className },
           h('h2', null, title), description ? h('p', null, description) : null, children, footer) : null,
       }
     }

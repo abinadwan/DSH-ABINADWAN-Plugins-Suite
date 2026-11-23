@@ -196,9 +196,10 @@ window.__ModuleLoader__.load({
     const muted = { fontSize: 11, opacity: 0.7, lineHeight: 1.6 }
     function line(label, value) {
       return h('div', { style: { display: 'flex', justifyContent: 'space-between',
-        gap: 10, padding: '4px 0', fontSize: 12 } },
+        gap: 10, padding: '4px 0', fontSize: 12, overflowWrap: 'anywhere' } },
         h('span', null, label),
-        h('span', { style: { opacity: .75, textAlign: 'right' } }, value == null ? '—' : String(value)))
+        h('span', { style: { opacity: .75, textAlign: 'end' } },
+          h('bdi', null, value == null ? '—' : String(value))))
     }
     function section(name, rows) {
       return h('details', { open: true, key: name, style: {
@@ -218,7 +219,7 @@ window.__ModuleLoader__.load({
 
     // Only stable published GitHub Releases may trigger an in-app update offer.
     // This browser-side checker never installs anything without a separate click.
-    const INSTALLED_VERSION = '1.0.1-rc.8'
+    const INSTALLED_VERSION = '1.0.2-rc.1'
     const PACKAGE_NAME = '@abinadwan/dsh-plugins-suite'
     const RELEASE_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/latest'
     const COMMIT_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/commits/'
@@ -554,7 +555,8 @@ window.__ModuleLoader__.load({
             textDecoration:'underline'}},'View published releases'))
     }
 
-    function Details({ sessionId, projections, projectionState, sessions, workspaces }) {
+    function Details({ sessionId, projections, projectionState, sessions, workspaces, language }) {
+      const t = value => uiCopy(value, language)
       // Values come from the tab seat's Session-scoped `useProjection` hook when
       // the Host supplies it, else from this Session's list projection snapshot.
       const pressure = projections?.contextPressure
@@ -569,56 +571,57 @@ window.__ModuleLoader__.load({
       const platform = typeof navigator === 'object' ?
         (navigator.userAgentData?.platform || navigator.platform) : undefined
       const environment = [
-        line('Browser', platform || 'Unavailable'),
-        line('Workspaces', linked.length),
-        ...linked.map(w => line('▣ ' + (w.title || 'Workspace'), w.path || '')),
+        line(t('Browser'), platform || t('Unavailable')),
+        line(t('Workspaces'), linked.length),
+        ...linked.map(w => line(h('bdi', null, '▣ ' + (w.title || t('Workspace'))), w.path || '')),
       ]
       const context = []
       if (pct === undefined) {
         context.push(h('p', { key: 'no-pressure', style: muted, 'data-context-fallback': projectionState || 'empty' },
-          projectionState === 'loading' ? 'Loading context usage for this Session…'
+          projectionState === 'loading' ? t('Loading context usage for this Session…')
             : projectionState === 'error' || projectionState === 'migration-required'
-              ? 'Context usage is unavailable for this Session.'
-              : 'Context use is available after the model reports usage.'))
+              ? t('Context usage is unavailable for this Session.')
+              : t('Context use is available after the model reports usage.')))
       } else {
-        context.push(line(pct + '% used', '~' + compact(used) + ' / ' + compact(max)))
-        context.push(h('div', { role: 'progressbar', 'aria-label': 'Context occupancy',
+        context.push(line(t('{percent}% used').replace('{percent}', pct), '~' + compact(used) + ' / ' + compact(max)))
+        context.push(h('div', { role: 'progressbar', 'aria-label': t('Context occupancy'),
           'aria-valuenow': pct, 'aria-valuemin': 0, 'aria-valuemax': 100,
           style: { background: 'rgba(127,127,127,.25)', borderRadius: 8,
             height: 6, overflow: 'hidden', margin: '7px 0' } },
           h('div', { style: { width: pct + '%', height: '100%', background: '#378fdb' } })))
-        context.push(line('Messages (estimated)', compact(breakdown?.messageTokens)))
-        context.push(line('Tool schemas (estimated)', compact(breakdown?.toolsTokens)))
-        context.push(line('System prompt (estimated)', compact(breakdown?.systemTokens)))
-        context.push(line('Free space', compact(Math.max(0, max - used))))
+        context.push(line(t('Messages (estimated)'), compact(breakdown?.messageTokens)))
+        context.push(line(t('Tool schemas (estimated)'), compact(breakdown?.toolsTokens)))
+        context.push(line(t('System prompt (estimated)'), compact(breakdown?.systemTokens)))
+        context.push(line(t('Free space'), compact(Math.max(0, max - used))))
       }
-      context.push(line('Session', session?.displayTitle || 'Unavailable'))
-      context.push(line('Status', session ? (session.running ? 'Running' : 'Idle') : 'Unavailable'))
+      context.push(line(t('Session'), session?.displayTitle || t('Unavailable')))
+      context.push(line(t('Status'), t(session ? (session.running ? 'Running' : 'Idle') : 'Unavailable')))
       const outputs = [
-        line('Output tokens', compact(tokenUsage?.outputTokens)),
-        line('Last activity', good(session?.updatedAt) === undefined ?
-          'Unavailable' : new Date(session.updatedAt).toLocaleString()),
+        line(t('Output tokens'), compact(tokenUsage?.outputTokens)),
+        line(t('Last activity'), good(session?.updatedAt) === undefined ?
+          t('Unavailable') : new Date(session.updatedAt).toLocaleString(language)),
         h('p', { key: 'output-note', style: muted },
-          'Output file lists require a separate, permission-checked files service.'),
+          t('Output file lists require a separate, permission-checked files service.')),
       ]
       const cards = [
-        section('Environment', environment),
-        section('Context', context),
-        section('Connectors', [h('p', { key: 'conn', style: muted },
-          'Connector inventory is not available via the documented Client APIs used here.')]),
-        section('Outputs', outputs),
-        section('Changes', [h('p', { key: 'diff', style: muted },
-          'Git changes need the workspace-changes/Forge integration; no changes are invented.')]),
+        section(t('Environment'), environment),
+        section(t('Context'), context),
+        section(t('Connectors'), [h('p', { key: 'conn', style: muted },
+          t('Connector inventory is not available via the documented Client APIs used here.'))]),
+        section(t('Outputs'), outputs),
+        section(t('Changes'), [h('p', { key: 'diff', style: muted },
+          t('Git changes require the Workspace changes integration.'))]),
       ]
-      return h('aside', { 'data-environment-right-sidebar': '',
+      return h('aside', { 'data-environment-right-sidebar': '', lang: language, dir: language === 'ar' ? 'rtl' : 'ltr',
         style: { height: '100%', overflowY: 'auto', boxSizing: 'border-box',
           padding: '6px 16px 22px', color: 'inherit', fontSize: 12, lineHeight: 1.6 } },
         ...cards,
-        h('p', { style: muted }, 'Read-only · No external requests from this Session panel.'))
+        h('p', { style: muted }, t('Read-only · No external requests from this Session panel.')))
     }
-    function HeaderButton({ openInspector }) {
+    function HeaderButton({ openInspector, localeSource }) {
+      const language = useUiLanguage(localeSource)
       return h('button', { type: 'button', onClick: openInspector,
-        'aria-label': 'Open Environment sidebar', title: 'Environment',
+        'aria-label': uiCopy('Open Environment sidebar', language), title: uiCopy('Environment', language),
         'data-environment-header-action': '',
         style: { background: 'transparent', border: 0, color: 'inherit',
           display: 'inline-flex', justifyContent: 'center', alignItems: 'center',
@@ -630,6 +633,8 @@ window.__ModuleLoader__.load({
       apply(ctx) {
         const s = ctx.sessions.list
         const w = ctx.workspaces.list
+        const localeSource = ctx.get?.('locale')
+        const translate = value => () => uiCopy(value, uiLanguage(localeSource?.getSnapshot?.()))
         const subS = l => s.subscribe(l)
         const subW = l => w.subscribe(l)
         const getS = () => s.getSnapshot()
@@ -649,6 +654,7 @@ window.__ModuleLoader__.load({
           }
         }
         function Body(props) {
+          const language = useUiLanguage(localeSource)
           const sessions = React.useSyncExternalStore(subS, getS, getS)
           const workspaces = React.useSyncExternalStore(subW, getW, getW)
           const live = useLiveProjections(props.useProjection)
@@ -657,22 +663,29 @@ window.__ModuleLoader__.load({
           const fallback = listed?.values ?? sessions?.byId?.[sessionId]?.projectionValues
           const projections = live && (live.contextPressure || live.contextBreakdown || live.tokenUsage)
             ? live : fallback
-          return h(Details, { sessionId, projections, projectionState: listed?.state, sessions, workspaces })
+          return h(Details, { sessionId, projections, projectionState: listed?.state, sessions, workspaces, language })
         }
         ctx.effect(() => ctx.sidebarRightTabs.register({
-          id: TYPE + '/environment-context', kind: KIND, title: () => 'Environment & Context',
-          guide: [{ id: 'open', order: 12, title: () => 'Environment & Context',
-            description: () => 'Current context and workspace details' }],
+          id: TYPE + '/environment-context', kind: KIND, title: translate('Environment & Context'),
+          guide: [{ id: 'open', order: 12, title: translate('Environment & Context'),
+            description: translate('Current context and workspace details') }],
         }), 'environment-sidebar: type')
         ctx.slots.inject('sidebar.right.pane.tab', () => ctx.slots.register({
           // The keyed seat dispatches by the tab TYPE id, not its package root.
           name: 'sidebar.right.pane.tab', key: TYPE + '/environment-context',
           inject: sessionId => ({ sessionId }),
         }, Body))
+        // Already-open tabs keep their saved title unless the native title seat renders it.
+        ctx.slots.inject('sidebar.right.pane.tab.title', () => ctx.slots.register({
+          name: 'sidebar.right.pane.tab.title', key: TYPE + '/environment-context',
+        }, function EnvironmentTitle() {
+          const language = useUiLanguage(localeSource)
+          return h('span', { lang: language }, uiCopy('Environment & Context', language))
+        }))
         ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({
           name: 'conversation.session.header.utilities',
           id: 'environment-sidebar-toggle', order: 35,
-          inject: () => ({ openInspector: open }),
+          inject: () => ({ openInspector: open, localeSource }),
         }, HeaderButton))
         ctx.effect(() => {
           const visited = new Set()
@@ -2431,7 +2444,8 @@ window.__ModuleLoader__.load({
       return h('section',{'data-personal-profile-draft':'',style:{borderTop:border,padding:'20px 0'}},
         h('h3',null,'My Profile — local settings'),
         h('p',null,'One unified profile: Preferred name, Nationality, Gender, response preferences and optional Custom Instructions. All access is Private by default.'),
-        h('p',null,'Saved in the active Harness Profile without plugin-level encryption. Open My Profile to edit. Saved response preferences apply to supported native agent steps. Personal information sharing is disabled in this build.'))
+        h('p',null,'Saved in the active Harness Profile without plugin-level encryption. Open My Profile to edit. Saved response preferences apply to supported native agent steps.'),
+        h('p',null,'Only saved personal details you explicitly allow can be included in supported native agent requests, including requests to cloud providers. Revoking access does not erase information already sent.'))
     }
     const PROFILE_MODULE = TYPE + '/personal-profile'
     /** The Host's own enablement of the Profile row on the subject page; false when it says Off. */
@@ -2568,6 +2582,35 @@ window.__ModuleLoader__.load({
     }
 
     const uiArabicLabels = {
+        "Environment & Context": "البيئة والسياق",
+        "Current context and workspace details": "السياق الحالي وتفاصيل مساحة العمل",
+        "Open Environment sidebar": "فتح لوحة البيئة",
+        "Environment": "البيئة",
+        "Browser": "المتصفح",
+        "Workspaces": "مساحات العمل",
+        "Context": "السياق",
+        "Loading context usage for this Session…": "جارٍ تحميل استخدام السياق لهذه الجلسة…",
+        "Context usage is unavailable for this Session.": "استخدام السياق غير متاح لهذه الجلسة.",
+        "Context use is available after the model reports usage.": "يظهر استخدام السياق بعد أن يبلّغ الموديل عن الاستخدام.",
+        "{percent}% used": "المستخدَم {percent}٪",
+        "Context occupancy": "نسبة استخدام السياق",
+        "Messages (estimated)": "الرسائل (تقديري)",
+        "Tool schemas (estimated)": "تعريفات الأدوات (تقديري)",
+        "System prompt (estimated)": "موجّه النظام (تقديري)",
+        "Free space": "المساحة المتبقية",
+        "Session": "الجلسة",
+        "Status": "الحالة",
+        "Running": "قيد التشغيل",
+        "Idle": "خاملة",
+        "Outputs": "المخرجات",
+        "Output tokens": "رموز الإخراج",
+        "Last activity": "آخر نشاط",
+        "Output file lists require a separate, permission-checked files service.": "يتطلّب عرض ملفات الإخراج خدمة ملفات منفصلة تتحقق من الصلاحيات.",
+        "Connectors": "الموصلات",
+        "Connector inventory is not available via the documented Client APIs used here.": "قائمة الموصلات غير متاحة عبر واجهات العميل الموثّقة المستخدمة هنا.",
+        "Changes": "التغييرات",
+        "Git changes require the Workspace changes integration.": "يتطلّب عرض تغييرات Git تكامل تغييرات مساحة العمل.",
+        "Read-only · No external requests from this Session panel.": "للقراءة فقط · لا ترسل لوحة الجلسة طلبات خارجية.",
         "Chat Control": "إدارة المحادثات",
         "Overview": "نظرة عامة",
         "Retention Policy": "سياسة الاحتفاظ",
@@ -2622,6 +2665,30 @@ window.__ModuleLoader__.load({
         "Apply saved effort": "تطبيق مستوى الاستدلال المحفوظ",
         "Remove saved preference": "حذف التفضيل المحفوظ",
         "Reasoning statistics…": "إحصائيات الاستدلال…",
+        "Reasoning statistics": "إحصائيات الاستدلال",
+        "Close": "إغلاق",
+        "Done": "تم",
+        "Loading statistics…": "جارٍ تحميل الإحصائيات…",
+        "Statistics are unavailable.": "الإحصائيات غير متاحة.",
+        "Messages": "الرسائل",
+        "Total": "الإجمالي",
+        "Session effort": "مستوى استدلال الجلسة",
+        "Requests by effort": "الطلبات حسب مستوى الاستدلال",
+        "Effort": "المستوى",
+        "Requests": "الطلبات",
+        "Input tokens": "رموز الإدخال",
+        "Reasoning tokens": "رموز الاستدلال",
+        "Average time": "متوسط الوقت",
+        " (subagents)": " (الوكلاء الفرعيون)",
+        " ({reported} of {total})": " ({reported} من {total})",
+        "Not reported": "لم يبلّغ المزوّد",
+        "{time} s": "{time} ث",
+        "No requests yet.": "لا توجد طلبات بعد.",
+        "Requests by provider and model": "الطلبات حسب المزوّد والموديل",
+        "Times run on this computer from stream start to the saved reply. Reasoning tokens appear only when the provider reports them. No savings are estimated.": "يُقاس الوقت على هذا الجهاز من بدء البث حتى حفظ الرد. تظهر رموز الاستدلال فقط عندما يبلّغ عنها المزوّد. لا تُقدَّر أي وفورات.",
+        "Aggregate counts saved in this Profile since {date}. Nothing is sent anywhere.": "تُحفظ الأعداد الإجمالية في هذا الملف الشخصي منذ {date}. لا تُرسل الإحصائيات إلى أي جهة.",
+        "Aggregate counts kept in memory until Harness restarts since {date}. Nothing is sent anywhere.": "تبقى الأعداد الإجمالية المسجّلة منذ {date} في الذاكرة حتى إعادة تشغيل Harness. لا تُرسل الإحصائيات إلى أي جهة.",
+        "Reset statistics": "إعادة ضبط الإحصائيات",
         "Effort recommendation…": "توصية مستوى الاستدلال…",
         "Reload preferences": "إعادة تحميل التفضيلات",
         "Provider default": "المستوى الافتراضي للمزوّد",
@@ -2637,11 +2704,13 @@ window.__ModuleLoader__.load({
         "Start or resume this chat before applying the saved effort.": "ابدأ المحادثة أو استأنفها قبل تطبيق المستوى المحفوظ."
     }
     const uiCopy = (value, language) => language === 'ar' ? uiArabicLabels[value] ?? value : value
-    const activeUiLanguage = source => {
-      const snapshot = source && typeof source.getSnapshot === 'function' ? suiteWatch(source) : null
-      const current = snapshot?.active ?? document.documentElement.lang
+    const uiLanguage = snapshot => {
+      const current = snapshot?.active ?? globalThis.document?.documentElement.lang
       return typeof current === 'string' && current.toLowerCase().startsWith('ar') ? 'ar' : 'en'
     }
+    const useUiLanguage = source => uiLanguage(React.useSyncExternalStore(
+      notify => source?.subscribe?.(notify) ?? (() => {}),
+      () => source?.getSnapshot?.(), () => source?.getSnapshot?.()))
 
     const lifecycleDurations = ['365', '180', '90', '30', '7']
     const lifecycleMuted = { color: 'var(--dsw-alias-label-secondary, inherit)', fontSize: 12, lineHeight: 1.45 }
@@ -2744,7 +2813,7 @@ window.__ModuleLoader__.load({
     }
 
     function WorkspaceLifecycle({ services, useRemoteAccess }) {
-      const language = activeUiLanguage(services.locale)
+      const language = useUiLanguage(services.locale)
       const t = value => uiCopy(value, language)
       const settings = useSuiteRecord(services.settings, 'conversation-lifecycle', useRemoteAccess, services.connection)
       const workspace = suiteWatch(services.workspaces)
@@ -2861,6 +2930,10 @@ window.__ModuleLoader__.load({
     }
 
     const reasoningCell = { padding: '4px 8px', textAlign: 'end', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
+    const reasoningStatisticsStyle = `
+      .abinadwan-reasoning-statistics[role="dialog"] { width: min(560px, 100%); }
+      .abinadwan-reasoning-statistics-rtl[role="dialog"] { direction: rtl; text-align: start; }
+    `
 
     /** Same-origin POST to an owner-only Adaptive Reasoning route. */
     async function reasoningPost(path, body, signal) {
@@ -2871,7 +2944,8 @@ window.__ModuleLoader__.load({
       return { ok: result.ok, status: result.status, body: await result.json().catch(() => null) }
     }
 
-    function ReasoningStatistics({ open, onClose, nameOf }) {
+    function ReasoningStatistics({ open, onClose, nameOf, language }) {
+      const t = value => uiCopy(value, language)
       const [state, setState] = React.useState({ status: 'loading' })
       const request = React.useRef(0)
       function load(path) {
@@ -2883,7 +2957,11 @@ window.__ModuleLoader__.load({
       }
       React.useEffect(() => { if (open) load('stats'); return () => { request.current++ } }, [open])
       const stats = state.stats
-      const count = value => Number(value || 0).toLocaleString('en-US')
+      const formatLocale = language === 'ar' ? 'ar' : 'en-US'
+      const count = value => Number(value || 0).toLocaleString(formatLocale)
+      const effortLabel = (effort, scope) => (effort === 'default' ? t('Provider default') : nameOf(effort)) +
+        (scope === 'subagent' ? t(' (subagents)') : '')
+      const requestGroup = t('Requests by effort')
       const line = (label, value) => h('div', { key: label, style: { display: 'flex', justifyContent: 'space-between', gap: 16 } },
         h('span', null, label), h('span', { style: { fontVariantNumeric: 'tabular-nums' } }, value))
       const group = (title, children) => h('section', { key: title, style: { marginBottom: 14 } },
@@ -2891,38 +2969,52 @@ window.__ModuleLoader__.load({
       const routeRows = stats?.routes ?? []
       const rows = stats ? ['session', 'subagent'].flatMap(scope => Object.entries(stats.requests?.[scope] || {})
         .map(([effort, row]) => ({ scope, effort, row }))) : []
-      const body = state.status === 'loading' ? h('div', { role: 'status' }, 'Loading statistics…')
-        : state.status === 'failed' ? h('div', { role: 'status' }, 'Statistics are unavailable.')
+      const body = state.status === 'loading' ? h('div', { role: 'status' }, t('Loading statistics…'))
+        : state.status === 'failed' ? h('div', { role: 'status' }, t('Statistics are unavailable.'))
         : h('div', { style: { fontSize: 13, lineHeight: 1.6 } },
-          group('Messages', [line('Total', count(stats.messages)),
-            line('Session effort', count(stats.sources?.manual)),
-            line('Provider default', count(stats.sources?.default))]),
-          group('Requests by effort', rows.length ? h('table', { style: { borderCollapse: 'collapse', width: '100%' } },
-            h('thead', null, h('tr', null, ...['Effort', 'Requests', 'Input tokens', 'Output tokens', 'Reasoning tokens', 'Average time']
-              .map((label, index) => h('th', { key: label, scope: 'col', style: { ...reasoningCell, textAlign: index ? 'end' : 'start', fontWeight: 600 } }, label)))),
-            h('tbody', null, ...rows.map(({ scope, effort, row }) => h('tr', { key: `${scope}:${effort}` },
-              h('th', { scope: 'row', style: { ...reasoningCell, textAlign: 'start', fontWeight: 400 } },
-                `${effort === 'default' ? 'Provider default' : nameOf(effort)}${scope === 'subagent' ? ' (subagents)' : ''}`),
-              h('td', { style: reasoningCell }, count(row.requests)),
-              h('td', { style: reasoningCell }, count(row.inputTokens)),
-              h('td', { style: reasoningCell }, count(row.outputTokens)),
-              h('td', { style: reasoningCell }, row.reasoningReported
-                ? `${count(row.reasoningTokens)}${row.reasoningReported < row.requests ? ` (${row.reasoningReported} of ${row.requests})` : ''}`
-                : 'Not reported'),
-              h('td', { style: reasoningCell }, row.timed ? `${(row.durationMs / row.timed / 1000).toFixed(1)} s` : '—'))))
-          ) : h('div', { style: lifecycleMuted }, 'No requests yet.')),
-          routeRows.length ? group('Requests by provider and model', h('ul', { style: { paddingInlineStart: 20 } },
+          group(t('Messages'), [line(t('Total'), count(stats.messages)),
+            line(t('Session effort'), count(stats.sources?.manual)),
+            line(t('Provider default'), count(stats.sources?.default))]),
+          group(requestGroup, rows.length ? h('div', { role: 'region', 'aria-label': requestGroup, tabIndex: 0,
+            style: { maxWidth: '100%', overflowX: 'auto' } },
+            h('table', { style: { borderCollapse: 'collapse', width: '100%' } },
+              h('thead', null, h('tr', null, ...['Effort', 'Requests', 'Input tokens', 'Output tokens', 'Reasoning tokens', 'Average time']
+                .map((label, index) => h('th', { key: label, scope: 'col', style: { ...reasoningCell,
+                  whiteSpace: 'normal', textAlign: index ? 'end' : 'start', fontWeight: 600 } }, t(label))))),
+              h('tbody', null, ...rows.map(({ scope, effort, row }) => h('tr', { key: `${scope}:${effort}` },
+                h('th', { scope: 'row', style: { ...reasoningCell, textAlign: 'start', fontWeight: 400,
+                  whiteSpace: 'normal', overflowWrap: 'anywhere' } }, h('bdi', null, effortLabel(effort, scope))),
+                h('td', { style: reasoningCell }, count(row.requests)),
+                h('td', { style: reasoningCell }, count(row.inputTokens)),
+                h('td', { style: reasoningCell }, count(row.outputTokens)),
+                h('td', { style: reasoningCell }, row.reasoningReported
+                  ? count(row.reasoningTokens) + (row.reasoningReported < row.requests
+                    ? t(' ({reported} of {total})').replace('{reported}', count(row.reasoningReported)).replace('{total}', count(row.requests))
+                    : '')
+                  : t('Not reported')),
+                h('td', { style: reasoningCell }, row.timed ? t('{time} s').replace('{time}',
+                  (row.durationMs / row.timed / 1000).toLocaleString(formatLocale,
+                    { minimumFractionDigits: 1, maximumFractionDigits: 1 })) : '—')))))
+          ) : h('div', { style: lifecycleMuted }, t('No requests yet.'))),
+          routeRows.length ? group(t('Requests by provider and model'), h('ul', { style: { paddingInlineStart: 20 } },
             ...routeRows.map(({ scope, provider, model, effort, requests }) => h('li',
-              { key: JSON.stringify([scope, provider, model, effort]) }, h('bdi', null, `${provider} / ${model} · ${effort}`),
-              `${scope === 'subagent' ? ' (subagents)' : ''} · ${count(requests)}`)))) : null,
+              { key: JSON.stringify([scope, provider, model, effort]) },
+              h('bdi', { style: { overflowWrap: 'anywhere' } }, `${provider} / ${model}`),
+              ' · ', h('bdi', { style: { overflowWrap: 'anywhere' } }, effortLabel(effort, scope)), ' · ', count(requests))))) : null,
           h('p', { style: { ...lifecycleMuted, margin: 0 } },
-            'Times run on this computer from stream start to the saved reply. Reasoning tokens appear only when the provider reports them. No savings are estimated.'))
-      return h(Modal, { open, onClose, title: 'Reasoning statistics', closeLabel: 'Close',
-        description: stats ? `Aggregate counts ${stats.persistent ? 'saved in this Profile' : 'kept in memory until Harness restarts'} since ${new Date(stats.since).toLocaleString('en-US')}. Nothing is sent anywhere.` : undefined,
+            t('Times run on this computer from stream start to the saved reply. Reasoning tokens appear only when the provider reports them. No savings are estimated.')))
+      const description = stats ? t(stats.persistent
+        ? 'Aggregate counts saved in this Profile since {date}. Nothing is sent anywhere.'
+        : 'Aggregate counts kept in memory until Harness restarts since {date}. Nothing is sent anywhere.')
+        .replace('{date}', new Date(stats.since).toLocaleString(formatLocale)) : undefined
+      const dir = language === 'ar' ? 'rtl' : 'ltr'
+      return h(Modal, { open, onClose, title: t('Reasoning statistics'), closeLabel: t('Close'), description,
+        className: 'abinadwan-reasoning-statistics' + (dir === 'rtl' ? ' abinadwan-reasoning-statistics-rtl' : ''),
         footer: h('div', { style: lifecycleActions },
-          h(Button, { size: 'sm', variant: 'outline', disabled: state.status !== 'ready', onClick: () => load('stats/reset') }, 'Reset statistics'),
-          h(Button, { size: 'sm', onClick: onClose }, 'Done')) },
-      h('div', { lang: 'en', dir: 'ltr' }, body))
+          h(Button, { size: 'sm', variant: 'outline', disabled: state.status !== 'ready', onClick: () => load('stats/reset') }, t('Reset statistics')),
+          h(Button, { size: 'sm', onClick: onClose }, t('Done'))) },
+      h('style', null, reasoningStatisticsStyle),
+      h('div', { lang: language, dir, style: { minWidth: 0 } }, body))
     }
 
     const reasoningSignals = {
@@ -2982,7 +3074,7 @@ window.__ModuleLoader__.load({
     }
 
     function ReasoningComposer({ directory, sessionId, settingsService, connection, useRemoteAccess, useAccess, localeSource }) {
-      const language = activeUiLanguage(localeSource)
+      const language = useUiLanguage(localeSource)
       const t = value => uiCopy(value, language)
       const settings = useSuiteRecord(settingsService, 'adaptive-reasoning', useRemoteAccess, connection)
       const directoryState = suiteWatch(directory.store)
@@ -3104,7 +3196,7 @@ window.__ModuleLoader__.load({
         h(Menu, { open, anchor: trigger, items, selectedIds,
           portal: true, side: 'top', align: 'end', compact: true, autoFocus: true,
           onClose: () => setOpen(false), onSelect: id => void selectItem(id) }),
-        Modal && statsOpen ? h(ReasoningStatistics, { open: statsOpen, onClose: () => setStatsOpen(false), nameOf }) : null,
+        Modal && statsOpen ? h(ReasoningStatistics, { open: statsOpen, onClose: () => setStatsOpen(false), nameOf, language }) : null,
         Modal && recommendOpen ? h(ReasoningRecommendation, { key: JSON.stringify([sessionId, selection.provider, selection.model,
           selection.reasoningEffort]), sessionId, selection, settings, connection, onClose: () => setRecommendOpen(false), nameOf }) : null,
         notice ? h(Toast, { key: notice.id, text: notice.text, tone: notice.success ? 'success' : undefined,
