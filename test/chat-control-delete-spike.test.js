@@ -134,7 +134,7 @@ test('Phase 05 fixture-only: missing or altered log metadata is refused without 
   await assert.rejects(deleteOne(root), { code: 'log-unverified' })
   assert.deepEqual(await stateOf(root), before)
   assert.equal(await readFile(join(root, 'logs', OTHER + '.jsonl'), 'utf8'),
-    'fixture-record-two\\n')
+    'fixture-record-two\n')
   assert.deepEqual(await readdir(join(root, 'transactions')), [])
 })
 
