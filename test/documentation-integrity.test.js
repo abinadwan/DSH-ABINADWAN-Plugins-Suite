@@ -34,8 +34,8 @@ test('development source metadata, lockfile, client version and documentation ag
     assert.equal(lock.packages[''].version, packageJson.version)
   }
   assert.equal(client.match(/const INSTALLED_VERSION = '([^']+)'/)?.[1], packageJson.version)
-  assert.match(read('README.md'), /v1\.0\.2.*release|release.*v1\.0\.2/i)
-  assert.match(read('docs/DETAIL.md'), /v1\.0\.2.*release/i)
+  assert.ok(read('README.md').includes('/releases/tag/v'+packageJson.version))
+  assert.ok(read('docs/DETAIL.md').includes('/releases/tag/v'+packageJson.version))
   assert.match(read('docs/DETAIL.md'), /GitHub Release/i)
 })
 
@@ -139,6 +139,6 @@ test('README technology badges match the source stack and distinguish published 
   assert.equal(packageJson.type, 'module')
   assert.match(packageJson.devDependencies.react, /^19\./)
   if (sourceCheckout) assert.match(read('.github/workflows/test.yml'), /node: \['22', '24'\]/)
-  assert.match(readme, /shields\.io\/badge\/release-v1\.0\.2/)
+  assert.ok(readme.includes('shields.io/badge/release-v'+packageJson.version))
   assert.doesNotMatch(readme, /shields\.io\/badge\/release-v1\.0\.1/)
 })
