@@ -1,4 +1,5 @@
 import Schema from '@deepseek-ai/schemastery'
+import { registerInspection } from './inspect.js'
 
 export const name = 'abinadwan-conversation-lifecycle'
 const duration = Schema.union(['forever', '365', '180', '90', '30', '7'])
@@ -12,6 +13,7 @@ export const Config = Schema.object({
   }).default({ retention: 'forever', overrides: [], protectedIds: [], protectedWorkspaces: [] }).volatile(),
 })
 
-export function apply(ctx) {
+export function apply(ctx, config) {
   ctx.inject(['settings'], child => child.effect(() => child.settings.configure({ auto: false }, ctx.fiber)))
+  registerInspection(ctx, config)
 }
