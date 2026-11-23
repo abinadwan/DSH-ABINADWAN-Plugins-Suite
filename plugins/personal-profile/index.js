@@ -66,7 +66,7 @@ export function apply(ctx,config) {
       try { return profileDisclosure(config.record.get()) } catch { return '' }
     }})
   })
-  // Check identifiable prior disclosures against the current saved field choices.
+  // Check identifiable prior Profile content against saved field choices and custom consent.
   // The same choices apply to every configured model/provider.
   ctx.on('llm/stream',(request,next)=>{
     let record=null

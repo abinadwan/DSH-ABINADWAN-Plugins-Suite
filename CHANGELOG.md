@@ -2,7 +2,15 @@
 
 All notable changes are documented here.
 
-## [Unreleased] — Consolidated development
+## [Unreleased]
+
+- Next planned feature work targets v1.1.0. Safe permanent Session deletion and archived-chat cleanup are **not** available in v1.0.2 and require an approved DSH storage/deletion contract.
+
+## [1.0.2] — Released (2026-11-23)
+
+- Added keyboard arrow, Home and End navigation to My Profile tabs. Native Windows acceptance and owner-approved release-scope dispositions are recorded in [the final acceptance report](docs/DSH_DESKTOP_NATIVE_FINAL_ACCEPTANCE_V1.0.2.md); historical native `FAIL`/`BLOCKED` evidence is retained.
+- Localize the Direct Chat action and retry feedback and the Adaptive Reasoning recommendation dialog in Arabic. Keep keyboard focus on the Direct Chat action during preparation.
+- Suppress Adaptive Reasoning acknowledgements from an earlier provider/model route or connection.
 
 - Harden Direct Chat tool-denial against symlink/junction aliases into protected Workspaces, including aliases with a child folder that does not yet exist.
 - Restrict newly created Direct Chat directories to owner-only permissions on POSIX; do not silently change permissions on existing folders or claim verified Windows ACL isolation.

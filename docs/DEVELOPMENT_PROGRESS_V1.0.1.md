@@ -1,6 +1,6 @@
 # v1.0.1 development progress — single source of truth
 
-> **State: planning / no v1.0.1 candidate published.** Last baseline review: 2026-11-22. This living register is maintained on `develop` only after an owner-approved phase PR. The published v1.0.0 release and `main` remain unchanged until separately approved.
+> **State: Phases 01–08 approved on `develop` for source and automated CI only. Current source candidate `1.0.1-rc.8` is **unreleased**. Native DSH Desktop acceptance and production publication are separate, pending gates.** Last baseline review: 2026-11-22. Phase reports originate on temporary branches; merge to `develop` and delete the branch only after explicit owner approval. The published `v1.0.0` tag and `main` remain unchanged by these phases. No release is authorized by this work.
 
 ## Why this register exists
 
@@ -27,26 +27,27 @@ At each approved phase, update all version-dependent source/metadata **consisten
 
 ## Known good baseline before phase 1
 
-- **Branch:** `develop` at `8abb5f607e274b574fa1735f51862b76a01b11cc` (merged security PR #33 + feature PR #34).
-- **Review PR:** [#35 develop → main](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/35) — Draft, not merged.
-- **Published main/release:** `206f3e814800478f961af05b673a1235ea8ba002` / `v1.0.0`.
+- **Historical tested runtime baseline:** `develop` at `8abb5f607e274b574fa1735f51862b76a01b11cc` (security PR #33 and feature PR #34).
+- **Phase 1 starting base:** latest `develop` at `9418195ae05cc4a3873eea20f56a02e355dc0c21` after merge of PRs #36–#38; the work branch is `fix/phase-01-security-audit`.
+- **Integration review:** [#35 develop → main](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/35) was merged as `e4c4c762dcba492879438ed34ba4592fa1a098b0`. The **published release tag** remains `v1.0.0` at `206f3e814800478f961af05b673a1235ea8ba002`.
 - **Last consolidated CI evidence:** [Windows/Ubuntu Node 22/24 — successful](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45005085552).
 - **Currently implemented but still needing Desktop acceptance:** Direct Chat owner-authorized catalog/search/sorting and tool-denial hardening; Chat Control safe eligibility preview; Adaptive Reasoning saved statistics and opt-in recommendations; My Profile recognized disclosure-replay protection.
 - **Upstream-dependent and *not implemented*:** real/recoverable Session deletion, automatic destructive cleanup, authenticated per-message effort overrides, universal Subagent effort policy, native second Workspace tree, and OS-grade per-Session filesystem confinement. Do **not** count these as a phase completion or silently activate them.
+- **Phase 01 approved integration:** [PR #39](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/39) merged to `develop` at `2a280e37876df78768325d36a46a2742e3456ad0`; [final-head four-platform CI passed](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45048359692). The merged result is the Phase 02 starting base. Approval of source tests did not imply full Desktop acceptance.
 - **Still deferred:** real Windows Desktop lifecycle and accessibility, actual provider-bound request capture, Windows junction/ACL checks, Profile migration/restart and native authorization paths.
 
 ## Phase progress dashboard
 
 | Phase | Primary problem | Status | Evidence / review | Pending |
 | --- | --- | --- | --- | --- |
-| 1 | Integrated security audit and regression | **Not started** | — | Audit, reproduced issue(s), fixes and CI |
-| 2 | Chat Control retention/protection consistency | **Not started** | — | Boundary/permission/concurrency tests |
-| 3 | Direct Chat search/history scale | **Not started** | — | 100 / 1,000 / 10,000 synthetic-item benchmarks |
-| 4 | Adaptive Reasoning statistics persistence/recovery | **Not started** | — | Crash, corruption, concurrent writer and reset tests |
-| 5 | Arabic complexity classification | **Not started** | — | Arabic/mixed-language benchmark and no English regression |
-| 6 | Arabic UI and RTL | **Not started** | — | Translation, keyboard, direction and accessible UI tests |
-| 7 | UX failures/loading/retry states | **Not started** | — | Non-misleading success/error and network failure handling |
-| 8 | Cross-platform CI regression coverage | **Not started** | — | CI matrix, package validation, source-vs-Desktop gate report |
+| 1 | Integrated security audit and regression | **Approved on develop** | [PR #39](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/39) · [final four-platform CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45048359692) · [Phase 01 audit](research/v1.0.1/PHASE_01_SECURITY_INTEGRATION.md) | Real Windows Desktop/provider-bound checks remain independently deferred |
+| 2 | Chat Control retention/protection consistency | **Approved on develop** | [PR #40](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/40) · [final PR-head CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45050012849) · [Phase 02 report](research/v1.0.1/PHASE_02_CHAT_CONTROL_RETENTION.md) | Real Desktop permission, archive and concurrent-window acceptance deferred to final Desktop gate |
+| 3 | Direct Chat search/history scale | **Approved on develop** | [merged PR #41](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/41) · [final CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45051062749) · [Phase 03 report](research/v1.0.1/PHASE_03_DIRECT_CHAT_PERFORMANCE.md) | Real 10k-item Desktop responsiveness deferred |
+| 4 | Adaptive Reasoning statistics persistence/recovery | **Approved on develop** | [PR #43](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/43) · [four-platform CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45056916549) · [Phase 04 report](research/v1.0.1/PHASE_04_REASONING_STATISTICS.md) | Actual Desktop and power-loss acceptance deferred |
+| 5 | Arabic complexity classification | **Approved on develop** | [PR #44](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/44) · [four-platform CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45057565826) · [Phase 05 report](research/v1.0.1/PHASE_05_ARABIC_CLASSIFIER.md) | Real provider/Arabic acceptance deferred |
+| 6 | Arabic UI and RTL | **Approved on develop** | [PR #45](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/45) · [four-platform CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45058112897) · [Phase 06 report](research/v1.0.1/PHASE_06_ARABIC_UI_RTL.md) | Real Desktop visuals and keyboard/screen-reader acceptance deferred |
+| 7 | UX failures/loading/retry states | **Approved on develop** | [PR #46](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/46) · [four-platform CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45058558692) · [Phase 07 report](research/v1.0.1/PHASE_07_UX_RELIABILITY.md) | Real Desktop reconnect and screen-reader acceptance deferred |
+| 8 | Cross-platform CI regression coverage | **Approved on develop** | [PR #47](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/47) · [final four-platform CI](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45059003648) · [Phase 08 report](research/v1.0.1/PHASE_08_FINAL_AUTOMATED_QA.md) | One combined real DSH Desktop acceptance round before any release |
 
 Status vocabulary: `Not started`, `In progress`, `Implemented — needs review`, `Approved on develop`, `Blocked`. A successful CI run is evidence, not proof of real Desktop behavior.
 
@@ -56,49 +57,49 @@ Status vocabulary: `Not started`, `In progress`, `Implemented — needs review`,
 
 **One problem:** previously merged security and product features may interact in ways tests miss. Cover both Direct Chat tool-denial hooks, canonical path aliases and nonexisting suffixes, owner-only prepare/catalog routes, no sensitive path logging, My Profile replay/revocation boundaries, and lifecycle disposal. First reproduce any new defect with a failing test, then fix. Do not treat missing OS sandboxing or Host-owned APIs as bugs this phase can close.
 
-**Completed:** none under this phase yet. **Pending:** audit report, changed-file list, reproduced failures and fixes, full matrix.
+**Approved on `develop`:** reproduced a deep unresolved directory-suffix bypass of Direct Chat's symlink/junction alias tool guard (48 pending segments; original search capped at 32), repaired the traversal and protected both denial hooks. Added My Profile in-history revocation checks and consistent `1.0.1-rc.1` candidate metadata. [Phase 01 record](research/v1.0.1/PHASE_01_SECURITY_INTEGRATION.md) and [approved PR #39](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/39) identify the implementation; merged as `2a280e37876df78768325d36a46a2742e3456ad0`. **Still deferred:** real Windows Desktop, provider-bound replay, alternate Host routes and OS isolation guarantees.
 
 ### Phase 2 — Chat Control retention/protection
 
 **One problem:** stale/ambiguous Session membership, protection changes and timestamp edge cases can make previews misleading. Validate all 7/30/90/180/365/Forever policies, Workspace overrides, pinned/running/archived Sessions, explicit confirmation and revision conflicts. No deletion worker or scheduler activation.
 
-**Completed:** none under this phase yet. **Pending:** synthetic boundary and concurrency fixtures, reviewed policy rules and tests.
+**Approved on `develop`:** repaired fail-closed authorization-catalog readiness, tested all `7/30/90/180/365/Forever` cutoffs, stale revisions, protection and read-only cases, and included five owner-requested README technology badges. Version `1.0.1-rc.2` merged via [PR #40](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/40) at `f33b72fa4eca3c26ee4ea21b830de809fd86bd72`, after [four-platform CI passed](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45050012849). The temporary branch was deleted. **Deferred to final Desktop acceptance:** actual permission/archive/clock/reconnect and multi-window tests. **No deletion or automatic cleanup enabled.**
 
 ### Phase 3 — Direct Chat search/history performance
 
 **One problem:** metadata browsing/search/sorting under large inventories and failures. Benchmark 100/1,000/10,000 synthetic Sessions without reading transcripts, leaking unauthorized IDs or unbounded allocation. Respect existing API limits (e.g. bounded creation-time sort); explicitly report unavailable ordering rather than fabricating results.
 
-**Completed:** none under this phase yet. **Pending:** metrics, tests, any proven optimizations and acceptance criteria.
+**Candidate implementation:** metadata-only search and ordering tests for 100/1,000/10,000 synthetic authorized Sessions; native catalog checks confirm zero `sessionPersistence.stat()` reads for >100 Session creation ordering requests and honest null/unavailable metadata, while 100 registered Sessions may use at most 100 native header reads. UI search/sort now uses one testable, immutable helper; if creation-time metadata is incomplete, the interface explicitly says it is displaying **last activity** instead of implying creation order. Unicode normalization and stable tie-breaking remain checked. Candidate version `1.0.1-rc.3`; see [Phase 03 report](research/v1.0.1/PHASE_03_DIRECT_CHAT_PERFORMANCE.md). **Pending:** final CI, owner review and actual Desktop responsiveness with 10k Sessions; no transcript reads or unbounded creation-sort metadata sweep added.
 
 ### Phase 4 — Reasoning statistics durability
 
 **One problem:** concurrent writes, crashes, reset and corrupted Profile-local aggregate can produce partial/lost counts. Cover atomic-replacement boundary, unknown formats, restart/reopening, retry and double-counting, bounded memory and failure transparency. Never promise guaranteed recovery after power loss.
 
-**Completed:** none under this phase yet. **Pending:** run evidence, error-case matrix, actual storage limits.
+**Candidate changes:** repaired premature in-memory statistics loss when a Profile-local persistent reset fails; Host regression covers corrupt storage, recovery and retry. Added oversized/unknown format fail-closed fixtures and bounded cardinality tests (64 route keys, grouped overflow). Preserved atomic file replacement and existing cross-Host locking. Version is `1.0.1-rc.4`; see [Phase 04 report](research/v1.0.1/PHASE_04_REASONING_STATISTICS.md). **Pending:** final CI and owner approval. Sudden power loss and real Desktop remain deferred.
 
 ### Phase 5 — Arabic reasoning classifier
 
 **One problem:** current deterministic classifier recognizes English intent keywords but not equivalent Arabic ones. Add documented Arabic/MSA/Gulf and mixed-language cases without persisting prompt text. Build fixed expected-tier fixtures, measure accuracy and latency against the original English set. Do not enable unsupported automatic effort application.
 
-**Completed:** none under this phase yet. **Pending:** transparent benchmark, observed improvements and failures.
+**Candidate implementation:** transient normalized Arabic/Gulf complexity cues for greetings, continuations, standard explanations, debugging and advanced analysis, including diacritics and mixed language; fenced code does not elevate tiers. Fixed labelled Arabic test corpus and unchanged English latency/accuracy tests. No prompt persistence or automatic effort changes. [Phase 05 report](research/v1.0.1/PHASE_05_ARABIC_CLASSIFIER.md). **Pending:** final CI, owner approval and combined Desktop acceptance.
 
 ### Phase 6 — Arabic UI and RTL
 
 **One problem:** parts of Direct Chat, Chat Control and Adaptive Reasoning still behave as English-only regardless of DSH locale. Add compatible translations/RTL, correct mixed-direction content, and keyboard/accessible labels. Preserve English and existing language fallback. Verify UI through synthetic fixtures; mark Desktop visual validation open.
 
-**Completed:** none under this phase yet. **Pending:** Arabic and English component tests, keyboard/a11y evidence.
+**Candidate changes:** Chat Control and Adaptive Reasoning composer now follow active Host Arabic locale, expose RTL container/accessible labels and translated common controls; English remains when locale is English. Existing Direct Chat Arabic history remains in place; retention preview uses locale and isolates mixed-direction Session titles with bdi. React fixture tests check Arabic headings, language switch and composer menu; standalone DSH Desktop visual/keyboard checks remain deferred. [Phase 06 report](research/v1.0.1/PHASE_06_ARABIC_UI_RTL.md).
 
 ### Phase 7 — UX failure handling
 
 **One problem:** network/reconnect/rename/save/recommendation workflows may show unclear loading, empty or failure states. Cover cancellation, retry boundaries and error messages without claiming success prematurely. Preserve native Session identity and Settings revision checks.
 
-**Completed:** none under this phase yet. **Pending:** failing-case fixture tests and UX outcome report.
+**Candidate changes:** Direct Chat start explicitly exposes an accessible Retry Direct Chat action when preparation fails and clears the alert upon retry, rather than a generic permanently unsuccessful button. Added mounted React tests covering failed preparation and recovery, plus catalog request denial (409), retry, and unauthorized metadata exclusion. Existing Settings revision checks remain unchanged. [Phase 07 report](research/v1.0.1/PHASE_07_UX_RELIABILITY.md). **Pending:** final CI, owner review and actual Desktop error/reconnect flow checks.
 
 ### Phase 8 — Automated regression/CI
 
 **One problem:** the above behaviors must remain protected against regressions on each new commit. Group and run security, performance and component tests, package/source compatibility and pinned offline Host integration. Do not claim Windows Desktop acceptance from GitHub Actions.
 
-**Completed:** none under this phase yet. **Pending:** cross-platform final matrix, regression coverage map, deferred Desktop checklist and release-readiness decision.
+**Approved on `develop` for automated QA:** explicit six-component source/package regression mapping and `check:regression` CI command; deterministic classifier benchmark, existing Windows/Ubuntu Node.js 22/24 matrix and pinned synthetic DSH Host fixtures. [PR #47](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/47) merged at `cb2cee63418beb987daff24f5573fba7e1754f4c`, with [final CI success](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/45059003648). [Phase 08 report](research/v1.0.1/PHASE_08_FINAL_AUTOMATED_QA.md) maps evidence; [one final Desktop acceptance checklist](DSH_DESKTOP_FINAL_ACCEPTANCE_V1.0.1.md) tracks all native checks as **NOT TESTED**. **Release remains blocked** until actual Desktop acceptance and separate owner authorization; no tag or `main` update.
 
 ## How to update this document **after each phase**
 
@@ -124,7 +125,7 @@ In the **same phase PR** (no separate documentation-only follow-up required), up
 6. **Stop for explicit owner approval.** Do not self-merge. After approved merge, verify `develop` commit and update `Approved on develop` evidence. Delete the phase branch only after integration checks pass.
 7. Start the next phase from that new `develop` revision.
 
-**Hard restrictions:** Do not merge into `main`, publish a version/tag, manipulate real user data, enable unsupported destructive cleanup, or claim filesystem isolation/Windows Desktop acceptance. Keep PR #35 as Draft pending an independently approved release decision.
+**Hard restrictions:** Do not merge into `main`, publish a version/tag, manipulate real user data, enable unsupported destructive cleanup, or claim filesystem isolation/Windows Desktop acceptance. PR #35 was merged into `main` without publishing a release; maintain the same separate approval and real-Desktop gates for any future release. Keep [PR #39](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/39) as Draft until Phase 1 owner review.
 
 ## Current decision log
 
@@ -133,3 +134,6 @@ In the **same phase PR** (no separate documentation-only follow-up required), up
 | 2026-11-22 | Use one patch-release train `1.0.1` and sequential `1.0.1-rc.1` through `rc.8` | Each phase gets an identifiable tested artifact without reusing one published version |
 | 2026-11-22 | Keep `main` and published `v1.0.0` unchanged during source-only phases | Final release requires Desktop acceptance and separate authorization |
 | 2026-11-22 | Track completed and pending work in both this living dashboard and per-phase immutable reports | Allows returning to unresolved problems with source, evidence and decision history |
+| 2026-11-22 | Start Phase 1 from `develop` at `9418195`; keep stage in a Draft PR | Security red/green regression and full candidate verification precede owner approval |
+| 2026-11-22 | Approve and merge Phase 01 PR #39 into `develop`; remove its temporary branch | Source regression and four-platform CI passed; Desktop gates remain separately open |
+| 2026-11-22 | Begin Phase 02 at `2a280e3`; include technology badges in the same Draft PR | Follow sequential candidate workflow and keep public `v1.0.0` release unchanged |

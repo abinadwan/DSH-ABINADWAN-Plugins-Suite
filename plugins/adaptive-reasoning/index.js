@@ -58,15 +58,22 @@ export function apply(ctx, config) {
       }
       const operation = operations.then(async () => {
         const target = await disk()
+        // A failed reset must not discard unsaved in-memory counters. Reset
+        // local state only after the protected Profile transaction succeeds.
+        if (reset) {
+          const result = await target.reset()
+          stats.reset()
+          carry = null
+          return result
+        }
         const counters = stats.takeCounters()
         if (carry) mergeCounters(counters, carry)
-        if (reset) stats.reset()
         try {
-          const result = await (reset ? target.reset() : target.save(counters))
+          const result = await target.save(counters)
           carry = null
           return result
         } catch (error) {
-          // Preserve deltas on failures before the atomic replacement began.
+          // Preserve deltas on failures before atomic replacement began.
           // An ambiguous write must never be replayed.
           carry = error.mayHaveWritten ? null : counters
           throw error

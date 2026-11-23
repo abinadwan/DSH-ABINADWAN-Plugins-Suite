@@ -22,6 +22,20 @@ const fenced = /```[\s\S]*?(?:```|$)/g
 const numbered = /^\s*(?:\d+[.)]|[-*])\s+\S/gm
 const math = /\d\s*[-+*/^=]\s*\d|[∑∫√≤≥≠]/
 
+/* Arabic intent cues are normalized only in memory and read from prose
+   outside code fences; this never stores prompts or changes Host effort. */
+const arNorm = text => text.replace(/[\u064b-\u065f\u0670\u06d6-\u06ed\u0640]/g, '')
+  .replace(/[أإآٱ]/g, 'ا').replace(/ى/g, 'ي').replace(/ة/g, 'ه')
+const arRule = terms => new RegExp('(?:^|[^\\p{L}\\p{N}])(?:' + terms + ')(?=$|[^\\p{L}\\p{N}])', 'u')
+const arGreetings = arRule('هلا|مرحبا|اهلا|السلام عليكم|وعليكم السلام|شكرا|مشكور|يعطيك العافيه|صباح الخير|مساء الخير')
+const arContinue = arRule('ايه|نعم|كمل|كملي|تابع|واصلي|تمام كمل|ابدا')
+const arAdvanced = arRule('بنيه النظام|معماريه النظام|تصميم نظام موزع|تصميم شبكه موزعه|تدقيق امني|مراجعه امنيه|نموذج تهديد|تحليل تهديدات|تحليل جذري|سبب جذري|السبب الجذري|قابليه التوسع|مفاضلات|بحث معمق|بحث متعمق|اثبت النظريه|برهان رياضي|خطه ترحيل|بروتوكول موزع')
+const arComplex = arRule('حلل|تحليل|قارن|مقارنه|اصلح|صلح|تصحيح|خطا|مشكله|عطل|تعطل|يتعطل|اخطاء|اختبر|اختبارات|تحسين الاداء|الاداء|خوارزميه|خوارزميات|استعلام|قاعده بيانات|معادله|احسب|حساب|تقييم|قيم|خطه عمل')
+const arStandard = arRule('اشرح|فسر|وضح|كيف|ليش|لماذا|اكتب|اكتبي|مثال|امثله|لخص|تلخيص|ترجم|طريقه|خطوات')
+const arRaise = arRule('فكر بعمق|بتعمق|بالتفصيل|خطوه بخطوه|تحليل شامل|تعمق')
+const arLower = arRule('باختصار|مختصر|بسرعه|اجابه قصيره|جواب قصير|بدون شرح|بس الجواب')
+
+
 /**
  * Classify one request into a complexity tier.
  * @param {string} text - message text; it is never stored.
@@ -37,11 +51,12 @@ export function classify(text, context = {}) {
     const tier = Number.isInteger(context.previous) ? context.previous : STANDARD
     return { tier, signals: ['retry'] }
   }
-  if (source.length <= 40 && continuation.test(source)) {
+  const arabic = /[\u0600-\u06ff]/.test(source) ? arNorm(source) : ''
+  if (source.length <= 40 && (continuation.test(source) || (arabic && arContinue.test(arabic)))) {
     const tier = Number.isInteger(context.previous) ? context.previous : STANDARD
     return { tier, signals: ['continuation'] }
   }
-  if (source.length <= 48 && attachments === 0 && greeting.test(source)) return { tier: SIMPLE, signals: ['greeting'] }
+  if (source.length <= 48 && attachments === 0 && (greeting.test(source) || (arabic && arGreetings.test(arabic)))) return { tier: SIMPLE, signals: ['greeting'] }
 
   let tier = source.length < 80 ? SIMPLE : source.length < 600 ? STANDARD : source.length < 2400 ? COMPLEX : ADVANCED
   if (tier > SIMPLE) signals.push('length')
@@ -49,17 +64,18 @@ export function classify(text, context = {}) {
   // Topic and intent cues are read from prose only, so words inside pasted
   // code or data (a `debug` flag, say) do not raise the tier.
   const prose = source.replace(fenced, ' ')
-  if (advanced.test(prose)) floor(ADVANCED, 'advanced-topic')
-  else if (complex.test(prose)) floor(COMPLEX, 'complex-topic')
-  else if (standard.test(prose)) floor(STANDARD, 'standard-topic')
+  const arabicProse = arabic ? arNorm(prose) : ''
+  if (advanced.test(prose) || (arabicProse && arAdvanced.test(arabicProse))) floor(ADVANCED, 'advanced-topic')
+  else if (complex.test(prose) || (arabicProse && arComplex.test(arabicProse))) floor(COMPLEX, 'complex-topic')
+  else if (standard.test(prose) || (arabicProse && arStandard.test(arabicProse))) floor(STANDARD, 'standard-topic')
   const fences = (source.match(fence)?.length ?? 0) >> 1
   if (fences > 0) floor(Math.min(ADVANCED, STANDARD + (fences > 1 ? 1 : 0)), 'code')
   if (trace.test(source)) floor(COMPLEX, 'trace')
   if ((source.match(numbered)?.length ?? 0) >= 3) floor(COMPLEX, 'multi-step')
   if (math.test(source)) floor(STANDARD, 'math')
   if (attachments > 0) floor(STANDARD, 'attachment')
-  if (raise.test(prose)) { tier = Math.min(ADVANCED, Math.max(tier + 1, COMPLEX)); signals.push('asked-deeper') }
-  else if (lower.test(prose)) {
+  if (raise.test(prose) || (arabicProse && arRaise.test(arabicProse))) { tier = Math.min(ADVANCED, Math.max(tier + 1, COMPLEX)); signals.push('asked-deeper') }
+  else if (lower.test(prose) || (arabicProse && arLower.test(arabicProse))) {
     // Output brevity should not downgrade complex analysis.
     if (tier < COMPLEX) tier = Math.max(SIMPLE, tier - 1)
     signals.push('asked-briefer')

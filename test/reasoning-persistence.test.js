@@ -61,3 +61,16 @@ test('a transient invalid read does not poison later transactions', async t => {
   await rm(path)
   assert.equal((await store.save(delta)).requests.session.high.requests, 1)
 })
+
+
+test('large or invalid persisted aggregates fail closed without truncating the original file', async t => {
+  const dir = await profile(t)
+  const path = join(dir, 'abinadwan-reasoning-stats.json')
+  const oversized = 'x'.repeat(1024 * 1024 + 1)
+  await writeFile(path, oversized)
+  await assert.rejects(openReasoningStats(dir), /invalid-stats/)
+  assert.equal((await readFile(path, 'utf8')).length, oversized.length)
+  await writeFile(path, '{"version":2,"epoch":"newer","counters":{}}')
+  await assert.rejects(openReasoningStats(dir), /unsupported-stats/)
+  assert.match(await readFile(path, 'utf8'), /"version":2/)
+})

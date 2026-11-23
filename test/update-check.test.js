@@ -10,8 +10,11 @@ import { clientHarness, base, tick, refused } from '../test-support/client.js'
 
 const pkg = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
 const code = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
+const [major, minor, patch] = pkg.version.split('-')[0].split('.').map(Number)
+const newerVersion = [major, minor, patch + 1].join('.')
+const newerTag = 'v' + newerVersion
 const RELEASE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/latest'
-const COMMIT = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/commits/v1.0.1'
+const COMMIT = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/commits/' + newerTag
 const SHA = 'a'.repeat(40)
 const OLD = 'b'.repeat(40)
 const RAW = 'https://raw.githubusercontent.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/' + SHA + '/package.json'
@@ -22,9 +25,9 @@ const quiet = { warn() {}, error() {}, log() {} }
 const reply = (value, status = 200) => ({ ok: status >= 200 && status < 300, status, json: async () => value })
 const releaseFetch = (overrides = {}) => async (url, options) => {
   overrides.seen?.push({ url, options })
-  if (url === RELEASE) return reply(overrides.release ?? { tag_name: 'v1.0.1', draft: false, prerelease: false })
+  if (url === RELEASE) return reply(overrides.release ?? { tag_name: newerTag, draft: false, prerelease: false })
   if (url === COMMIT) return reply(overrides.commit ?? { sha: SHA })
-  if (url === RAW) return reply(overrides.manifest ?? { name: pkg.name, version: '1.0.1' })
+  if (url === RAW) return reply(overrides.manifest ?? { name: pkg.name, version: newerVersion })
   throw new Error('unexpected remote path: ' + url)
 }
 const bundle = (source, extra = {}) => ({
@@ -107,12 +110,12 @@ test('pinned Git install: Update now verifies, asks for confirmation, then deleg
     listBundles: () => [bundle(PINNED_SOURCE)],
     updateBundle: (...args) => {
       installed.push(args)
-      return { from: pkg.version, to: '1.0.1', step: 'install',
+      return { from: pkg.version, to: newerVersion, step: 'install',
         result: { changed: true, application: 'restart-required', stage: 'install', target: pkg.name } }
     },
   })
   assert.equal(seen.length, 1, 'startup only reads the latest release')
-  assert.match(view.text(), /Update available: v1\.0\.1/)
+  assert.ok(view.text().includes('Update available: ' + newerTag))
   await view.click('[data-update-now]')
   assert.equal(installed.length, 0, 'preparation never installs')
   assert.deepEqual(seen.map(x => x.url), [RELEASE, COMMIT, RAW])
@@ -129,8 +132,8 @@ test('pinned Git install: Update now verifies, asks for confirmation, then deleg
   await view.click('[data-update-now]')
   await view.click('[data-confirm-update]')
   assert.deepEqual(JSON.parse(JSON.stringify(installed)),
-    [[pkg.name, '1.0.1', { spec: 'github:abinadwan/DSH-ABINADWAN-Plugins-Suite#' + SHA }]])
-  assert.match(view.text(), /Host applied the update to v1\.0\.1; restart Harness to finish\./)
+    [[pkg.name, newerVersion, { spec: 'github:abinadwan/DSH-ABINADWAN-Plugins-Suite#' + SHA }]])
+  assert.ok(view.text().includes('Host applied the update to ' + newerTag + '; restart Harness to finish.'))
 })
 
 test('unpinned Git install (the real Windows case) shows an actionable migration and never updates', async t => {
@@ -153,12 +156,12 @@ test('unpinned Git install (the real Windows case) shows an actionable migration
 test('Host update failures, refusals and rollbacks are reported, never shown as success', async t => {
   for (const [label, answer, expected] of [
     ['remote refusal', refused('access/denied', 'not permitted'), /Host update failed: not permitted/],
-    ['failed install with restore', { from: pkg.version, to: '1.0.1', step: 'install',
+    ['failed install with restore', { from: pkg.version, to: newerVersion, step: 'install',
       result: { application: 'failed', error: { code: 'operation-error' } }, restore: { application: 'applied' } },
     /did not install \(operation-error\); the Host reinstalled the previous version/],
-    ['failed restore', { from: pkg.version, to: '1.0.1', step: 'install',
+    ['failed restore', { from: pkg.version, to: newerVersion, step: 'install',
       result: { application: 'failed' }, restore: { application: 'failed' } }, /could not reinstall the previous version/],
-    ['refused check', { from: pkg.version, to: '1.0.1', step: 'check',
+    ['refused check', { from: pkg.version, to: newerVersion, step: 'check',
       result: { application: 'failed', error: { code: 'invalid-spec' } } }, /Host reported failed \(invalid-spec\) at the check step/],
     ['unknown outcome', { step: 'install', result: {} }, /Update outcome not confirmed/],
   ]) {
@@ -195,12 +198,12 @@ test('offline, unreachable, rate-limited and unreadable GitHub responses fail cl
 
 test('untrusted release metadata, commit or manifest never offers installation', async t => {
   for (const [label, overrides, expected, source = PINNED_SOURCE] of [
-    ['draft', { release: { tag_name: 'v1.0.1', draft: true, prerelease: false } }, /Untrusted or unsupported release metadata/],
-    ['prerelease', { release: { tag_name: 'v1.0.1', draft: false, prerelease: true } }, /Untrusted or unsupported release metadata/],
+    ['draft', { release: { tag_name: newerTag, draft: true, prerelease: false } }, /Untrusted or unsupported release metadata/],
+    ['prerelease', { release: { tag_name: newerTag, draft: false, prerelease: true } }, /Untrusted or unsupported release metadata/],
     ['malformed tag', { release: { tag_name: 'main', draft: false, prerelease: false } }, /Untrusted or unsupported release metadata/],
     ['invalid commit', { commit: { sha: 'not-a-sha' } }, /Invalid release commit/],
-    ['version mismatch', { manifest: { name: pkg.name, version: '9.9.9' } }, /Release manifest does not match/],
-    ['identity mismatch', { manifest: { name: '@evil/pkg', version: '1.0.1' } }, /Release manifest does not match/],
+    ['version mismatch', { manifest: { name: pkg.name, version: pkg.version } }, /Release manifest does not match/],
+    ['identity mismatch', { manifest: { name: '@evil/pkg', version: newerVersion } }, /Release manifest does not match/],
     ['foreign repository', {}, /installed from another repository/, 'github:someone/fork#' + OLD],
   ]) {
     await t.test(label, async t => {

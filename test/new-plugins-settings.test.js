@@ -84,7 +84,7 @@ async function mount(t, options, active, slot) {
   document.body.append(div)
   const previousLanguage = document.documentElement.lang
   document.documentElement.lang = options.language ?? previousLanguage
-  const fixture = await clientHarness({ React, document, ...options })
+  const fixture = await clientHarness({ React, document, hostLocale: options.hostLocale ?? 'en', ...options })
   fixture.setRows([...fixture.rows(), { moduleName: `${base}/${active}`, enabled: true, fiberPhase: 'active' }])
   await fixture.changed()
   const entry = fixture.entries(slot)[0]
@@ -330,6 +330,46 @@ test('statistics open in a native dialog with honest reasoning-token labels and 
   assert.match(view.div.querySelector('[role=dialog]').textContent, /No requests yet/)
 })
 
+test('Arabic statistics localizes the dialog, makes all columns keyboard-scrollable, and wraps long route names', async t => {
+  const provider = 'fictional-provider-'.repeat(18)
+  const model = 'fictional-model-'.repeat(18)
+  const fixture = reasoningFixture({ handlers: {
+    stats: () => Response.json({ since: '2026-11-20T08:00:00.000Z', persistent: true, messages: 2,
+      requests: { subagent: { default: { requests: 2, inputTokens: 1200, outputTokens: 30,
+        reasoningTokens: 100, reasoningReported: 1, durationMs: 3000, timed: 2 } } },
+      routes: [{ scope: 'subagent', provider, model, effort: 'default', requests: 2 }] }),
+    'stats/reset': () => Response.json({}, { status: 503 }),
+  } })
+  fixture.options.hostLocale = 'ar'
+  const view = await openReasoning(t, fixture)
+  await view.open()
+  await act(async () => view.item('إحصائيات الاستدلال…').click())
+  const dialog = view.div.querySelector('[role=dialog]')
+  assert.equal(dialog.getAttribute('aria-label'), 'إحصائيات الاستدلال')
+  assert.equal(document.defaultView.getComputedStyle(dialog).direction, 'rtl')
+  assert.equal(dialog.querySelector('[lang=ar]').dir, 'rtl')
+  const table = dialog.querySelector('table')
+  assert.equal(table.parentElement.getAttribute('role'), 'region')
+  assert.equal(table.parentElement.getAttribute('aria-label'), 'الطلبات حسب مستوى الاستدلال')
+  assert.equal(table.parentElement.tabIndex, 0)
+  assert.equal(table.parentElement.style.overflowX, 'auto')
+  assert.deepEqual([...table.querySelectorAll('th[scope=col]')].map(cell => cell.textContent),
+    ['المستوى', 'الطلبات', 'رموز الإدخال', 'رموز الإخراج', 'رموز الاستدلال', 'متوسط الوقت'])
+  assert.match(table.textContent, /المستوى الافتراضي للمزوّد/)
+  assert.match(table.textContent, /من/)
+  const route = dialog.querySelector('li')
+  assert.match(route.textContent, /المستوى الافتراضي للمزوّد/)
+  assert.equal(route.querySelector('bdi').textContent, provider + ' / ' + model)
+  assert.equal(route.querySelector('bdi').style.overflowWrap, 'anywhere')
+  assert.doesNotMatch(dialog.textContent, /Aggregate counts|Nothing is sent|subagents|Provider default/)
+  const reset = [...dialog.querySelectorAll('button')].find(button => button.textContent === 'إعادة ضبط الإحصائيات')
+  await act(async () => reset.click())
+  assert.match(dialog.querySelector('[role=status]').textContent, /تعذر تأكيد إعادة ضبط الإحصائيات/)
+  const reload = [...dialog.querySelectorAll('button')].find(button => button.textContent === 'إعادة تحميل الإحصائيات')
+  await act(async () => reload.click())
+  assert.deepEqual(fixture.calls.map(call => call.path), ['stats', 'stats/reset', 'stats'])
+})
+
 test('retention previews enforce all UTC cutoffs and exclude unknown or protected records', async t => {
   const now = Date.now()
   const day = 86400000
@@ -379,7 +419,7 @@ test('Direct Chat history filters authorized metadata, pages it, and keeps nativ
       assert.equal(options.source, 'workspaceOperation')
       return operation({ binding: { session: { async rename(title) {
         renames.push([id, title])
-        return { ok: true }
+        return { ok: renames.length > 1 }
       } } } })
     },
     async fetch(url) {
@@ -403,6 +443,12 @@ test('Direct Chat history filters authorized metadata, pages it, and keeps nativ
   })
   await act(async () => dialog().querySelector('form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true })))
   assert.deepEqual(renames, [['chat-58', 'Renamed test title']])
+  assert.match(dialog().querySelector('form [role=alert]').textContent, /The name could not be saved/)
+  assert.equal(dialog().querySelector('form input').value, 'Renamed test title')
+  assert.match(dialog().querySelectorAll('li')[1].textContent, /^Chat 58/)
+  await act(async () => dialog().querySelector('form').dispatchEvent(new window.Event('submit', { bubbles: true, cancelable: true })))
+  assert.deepEqual(renames, [['chat-58', 'Renamed test title'], ['chat-58', 'Renamed test title']])
+  assert.equal(dialog().querySelector('form'), null)
   assert.doesNotMatch(dialog().textContent, /Hidden local reference|Unrelated Project/)
   await act(async () => button('Next').click())
   assert.match(dialog().querySelector('li').textContent, /Chat 34/)
@@ -421,4 +467,387 @@ test('Direct Chat history filters authorized metadata, pages it, and keeps nativ
   await act(async () => button('Chat 41').click())
   assert.deepEqual(opened, ['chat-41'])
   assert.equal(dialog(), null)
+})
+
+test('Direct Chat title search reacts when the Host supplies previously unavailable metadata', async t => {
+  const id = 'fictional-tail-session'
+  const summary = { id, displayTitle: 'Direct Chat', blank: false }
+  const { div, window, fixture } = await mount(t, {
+    workspaceItems: [{ workspaceId: 'direct', title: 'Direct Chat', sessionIds: [id] }],
+    sessions: { phase: 'ready', ids: [id], byId: { [id]: summary } },
+    fetch: async () => Response.json({ workspaceId: 'direct' }),
+  }, 'direct-chat', 'sidebar.session.action')
+  await act(async () => div.querySelector('button[aria-label="Direct Chat history"]').click())
+  const dialog = div.querySelector('[role=dialog]')
+  const search = dialog.querySelector('input[type=search]')
+  async function type(query) {
+    await act(async () => {
+      Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value').set.call(search, query)
+      search.dispatchEvent(new window.Event('input', { bubbles: true }))
+    })
+  }
+  await type(id)
+  assert.equal(dialog.querySelector('li bdi').textContent, 'Direct Chat')
+  const title = 'Recovered fictional title'
+  await type(title)
+  assert.match(dialog.textContent, /No conversations match your search/)
+  assert.match(dialog.textContent, /Some conversations have no title metadata/,
+    'missing Host metadata must not be presented as exhaustive title search')
+  const snapshot = fixture.sessions.getSnapshot()
+  await act(async () => fixture.sessions.set({ ...snapshot,
+    byId: { [id]: { ...summary, title, displayTitle: title } } }))
+  assert.equal(dialog.querySelector('li bdi').textContent, title)
+  assert.doesNotMatch(dialog.textContent, /Some conversations have no title metadata/)
+})
+
+test('Direct Chat uses an authorized cached projection title without opening a Session', async t => {
+  const id = 'fictional-cold-session'
+  const other = 'foreign-project-session'
+  const { div, window } = await mount(t, {
+    workspaceItems: [
+      { workspaceId: 'direct', title: 'Direct Chat', sessionIds: [id] },
+      { workspaceId: 'foreign', title: 'Other Workspace', sessionIds: [other] },
+    ],
+    sessions: { phase: 'ready', ids: [id, other],
+      byId: {
+        [id]: { id, displayTitle: 'Direct Chat', blank: false },
+        [other]: { id: other, displayTitle: 'Other Workspace', blank: false },
+      },
+      projectionsBySession: {
+        [id]: { values: { title: 'Pre-open native projection title' } },
+        [other]: { values: { title: 'Foreign unapproved secret' } },
+      },
+    },
+    fetch: async () => Response.json({ workspaceId: 'direct' }),
+  }, 'direct-chat', 'sidebar.session.action')
+  await act(async () => div.querySelector('button[aria-label="Direct Chat history"]').click())
+  const dialog = div.querySelector('[role=dialog]')
+  const search = dialog.querySelector('input[type=search]')
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')
+      .set.call(search, 'native projection')
+    search.dispatchEvent(new window.Event('input', { bubbles: true }))
+  })
+  assert.equal(dialog.querySelector('li bdi')?.textContent, 'Pre-open native projection title')
+  assert.doesNotMatch(dialog.textContent, /Some conversations have no title metadata/)
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')
+      .set.call(search, 'Foreign unapproved secret')
+    search.dispatchEvent(new window.Event('input', { bubbles: true }))
+  })
+  assert.equal(dialog.querySelectorAll('li').length, 0,
+    'search must never include a foreign Workspace projection')
+})
+
+test('Chat Control fails closed when Workspace membership is malformed', async t => {
+  const settings = settingsFixture('conversation-lifecycle',
+    { retention: '7', overrides: [], protectedIds: [], protectedWorkspaces: [] })
+  const { div } = await mount(t, {
+    settings: settings.service,
+    workspaceItems: [{ workspaceId: 'broken', title: 'Malformed test fixture', sessionIds: null }],
+  }, 'conversation-lifecycle', 'settings.section')
+  const preview = [...div.querySelectorAll('button')].find(button => button.textContent === 'Preview cleanup')
+  assert.ok(preview, 'the preview action stays visible')
+  assert.equal(preview.disabled, true, 'never allow preview from unverified catalog membership')
+  assert.match(div.textContent, /Workspace inventory is unavailable/)
+  assert.deepEqual(settings.writes, [])
+})
+
+test('Chat Control refuses stale concurrent policy confirmation and preserves newer protection', async t => {
+  const settings = settingsFixture('conversation-lifecycle',
+    { retention: 'forever', overrides: [], protectedIds: [], protectedWorkspaces: [] })
+  const { div, window, fixture } = await mount(t, { settings: settings.service },
+    'conversation-lifecycle', 'settings.section')
+  const confirmation = () => [...div.querySelectorAll('button')]
+    .find(button => button.textContent === 'Confirm and save')
+  await act(async () => {
+    const retention = div.querySelectorAll('select')[1]
+    retention.value = '7'
+    retention.dispatchEvent(new window.Event('change', { bubbles: true }))
+  })
+  assert.ok(confirmation())
+  const replacement = { record: { retention: 'forever', overrides: [],
+    protectedIds: ['protected-in-another-window'], protectedWorkspaces: [] } }
+  assert.equal((await settings.service.replace('abinadwan-conversation-lifecycle', replacement, 1)).ok, true)
+  await act(async () => { confirmation().click() })
+  assert.match(div.textContent, /Settings changed in another window/)
+  assert.equal(settings.writes.length, 2, 'external write and one rejected stale attempt')
+  assert.equal(settings.writes[1].revision, 1, 'the stale UI did not forge a newer revision')
+  const stored = (await settings.service.describe()).value.namespaces[0]
+  assert.equal(stored.revision, 2)
+  assert.deepEqual(stored.value.record.protectedIds, ['protected-in-another-window'])
+  assert.equal(stored.value.record.retention, 'forever', 'rejected draft did not override current policy')
+  await act(async () => { fixture.ctx.emit('connection/reset') })
+  assert.equal(confirmation(), undefined, 'stale confirmation disappears when the catalog is reloaded')
+})
+
+
+test('Chat Control respects read-only settings permission and never offers a destructive operation', async t => {
+  const settings = settingsFixture('conversation-lifecycle',
+    { retention: '7', overrides: [], protectedIds: [], protectedWorkspaces: [] })
+  const originalDescribe = settings.service.describe
+  settings.service.describe = async () => {
+    const result = await originalDescribe()
+    return { ...result, value: { ...result.value, writable: false } }
+  }
+  const { div } = await mount(t, { settings: settings.service },
+    'conversation-lifecycle', 'settings.section')
+  assert.equal(div.querySelectorAll('select')[1].disabled, true,
+    'read-only users must not change retention policies')
+  assert.equal(div.querySelector('input[type=checkbox]').disabled, true,
+    'read-only users must not change protection flags')
+  assert.match(div.textContent, /Deletion is unavailable\. Automatic cleanup is disabled\./)
+  assert.deepEqual(settings.writes, [])
+})
+
+
+test('Chat Control follows active Arabic Host locale and renders RTL labels without changing stored IDs', async t => {
+  const settings = settingsFixture('conversation-lifecycle', {
+    retention: 'forever', overrides: [], protectedIds: [], protectedWorkspaces: [],
+  })
+  const { div, fixture } = await mount(t, { settings: settings.service, hostLocale: 'ar' },
+    'conversation-lifecycle', 'settings.section')
+  const section = div.querySelector('section')
+  assert.equal(section.lang, 'ar')
+  assert.equal(section.dir, 'rtl')
+  assert.deepEqual([...div.querySelectorAll('h2')].map(node => node.textContent),
+    ['نظرة عامة', 'سياسة الاحتفاظ', 'المحادثات المحمية', 'إدارة التنظيف'])
+  assert.match(div.textContent, /الحذف غير متاح/)
+  assert.equal(div.querySelectorAll('select')[1].querySelector('option[value=forever]').textContent,
+    'احتفاظ دائم')
+  await act(async () => fixture.hostLocale.set({ active: 'en', revision: 1 }))
+  assert.equal(div.querySelector('section').lang, 'en')
+  assert.equal(div.querySelector('section').dir, 'ltr')
+  assert.match(div.textContent, /Retention Policy/)
+})
+
+test('Adaptive Reasoning composer localizes its accessible menu labels with Arabic Host locale', async t => {
+  const fixture = reasoningFixture()
+  fixture.options.hostLocale = 'ar'
+  const view = await openReasoning(t, fixture)
+  const trigger = view.trigger()
+  assert.equal(trigger.getAttribute('lang'), 'ar')
+  assert.equal(trigger.getAttribute('dir'), 'rtl')
+  await view.open()
+  assert.ok(view.item('حفظ مستوى الاستدلال الحالي'))
+  assert.ok(view.item('إحصائيات الاستدلال…'))
+  assert.ok(view.item('توصية مستوى الاستدلال…'))
+  assert.doesNotMatch(view.div.textContent, /Save current effort/)
+})
+
+
+test('Direct Chat failed preparation offers an explicit retry and never reports a false open', async t => {
+  let attempts = 0
+  const opened = []
+  const { div } = await mount(t, {
+    onOpenSession: id => opened.push(id),
+    onWorkspaceCreate: async input => ({
+      workspaceId: 'synthetic-direct', title: 'Direct Chat', path: input.path,
+    }),
+    onConnectWorkspace: async () => 'synthetic-session',
+    async fetch(url) {
+      assert.equal(url, '/api/abinadwan-direct-chat/prepare')
+      attempts++
+      if (attempts === 1) return Response.json({ code: 'PREPARE_UNAVAILABLE' }, { status: 503 })
+      return Response.json({ path: '/fictional-profile/abinadwan-direct-chat-data/Direct Chat' })
+    },
+    console: { warn() {} },
+  }, 'direct-chat', 'sidebar.session.action')
+  const first = div.querySelector('button[aria-label="Direct Chat"]')
+  assert.ok(first)
+  await act(async () => first.click())
+  assert.deepEqual(opened, [], 'failed preparation cannot open a chat')
+  assert.ok(div.querySelector('[role=alert]'), 'failure must be announced')
+  const retry = div.querySelector('button[aria-label="Retry Direct Chat"]')
+  assert.ok(retry, 'the retry control must be explicit and keyboard accessible')
+  await act(async () => retry.click())
+  assert.equal(attempts, 2)
+  assert.deepEqual(opened, ['synthetic-session'])
+  assert.equal(div.querySelector('[role=alert]'), null, 'successful retry removes stale error')
+  assert.ok(div.querySelector('button[aria-label="Direct Chat"]'))
+})
+
+
+test('Direct Chat history retries a failed catalog without leaking nonadmitted Session metadata', async t => {
+  let requests = 0
+  const { div } = await mount(t, {
+    hostLocale: 'en',
+    workspaceItems: [{ workspaceId: 'authorized', title: 'Direct Chat',
+      sessionIds: ['admitted', 'hidden'] }],
+    sessions: { phase: 'ready', ids: ['admitted'],
+      byId: { admitted: { id: 'admitted', displayTitle: 'Known fictional chat', running: false },
+        hidden: { id: 'hidden', displayTitle: 'Hidden private canary', running: false } } },
+    async fetch(url) {
+      assert.equal(url.pathname, '/api/abinadwan-direct-chat/catalog')
+      requests++
+      return requests === 1
+        ? Response.json({ code: 'DIRECT_CHAT_CATALOG_BUSY' }, { status: 409 })
+        : Response.json({ workspaceId: 'authorized' })
+    },
+  }, 'direct-chat', 'sidebar.session.action')
+  const history = div.querySelector('button[aria-label="Direct Chat history"]')
+  assert.ok(history)
+  await act(async () => history.click())
+  assert.ok(div.querySelector('[role=alert]'), 'a server refusal must not look like an empty successful history')
+  const retry = [...div.querySelectorAll('button')].find(button => button.textContent === 'Retry')
+  assert.ok(retry, 'a recovery action must be visible')
+  await act(async () => retry.click())
+  assert.equal(requests, 2)
+  assert.match(div.textContent, /Known fictional chat/)
+  assert.doesNotMatch(div.textContent, /Hidden private canary/)
+  assert.equal(div.querySelector('[role=alert]'), null)
+})
+
+test('Chat Control keeps a failed policy proposal for an explicit revision-checked retry', async t => {
+  const settings = settingsFixture('conversation-lifecycle', { retention: 'forever', overrides: [], protectedIds: [] })
+  const replace = settings.service.replace
+  const revisions = []
+  settings.service.replace = async (ns, value, revision) => {
+    revisions.push(revision)
+    if (revisions.length === 1) return refused('settings/unavailable', 'fixture write failure')
+    return replace(ns, value, revision)
+  }
+  const { div, window } = await mount(t, { settings: settings.service }, 'conversation-lifecycle', 'settings.section')
+  const retention = div.querySelectorAll('select')[1]
+  const confirm = () => [...div.querySelectorAll('button')].find(button => button.textContent === 'Confirm and save')
+  await act(async () => {
+    retention.value = '30'
+    retention.dispatchEvent(new window.Event('change', { bubbles: true }))
+  })
+  await act(async () => confirm().click())
+  assert.match(div.textContent, /Save failed/)
+  assert.doesNotMatch(div.textContent, /Saved\./)
+  assert.equal((await settings.service.describe()).value.namespaces[0].value.record.retention, 'forever')
+  assert.equal(retention.value, '30')
+  await act(async () => confirm().click())
+  assert.deepEqual(revisions, [1, 1])
+  assert.equal((await settings.service.describe()).value.namespaces[0].value.record.retention, '30')
+  assert.equal(confirm(), undefined)
+})
+
+test('a failed statistics reset requires an authoritative reload before an explicit retry', async t => {
+  const counts = { since: '2026-11-20T08:00:00.000Z', persistent: true, messages: 3,
+    requests: { session: {}, subagent: {} } }
+  let attempts = 0
+  const fixture = reasoningFixture({ handlers: {
+    stats: () => Response.json(counts),
+    'stats/reset': () => ++attempts === 1 ? Response.json({}, { status: 503 })
+      : Response.json({ ...counts, messages: 0 }),
+  } })
+  const view = await openReasoning(t, fixture)
+  await view.open()
+  await act(async () => view.item('Reasoning statistics…').click())
+  const dialog = view.div.querySelector('[role=dialog]')
+  const button = label => [...dialog.querySelectorAll('button')].find(node => node.textContent === label)
+  await act(async () => button('Reset statistics').click())
+  assert.match(dialog.textContent, /Statistics reset could not be confirmed/)
+  assert.equal(button('Reset statistics').disabled, true)
+  await act(async () => button('Reload statistics').click())
+  assert.deepEqual(fixture.calls.map(call => call.path), ['stats', 'stats/reset', 'stats'])
+  assert.match(dialog.textContent, /Total3/)
+  await act(async () => button('Reset statistics').click())
+  assert.deepEqual(fixture.calls.map(call => call.path), ['stats', 'stats/reset', 'stats', 'stats/reset'])
+  assert.match(dialog.textContent, /Total0/)
+})
+
+test('effort save acknowledges its Host reply after a document notification without replacing refreshed state', async t => {
+  const fixture = reasoningFixture()
+  const replace = fixture.settings.service.replace
+  const { div, fixture: browser } = await mount(t, fixture.options, 'adaptive-reasoning', 'conversation.input.right')
+  fixture.settings.service.replace = async (ns, value, revision) => {
+    const response = await replace(ns, value, revision)
+    await replace(ns, { record: { preferences: [{ provider: 'provider', model: 'model', effort: 'wide-v2' }] } }, revision + 1)
+    browser.events.get('settings/document-updated')()
+    return response
+  }
+  const trigger = div.querySelector('button[aria-haspopup=menu]')
+  await act(async () => trigger.click())
+  await act(async () => [...div.querySelectorAll('[role=menuitem]')].find(row => row.textContent === 'Save current effort').click())
+  assert.match(div.textContent, /Preference saved\./)
+  await act(async () => trigger.click())
+  assert.match(div.textContent, /Saved preference: Wide/)
+})
+
+test('effort save ignores a reply from before a connection reset', async t => {
+  const fixture = reasoningFixture()
+  const replace = fixture.settings.service.replace
+  const { div, fixture: browser } = await mount(t, fixture.options, 'adaptive-reasoning', 'conversation.input.right')
+  fixture.settings.service.replace = async (...args) => {
+    const response = await replace(...args)
+    browser.ctx.emit('connection/reset')
+    return response
+  }
+  await act(async () => div.querySelector('button[aria-haspopup=menu]').click())
+  await act(async () => [...div.querySelectorAll('[role=menuitem]')].find(row => row.textContent === 'Save current effort').click())
+  assert.doesNotMatch(div.textContent, /Preference saved\./)
+})
+
+test('compact Arabic Direct Chat retains focus and localizes retry during a refused open', async t => {
+  let finish, attempts = 0
+  const { div } = await mount(t, { hostLocale: 'ar', fetch(url) {
+    if (!String(url).includes('/api/abinadwan-direct-chat/prepare')) return Response.json({}, { status: 404 })
+    attempts++
+    return new Promise(resolve => { finish = resolve })
+  } }, 'direct-chat', 'sidebar.session.action')
+  const trigger = div.querySelector('[data-abinadwan-direct-chat] button')
+  assert.equal(trigger.getAttribute('aria-label'), 'الدردشة المباشرة')
+  trigger.focus()
+  await act(async () => trigger.click())
+  assert.equal(document.activeElement, trigger)
+  assert.equal(trigger.disabled, false)
+  assert.equal(trigger.getAttribute('aria-disabled'), 'true')
+  await act(async () => trigger.click())
+  assert.equal(attempts, 1)
+  await act(async () => finish(Response.json({}, { status: 503 })))
+  assert.equal(document.activeElement, trigger)
+  assert.equal(trigger.getAttribute('aria-label'), 'إعادة محاولة فتح الدردشة المباشرة')
+  assert.match(div.querySelector('[role=alert]').textContent, /تعذّر فتح/)
+})
+
+test('Arabic reasoning recommendation localizes dialog and status and isolates the effort label', async t => {
+  const fixture = reasoningFixture({ record: { preferences: [], mode: 'adaptive' }, handlers: {
+    recommend: () => Response.json({ recommendation: 'wide-v2', tier: 'complex', signals: ['math'] }),
+  } })
+  fixture.options.hostLocale = 'ar'
+  const { div, open, item } = await openReasoning(t, fixture)
+  await open()
+  await act(async () => item('توصية مستوى الاستدلال…').click())
+  const dialog = div.querySelector('[role=dialog]')
+  assert.match(dialog.textContent, /توصية مستوى الاستدلال/)
+  assert.ok(dialog.querySelector('[lang=ar][dir=rtl]'))
+  const sample = dialog.querySelector('textarea')
+  await act(async () => {
+    Object.getOwnPropertyDescriptor(Object.getPrototypeOf(sample), 'value').set.call(sample, 'احسب هذا المثال')
+    sample.dispatchEvent(new document.defaultView.Event('input', { bubbles: true }))
+  })
+  await act(async () => dialog.querySelector('form').dispatchEvent(
+    new document.defaultView.Event('submit', { bubbles: true, cancelable: true })))
+  const result = [...dialog.querySelectorAll('[role=status]')].at(-1)
+  assert.match(result.textContent, /المستوى المقترح.*معقّد.*رياضيات/)
+  assert.equal(result.querySelector('bdi').textContent, 'Wide')
+  assert.deepEqual(fixture.calls.map(call => call.path), ['recommend'])
+})
+
+test('a delayed effort acknowledgement cannot appear on a different route', async t => {
+  let acknowledge
+  const fixture = reasoningFixture({ handlers: {
+    effort: body => new Promise(resolve => {
+      acknowledge = () => resolve(Response.json({ selected: {
+        provider: body.provider, model: body.model, reasoningEffort: body.reasoningEffort,
+      } }))
+    }),
+  } })
+  const { div, open, item } = await openReasoning(t, fixture)
+  await open()
+  await act(async () => item('Wide').click())
+  const { store } = fixture.options.modelDirectories.directoryFor()
+  const snapshot = store.getSnapshot()
+  const current = { ...snapshot.current, model: 'alternate' }
+  const groups = [{ ...snapshot.groups[0], models: [
+    ...snapshot.groups[0].models, { ...snapshot.groups[0].models[0], id: current.model },
+  ] }]
+  await act(async () => store.set({ ...snapshot, current, groups }))
+  await act(async () => acknowledge())
+  assert.equal(div.querySelector('button[aria-haspopup=menu]').textContent, 'Balanced')
+  assert.doesNotMatch(div.textContent, /Effort changed\.|Harness could not change the effort/)
 })

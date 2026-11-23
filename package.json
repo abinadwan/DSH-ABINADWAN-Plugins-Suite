@@ -1,6 +1,6 @@
 {
   "name": "@abinadwan/dsh-plugins-suite",
-  "version": "1.0.0",
+  "version": "1.0.2",
   "description": "Six-component DeepSeek Harness suite: Environment & Context, Humanizer, My Profile, Direct Chat, Chat Control and Adaptive Reasoning.",
   "private": true,
   "type": "module",
@@ -57,7 +57,8 @@
   ],
   "scripts": {
     "test": "node --test",
-    "check:package": "node scripts/check-package.mjs"
+    "check:package": "node scripts/check-package.mjs",
+    "check:regression": "node --test test/phase08-regression.test.js && node qa/adaptive-reasoning-benchmark.mjs --json"
   },
   "dsh": {
     "bundle": {

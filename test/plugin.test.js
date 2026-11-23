@@ -16,7 +16,7 @@ test('native right sidebar registers and auto-opens', async t => {
   const app = await clientHarness()
   t.after(() => app.dispose())
   assert.equal(app.loaded.id, pkg.name)
-  assert.equal(app.tabs.records.get('environment-dashboard').title(), 'Environment & Context')
+  assert.equal(app.tabs.records.get('environment-dashboard').title(), 'البيئة والسياق')
   assert.ok(app.slot('conversation.session.header.utilities'))
   assert.ok(app.slot('plugins.detail.section'))
   const body = app.slot('sidebar.right.pane.tab')

@@ -84,11 +84,15 @@ test('rc.3 real loop: committed config, new and existing sessions, disable and c
     delete next.preferences.sendCustom
     next.preferences.style='candid'
     await fiber.update({record:next})
-    await send(b,history,'in history update')
+    const beforeCustomRevocation=history.requests.length
+    b.followup(createUserMessage({content:[{type:'text',text:'Continue after custom consent was revoked'}],source:{kind:'user'}}))
+    await b.whenIdle()
+    assert.equal(history.requests.length,beforeCustomRevocation,'revoked custom Preferences must stop before the adapter')
+    const clean=await ctx.agentLoop.create(SessionId('profile-custom-revoked'),{provider:'history',model:'test'})
+    installModelSelection(clean.ctx)
+    await send(clean,history,'Fresh after custom revocation')
     assert.match(latest(history),/candid/)
     assert.doesNotMatch(latest(history),/FICTIONAL_CUSTOM/)
-    // In-history mode may retain old authorized text: assert the documented limit.
-    assert.ok(systemTexts(history.requests.at(-1)).some(t=>t.includes(custom)))
     await fiber.dispose()
     await send(a,plain,'disabled')
     assert.doesNotMatch(latest(plain),/Response preferences/)
@@ -112,6 +116,7 @@ test('rc.3 real loop: committed config, new and existing sessions, disable and c
     }
     assert.doesNotMatch(JSON.stringify(a.session.snapshotEvents()),new RegExp(marker+'|'+nationalityMarker+'|female'))
     // Exercise the positive path with explicit v4 choices in fresh native sessions.
+    let checkedHistoryAgent = null
     const checked={...structuredClone(next),policies:{preferredName:'allow',nationality:'private',gender:'private'}}
     await fiber.update({record:checked})
     for(const [provider,adapter] of [['plain',plain],['history',history]]){
@@ -124,8 +129,18 @@ test('rc.3 real loop: committed config, new and existing sessions, disable and c
       const payload=JSON.stringify(adapter.requests.at(-1))
       assert.match(payload,new RegExp(marker))
       assert.doesNotMatch(payload,new RegExp(nationalityMarker+'|female'))
+      if(provider==='history')checkedHistoryAgent=fresh
     }
     await fiber.update({record:{...checked,policies:profile.emptyPolicies()}})
+    // Phase 01: a real in-history session previously allowed this fictional
+    // field. A follow-up after revocation must not reach any adapter with it.
+    const historyBeforeRevokedFollowup=history.requests.length
+    checkedHistoryAgent.followup(createUserMessage({content:[{type:'text',text:'Continue after revocation'}],source:{kind:'user'}}))
+    await checkedHistoryAgent.whenIdle()
+    for(const request of history.requests.slice(historyBeforeRevokedFollowup)){
+      assert.doesNotMatch(JSON.stringify(request),new RegExp(marker),
+        'revoked profile detail must not reach an adapter after in-history replay')
+    }
     for(const [provider,adapter] of [['plain',plain],['history',history]]){
       const clean=await ctx.agentLoop.create(SessionId('profile-private-'+provider),{provider,model:'test'})
       installModelSelection(clean.ctx)

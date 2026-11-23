@@ -1,7 +1,7 @@
 {
   "meta": {
     "title": "ABINADWAN Plugins Suite",
-    "description": "A modular DeepSeek Harness toolkit with Environment & Context, a runtime Humanizer skill and a read-only Personal Profile draft.",
+    "description": "A DeepSeek Harness suite with six independently switchable components for session context, writing, profile settings, direct chat, conversation management and reasoning.",
     "detail": "docs/DETAIL.md"
   }
 }

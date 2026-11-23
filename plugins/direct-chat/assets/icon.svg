@@ -1,10 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" role="img" aria-labelledby="title">
   <title id="title">Direct Chat</title>
-  <rect x="1" y="1" width="22" height="22" rx="6" fill="#2563EB"/>
-  <rect x="2.5" y="2.5" width="19" height="19" rx="4.5" fill="#173A8A"/>
-  <path d="M9 2.5h6" fill="none" stroke="#93C5FD" stroke-width="1" stroke-linecap="round"/>
-  <g id="glyph" fill="none" stroke="#F8FAFC" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M7.5 6.5h9a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-6l-5 3v-10a2 2 0 0 1 2-2Z"/>
-    <path d="M9 10h6m-6 2.75h3.5"/>
+  <defs>
+    <linearGradient id="ring" x1="0" y1="0" x2=".8" y2="1">
+      <stop stop-color="#C7F2FF"/>
+      <stop offset=".4" stop-color="#5DA8FF"/>
+      <stop offset="1" stop-color="#304BE8"/>
+    </linearGradient>
+    <linearGradient id="face" x2=".26" y2="1">
+      <stop stop-color="#3667C4"/>
+      <stop offset=".51" stop-color="#203D8D"/>
+      <stop offset="1" stop-color="#131D53"/>
+    </linearGradient>
+    <radialGradient id="sheen" cx=".46" cy="0" r=".76" gradientTransform="scale(1 .56)">
+      <stop stop-color="#C7F2FF" stop-opacity=".34"/>
+      <stop offset="1" stop-color="#C7F2FF" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+  <rect x="1" y="1" width="22" height="22" rx="6" fill="url(#ring)"/>
+  <rect x="2.3" y="2.3" width="19.4" height="19.4" rx="4.8" fill="url(#face)"/>
+  <rect x="2.3" y="2.3" width="19.4" height="19.4" rx="4.8" fill="url(#sheen)"/>
+  <rect x="2.55" y="2.55" width="18.9" height="18.9" rx="4.55" fill="none" stroke="#C7F2FF" stroke-opacity=".24" stroke-width=".3"/>
+  <path d="M8.8 2.6h6.4" fill="none" stroke="#C7F2FF" stroke-opacity=".72" stroke-width=".45" stroke-linecap="round"/>
+  <g id="glyph" fill="none" stroke="#FFFFFF" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M7.5 6.5h9a2 2 0 0 1 2 2v4.75a2 2 0 0 1-2 2h-6.2L5.5 18V8.5a2 2 0 0 1 2-2Z"/>
+    <path d="M8.8 9.65h6.4m-6.4 2.6h4.2"/>
   </g>
 </svg>

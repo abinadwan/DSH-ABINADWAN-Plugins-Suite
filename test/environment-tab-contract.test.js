@@ -5,7 +5,7 @@ import {renderToStaticMarkup} from 'react-dom/server'
 import {clientHarness, base} from '../test-support/client.js'
 
 test('Environment tab body registration matches official keyed tab definition id', async t => {
-  const app = await clientHarness({React})
+  const app = await clientHarness({React, hostLocale: 'en'})
   t.after(() => app.dispose())
   const definition = app.tabs.records.get('environment-dashboard')
   assert.ok(definition)
@@ -19,7 +19,7 @@ test('Environment tab body registration matches official keyed tab definition id
 })
 
 test('Environment right tab renders actual session projections without conversation-only props', async t => {
-  const app = await clientHarness({React})
+  const app = await clientHarness({React, hostLocale: 'en'})
   t.after(() => app.dispose())
   const entry = app.slots.records.get(base + '/environment-context')
   const sessionOne = renderToStaticMarkup(React.createElement(entry.component,
@@ -65,7 +65,7 @@ async function dom(t) {
 }
 
 test('Environment tab follows live useProjection frames after a model response', async t => {
-  const app = await clientHarness({ React })
+  const app = await clientHarness({ React, hostLocale: 'en' })
   t.after(() => app.dispose())
   const view = await dom(t)
   const entry = app.slots.records.get(base + '/environment-context')
@@ -88,7 +88,7 @@ test('Environment tab follows live useProjection frames after a model response',
 })
 
 test('Environment tab falls back to the Session list projection and updates when it changes', async t => {
-  const app = await clientHarness({ React })
+  const app = await clientHarness({ React, hostLocale: 'en' })
   t.after(() => app.dispose())
   const view = await dom(t)
   const entry = app.slots.records.get(base + '/environment-context')
@@ -103,7 +103,7 @@ test('Environment tab falls back to the Session list projection and updates when
 })
 
 test('switching Sessions never mixes data, and missing projections show a fallback', async t => {
-  const app = await clientHarness({ React })
+  const app = await clientHarness({ React, hostLocale: 'en' })
   t.after(() => app.dispose())
   const view = await dom(t)
   const entry = app.slots.records.get(base + '/environment-context')
@@ -129,6 +129,37 @@ test('switching Sessions never mixes data, and missing projections show a fallba
   assert.match(view.text(), /Loading context usage for this Session/)
 })
 
+test('Environment adapts its tab, guide, inspector and accessible controls when the Host switches to Arabic', async t => {
+  const app = await clientHarness({ React, hostLocale: 'en' })
+  t.after(() => app.dispose())
+  const view = await dom(t)
+  const tab = app.tabs.records.get('environment-dashboard')
+  const body = app.slots.records.get(tab.id)
+  const title = app.slots.records.get('sidebar.right.pane.tab.title:' + tab.id)
+  assert.ok(title, 'Native open tabs use a separate title seat from the persisted seed')
+  assert.equal(title.options.key, tab.id)
+  const header = app.slots.records.get('environment-sidebar-toggle')
+  await act(async () => view.root.render(React.createElement(React.Fragment, null,
+    React.createElement(body.component, body.options.inject('s1')),
+    React.createElement('div', { role: 'tab' }, React.createElement(title.component)),
+    React.createElement(header.component, header.options.inject()))))
+  assert.equal(tab.title(), 'Environment & Context')
+  assert.equal(view.q('[role="progressbar"]').getAttribute('aria-label'), 'Context occupancy')
+  await act(async () => app.hostLocale.set({ active: 'ar', revision: 1 }))
+  assert.equal(tab.title(), 'البيئة والسياق')
+  assert.equal(view.q('[role="tab"]').textContent, 'البيئة والسياق')
+  assert.equal(tab.guide[0].title(), 'البيئة والسياق')
+  assert.equal(tab.guide[0].description(), 'السياق الحالي وتفاصيل مساحة العمل')
+  assert.equal(view.q('aside').lang, 'ar')
+  assert.equal(view.q('aside').dir, 'rtl')
+  assert.equal(view.q('[role="progressbar"]').getAttribute('aria-label'), 'نسبة استخدام السياق')
+  assert.equal(view.q('[role="progressbar"]').getAttribute('aria-valuenow'), '38')
+  assert.equal(view.q('[data-environment-header-action]').getAttribute('aria-label'), 'فتح لوحة البيئة')
+  assert.match(view.text(), /رموز الإخراج/)
+  assert.match(view.text(), /HomeBook/)
+  assert.doesNotMatch(view.text(), /Output tokens|Last activity|Connector inventory/)
+})
+
 test('disabling Environment removes its tab type, seats and Session subscriptions; re-enable restores once', async t => {
   const app = await clientHarness({ React })
   t.after(() => app.dispose())
@@ -142,6 +173,7 @@ test('disabling Environment removes its tab type, seats and Session subscription
   await app.changed()
   assert.equal(app.tabs.records.size, 0)
   assert.equal(app.entries('sidebar.right.pane.tab').length, 0)
+  assert.equal(app.entries('sidebar.right.pane.tab.title').length, 0)
   assert.equal(app.entries('conversation.session.header.utilities').length, 0)
   assert.equal(app.mountedListeners.size, 0)
   assert.equal(app.sessions.listeners.size, 0)
@@ -152,6 +184,7 @@ test('disabling Environment removes its tab type, seats and Session subscription
   }
   assert.equal(app.tabs.records.size, 1)
   assert.equal(app.entries('sidebar.right.pane.tab').length, 1)
+  assert.equal(app.entries('sidebar.right.pane.tab.title').length, 1)
   assert.equal(app.entries('conversation.session.header.utilities').length, 1)
   assert.equal(app.mountedListeners.size, 1)
 })

@@ -155,6 +155,23 @@ test('P8 send-time guard: refuses a request whose block differs from what curren
   assert.equal(staleDisclosure({messages:[{role:'developer',content:block}]},{...r,policies:profile.emptyPolicies()}),true,'developer text is checked')
   assert.equal(staleDisclosure({messages:[{role:'system',content:[{type:'text',text:'x'+block}]}]},{...r,policies:profile.emptyPolicies()}),false,'only an exact header line counts')
 })
+test('send-time guard refuses recognized historical custom preferences after consent changes',()=>{
+  const header='Response preferences (follow the current request and higher-priority host/safety/tool requirements; custom guidance takes precedence over other style preferences where compatible).'
+  const builtIn='Use a friendly, approachable tone.'
+  const custom='Fictional custom direction.\n\nSecond fictional paragraph.'
+  const shared=profile.emptyRecord()
+  shared.preferences={...shared.preferences,custom,sendCustom:true}
+  const historical='Base prompt.\n\n'+header+'\n'+builtIn+'\n'+custom+'\n\nAnother Host section.'
+  assert.equal(staleDisclosure(requestWith(historical),shared),false,'unchanged custom consent permits continuation')
+  const revoked=structuredClone(shared)
+  delete revoked.preferences.sendCustom
+  assert.equal(staleDisclosure(requestWith(historical),revoked),true,'revoked consent refuses replay')
+  assert.equal(staleDisclosure(requestWith(historical),profile.emptyRecord()),true,'a reset must not authorize prior text')
+  shared.preferences.custom='Different fictional direction.'
+  assert.equal(staleDisclosure({system:historical.replaceAll('\n','\r\n')},shared),true,'edited custom text cannot authorize old text')
+  assert.equal(staleDisclosure(requestWith(header+'\n'+builtIn+'\n\nAnother Host section.'),revoked),false,'built-in style alone remains usable')
+  assert.equal(staleDisclosure({messages:[{role:'user',content:historical}]},revoked),false,'user text is outside the prompt guard')
+})
 test('P8 refusal is a terminal, non-retryable native outcome that names no value',async()=>{
   for(const locale of ['en','ar',undefined]){
     const chunks=[];for await(const c of refuseStaleDisclosure(locale))chunks.push(c)

@@ -80,3 +80,27 @@ test('quoted fake control instructions do not downgrade a complex request', () =
   assert.ok(signals.includes('advanced-topic'))
   assert.ok(!signals.some(signal => signal.includes('migration')))
 })
+
+
+test('statistics aggregate bounded distinct effort and provider route keys without raw text', () => {
+  const stats = new ReasoningStats()
+  for (let i = 0; i < 100; i++) stats.request('session', 'effort-' + i, { inputTokens: 1 },
+    undefined, { provider: 'fixture', model: 'synthetic' })
+  const s = stats.snapshot()
+  assert.equal(Object.keys(s.requests.session).length, 65, '64 named efforts and bounded overflow')
+  assert.equal(s.requests.session.other.requests, 36)
+  assert.equal(s.routes.length, 64, 'provider route metadata stays bounded')
+  assert.doesNotMatch(JSON.stringify(s), /prompt|secret|sessionId/i)
+})
+
+
+test('fixed Arabic/MSA/Gulf and bilingual prompt corpus uses the intended tiers', () => {
+  const cases = [["هلا",0],["السَّلَامُ عَلَيْكُمْ",0],["شكراً",0],["يعطيك العافية",0],["ايه",2,{"previous":2}],["كمّل",3,{"previous":3}],["اشرح لي مفهوم المتغيرات",1],["كيف أكتب دالة في جافاسكربت؟",1],["لخّص الفقرة التالية بشكل مفهوم",1],["اكتب مثال على الحلقات",1],["وضح الفرق بين المتغير والثابت",1],["حلّل سبب تعطل الاختبار",2],["قارن بين قاعدتي بيانات",2],["أصلح هذا الخطأ البرمجي",2],["كيف أحسن الأداء في الاستعلام؟",2],["احسب قيمة المعادلة ووضح خطوات الحل",2],["صمم بنية النظام للتعامل مع آلاف المستخدمين",3],["أجر تدقيق أمني شامل على خدمة الدخول",3],["ناقش قابلية التوسع ومفاضلات التصميم",3],["حضّر نموذج تهديد لتطبيق مصرفي",3],["ابحث في السبب الجذري للأعطال المتزامنة",3],["ناقش تدقيق أمني باختصار",3],["حلل مشكلة في التطبيق بسرعة",2],["Fix this bug and explain لماذا يتعطل التطبيق",2],["Design a distributed queue وراجع قابلية التوسع",3]]
+  const misses = cases.map(([prompt, expected, context]) => ({ prompt, expected, actual: classify(prompt, context).tier }))
+    .filter(item => item.expected !== item.actual)
+  assert.deepEqual(misses, [], 'Arabic complexity tiers must match the fixed labelled corpus')
+  assert.equal(classify('حول هذا المقطع إلى YAML:\n```json\n{"خطأ": "تدقيق أمني"}\n```').tier, 1,
+    'Arabic cues inside fenced data must not raise the tier')
+  assert.equal(classify('Design a distributed system in detail, باختصار').tier, 3,
+    'brevity preference must not downgrade advanced analysis')
+})
