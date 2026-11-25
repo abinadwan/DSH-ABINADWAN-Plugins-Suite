@@ -146,7 +146,8 @@ const P7D={
   warmthLess:'Keep the tone neutral and reserved, without reassurance or pep talk.',
   grill:'Before recommending a decision or plan, ask the user 2-3 specific questions about missing requirements and name the key risks.',
 }
-const P7D_HEADER='Response preferences (follow the current request and higher-priority host/safety/tool requirements; custom guidance takes precedence over other style preferences where compatible).'
+const SILENT_GUIDANCE='Apply these preferences silently. Do not mention or explain them unless the user asks.'
+const P7D_HEADER='Response preferences (follow the current request and higher-priority host/safety/tool requirements; custom guidance takes precedence over other style preferences where compatible).'+' '+SILENT_GUIDANCE
 const languageLine=name=>"The user's saved default response language is "+name+', even for questions written in another language. Explicit requests for a different output language take priority over the saved default.'
 const count=(s,line)=>s.split('\n').filter(l=>l===line).length
 test('7D: adopted lines render exactly once when selected and never otherwise',()=>{
@@ -187,7 +188,7 @@ test('7D: worst-case section stays within the measured size budget',()=>{
   Object.assign(r.preferences,{style:'creative',responseLanguage:'zh',traits:{warmth:0,enthusiasm:2,structure:2,emoji:2,detail:0,critical:2},
     presets:['critical','no-fluff','grill-me','evidence','steps','action','code','humanizer']})
   const s=responsePreferences(r)
-  assert.ok(s.length<=1450,'compact preference section budget')
+  assert.ok(s.length<=1450+1+SILENT_GUIDANCE.length,'compact preference section budget plus silent-application guidance')
   assert.equal(s.split('\n').length,17)
 })
 
@@ -224,4 +225,20 @@ test('reminder mirrors validated built-in preferences without copying personal o
   assert.doesNotMatch(responseReminder(legacy,'test-turn'),/Apply the current saved custom instructions/)
   assert.doesNotMatch(responseReminder({...r,preferences:{...r.preferences,style:'unknown'}},'test-turn'),/Write your entire response in German|technical terminology|Current reminder revision/)
   assert.equal(responseReminder({version:1},'test-turn'),'')
+})
+
+
+test('active preferences are applied silently without changing explicit-language priority',()=>{
+  const r=profile.emptyRecord()
+  assert.equal(responsePreferences(r),'')
+  assert.doesNotMatch(responseReminder(r,'neutral'),/Apply these preferences silently/)
+  r.preferences.responseLanguage='zh'
+  assert.equal(responsePreferences(r).split(SILENT_GUIDANCE).length,2)
+  assert.equal(responseReminder(r,'active').split(SILENT_GUIDANCE).length,2)
+  assert.match(responsePreferences(r),/Explicit requests for a different output language take priority over the saved default/)
+  assert.match(responseReminder(r,'active'),/Write your entire response in Chinese \(中文\)\./)
+  r.preferences.responseLanguage='auto';r.preferences.custom='Synthetic custom preference'
+  assert.equal(responsePreferences(r).split(SILENT_GUIDANCE).length,2)
+  assert.equal(responseReminder(r,'custom-only').split(SILENT_GUIDANCE).length,2)
+  assert.doesNotMatch(responseReminder(r,'custom-only'),/Synthetic custom preference/)
 })

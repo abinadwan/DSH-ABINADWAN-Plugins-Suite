@@ -627,7 +627,8 @@ window.__ModuleLoader__.load({
         traits:Object.fromEntries(PROFILE_TRAITS.map(([key])=>[key,1])),
         presets:[], custom:''}
     }
-    const PREFERENCES_HEADER='Response preferences (follow the current request and higher-priority host/safety/tool requirements; custom guidance takes precedence over other style preferences where compatible).'
+    const SILENT_PREFERENCES='Apply these preferences silently. Do not mention or explain them unless the user asks.'
+    const PREFERENCES_HEADER='Response preferences (follow the current request and higher-priority host/safety/tool requirements; custom guidance takes precedence over other style preferences where compatible).'+' '+SILENT_PREFERENCES
     function languageName(language) {
       const native=language[1].split(' — ')[0]
       return language[3]+(native===language[3]?'':' ('+native+')')

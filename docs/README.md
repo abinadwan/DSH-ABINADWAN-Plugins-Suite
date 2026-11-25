@@ -5,6 +5,7 @@ Current source baseline: package 1.1.0, six independently switchable components.
 - [Installation and technology stack](../README.md)
 - [Six-component behavior and limitations](DETAIL.md)
 - [My Profile settings, privacy and migration](plugins/my-profile.md)
+- [Implemented improvements and verification evidence](IMPROVEMENTS.md)
 - [Artwork](design/BRANDING.md)
 - [Development and verification](architecture/development.md)
 - [Security](../SECURITY.md), [accessibility](../ACCESSIBILITY.md), [contributing](../CONTRIBUTING.md), [release history](../CHANGELOG.md), [third-party notices](../THIRD_PARTY_NOTICES.md).
