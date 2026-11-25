@@ -5,8 +5,13 @@ All notable changes are documented here.
 ## [Unreleased] — v1.1.0 development
 
 - Development candidate: `1.1.0-rc.1`. This is not a published stable release.
-- Planned: safe permanent Session deletion, archive cleanup and measured disk-reclamation reporting in Chat Control, subject to a supported/reviewed DSH deletion contract, confirmation, authorization and recovery evidence. **Not implemented yet.**
-- The published stable `v1.0.2` retains preview-only retention and remains unchanged.
+- Add a Profile-scoped **Hide Archived Conversations** preference, enabled by default in Chat Control.
+- Add a bilingual archive hub with authorized metadata search, filters and sorting. Confirmed restore uses the native DSH workspace command after live access and protection checks.
+- Track the Desktop and CI acceptance gates in the [archive implementation report](docs/research/v1.1.0/CHAT_CONTROL_ARCHIVE_IMPLEMENTATION_REPORT.md).
+
+## [1.0.3] — Released (2026-11-24)
+
+- Recognize built-in Agent preset IDs in the My Profile disclosure guard while preserving revocation checks. [Stable release](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.3).
 
 ## [1.0.2] — Released (2026-11-23)
 

@@ -1,6 +1,6 @@
 # Documentation index — ABINADWAN Plugins Suite
 
-**Current published source release: [v1.0.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.0) on `main`.**
+**Current published source release [v1.0.3](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.3) on `main`.**
 
 ## Where to start
 
@@ -9,17 +9,18 @@
 - [v1.0.1 development progress tracker](DEVELOPMENT_PROGRESS_V1.0.1.md): eight phase candidates, completed/pending work, verified checks, blockers and deferred Desktop acceptance.
 - [Current feature reference](DETAIL.md): **all six** component behaviors, default states, icons, security limitations, updates, supported installations and known gaps.
 - [My Profile contract](PERSONAL_PROFILE_LOCAL_SETTINGS.md): settings and privacy rules.
+- [Chat Control v1.1.0 plan](research/v1.1.0/CHAT_CONTROL_ARCHIVE_MANAGEMENT.md), [native API research](research/v1.1.0/CHAT_CONTROL_NATIVE_API_RESEARCH.md) and [implementation report](research/v1.1.0/CHAT_CONTROL_ARCHIVE_IMPLEMENTATION_REPORT.md).
 - [Changelog](../CHANGELOG.md), [handover](../HANDOVER.md) and [security policy](../SECURITY.md) for implementation history, acceptance and threat boundaries.
 
 ## Documentation audit — 2026-11-21
 
 The earlier audit examined **43 existing Markdown files** under `docs/` (before adding this index). All were related to the repository; none warranted permanent deletion. A later organization pass moved **15 superseded research and planning records** to [`archive/`](archive/README.md) without losing their contents or Git history. [`research/`](research/README.md) retains four useful technical reference reports plus original desktop-contract evidence JSON. The archives are **historical**, not instructions for the current implementation.
 
-**Current documentation policy:** the root README focuses on the technology and installation; [DETAIL.md](DETAIL.md) is the single detailed reference for all six component features and limitations. **v1.0.0** has been published from `main`; future feature-branch commits are not releases unless separately approved, merged and tagged. Historical reports retain their original version and test evidence.
+The root README covers technology and installation. [DETAIL.md](DETAIL.md) covers the six components and their limitations. Historical reports retain their original version and test evidence.
 
 ## Current reader-facing documentation
 
-These pages describe the current development contracts. Use the v1.0.0 tag for release-specific documentation.
+These pages describe the current development contracts. Use the v1.0.3 tag for stable release documentation.
 
 | File | Reason to keep |
 | --- | --- |

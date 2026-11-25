@@ -1,11 +1,12 @@
 # ABINADWAN Plugins Suite — development handover
 
-> **Published stable:** [v1.0.2](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.2), from `main`. The prior [v1.0.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.0) remains an immutable historical release. `v1.0.2` preserves the final owner-approved native acceptance dispositions, including documented upstream DSH limitations. The next development cycle is `v1.1.0` on `develop`; permanent Chat Control deletion is not shipped in `v1.0.2`.
+> **Published stable [v1.0.3](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.3)** includes the My Profile built-in preset fix. The archive implementation is on `feature/chat-control-archive-management-v1.1.0` and targets `develop` through [draft PR #72](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/72).
 
 ## Current workflow and source of truth
 
 - `develop` is the integration base. [PR #33](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/33) supplies Direct Chat and My Profile security changes. [PR #34](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/34) supplies the catalog, retention and reasoning changes. The only Git conflict was in the Direct Chat Host entry point. The resolution keeps both tool-denial hooks and the hardened prepare route, adds the owner-only read-only catalog, and shares canonical directory validation between the two.
 - The [component reference](docs/DETAIL.md) describes current behavior. The [security audit](docs/research/SECURITY_CODE_AUDIT_2026_11_22.md) and [architecture review](docs/research/CHAT_CONTROL_ADAPTIVE_DIRECT_CHAT_V2.md) hold evidence, upstream API gaps and acceptance criteria.
+- My Profile's `v1.0.3` hotfix `452dbf68c2ea1f3b125de58a25596054a36812f2` is absent from `develop`. Integrate it through a separately reviewed PR before final integration. Track archive verification in the [implementation report](docs/research/v1.1.0/CHAT_CONTROL_ARCHIVE_IMPLEMENTATION_REPORT.md).
 - Changes move from `develop` to `main` through a reviewed PR. A public release is created from an explicitly approved stable commit. New `v1.1.0` work returns to `develop`; deletion requires independent architecture and safety acceptance before release.
 
 ## Consolidated component status
@@ -16,7 +17,7 @@
 | Humanizer | Default **On**. On-demand native rewriting Skill. | Already-loaded instructions can remain in a conversation. |
 | My Profile | Default **Off**. Native Settings, existing v4 permissions and backup compatibility. Recognized disclosure replay checks cover additional newline formats, and the shared prompt copy strips additional formatting controls. | Run Desktop provider-bound privacy and multilingual checks. Revocation cannot remove historical or previously sent data. |
 | Direct Chat | Default **Off**. Separate native Session IDs in one permanent Workspace. Owner-gated discovery, search, recent and bounded creation sorting, paging and native management. Tool-denial covers canonical paths and aliases. Prepare uses owner-only POSIX creation, redacted logs and no-store responses. | Sessions share a filesystem cwd. Test actual Windows junctions and ACLs, alternate tool paths, remote authorization and restart/reconnect in disposable Profiles. DSH exposes one native Workspace tree. |
-| Chat Control | Default **Off**. Authorized inventory, conversation and Workspace protection, policy overrides and UTC eligibility previews. | Verify upgrade, protection and reconnect on Desktop. DSH has no recoverable, owner-scoped Session deletion transaction. Automatic and destructive cleanup stay disabled. |
+| Chat Control | Default **Off**. Authorized inventory, conversation and Workspace protection, policy overrides and UTC eligibility previews. The v1.1.0 feature branch adds visibility, the archive hub and confirmed native restore. | DSH owns the sidebar archive filter. The feature branch requires its own Desktop and CI acceptance. |
 | Adaptive Reasoning | Default **Off**. Manual native Session effort plus opt-in recommendations that preserve explicit effort. Bounded Profile aggregates with atomic persistence and reset. | Test model changes, restart and reset on Desktop. DSH lacks request-bound effort admission and a plugin policy hook covering all subagents. |
 
 ## Verification

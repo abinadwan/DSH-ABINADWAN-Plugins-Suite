@@ -1,6 +1,6 @@
 # ABINADWAN Plugins Suite — component details
 
-**Published source release: [v1.0.2](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.2) (tagged from `main`).** One community-maintained DSH bundle exposes six independently switchable components. The package's public identity remains `@abinadwan/dsh-plugins-suite`. The three recently added components are integrated; earlier exploratory prototypes and acceptance reports are historical evidence, not separate active plugins.
+**Published source release [v1.0.3](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.3) tagged from `main`.** One community-maintained DSH bundle exposes six independently switchable components. The package's public identity remains `@abinadwan/dsh-plugins-suite`.
 
 > **Release boundary:** A version bump, development branch merge, or successful CI run does not publish a GitHub Release or validate every Desktop security path. See [the releases page](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases) for actually published artifacts.
 
@@ -77,9 +77,15 @@ Enabling the component registers the runtime Skill `abinadwan-humanizer` through
 
 **Implemented:** an authorized Workspace conversation inventory, conversation and Workspace protection, a default retention preference and optional Workspace-specific overrides. Supported choices include **Forever, 365, 180, 90, 30 and 7 days**. The UI previews individual eligibility and retention candidates with known last prompt dates and an explicit UTC cutoff. It uses the catalog’s running state and the current window’s view leases. Other clients’ open views are outside that preview signal.
 
+**Archive management in v1.1.0 development.** Open **Settings → Chat Control → Archived Conversations**. The **Hide Archived Conversations** checkbox is enabled by default for the regular Chat Control list and saved in the active DSH Profile. The DSH sidebar's own **View options** menu offers **Hide archived**, **All conversations (show archived)** and **Archived only**.
+
+The archive hub automatically follows the authorized catalogs. It shows confirmed Workspace membership, titles, last updates when available, protection and pin status. Search matches titles and Workspace names. Narrow results by Workspace, protection, pin or date, then sort by newest, oldest, name or Workspace. Creation dates and archive dates are absent from the catalog used by the hub.
+
+Select **Restore**, then **Confirm restore** to return an eligible conversation to DSH's conversation list. Chat Control requires Session-level permission, current Workspace membership and an archived, idle, unprotected and unpinned conversation. Open the conversation from DSH after restoration. Archive visibility and browsing leave the conversation's contents intact.
+
 **Not implemented:** a production deletion worker, automatic scheduled retention, permanent conversation deletion or bulk data removal. Previewing a cleanup must not be presented as a real cleanup. DSH's session persistence and deletion authority remain separate; no automatic destructive action is enabled.
 
-[Lifecycle implementation history](archive/research/NEW_PLUGINS_PHASE_C_CONTINUATION.md) · [Settings navigation record](SETTINGS_NAVIGATION_NAMES_2026_11_21.md)
+[Archive API research](research/v1.1.0/CHAT_CONTROL_NATIVE_API_RESEARCH.md) · [Archive implementation and acceptance](research/v1.1.0/CHAT_CONTROL_ARCHIVE_IMPLEMENTATION_REPORT.md) · [Lifecycle implementation history](archive/research/NEW_PLUGINS_PHASE_C_CONTINUATION.md) · [Settings navigation record](SETTINGS_NAVIGATION_NAMES_2026_11_21.md)
 
 ## Adaptive Reasoning
 
@@ -101,7 +107,7 @@ The supported installation identity is `@abinadwan/dsh-plugins-suite`. Select th
 github:abinadwan/DSH-ABINADWAN-Plugins-Suite#RELEASE_COMMIT_SHA
 ~~~
 
-For CLI installations, use the matching DSH `plugin --profile <name> add` workflow in the environment that runs that Profile. Back up My Profile and the Profile configuration before any replacement or migration. **v1.0.2 is published from `main`**; install using the full SHA of the official tag. Future commits on `develop` remain unpublished until separately released, and changing a manifest alone never makes a version discoverable by the updater.
+For CLI installations, use the matching DSH `plugin --profile <name> add` workflow in the environment that runs that Profile. Back up My Profile and the Profile configuration before any replacement or migration. Install **v1.0.3** using the full SHA of the official tag published from `main`. The updater discovers changes through published releases.
 
 **Suite updates (GitHub Releases)** lives on the suite's Plugins detail page. It checks for a published, non-prerelease GitHub Release on startup and every 24 hours while loaded, with manual **Check again**. If a newer release exists, **Update now** verifies the tag, immutable target SHA and remote package manifest; it requires user confirmation and delegates to DSH's `pluginManager.updateBundle`. There is no unattended install. In-app update requires the existing Git installation to be pinned to a complete commit SHA; unpinned Git installations receive manual migration guidance. Updates may require a restart, and Host rollback is attempted but cannot be guaranteed to succeed in every failure mode.
 
@@ -112,7 +118,7 @@ The updater does **not** follow unreviewed `develop` commits, automatically repl
 - Development tests use the pinned DSH/Loader libraries and run `npm test` plus `npm run check:package` on Windows and Linux with Node 22/24. These tests do not replace real Desktop validation.
 - Historical documentation contains experimental LPAC companion processes, encrypted storage and per-Workspace profiles that were replaced. These **are not active capabilities**. Consult [documentation index](README.md) before interpreting old phase reports.
 - Accepted Windows Direct Chat behavioral tests do not establish high-assurance filesystem or request-level isolation; My Profile's final multilingual Settings smoke test and request-level privacy assessment remain separately tracked.
-- Publication of **v1.0.2** does not automatically run an updater, migrate user data, enable disabled components, or change an existing Desktop installation. The release is explicitly owner-approved; outstanding Host/Desktop validation gates above remain outstanding.
+- Release publication and Desktop installation are separate actions. Review the release notes and the Host and Desktop validation limits before upgrading.
 
 ## Support, license and provenance
 
