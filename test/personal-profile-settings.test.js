@@ -430,7 +430,7 @@ test('a migration Save is revision-checked: a change from another window is not 
   const view = await mountProfile(t, { transport })
   const other = fictional(); other.information.preferredName = 'Other Window'
   transport.external(other)
-  await view.click('save')
+  await view.click('migration-ack');await view.click('save')
   assert.match(view.status(), /changed in another window/)
   assert.equal(transport.record.information.preferredName, 'Other Window')
 })
@@ -527,7 +527,7 @@ test('export reports honestly when download or clipboard are unavailable', async
   await view.click('export-copy'); await view.settle()
   assert.match(view.backupStatus(), /Could not copy/)
   await view.click('export-view')
-  assert.ok(view.byId('export-json').value.includes('"version": 2'))
+  assert.ok(view.byId('export-json').value.includes('"version": 5'))
 })
 
 test('the JSON areas stay LTR and monospace in the Arabic RTL interface', async t => {
@@ -722,7 +722,7 @@ test('restore starts with Review & Merge; Replace All is available after reviewi
   assert.equal(view.byId('strategy-replace').checked, false)
   await view.select('language', 'en')
   assert.match(view.d.body.textContent, /Review & Merge/)
-  assert.match(view.d.body.textContent, /including custom instructions/)
+  assert.match(view.d.body.textContent, /Imported settings replace the current draft/)
 })
 
 // ---------- Accessibility ----------

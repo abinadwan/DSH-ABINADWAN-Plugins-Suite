@@ -114,6 +114,11 @@ test('native dynamic context is lifecycle-scoped, refreshed from committed setti
     assert.equal(ctx.systemPrompt.contexts.size,1)
   }finally{await ctx.fiber.dispose()}
 })
+const P7D={
+  creative:'Go beyond the obvious: include at least one fresh, unconventional idea suited to the task.',
+  warmthLess:'Keep the tone neutral and reserved, without reassurance or pep talk.',
+  grill:'Before recommending a decision or plan, ask the user 2-3 specific questions about missing requirements and name the key risks.',
+}
 const P7D_HEADER='Response preferences (follow the current request and higher-priority host/safety/tool requirements; custom guidance takes precedence over other style preferences where compatible).'
 const languageLine=name=>'Write your response in '+name+' even when the user writes in another language, unless the user explicitly asks for a different language.'
 const count=(s,line)=>s.split('\n').filter(l=>l===line).length

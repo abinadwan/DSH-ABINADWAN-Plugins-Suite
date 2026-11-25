@@ -1,31 +1,23 @@
-# My Profile — Settings and privacy contract (current contract)
+# My Profile — Settings and privacy contract
 
-My Profile is optional and disabled by default. The page appears under **Settings → My Profile**, not the main sidebar. It uses one native settings record across Workspaces of the active Harness Profile.
+My Profile is optional and disabled by default. Enable it in Plugins and open **Settings → My Profile**. One native record belongs to the active Harness Profile across its Workspaces.
+
+## Information and instructions
+
+Save commits the preferred name, nationality, gender, response style, response language, traits, behavior presets and optional custom instructions. Version 5 makes all populated saved information and instructions available to supported top-level native conversations, irrespective of local or cloud provider. Empty fields and unspecified gender are omitted. Structured values are normalized and quoted as data; they are not a tool or command.
+
+The plugin contributes one named dynamic context through the official DSH `systemPrompt.context()` registry, refreshed by DSH before step admission. DSH materializes changed context as a native runtime-context snapshot. Older registries without that API use a single native system-prompt section. DSH may suppress optional context; the plugin does not bypass that decision. No extra model call or direct transport is added. It does not refuse continuation when settings change. Previous snapshots and derived text may remain in history, summaries, logs or provider systems. A current empty profile supplies a clear current-state reminder, not a deletion of past records. Small-model comprehension requires real model testing.
 
 ## Interface language
 
-New v4 profiles default to `locale: 'auto'`, **Follow DSH**. The browser page reads and subscribes to DSH's public Locale snapshot (with a safe English fallback if unavailable); switching the Host language re-renders My Profile only while Follow DSH is selected. The user can independently select English, Arabic, Chinese, Spanish, French, German or Japanese and save the selection; Arabic uses RTL. Changing My Profile's language does not call `ctx.locale.setLocale` or change DSH itself, and does not alter the separate model response-language preference. Existing saved `ar`/`en` remain explicit overrides, and legacy records migrate without losing their language. A version 4 backup retains `auto` and the five added locales; existing manual English/Arabic settings retain v2 export compatibility.
+New records default to Follow DSH (`auto`). English, Arabic, Spanish, French, German, Simplified Chinese and Japanese remain explicit overrides; Arabic is RTL. Interface language is independent of the model response-language setting.
 
-## My Information
+## Compatibility and access
 
-Preferred name, nationality and gender are on one page, each beside an independent “Available to agent” checkbox. Checked, nonempty fields are included in supported top-level native agent prompts after an explicit, revision-checked Save. Unchecked fields remain stored but are not freshly injected. The same choice applies to every configured model/provider, including cloud providers. New fields default to private. No global sharing switch, cloud distinction or Ask First flow remains. Empty text and unspecified gender are not sent.
+Native record v5 stores information, preferences and locale without sharing switches. v1–v4 remain readable; existing settings retain their former sharing scope until a reviewed Save migrates them. The migration page explains the new sharing behavior and offers an original-record export. Legacy Workspace overrides are not merged. Use a separate test Profile or retain the original Harness configuration before upgrading; older releases may not understand v5.
 
-## Agent Instructions
+Settings use native revision-checked `settings.describe` and `settings.replace`. Read access and the current connection generation gate the displayed record. Loss of read access or connection reset removes the old draft and reloads authorized settings. An old unsaved draft is intentionally not carried to a new Host.
 
-Response preferences include style, language, traits, presets and custom instructions. Editing or restoring custom instructions clears their separate sending consent.
+## Backup and restore
 
-## Compatibility and storage
-
-Native record v4 contains the information, preferences, locale and only two field policies: allow/private. v1, v2 and v3 remain readable, but their structured fields do not authorize sharing. On upgrade, existing values and compatible preferences are retained, the three checkboxes start unchecked, and no record is rewritten until Save. Legacy Workspace migration still requires review and confirmation. Export an archival v2 JSON backup and preserve the original Harness configuration before upgrading if rollback is needed.
-
-The plugin uses native settings.describe and settings.replace with a revision check; no independent database or filesystem. Plaintext settings and JSON backups are readable by anyone with file access.
-
-## Backup & Restore
-
-Exports contain the current draft, including unsaved information, instructions and access choices, as unencrypted JSON. Exporting does not save the draft to Harness. Explicit English/Arabic interface overrides use the compatible **v2** export shape (with the old sharing switches Off); **Follow DSH** and the five additional UI languages use **v4** to preserve the interface-language selection. Imports accept v1–v4. Merge preserves omitted values; imported changed information defaults to private unless its permissions are separately selected and acknowledged. Replace All starts Private and requires a separate confirmation. Legacy Ask First maps to Private. An explicitly acknowledged imported Allow choice applies only after Save. Custom-text permission clears on restore. No encryption, passwords or new consent registry.
-
-## Context boundary and acceptance
-
-The plugin contributes to supported native agent steps only. While My Profile is enabled, the send-time guard refuses recognizable earlier Profile details or custom instructions that current saved choices no longer authorize. This does not erase information from previously sent messages, provider systems, logs, stored history, summaries, files, or other sources. A new clean Workspace/session should receive only current checked fields from this plugin; this is not a promise of global Workspace isolation.
-
-The owner accepted the pre-provider refusal and fresh-session privacy control for MP02; the historical provider-wire continuation test remains Blocked, not Pass. The guard recognizes known structured sections and cannot guarantee removal of arbitrary historical text. Use fictional data in disposable Profiles for verification; inspect outgoing requests where permitted rather than relying on model responses.
+Current exports are unencrypted v5 JSON, including the draft. Imports accept v1–v5. Review & Merge preserves omitted values; Replace All requires its own confirmation. Imports validate legacy fields but do not restore old sharing switches. Restore changes the draft only until Save. No plugin-level encryption, separate storage or password. Do not enter credentials or sensitive information.

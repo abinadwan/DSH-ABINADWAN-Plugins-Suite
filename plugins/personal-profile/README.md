@@ -1,5 +1,5 @@
 # My Profile
 
-Optional, Off by default. Open **Settings → My Profile** after enabling it. The native record belongs to the active DSH Profile across Workspaces. Optional fields remain private unless explicitly checked and saved; custom instructions require separate saved consent. Backups are unencrypted JSON. Revoking consent does not erase past disclosures. While enabled, the send-time guard refuses recognized stale disclosure sections; arbitrary historical text cannot be comprehensively scrubbed.
+Optional, Off by default. Open **Settings → My Profile** after enabling it. Saved populated values and instructions are available to local and cloud models in supported conversations via DSH dynamic context. Earlier copies can remain in history. Settings and JSON backups are not encrypted by the plugin.
 
 [Current settings, migration and privacy contract](../../docs/plugins/my-profile.md) · [Component reference](../../docs/DETAIL.md#my-profile)
