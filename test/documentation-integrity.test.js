@@ -89,8 +89,8 @@ test('active docs reject unresolved local links and offline evidence', () => {
 test('all repository docs Markdown links and embedded local image paths resolve', t => {
   if (!sourceCheckout) return t.skip('source-only documentation tree is not part of the packed plugin')
   const docs = docsUnder(join(root, 'docs'))
-  for (const path of ['docs/README.md', 'docs/DETAIL.md', 'docs/BRANDING.md', 'docs/PERSONAL_PROFILE_LOCAL_SETTINGS.md']) assert.ok(existsSync(join(root, path)), path)
-  assert.ok(!existsSync(join(root, 'docs', 'archive')), 'historical archives must not be active docs')
+  for (const path of ['docs/README.md', 'docs/DETAIL.md', 'docs/design/BRANDING.md', 'docs/plugins/my-profile.md']) assert.ok(existsSync(join(root, path)), path)
+  for (const folder of ['archive', 'research', 'superpowers']) assert.ok(!existsSync(join(root, 'docs', folder)), 'historical docs must not be active: ' + folder)
   for (const document of [...docsUnder(join(root, 'plugins')), ...docs, ...readdirSync(root).filter(name => name.endsWith('.md')).map(name => join(root, name))]) {
     assertLocalLinksResolve(document, readFileSync(document, 'utf8'))
   }

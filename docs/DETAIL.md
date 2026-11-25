@@ -15,7 +15,7 @@
 | <img src="../plugins/conversation-lifecycle/assets/png/icon-256.png" width="28" alt="Archive Manager icon"/> **Archive Manager** | Off | **Archives** in the sidebar | Authorized archive browsing, search, protection and native restore |
 | <img src="../plugins/adaptive-reasoning/assets/png/icon-256.png" width="28" alt="Adaptive Reasoning icon"/> **Adaptive Reasoning** | Off | Native composer / model effort settings | Manual Session effort, opt-in recommendations and Profile aggregates |
 
-Enabled components preserve their existing internal IDs and saved settings namespaces. Turning a component off removes its active UI/behavior; **disabling is not a data-delete operation**. The icons above are bundled files, not remote services. See [artwork provenance](BRANDING.md) and [new icon artwork](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/98c27e87e216f11000ab92adcb79d51388031a28/docs/NEW_PLUGINS_BRANDING.md).
+Enabled components preserve their existing internal IDs and saved settings namespaces. Turning a component off removes its active UI/behavior; **disabling is not a data-delete operation**. The icons above are bundled files, not remote services. See [artwork provenance](design/BRANDING.md).
 
 ## Environment & Context
 
@@ -53,7 +53,7 @@ Enabling the component registers the runtime Skill `abinadwan-humanizer` through
 
 **Limits:** a revision-checked Save is required before storing changes. The plugin does not encrypt its local settings or erase information already sent, stored in conversations, logs, provider records, files or summaries. The send-time guard recognizes stale structured disclosure blocks across CR, LF, NEL and Unicode line separators. Shared field values are sanitized in the prompt copy before sending. The owner accepted the MP02 pre-provider refusal and fresh-session privacy control. The historical provider-wire continuation criterion remains Blocked, not Pass; arbitrary historical text cannot be comprehensively scrubbed.
 
-[Current settings contract](PERSONAL_PROFILE_LOCAL_SETTINGS.md)
+[Current settings contract](plugins/my-profile.md)
 
 ## Direct Chat
 
@@ -113,7 +113,6 @@ The updater does **not** follow unreviewed `develop` commits, automatically repl
 ## Compatibility, verification and remaining gates
 
 - Development tests use the pinned DSH/Loader libraries and run `npm test`, `npm run check:regression` and `npm run check:package` on Windows and Linux with Node 22/24. These tests do not replace real Desktop validation.
-- Experimental companion sandboxes, encrypted storage and per-Workspace profiles are not implemented.
 - Accepted Windows Direct Chat behavioral tests do not establish high-assurance filesystem or request-level isolation; My Profile's final multilingual Settings smoke test and request-level privacy assessment remain separately tracked.
 - Release publication and Desktop installation are separate actions. Review the release notes and the Host and Desktop validation limits before upgrading.
 

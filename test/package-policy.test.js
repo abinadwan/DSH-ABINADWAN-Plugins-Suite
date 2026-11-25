@@ -20,7 +20,7 @@ test('package ships only active documentation, no superseded designs, prototype 
   for (const path of paths) {
     assert.doesNotMatch(path, /PERSONAL_PROFILE_PHASE|docs\/(?:archive|research|superpowers)\/|personal-profile-phase4|probe|dpapi|\.env|\.pem$|\.key$/i, path)
   }
-  for (const required of ['docs/DETAIL.md', 'docs/PERSONAL_PROFILE_LOCAL_SETTINGS.md', 'docs/README.md', 'docs/BRANDING.md',
+  for (const required of ['docs/DETAIL.md', 'docs/plugins/my-profile.md', 'docs/README.md', 'docs/design/BRANDING.md',
     'docs/assets/environment-project.webp', 'docs/assets/environment-session.webp']) assert.ok(paths.includes(required), required)
   const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
   assert.deepEqual(manifest.dependencies, {

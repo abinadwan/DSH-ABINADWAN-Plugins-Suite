@@ -8,8 +8,7 @@ All notable changes are documented here.
 - Rebrand Chat Control as **Archive Manager** and remove its Settings section and preview-only retention/cleanup controls (including the Direct Chat preview). Preserve the internal module ID and existing records. Manage plugin-scoped protection directly on the archive page; DSH owns its native sidebar visibility.
 - Add a bilingual archive hub in the native sidebar and full main panel with authorized metadata search, filters and sorting. Confirmed restore uses the native DSH workspace command after live access and protection checks.
 - Carry forward the Direct Chat metadata history and tool-denial hardening, My Profile replay/privacy guard improvements and v1.0.3 preset fix, and Adaptive Reasoning opt-in recommendations and Profile-local statistics from the develop integration.
-- Owner reports the current Archive Manager works well and approves release; this does not establish exhaustive Desktop security verification. Automatic native sidebar filtering and permanent deletion are deferred. Historical deletion research is archived, not merged as product code.
-- Track automated and Desktop evidence in the [archive implementation report](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/98c27e87e216f11000ab92adcb79d51388031a28/docs/research/v1.1.0/CHAT_CONTROL_ARCHIVE_IMPLEMENTATION_REPORT.md) and [Phase 09](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/98c27e87e216f11000ab92adcb79d51388031a28/docs/research/v1.1.0/ARCHIVE_MANAGER_PHASE09.md).
+- Owner reports the current Archive Manager works well and approves release; this does not establish exhaustive Desktop security verification. Native sidebar filtering is Host-owned; permanent deletion is unavailable.
 
 ## [1.0.3] — Released (2026-11-24)
 
@@ -31,7 +30,7 @@ All notable changes are documented here.
 - Add Chat Control Workspace protection and individual retention eligibility with UTC previews. Direct Chat uses the same retention settings and preview.
 - Add opt-in, explainable Adaptive Reasoning recommendations that preserve explicit Session effort, and versioned Profile-local aggregate statistics with reset.
 - Reconcile [#33](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/33) and [#34](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/34) in the Direct Chat Host entry point. Prepare and read-only catalog discovery use the same canonical directory checks and retain separate routes. Combined Host tests cover ownership, route disposal, Session identity and tool denial.
-- Destructive cleanup, request-only or subagent effort policies, and process/filesystem confinement remain unavailable. See the [handover](HANDOVER.md) for Desktop acceptance and release gates.
+- Destructive cleanup, request-only or subagent effort policies, and process/filesystem confinement remain unavailable. See the [handover](docs/architecture/development.md) for Desktop acceptance and release gates.
 
 ## [1.0.0] — Released (2026-11-22)
 
@@ -49,7 +48,7 @@ All notable changes are documented here.
 - Direct Chat Phase 2 uses one persistent Workspace, native Sessions and Host tool-denial policy. Owner Windows functional acceptance was recorded; deep Host request security and filesystem isolation were deferred. Historical LPAC/AppContainer companion exploration is **not** shipped in this design.
 - My Profile current development behavior: one My Information page with three independent Available to agent checkboxes, no Ask First or global/cloud switches; v4 native settings, compatible v2 exports for explicit English/Arabic and v4 exports for Follow DSH/other UI locales; legacy choices start private and imports review consent. Checked saved fields enter supported native agent prompts. Recognizable unauthorized replay remains gated. Desktop acceptance pending.
 - Adaptive Reasoning keeps manual effort and a single Host. Temporary effort and unsupported subagent policies stay unavailable on Harness rc.3 and rc.5.
-- See [development handover](HANDOVER.md) for the component matrix, verification and acceptance gates.
+- See [development handover](docs/architecture/development.md) for the component matrix, verification and acceptance gates.
 
 ## [0.8.0-rc.1] — Candidate baseline, Windows functional review recorded (2026-11-18)
 
@@ -59,8 +58,8 @@ All notable changes are documented here.
 - Offline real Harness rc.3 integration tests, Windows/Linux Node 22/24 matrix and packaging checks.
 - Version-dependent tests now derive expected UI versions from the manifest; source lockfile checks run before packaging and extracted-artifact checks remain independent of source-only files.
 - Owner-reported Windows functional results and actual rollback to 0.7.2 recorded in [Phase 7 Desktop acceptance](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/98c27e87e216f11000ab92adcb79d51388031a28/docs/PERSONAL_PROFILE_PHASE7_WINDOWS_ACCEPTANCE.md). Remaining checks, including actual outgoing-request evidence, are explicitly open.
-- Phase 7D response-preference wording: the selected language is followed even when the user writes in another language (explicit requests still win), and Creative, Grill-Me and low-warmth instructions are stronger. The changes were benchmarked on local models with held-out checks. Code Reviewer and Humanizer are unchanged. Details: [Phase 7D plan](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/98c27e87e216f11000ab92adcb79d51388031a28/docs/PERSONAL_PROFILE_PHASE7D_PLAN.md).
-- No stable update offer until remaining acceptance gates are resolved and a stable release is explicitly approved. Structured disclosure remains deferred to [Phase 8](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/98c27e87e216f11000ab92adcb79d51388031a28/docs/PERSONAL_PROFILE_PHASE8_PLAN.md).
+- Phase 7D response-preference wording: the selected language is followed even when the user writes in another language (explicit requests still win), and Creative, Grill-Me and low-warmth instructions are stronger. The changes were benchmarked on local models with held-out checks. Code Reviewer and Humanizer are unchanged.
+- No stable update offer until remaining acceptance gates are resolved and a stable release is explicitly approved.
 
 ## [0.7.2] — Released
 
@@ -203,8 +202,7 @@ Bug-fix release for Windows Desktop compatibility. No feature, storage, privacy-
 - Renamed the package identity to `@abinadwan/dsh-plugins-suite` under the renamed GitHub repository.
 - Adopted the **ABINADWAN Plugins Suite** name and approved Saudi developer avatar (#4) as package artwork.
 - Updated package metadata, public GitHub URLs, installation instructions and in-app manual version-check endpoint.
-- Reorganized documentation by plugin: Environment & Context (available), Humanizer (planned), Personal Profile (design pending).
-- Preserved the working Environment & Context sidebar implementation; planned modules do not run.
+- Preserved the working Environment & Context sidebar implementation.
 - The root bundle still has one running component. No Personal Profile storage exists.
 
 ## Previous Environment & Context development (legacy package)
