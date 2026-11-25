@@ -8,7 +8,7 @@
     <td align="center" width="130"><a href="docs/DETAIL.md#humanizer"><img src="plugins/humanizer/icon.png" alt="Humanizer icon" width="70" height="70" /></a><br/><sub><b>Humanizer</b></sub></td>
     <td align="center" width="130"><a href="docs/DETAIL.md#my-profile"><img src="plugins/personal-profile/icon.png" alt="My Profile icon" width="70" height="70" /></a><br/><sub><b>My Profile</b></sub></td>
     <td align="center" width="130"><a href="docs/DETAIL.md#direct-chat"><img src="plugins/direct-chat/assets/png/icon-256.png" alt="Direct Chat icon" width="70" height="70" /></a><br/><sub><b>Direct Chat</b></sub></td>
-    <td align="center" width="130"><a href="docs/DETAIL.md#chat-control"><img src="plugins/conversation-lifecycle/assets/png/icon-256.png" alt="Chat Control icon" width="70" height="70" /></a><br/><sub><b>Chat Control</b></sub></td>
+    <td align="center" width="130"><a href="docs/DETAIL.md#chat-control"><img src="plugins/conversation-lifecycle/assets/png/icon-256.png" alt="Archive Manager icon" width="70" height="70" /></a><br/><sub><b>Archive Manager</b></sub></td>
     <td align="center" width="130"><a href="docs/DETAIL.md#adaptive-reasoning"><img src="plugins/adaptive-reasoning/assets/png/icon-256.png" alt="Adaptive Reasoning icon" width="70" height="70" /></a><br/><sub><b>Adaptive<br/>Reasoning</b></sub></td>
   </tr>
 </table>
@@ -31,7 +31,7 @@
   <a href="https://github.com/deepseek-ai/deepseek-harness"><img alt="DeepSeek Harness DSH" src="https://img.shields.io/badge/DeepSeek%20Harness-DSH-0F172A" /></a>
 </p>
 
-> **Latest release [v1.0.3](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.3).** For installation, use the full commit SHA shown by the published release. The Chat Control archive hub is on the v1.1.0 development branch.
+> **Latest release [v1.0.3](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.3).** For installation, use the full commit SHA shown by the published release. Archive Manager (formerly Chat Control) is on the v1.1.0 development branch.
 
 ## Overview
 
@@ -43,7 +43,7 @@ The suite installs as **one DSH bundle** containing **six independently toggleab
 | <img src="plugins/humanizer/icon.png" width="32" alt="Humanizer icon" /> **Humanizer** | On | [Details](docs/DETAIL.md#humanizer) |
 | <img src="plugins/personal-profile/icon.png" width="32" alt="My Profile icon" /> **My Profile** | Off | [Details](docs/DETAIL.md#my-profile) |
 | <img src="plugins/direct-chat/assets/png/icon-256.png" width="32" alt="Direct Chat icon" /> **Direct Chat** | Off | [Details](docs/DETAIL.md#direct-chat) |
-| <img src="plugins/conversation-lifecycle/assets/png/icon-256.png" width="32" alt="Chat Control icon" /> **Chat Control** | Off | [Details](docs/DETAIL.md#chat-control) |
+| <img src="plugins/conversation-lifecycle/assets/png/icon-256.png" width="32" alt="Archive Manager icon" /> **Archive Manager** | Off | [Details](docs/DETAIL.md#chat-control) |
 | <img src="plugins/adaptive-reasoning/assets/png/icon-256.png" width="32" alt="Adaptive Reasoning icon" /> **Adaptive Reasoning** | Off | [Details](docs/DETAIL.md#adaptive-reasoning) |
 
 [Complete component capabilities and limitations](docs/DETAIL.md) · [Documentation index](docs/README.md)
@@ -100,11 +100,11 @@ npm run check:package
 
 `npm test` covers component/runtime contracts, UI fixtures, documentation references and the configured safety cases. `npm run check:package` creates and checks the packaged plugin against its source expectations. CI runs these checks and pinned offline Harness integration fixtures on Windows and Ubuntu with Node.js 22 and 24. Desktop acceptance requires separate tests.
 
-`develop` is the integration branch. It includes Direct Chat tool-denial and My Profile disclosure hardening, authorized Direct Chat history, preview-only retention in Chat Control, and opt-in Adaptive Reasoning recommendations with Profile-local aggregate statistics. Use `develop` as the base for feature PRs. The consolidated changes go to `main` through owner review, and release publication requires separate approval. See the [component details](docs/DETAIL.md), [changelog](CHANGELOG.md) and [development handover](HANDOVER.md).
+`develop` is the integration branch. It includes Direct Chat tool-denial and My Profile disclosure hardening, authorized Direct Chat history, historical preview-only retention in Chat Control (removed from the Archive Manager candidate UI), and opt-in Adaptive Reasoning recommendations with Profile-local aggregate statistics. Use `develop` as the base for feature PRs. The consolidated changes go to `main` through owner review, and release publication requires separate approval. See the [component details](docs/DETAIL.md), [changelog](CHANGELOG.md) and [development handover](HANDOVER.md).
 
 ## Documentation and project policy
 
-- [Chat Control archive management](docs/DETAIL.md#chat-control) and [native API research](docs/research/v1.1.0/CHAT_CONTROL_NATIVE_API_RESEARCH.md).
+- [Archive Manager](docs/DETAIL.md#chat-control) and [native API research](docs/research/v1.1.0/CHAT_CONTROL_NATIVE_API_RESEARCH.md).
 - [Component functionality, constraints and troubleshooting](docs/DETAIL.md)
 - [Documentation index and historical archive](docs/README.md)
 - [Release history](CHANGELOG.md) · [Security policy](SECURITY.md) · [Third-party notices](THIRD_PARTY_NOTICES.md)

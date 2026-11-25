@@ -103,7 +103,7 @@ These superseded research reports and implementation plans are project-related, 
 
 1. Update `DETAIL.md` and the root README when observable component behavior, supported UI names, defaults, storage, backup formats or release policy change.
 2. New historical QA reports must say which branch/commit/Host was actually tested and which gates remain open. Do not retroactively convert proposals into proof.
-3. Keep internal identifiers and persistent setting namespaces separate from the public labels **My Profile** and **Chat Control**.
+3. Keep internal identifiers and persistent setting namespaces separate from public labels **My Profile** and **Archive Manager** (formerly Chat Control).
 4. Preserve prior Desktop/security evidence even if the old implementation was removed. Label it historical and link the current architecture instead of silently erasing risk decisions.
 5. Confirm relative Markdown links and all seven component/suite icon files exist. Refer to the published v1.0.0 release by its verified full commit SHA and disclose outstanding Host/Desktop security acceptance limits instead of assuming all validation gates passed.
 

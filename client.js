@@ -2779,20 +2779,6 @@ window.__ModuleLoader__.load({
     }
     const lifecycleActions = { display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: 8 }
 
-    function LifecycleGroup({ title, children }) {
-      return h('section', { style: { display: 'grid', gap: 10, minWidth: 0, paddingBlockStart: 14,
-        borderBlockStart: lifecycleRule } },
-      h('h2', { style: { margin: 0, fontSize: 14, fontWeight: 600 } }, title), children)
-    }
-
-    function RetentionField({ label, value, inherit, disabled, onChange, language = 'en' }) {
-      return h('label', { style: lifecycleLabel }, label,
-        h('select', { style: lifecycleSelect, value, disabled, onChange: event => onChange(event.target.value) },
-          inherit ? h('option', { value: 'inherit' }, uiCopy('Use global policy', language)) : null,
-          h('option', { value: 'forever' }, uiCopy('Keep forever', language)),
-          ...lifecycleDurations.map(days => h('option', { key: days, value: days }, language === 'ar' ? `${days} يوم` : `${days} days`))))
-    }
-
     const catalogReady = (workspaces, sessions) => workspaces?.phase === 'ready' &&
       workspaces.state !== 'error' && Array.isArray(workspaces.items) &&
       workspaces.items.every(item => item && typeof item.workspaceId === 'string' && item.workspaceId.length > 0 &&
@@ -2834,6 +2820,7 @@ window.__ModuleLoader__.load({
       return { rows, unknown }
     }
 
+    // Historical retention calculation retained for regression and saved-record compatibility; no UI or cleanup caller.
     function retentionRows(inventory, workspace, record, at) {
       const protectedIds = new Set(record?.protectedIds)
       const protectedWorkspaces = new Set(record?.protectedWorkspaces)
@@ -2860,22 +2847,12 @@ window.__ModuleLoader__.load({
       })
     }
 
-    function CleanupPreview({ rows, at, language = 'en' }) {
-      const candidates = rows.filter(row => row.candidate)
-      return h(React.Fragment, null,
-        h('span', { role: 'status', style: { fontSize: 13 } },
-          language === 'ar' ? `${candidates.length} محادثة مرشحة تقديريًا` : `${candidates.length} estimated candidate${candidates.length === 1 ? '' : 's'}`),
-        h('p', { style: lifecycleMuted }, language === 'ar' ? `تاريخ المعاينة ${new Date(at).toISOString()}. تستخدم سياسة الاحتفاظ أيامًا من 24 ساعة.` : `Evaluated at ${new Date(at).toISOString()}. Retention uses 24-hour days.`),
-        candidates.length ? h('ul', { style: { margin: 0, paddingInlineStart: 20, fontSize: 13 } },
-          ...candidates.slice(0, 50).map(({ id, row, owner, lastPrompt, days }) => h('li', { key: id },
-            h('bdi', null, row.displayTitle || id), ' · ', h('bdi', null, owner.title),
-            language === 'ar' ? ` · ${days} يوم · آخر طلب ${new Date(lastPrompt).toISOString()}` : ` · ${days} days · last prompt ${new Date(lastPrompt).toISOString()}`))) : null,
-        candidates.length > 50 ? h('p', { style: lifecycleMuted }, language === 'ar' ? 'تعرض أول 50 محادثة مرشحة. اختر مساحة عمل لتضييق المعاينة.' : 'Showing the first 50 candidates. Select a Workspace to narrow the preview.') : null)
-    }
-
     const archiveCopy = {
       en: {
-        title: 'Archived Conversations', navigation: 'Archives', openFromSidebar: 'Open Archives from the sidebar or More.', hide: 'Hide Archived Conversations',
+        title: 'Archived Conversations', navigation: 'Archives',
+        protect: 'Protect', protectWorkspace: 'Protect Workspace', manageProtection: 'Manage saved protection',
+        protectionScope: 'Protection applies to Archive Manager restore and supported Direct Chat rename actions only, not native DSH actions.',
+        inherited: 'Protected by Workspace', protectedCount: n => `${n} protected`,
         sidebar: 'For the DSH sidebar, use View options → Hide archived.',
         history: 'Restore a conversation before opening it in DSH.',
         count: n => `${n} archived conversation${n === 1 ? '' : 's'}`,
@@ -2892,7 +2869,10 @@ window.__ModuleLoader__.load({
         changed: 'The conversation or your access changed. Review the list and try again.',
       },
       ar: {
-        title: 'المحادثات المؤرشفة', navigation: 'الأرشيف', openFromSidebar: 'افتح الأرشيف من الشريط الجانبي أو قائمة المزيد.', hide: 'إخفاء المحادثات المؤرشفة',
+        title: 'المحادثات المؤرشفة', navigation: 'الأرشيف',
+        protect: 'حماية', protectWorkspace: 'حماية مساحة العمل', manageProtection: 'إدارة الحماية المحفوظة',
+        protectionScope: 'تطبق الحماية على الاستعادة في إدارة الأرشيف وإعادة التسمية المدعومة في الدردشة المباشرة فقط، وليس إجراءات DSH الأصلية.',
+        inherited: 'محمية بواسطة مساحة العمل', protectedCount: n => `المحمية: ${n.toLocaleString('ar')}`,
         sidebar: 'للشريط الجانبي في DSH، اختر خيارات العرض ← إخفاء المؤرشفة.',
         history: 'استعد المحادثة قبل فتحها في DSH.', count: n => `المحادثات المؤرشفة: ${n.toLocaleString('ar')}`,
         loading: 'جارٍ تحميل المحادثات المؤرشفة…', empty: 'ما فيه محادثات مؤرشفة.',
@@ -3010,7 +2990,8 @@ window.__ModuleLoader__.load({
           const updatedAt = Number.isSafeInteger(row.updatedAt) && row.updatedAt > 0 && row.updatedAt <= 8640000000000000
             ? row.updatedAt : undefined
           return { ...item, title: searchTitle || titleOrEmpty(row.displayTitle), workspaceTitle: titleOrEmpty(owner.title),
-            updatedAt, pinned: pinned.has(id), protected: protectedIds.has(id) || protectedWorkspaces.has(owner.workspaceId) }
+            updatedAt, pinned: pinned.has(id), individuallyProtected: protectedIds.has(id),
+            workspaceProtected: protectedWorkspaces.has(owner.workspaceId), protected: protectedIds.has(id) || protectedWorkspaces.has(owner.workspaceId) }
         })
     }
 
@@ -3042,7 +3023,7 @@ window.__ModuleLoader__.load({
     const archiveRestorable = row => row && !row.protected && !row.pinned && row.row.running === false &&
       !Object.values(row.row.retainedBy ?? {}).some(count => count > 0) && row.row.formatStatus !== 'migration-required'
 
-    function ArchiveRow({ row, copy, date, services, busy, onRestore }) {
+    function ArchiveRow({ row, copy, date, services, busy, onRestore, canProtect, onProtect }) {
       const [allowed, setAllowed] = React.useState(false)
       const eligible = archiveRestorable(row) && Boolean(services.unarchive)
       React.useEffect(() => {
@@ -3062,8 +3043,12 @@ window.__ModuleLoader__.load({
             h('time', { dateTime: new Date(row.updatedAt).toISOString() }, date.format(row.updatedAt))) : null,
           row.protected || row.pinned ? h('small', { style: lifecycleMuted },
             [row.protected && copy.protected, row.pinned && copy.pinned].filter(Boolean).join(' · ')) : null),
-        services.unarchive ? h(Button, { size: 'sm', disabled: !eligible || !allowed || busy,
-          'aria-label': `${copy.restore} ${row.title || copy.untitled}`, onClick: event => onRestore(row, event.currentTarget) }, copy.restore) : null)
+        h('div', { style: lifecycleActions },
+          h(Checkbox, { label: `${copy.protect} ${row.title || copy.untitled}`, checked: row.individuallyProtected,
+            disabled: !canProtect, onChange: checked => onProtect(row.id, checked) }),
+          row.workspaceProtected ? h('small', { style: lifecycleMuted }, copy.inherited) : null,
+          services.unarchive ? h(Button, { size: 'sm', disabled: !eligible || !allowed || busy,
+            'aria-label': `${copy.restore} ${row.title || copy.untitled}`, onClick: event => onRestore(row, event.currentTarget) }, copy.restore) : null))
     }
 
     function ArchiveHub({ services, catalog, settings, generation, authorized, language }) {
@@ -3100,6 +3085,21 @@ window.__ModuleLoader__.load({
         if (confirming) confirmation.current?.focus()
         else if (proposal) setProposal(null)
       }, [confirming, proposal])
+
+      const canProtect = resultState === 'ready' && Boolean(settings.writable) && !busy
+      function changeProtection(field, id, checked) {
+        if (!canProtect || pending.current || services.host.getSnapshot() !== generation ||
+            services.connection.getSnapshot() !== settingsEpoch) return
+        const admitted = field === 'protectedIds'
+          ? visible.some(row => row.id === id) || catalog.savedRows.some(row => row.id === id)
+          : field === 'protectedWorkspaces' && catalog.protectionWorkspaces.some(row => row.workspaceId === id)
+        if (!admitted) return
+        const next = new Set(settings.record[field] ?? [])
+        if (checked) next.add(id)
+        else next.delete(id)
+        setProposal(null)
+        void settings.save({ ...settings.record, [field]: [...next] })
+      }
 
       function updateFilter(key, value) {
         setFilters(previous => ({ ...previous, [key]: value }))
@@ -3167,7 +3167,12 @@ window.__ModuleLoader__.load({
             catalog.reload()
           } }, copy.refresh) : null) :
           h(React.Fragment, null,
-            h('div', { role: 'status', ref: summary, tabIndex: -1 }, copy.count(visible.length)),
+            h('div', { ref: summary, tabIndex: -1, style: lifecycleActions },
+              h('span', { role: 'status' }, copy.count(visible.length)), ' · ',
+              h('span', null, copy.protectedCount(visible.filter(row => row.protected).length))),
+            h('p', { style: { ...lifecycleMuted, margin: 0 } }, copy.sidebar),
+            h('p', { style: { ...lifecycleMuted, margin: 0 } }, copy.protectionScope),
+            h(SuiteRecordStatus, { settings, language }),
             visible.length ? h(React.Fragment, null,
               h('p', { style: { ...lifecycleMuted, margin: 0 } }, copy.history),
               h('label', { style: lifecycleLabel }, copy.search, h('input', { type: 'search', maxLength: 256,
@@ -3184,12 +3189,22 @@ window.__ModuleLoader__.load({
                     onChange: event => updateFilter('after', event.target.value) })) : null),
               matching.length ? h('ul', { style: { margin: 0, padding: 0, listStyle: 'none' } },
                 ...matching.slice(0, limit).map(row => h(ArchiveRow, { key: row.id, row, copy, date, services, busy: busy || !policyCurrent,
+                  canProtect, onProtect: (id, checked) => changeProtection('protectedIds', id, checked),
                   onRestore: (item, trigger) => {
                     setStatus(null)
                     setProposal({ generation, source: settings.source, id: item.id, workspaceId: item.owner.workspaceId, trigger })
                   } }))) : h('p', { role: 'status' }, copy.noResults),
               matching.length > limit ? h(Button, { size: 'sm', onClick: () => setLimit(limit + archivePageSize) }, copy.more) : null)
               : h('p', { role: 'status' }, copy.empty),
+            catalog.savedRows.length || catalog.protectionWorkspaces.length ? h('details', { style: { borderBlockStart: lifecycleRule, paddingBlockStart: 12 } },
+              h('summary', { style: { cursor: 'pointer', fontWeight: 500 } }, copy.manageProtection),
+              h('div', { style: { display: 'grid', gap: 8, marginBlockStart: 10 } },
+                ...catalog.protectionWorkspaces.map(row => h(Checkbox, { key: 'workspace:' + row.workspaceId,
+                  label: `${copy.protectWorkspace}: ${row.title}`, checked: settings.record.protectedWorkspaces?.includes(row.workspaceId) ?? false,
+                  disabled: !canProtect, onChange: checked => changeProtection('protectedWorkspaces', row.workspaceId, checked) })),
+                ...catalog.savedRows.map(row => h(Checkbox, { key: 'session:' + row.id,
+                  label: `${copy.protect} ${row.searchTitle || row.row.displayTitle || copy.untitled}`, checked: true,
+                  disabled: !canProtect, onChange: checked => changeProtection('protectedIds', row.id, checked) })))) : null,
             confirming ? h('div', { style: lifecycleActions }, h('span', null, copy.prompt, ' ',
               h('bdi', null, visible.find(row => row.id === confirming.id)?.title || copy.untitled)),
               h('button', { type: 'button', ref: confirmation, onClick: restore }, copy.confirm),
@@ -3205,142 +3220,27 @@ window.__ModuleLoader__.load({
       const catalog = useArchiveCatalog(services, generation, authorized)
       const { workspace, sessions } = catalog
       const ready = authorized && Boolean(settings.source) && Boolean(generation) && catalog.status === 'ready'
-      const rows = React.useMemo(() => ready && settings.record ? archiveInventory(workspace, sessions, settings.record) : [],
-        [ready, workspace, sessions, settings.record])
+      const inventory = React.useMemo(() => {
+        if (!ready || !settings.record) return { rows: [], savedRows: [], protectionWorkspaces: [] }
+        const record = settings.record
+        const rows = archiveInventory(workspace, sessions, record)
+        const archivedIds = new Set(rows.map(row => row.id))
+        const flags = new Set(record.protectedIds)
+        const workspaceFlags = new Set(record.protectedWorkspaces)
+        const archivedWorkspaces = new Set(rows.map(row => row.owner.workspaceId))
+        const multiplicity = new Map()
+        for (const item of workspace.items) multiplicity.set(item.workspaceId, (multiplicity.get(item.workspaceId) ?? 0) + 1)
+        const unique = workspace.items.filter(item => multiplicity.get(item.workspaceId) === 1)
+        const uniqueIds = new Set(unique.map(item => item.workspaceId))
+        // Keep previous protection flags manageable even for non-archived
+        // sessions, but only with current authorized unique catalog membership.
+        const savedRows = conversationInventory(workspace, sessions, null).rows.filter(row =>
+          flags.has(row.id) && !archivedIds.has(row.id) && uniqueIds.has(row.owner.workspaceId))
+        const protectionWorkspaces = unique.filter(item => workspaceFlags.has(item.workspaceId) || archivedWorkspaces.has(item.workspaceId))
+        return { rows, savedRows, protectionWorkspaces }
+      }, [ready, workspace, sessions, settings.record])
       return h(ArchiveHub, { key: generation?.id ?? 'disconnected', services, generation, authorized, settings,
-        catalog: { status: catalog.status, rows, reload: catalog.reload }, language })
-    }
-
-    function WorkspaceLifecycle({ services, useRemoteAccess }) {
-      const language = useUiLanguage(services.locale)
-      const t = value => uiCopy(value, language)
-      const settings = useSuiteRecord(services.settings, 'conversation-lifecycle', useRemoteAccess, services.connection)
-      const generation = suiteWatch(services.host)
-      const authorized = useRemoteAccess?.('settings/describe') === true
-      const settingsAvailable = Boolean(settings.source)
-      const catalog = useArchiveCatalog(services, generation, authorized)
-      const { workspace, sessions } = catalog
-      const [scope, setScope] = React.useState('')
-      const [proposal, setChange] = React.useState(null)
-      const [previewAt, setPreviewAt] = React.useState(null)
-      const record = settings.record
-      const ready = authorized && settingsAvailable && Boolean(generation) && catalog.status === 'ready'
-      const workspaces = ready ? workspace.items : []
-      const chosen = workspaces.find(item => item.workspaceId === scope)
-      const change = proposal && proposal.source === settings.source &&
-        (!proposal.workspaceId || chosen?.workspaceId === proposal.workspaceId) ? proposal : null
-      React.useEffect(() => {
-        if (proposal && !change) { setChange(null); setPreviewAt(null) }
-      }, [proposal, change])
-      const override = record?.overrides?.find(item => item.workspace === chosen?.workspaceId)?.retention ?? 'inherit'
-      const archived = new Set(ready ? workspace.archivedSessionIds : undefined)
-      const protectedIds = new Set(record?.protectedIds)
-      const protectedWorkspaces = new Set(record?.protectedWorkspaces)
-      const [page, setPage] = React.useState(1)
-      const [selected, setSelected] = React.useState(null)
-      React.useEffect(() => {
-        setScope('')
-        setChange(null)
-        setPreviewAt(null)
-        setPage(1)
-        setSelected(null)
-      }, [generation])
-      const inventory = React.useMemo(() => ready ? conversationInventory(workspace, sessions, chosen) : { rows: [], unknown: 0 },
-        [ready, workspace, sessions, chosen])
-      const { unknown } = inventory
-      const rows = retentionRows(inventory.rows.filter(row => !row.legacyDirectChat), workspace,
-        change?.next ?? record, previewAt ?? Date.now())
-      const visibleRows = record?.hideArchived === false ? rows : rows.filter(row => !archived.has(row.id))
-      const selectedRow = selected && rows.find(row => row.id === selected)
-      const update = next => {
-        setChange(null)
-        setPreviewAt(null)
-        void settings.save(next)
-      }
-      function propose(value, workspaceId) {
-        if (!record) return
-        const next = workspaceId ? { ...record, overrides: [...record.overrides.filter(row => row.workspace !== workspaceId),
-          ...(value === 'inherit' ? [] : [{ workspace: workspaceId, retention: value }])] } : { ...record, retention: value }
-        setChange({ value, workspaceId, next, source: settings.source })
-        setPreviewAt(Date.now())
-      }
-
-      const stats = [
-        [t('Known conversations'), ready ? rows.length : t('Unavailable')],
-        [t('Archived'), ready ? rows.filter(row => archived.has(row.id)).length : t('Unavailable')],
-        [t('Storage usage'), t('Unavailable')],
-      ]
-      return h('section', { lang: language, dir: language === 'ar' ? 'rtl' : 'ltr', style: { padding: '8px 16px 20px', display: 'grid', gap: 16, minWidth: 0 } },
-        h('header', null, h('h1', { style: { margin: '0 0 4px', fontSize: 18, lineHeight: 1.3 } }, t('Chat Control')),
-          h('p', { style: { ...lifecycleMuted, margin: 0 } }, 'Part of the ABINADWAN Plugins Suite.')),
-        h(SuiteRecordStatus, { settings, language }),
-        h('p', { style: { ...lifecycleMuted, margin: 0 } }, archiveCopy[language].openFromSidebar),
-        h(LifecycleGroup, { title: t('Overview') },
-          h('label', { style: lifecycleLabel }, t('Workspace'),
-            h('select', { style: lifecycleSelect, value: chosen ? scope : '', disabled: !ready, onChange: event => {
-              setScope(event.target.value)
-              setPage(1)
-              setSelected(null)
-              setChange(null)
-              setPreviewAt(null)
-            } }, h('option', { value: '' }, t('All Workspaces')),
-            ...workspaces.map(item => h('option', { value: item.workspaceId, key: item.workspaceId, dir: 'auto' }, item.title)))),
-          h('dl', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(112px, 1fr))', gap: 8, margin: 0 } },
-            ...stats.map(([label, value]) => h('div', { key: label, style: { border: lifecycleRule, borderRadius: 8,
-              padding: '8px 10px', background: 'var(--dsw-alias-settings-card-fill, Canvas)' } },
-            h('dt', { style: lifecycleMuted }, label),
-            h('dd', { style: { margin: '3px 0 0', fontSize: 14, fontWeight: 600 } }, value)))),
-          unknown > 0 ? h('small', { style: lifecycleMuted }, `${unknown} unavailable or ambiguous`) : null),
-        h(LifecycleGroup, { title: t('Retention Policy') },
-          h('div', { style: { display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: 8 } },
-            h(RetentionField, { language, label: t('Global retention'), value: change && !change.workspaceId ? change.value : record?.retention ?? '',
-              disabled: !settings.writable, onChange: value => propose(value) }),
-            chosen ? h(RetentionField, { label: t('Workspace override'), inherit: true,
-              value: change?.workspaceId === chosen.workspaceId ? change.value : override,
-              disabled: !settings.writable, onChange: value => propose(value, chosen.workspaceId) }) : null),
-          !chosen ? h('small', { style: lifecycleMuted }, t('Select a Workspace to set its own retention policy.')) : null,
-          change ? h('div', { style: lifecycleActions },
-            h('span', { style: lifecycleMuted }, t('Save this policy for previews?')),
-            h(Button, { size: 'sm', variant: 'primary', disabled: !settings.writable, onClick: () => { void settings.save(change.next) } },
-              t('Confirm and save')),
-            h(Button, { size: 'sm', onClick: () => { setChange(null); setPreviewAt(null) } }, t('Cancel'))) : null),
-        h(LifecycleGroup, { title: t('Protected Conversations') },
-          chosen ? h(Checkbox, { label: t('Protect this Workspace'), checked: protectedWorkspaces.has(chosen.workspaceId),
-            disabled: !settings.writable, onChange: checked => {
-              if (checked) protectedWorkspaces.add(chosen.workspaceId)
-              else protectedWorkspaces.delete(chosen.workspaceId)
-              update({ ...record, protectedWorkspaces: [...protectedWorkspaces] })
-            } }) : null,
-          ready && visibleRows.length ? h('ul', { style: { listStyle: 'none', padding: 0, margin: 0,
-            maxBlockSize: 185, overflow: 'auto', overflowWrap: 'anywhere' } },
-          ...visibleRows.slice(0, page * 50).map(({ id, row, isProtected }) => h('li', { key: id, style: { ...lifecycleActions, minHeight: 32 } },
-            h(Checkbox, { label: h(React.Fragment, null, t('Protect '), h('bdi', null, row.displayTitle || id)),
-              checked: isProtected, disabled: !settings.writable,
-              onChange: checked => update({ ...record, protectedIds: checked ? [...protectedIds, id] : [...protectedIds].filter(value => value !== id) }) }),
-            archived.has(id) ? h('small', { style: lifecycleMuted }, t('Archived')) : null,
-            h(Button, { size: 'sm', onClick: () => setSelected(id),
-              'aria-label': 'Preview deletion for ' + (row.displayTitle || id) }, t('Preview deletion'))))) :
-            h('p', { style: { ...lifecycleMuted, margin: 0 } }, ready ? t('No known conversations in this view.') : t('Workspace inventory is unavailable.')),
-          visibleRows.length > page * 50 ? h(Button, { size: 'sm', onClick: () => setPage(page + 1) }, t('Show more')) : null,
-          h(Checkbox, { label: archiveCopy[language].hide, checked: record?.hideArchived !== false,
-            disabled: !settings.writable || !generation, onChange: checked => { setPage(1); setSelected(null); update({ ...record, hideArchived: checked }) } }),
-          h('p', { style: { ...lifecycleMuted, margin: 0 } }, archiveCopy[language].sidebar)),
-        h(LifecycleGroup, { title: t('Cleanup Management') },
-          h('strong', { style: { fontSize: 13 } }, t('Preview only')),
-          h('p', { style: { ...lifecycleMuted, margin: 0 } },
-            t('Deletion is unavailable. Automatic cleanup is disabled.')),
-          h('p', { style: { ...lifecycleMuted, margin: 0 } },
-            t('Estimates use known last prompt dates and the catalog’s running state. Protected or pinned conversations and conversations open in this window are excluded.')),
-          selected ? h('div', { role: 'status', style: lifecycleMuted },
-            selectedRow ? h(React.Fragment, null, h('bdi', null, selectedRow.row.displayTitle || selectedRow.id), ' · ',
-              h('bdi', null, selectedRow.owner.title), ' · ', uiCopy(selectedRow.reason, language), language === 'ar' ? '. لن تُحذف أي بيانات.' : '. No data will be removed.')
-              : t('Conversation is no longer available in this inventory.'),
-            ' ', h(Button, { size: 'sm', onClick: () => setSelected(null) }, t('Close preview'))) : null,
-          h('div', { style: lifecycleActions },
-            h(Button, { size: 'sm', variant: 'outline', disabled: !record || !ready, onClick: () => setPreviewAt(Date.now()) }, t('Preview cleanup')),
-            previewAt !== null ? h(Button, { size: 'sm', onClick: () => setPreviewAt(null) }, t('Cancel preview')) : null),
-          previewAt !== null && record && ready ? h(CleanupPreview, { rows, at: previewAt, language }) : null))
-
+        catalog: { status: catalog.status, ...inventory, reload: catalog.reload }, language })
     }
 
     const reasoningCell = { padding: '4px 8px', textAlign: 'end', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
@@ -3686,10 +3586,8 @@ window.__ModuleLoader__.load({
         previous: 'Previous', next: 'Next', close: 'Close', retry: 'Retry', archived: 'Archived', protected: 'Protected',
         creationUnavailable: 'Complete creation times are unavailable. Creation order supports up to 100 registered conversations. Showing last activity order.',
         rename: 'Rename', title: 'Conversation title', save: 'Save', cancel: 'Cancel',
-        renameFailed: 'The name could not be saved.', retention: 'Retention preview', useDefault: 'Use global policy',
+        renameFailed: 'The name could not be saved.',
         incompleteTitles: 'Some conversations have no title metadata in the Host catalog. Title search may be incomplete; try a Session ID.',
-        retentionUnavailable: 'Enable Chat Control to manage retention. Automatic cleanup is disabled.',
-        disabled: 'Conversation deletion and automatic cleanup are unavailable.',
       },
       ar: {
         open: 'الدردشة المباشرة', opening: 'جارٍ فتح الدردشة المباشرة', retryOpen: 'إعادة محاولة فتح الدردشة المباشرة',
@@ -3700,10 +3598,8 @@ window.__ModuleLoader__.load({
         previous: 'السابق', next: 'التالي', close: 'إغلاق', retry: 'إعادة المحاولة', archived: 'مؤرشفة', protected: 'محمية',
         creationUnavailable: 'تواريخ الإنشاء الكاملة غير متاحة. يدعم هذا الترتيب حتى ١٠٠ محادثة مسجّلة. يُعرض ترتيب آخر نشاط بدلاً منه.',
         rename: 'إعادة التسمية', title: 'عنوان المحادثة', save: 'حفظ', cancel: 'إلغاء',
-        renameFailed: 'تعذّر حفظ الاسم.', retention: 'معاينة الاحتفاظ', useDefault: 'استخدام السياسة العامة',
+        renameFailed: 'تعذّر حفظ الاسم.',
         incompleteTitles: 'بعض المحادثات لا تتوفر عناوينها في فهرس المضيف. قد لا يشملها البحث بالعنوان؛ جرّب معرّف الجلسة.',
-        retentionUnavailable: 'فعّل إدارة المحادثات لضبط الاحتفاظ. التنظيف التلقائي معطّل.',
-        disabled: 'حذف المحادثات والتنظيف التلقائي غير متاحين.',
       },
     }
 
@@ -3731,8 +3627,6 @@ window.__ModuleLoader__.load({
       const [attempt, setAttempt] = React.useState(0)
       const [result, setResult] = React.useState(null)
       const [edit, setEdit] = React.useState(null)
-      const [previewAt, setPreviewAt] = React.useState(null)
-      const [draft, setDraft] = React.useState(null)
       const mounted = React.useRef(true)
       React.useEffect(() => {
         mounted.current = true
@@ -3768,7 +3662,6 @@ window.__ModuleLoader__.load({
       const shown = rows.slice(activePage * limit, (activePage + 1) * limit)
       const editing = edit && edit.generation === generation && shown.some(item => item.id === edit.id) &&
         !protectedWorkspace && !protectedIds.has(edit.id) ? edit : null
-      const proposal = draft?.source === settings.source && selected?.workspaceId === draft?.workspaceId ? draft : null
 
       function changeOrder(event) {
         setPage(0)
@@ -3823,33 +3716,7 @@ window.__ModuleLoader__.load({
             h(Button, { size: 'sm', type: 'submit', disabled: editing.busy || !editing.title.trim() }, copy.save),
             h(Button, { size: 'sm', type: 'button', onClick: () => setEdit(null) }, copy.cancel),
             editing.error ? h('p', { role: 'alert' }, copy.renameFailed) : null) : null,
-          selected ? h('section', { style: { display: 'grid', gap: 6 } },
-            h('p', { style: lifecycleMuted }, record ? copy.disabled : copy.retentionUnavailable),
-            record ? h(React.Fragment, null,
-              h('label', { style: lifecycleLabel }, copy.retention, h('select', { style: lifecycleSelect,
-                value: proposal?.value ?? record.overrides.find(item => item.workspace === selected.workspaceId)?.retention ?? 'inherit',
-                disabled: !settings.writable, onChange: event => {
-                  setDraft({ value: event.target.value, source: settings.source, workspaceId: selected.workspaceId })
-                  setPreviewAt(null)
-                } },
-              h('option', { value: 'inherit' }, copy.useDefault),
-              ...['forever', ...lifecycleDurations].map(value => h('option', { key: value, value }, value === 'forever'
-                ? language === 'ar' ? 'إلى الأبد' : 'Forever' : value)))),
-              h(SuiteRecordStatus, { settings }),
-              proposal ? h('div', { style: lifecycleActions },
-                h(Button, { size: 'sm', disabled: !settings.writable, onClick: () => {
-                  const overrides = record.overrides.filter(item => item.workspace !== selected.workspaceId)
-                  if (proposal.value !== 'inherit') overrides.push({ workspace: selected.workspaceId, retention: proposal.value })
-                  setDraft(null)
-                  setPreviewAt(null)
-                  void settings.save({ ...record, overrides })
-                } }, copy.save),
-                h(Button, { size: 'sm', onClick: () => setDraft(null) }, copy.cancel)) : null,
-              h(Button, { size: 'sm', onClick: () => setPreviewAt(previewAt === null ? Date.now() : null) },
-                previewAt === null ? copy.retention : copy.cancel),
-              previewAt !== null ? h('div', { lang: language, dir: language === 'ar' ? 'rtl' : 'ltr' }, h(CleanupPreview, {
-                rows: retentionRows(inventory, workspace, record, previewAt), at: previewAt, language,
-              })) : null) : null) : null)))
+          null)))
     }
 
     function DirectChatHistoryAction({ wide, services, useRemoteAccess, language }) {
@@ -3968,7 +3835,7 @@ window.__ModuleLoader__.load({
       },
     }
 
-    const lifecycleSettingsPlugin = {
+    const archiveManagerPlugin = {
       inject: ['slots', 'remote', 'remote.settings', 'remote.workspace', 'remote.session', 'sessions', 'workspaces', 'connection', 'uiSession'],
       apply(ctx) {
         const workspaceService = ctx.workspaces
@@ -3981,7 +3848,6 @@ window.__ModuleLoader__.load({
           workspaceRemote: ctx.remote.workspace, sessionRemote: ctx.remote.session,
           unarchive: typeof workspaceService.unarchiveSession === 'function' ? id => workspaceService.unarchiveSession(id) : undefined,
           whenRestoreAccess: (id, callback) => uiSession.whenAccess(id, restoreEndpoint, callback) }
-        const id = 'abinadwan-conversation-lifecycle'
         const archivePanel = 'abinadwan-chat-control-archive'
         // The native layout owns selection, More pinning and fallback when a
         // main entry retires. These registrations share the component lifetime.
@@ -3995,10 +3861,6 @@ window.__ModuleLoader__.load({
             strokeLinejoin: 'round', 'aria-hidden': true },
             h('rect', { x: 3, y: 4, width: 18, height: 5, rx: 1 }),
             h('path', { d: 'M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M10 13h4' }))))
-        ctx.slots.inject('settings.section', () => ctx.slots.register({ name: 'settings.section',
-          id, label: 'Chat Control', order: 45 }, props => h(WorkspaceLifecycle, { ...props, services })))
-        ctx.slots.inject('settings.section.icon', () => ctx.slots.register({ name: 'settings.section.icon', id },
-          ({ size }) => suiteGlyph('conversation-lifecycle', size)))
       },
     }
 
@@ -4102,7 +3964,7 @@ window.__ModuleLoader__.load({
             [TYPE + '/environment-context', environmentPlugin],
             [TYPE + '/personal-profile', profilePlugin],
             [TYPE + '/direct-chat', directChatPlugin],
-            [TYPE + '/conversation-lifecycle', lifecycleSettingsPlugin],
+            [TYPE + '/conversation-lifecycle', archiveManagerPlugin],
             [TYPE + '/adaptive-reasoning', reasoningComposerPlugin],
           ]
           async function refresh() {

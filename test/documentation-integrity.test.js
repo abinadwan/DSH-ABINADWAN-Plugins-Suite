@@ -45,7 +45,7 @@ test('installation instructions and package identity reflect the six-component d
   assert.match(readme, /git switch -c feature\/your-change origin\/develop/)
   assert.match(readme, /`develop` is the integration branch/)
   for (const name of ['Environment & Context', 'Humanizer', 'My Profile',
-    'Direct Chat', 'Chat Control', 'Adaptive Reasoning']) {
+    'Direct Chat', 'Archive Manager', 'Adaptive Reasoning']) {
     assert.ok(packageJson.description.includes(name), 'package description missing ' + name)
   }
 })

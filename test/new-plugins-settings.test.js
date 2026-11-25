@@ -10,7 +10,7 @@ import { base, clientHarness, observable, ok, refused } from '../test-support/cl
 
 const names = {
   'direct-chat': 'Direct Chat',
-  'conversation-lifecycle': 'Chat Control',
+  'conversation-lifecycle': 'Archive Manager',
   'adaptive-reasoning': 'Adaptive Reasoning',
 }
 
@@ -38,7 +38,7 @@ test('independent Host rows default off and resolve English product metadata and
   }
 })
 
-test('Direct Chat replaces the old settings UI with a top New Session action while Lifecycle stays isolated', async () => {
+test('Direct Chat action and Archive Manager global panel stay independent without a Settings entry', async () => {
   const fixture = await clientHarness({ modelDirectories: {} })
   try {
     const rows = [...fixture.rows(), ...Object.keys(names).map(id => ({
@@ -47,13 +47,14 @@ test('Direct Chat replaces the old settings UI with a top New Session action whi
     fixture.setRows(rows)
     await fixture.changed()
     assert.ok(fixture.entries('sidebar.session.action').some(row => row.options.id === 'abinadwan-direct-chat'))
-    assert.deepEqual(fixture.entries('settings.section').map(row => row.options.id), ['abinadwan-conversation-lifecycle'])
-    assert.equal(fixture.entries('settings.section')[0].options.label, 'Chat Control')
+    assert.deepEqual(fixture.entries('settings.section').map(row => row.options.id), [])
+    assert.ok(fixture.entries('main').some(row => row.options.key === 'abinadwan-chat-control-archive'))
     assert.equal(fixture.entries('conversation.input.right').length, 1)
     fixture.setRows(rows.map(row => row.moduleName === `${base}/direct-chat` ? { ...row, enabled: false } : row))
     await fixture.changed()
     assert.equal(fixture.entries('sidebar.session.action').length, 0)
-    assert.deepEqual(fixture.entries('settings.section').map(row => row.options.id), ['abinadwan-conversation-lifecycle'])
+    assert.deepEqual(fixture.entries('settings.section').map(row => row.options.id), [])
+    assert.ok(fixture.entries('sidebar.panellist').some(row => row.options.id === 'abinadwan-chat-control-archive'))
   } finally { await fixture.dispose() }
 })
 
@@ -117,44 +118,6 @@ function settingsFixture(id, initial) {
   } }
 }
 
-test('retention previews archived Workspace chats, excludes active and Direct chats, and waits for confirmation', async t => {
-  const settings = settingsFixture('conversation-lifecycle', { retention: 'forever', overrides: [], protectedIds: [] })
-  const old = Date.now() - 40 * 86400000
-  const rows = [ ['cold', 'A cold chat', false], ['busy', 'A running chat', true], ['direct', 'A Direct chat', false] ]
-  const { div, window } = await mount(t, {
-    settings: settings.service, archivedSessionIds: ['cold'], language: 'ar',
-    workspaceItems: [{ workspaceId: 'workspace-a', title: 'Fictional Workspace', sessionIds: rows.map(([id]) => id) }],
-    sessions: { phase: 'ready', ids: rows.map(([id]) => id), byId: Object.fromEntries(rows.map(([id, displayTitle, running]) => [id,
-      { id, displayTitle, running, createdAt: old - 1000, updatedAt: old }])),
-    projectionsBySession: { cold: { values: { sessionListMetadata: { lastPromptAt: old } } },
-      direct: { values: { agentPreset: 'abinadwan-direct-chat' } } } },
-  }, 'conversation-lifecycle', 'settings.section')
-  assert.equal(div.querySelector('section').lang, 'en')
-  assert.equal(div.querySelector('section').dir, 'ltr')
-  assert.deepEqual([...div.querySelectorAll('h2')].map(heading => heading.textContent),
-    ['Overview', 'Retention Policy', 'Protected Conversations', 'Cleanup Management'])
-  assert.deepEqual([...div.querySelectorAll('dd')].map(value => value.textContent), ['2', '1', 'Unavailable'])
-  assert.doesNotMatch(div.textContent, /\p{Script=Arabic}/u)
-  assert.doesNotMatch(div.textContent, /A Direct chat/)
-  const retention = div.querySelectorAll('select')[1]
-  await act(async () => {
-    retention.value = '30'
-    retention.dispatchEvent(new window.Event('change', { bubbles: true }))
-  })
-  assert.ok([...div.querySelectorAll('[role=status]')].some(status => status.textContent === '1 estimated candidate'))
-  assert.deepEqual(settings.writes, [])
-  await act(async () => [...div.querySelectorAll('button')].find(button => button.textContent === 'Confirm and save').click())
-  assert.equal(settings.writes[0].revision, 1)
-  assert.equal(settings.writes[0].value.record.retention, '30')
-  const checkbox = label => [...div.querySelectorAll('label')].find(item => item.textContent.trim() === label)?.querySelector('input')
-  assert.equal(checkbox('Protect A cold chat'), undefined)
-  await act(async () => checkbox('Hide Archived Conversations').click())
-  assert.equal(settings.writes[1].value.record.hideArchived, false)
-  await act(async () => checkbox('Protect A cold chat').click())
-  assert.deepEqual(Array.from(settings.writes[2].value.record.protectedIds), ['cold'])
-  assert.equal(settings.writes[2].revision, 3)
-})
-
 const archiveRecord = { retention: 'forever', overrides: [], protectedIds: [], protectedWorkspaces: [] }
 const archiveButton = (root, label) => [...root.querySelectorAll('button')].find(item => item.textContent === label)
 const archiveSelect = async (root, label, value) => act(async () => {
@@ -181,6 +144,8 @@ async function mountArchive(t, options = {}) {
     }])) },
     ...options,
   }, 'conversation-lifecycle', 'main')
+  assert.ok(!result.fixture.entries('settings.section').some(row => row.options.id === 'abinadwan-conversation-lifecycle'))
+  assert.ok(!result.fixture.entries('settings.section.icon').some(row => row.options.id === 'abinadwan-conversation-lifecycle'))
   const panel = result.fixture.entries('main').find(row => row.options.key === 'abinadwan-chat-control-archive')
   const sidebar = result.fixture.entries('sidebar.panellist').find(row => row.options.id === panel?.options.key)
   assert.ok(panel && sidebar, 'Archive is a native global panel with a matching sidebar entry')
@@ -392,48 +357,52 @@ test('native restore failure leaves the row and count intact and disable release
   assert.equal(fixture.entries('settings.section').filter(entry => entry.options.id === 'abinadwan-conversation-lifecycle').length, 0)
   fixture.setRows(enabled)
   await fixture.changed()
-  assert.equal(fixture.entries('settings.section').filter(entry => entry.options.id === 'abinadwan-conversation-lifecycle').length, 1)
+  assert.equal(fixture.entries('settings.section').filter(entry => entry.options.id === 'abinadwan-conversation-lifecycle').length, 0)
+  assert.ok(fixture.entries('main').some(entry => entry.options.key === 'abinadwan-chat-control-archive'))
 })
 
-test('retention confirmation expires when the underlying settings revision is reloaded', async t => {
-  const settings = settingsFixture('conversation-lifecycle', { retention: 'forever', overrides: [], protectedIds: [] })
-  const { div, window, fixture } = await mount(t, { settings: settings.service }, 'conversation-lifecycle', 'settings.section')
-  const confirm = () => [...div.querySelectorAll('button')].find(button => button.textContent === 'Confirm and save')
-  await act(async () => {
-    const retention = div.querySelectorAll('select')[1]
-    retention.value = '30'
-    retention.dispatchEvent(new window.Event('change', { bubbles: true }))
-  })
-  assert.ok(confirm())
-  await settings.service.replace('abinadwan-conversation-lifecycle', {
-    record: { retention: 'forever', overrides: [], protectedIds: ['s1'] },
-  }, 1)
-  await act(async () => { fixture.ctx.emit('connection/reset') })
-  assert.equal(Boolean(confirm()), false, 'a preview cannot overwrite protection saved by another window')
-  assert.equal(div.querySelector('input[type=checkbox]').checked, true)
-  assert.equal(settings.writes.length, 1)
-})
+const protectionCheckbox = (root, label) => [...root.querySelectorAll('label')].find(item => item.textContent.trim() === label)?.querySelector('input[type=checkbox]')
 
-test('a Workspace override leaves the global policy intact and can return to inheritance', async t => {
-  const settings = settingsFixture('conversation-lifecycle', { retention: 'forever', overrides: [], protectedIds: [] })
-  const { div, window } = await mount(t, { settings: settings.service }, 'conversation-lifecycle', 'settings.section')
-  const change = async (field, value) => act(async () => {
-    field.value = value
-    field.dispatchEvent(new window.Event('change', { bubbles: true }))
-  })
-  const confirm = () => act(async () => [...div.querySelectorAll('button')]
-    .find(button => button.textContent === 'Confirm and save').click())
-  await change(div.querySelector('select'), 'w')
-  const [, globalPolicy, override] = div.querySelectorAll('select')
-  assert.equal(globalPolicy.value, 'forever')
-  assert.equal(override.value, 'inherit')
-  await change(override, '90')
-  await confirm()
+test('archive protection toggles with revision checks and preserves historical fields', async t => {
+  const original = { ...archiveRecord, retention: '7', hideArchived: false,
+    overrides: [{ workspace: 'w1', retention: '90' }], protectedIds: ['protected', 'active'] }
+  const settings = settingsFixture('conversation-lifecycle', original)
+  const { hub } = await mountArchive(t, { settings: settings.service, onUnarchive: async () => {} })
+  assert.doesNotMatch(hub().textContent, /Storage usage|Retention Policy|Preview deletion|Cleanup Management|Hide Archived Conversations/)
+  assert.match(hub().textContent, /4 archived conversations/)
+  assert.match(hub().textContent, /1 protected/)
+  const checkbox = label => protectionCheckbox(hub(), label)
+  assert.ok(checkbox('Protect Zulu report'))
+  await act(async () => checkbox('Protect Zulu report').click())
   assert.deepEqual(JSON.parse(JSON.stringify(settings.writes[0].value.record)),
-    { retention: 'forever', overrides: [{ workspace: 'w', retention: '90' }], protectedIds: [] })
-  await change(override, 'inherit')
-  await confirm()
-  assert.equal(settings.writes[1].value.record.overrides.length, 0)
+    { ...original, protectedIds: ['protected', 'active', 's1'] })
+  assert.equal(settings.writes[0].revision, 1)
+  assert.match(hub().textContent, /2 protected/)
+  const restore = () => archiveButton([...hub().querySelectorAll('li')].find(row => row.textContent.includes('Zulu report')), 'Restore')
+  assert.equal(restore().disabled, true)
+  await act(async () => checkbox('Protect Zulu report').click())
+  assert.equal(restore().disabled, false)
+  assert.equal(settings.writes[1].revision, 2)
+  assert.ok(checkbox('Protect Active work').checked, 'existing active protection is still manageable')
+  await act(async () => checkbox('Protect Active work').click())
+  assert.deepEqual(Array.from(settings.writes[2].value.record.protectedIds), ['protected'])
+  assert.equal(settings.writes[2].value.record.retention, '7')
+  assert.equal(settings.writes[2].value.record.hideArchived, false)
+})
+
+test('Workspace protection is inherited and reversible without changing individual flags', async t => {
+  const settings = settingsFixture('conversation-lifecycle', { ...archiveRecord, protectedIds: ['protected'] })
+  const { hub } = await mountArchive(t, { settings: settings.service, onUnarchive: async () => {} })
+  const checkbox = () => protectionCheckbox(hub(), 'Protect Workspace: North Workspace')
+  assert.ok(checkbox())
+  await act(async () => checkbox().click())
+  assert.deepEqual(Array.from(settings.writes[0].value.record.protectedWorkspaces), ['w1'])
+  assert.deepEqual(Array.from(settings.writes[0].value.record.protectedIds), ['protected'])
+  assert.match(hub().textContent, /Protected by Workspace/)
+  assert.match(hub().textContent, /3 protected/)
+  await act(async () => checkbox().click())
+  assert.deepEqual(Array.from(settings.writes[1].value.record.protectedWorkspaces), [])
+  assert.match(hub().textContent, /1 protected/)
 })
 
 test('one English composer menu selects, saves, applies and removes supported effort', async t => {
@@ -614,34 +583,11 @@ test('Arabic statistics localizes the dialog, makes all columns keyboard-scrolla
   assert.deepEqual(fixture.calls.map(call => call.path), ['stats', 'stats/reset', 'stats'])
 })
 
-test('retention previews enforce all UTC cutoffs and exclude unknown or protected records', async t => {
-  const now = Date.now()
-  const day = 86400000
-  const durations = [365, 180, 90, 30, 7]
-  const scoped = durations.map(days => ({
-    workspaceId: 'w' + days, title: 'Workspace ' + days, sessionIds: ['edge' + days, 'recent' + days],
-  }))
-  scoped.push({ workspaceId: 'protected', title: 'Protected Workspace', sessionIds: ['protected-chat'] })
-  scoped.push({ workspaceId: 'other', title: 'Other', sessionIds: ['unknown', 'ambiguous', 'uncatalogued', 'protected-session'] })
-  scoped.push({ workspaceId: 'second', title: 'Second', sessionIds: ['ambiguous'] })
-  const settings = settingsFixture('conversation-lifecycle', {
-    retention: '7', overrides: durations.map(days => ({ workspace: 'w' + days, retention: String(days) })),
-    protectedIds: ['protected-session'], protectedWorkspaces: ['protected'],
-  })
-  const ids = [...new Set(scoped.flatMap(workspace => workspace.sessionIds))].filter(id => id !== 'uncatalogued')
-  const projectionsBySession = Object.fromEntries([...ids, 'uncatalogued'].filter(id => id !== 'unknown').map(id => {
-    const days = Number(id.match(/\d+$/)?.[0]) || 365
-    return [id, { values: { sessionListMetadata: { lastPromptAt: now - days * day + (id.startsWith('recent') ? 60000 : 0) } } }]
-  }))
-  const { div } = await mount(t, {
-    settings: settings.service, workspaceItems: scoped,
-    sessions: { phase: 'ready', ids, projectionsBySession,
-      byId: Object.fromEntries([...ids, 'uncatalogued'].map(id => [id, { id, displayTitle: id, running: false }])) },
-  }, 'conversation-lifecycle', 'settings.section')
-  await act(async () => [...div.querySelectorAll('button')].find(button => button.textContent === 'Preview cleanup').click())
-  assert.match(div.textContent, /5 estimated candidates/)
-  assert.match(div.textContent, /Automatic cleanup is disabled/)
-  assert.match(div.textContent, /Deletion is unavailable/)
+test('archive protection never exposes ambiguous or unadmitted saved flags', async t => {
+  const settings = settingsFixture('conversation-lifecycle', { ...archiveRecord, protectedIds: ['ambiguous', 'missing', 'active'] })
+  const { hub } = await mountArchive(t, { settings: settings.service })
+  assert.ok(protectionCheckbox(hub(), 'Protect Active work'))
+  assert.doesNotMatch(hub().textContent, /Ambiguous title|missing/)
   assert.equal(settings.writes.length, 0)
 })
 
@@ -678,6 +624,7 @@ test('Direct Chat history filters authorized metadata, pages it, and keeps nativ
   await act(async () => button('Direct Chat history').click())
   assert.equal(dialog().querySelectorAll('li').length, 25)
   assert.match(dialog().querySelector('li').textContent, /Chat 59.*Protected/)
+  assert.doesNotMatch(dialog().textContent, /Retention preview|Automatic cleanup/)
   assert.equal(button('Rename Chat 59'), undefined)
   await act(async () => button('Rename Chat 58').click())
   await act(async () => {
@@ -783,86 +730,55 @@ test('Direct Chat uses an authorized cached projection title without opening a S
     'search must never include a foreign Workspace projection')
 })
 
-test('Chat Control fails closed when Workspace membership is malformed', async t => {
-  const settings = settingsFixture('conversation-lifecycle',
-    { retention: '7', overrides: [], protectedIds: [], protectedWorkspaces: [] })
-  const { div } = await mount(t, {
-    settings: settings.service,
-    workspaceItems: [{ workspaceId: 'broken', title: 'Malformed test fixture', sessionIds: null }],
-  }, 'conversation-lifecycle', 'settings.section')
-  const preview = [...div.querySelectorAll('button')].find(button => button.textContent === 'Preview cleanup')
-  assert.ok(preview, 'the preview action stays visible')
-  assert.equal(preview.disabled, true, 'never allow preview from unverified catalog membership')
-  assert.match(div.textContent, /Workspace inventory is unavailable/)
+test('Archive Manager fails closed when Workspace membership is malformed', async t => {
+  const settings = settingsFixture('conversation-lifecycle', archiveRecord)
+  const { hub } = await mountArchive(t, { settings: settings.service,
+    workspaceItems: [{ workspaceId: 'broken', title: 'Malformed test fixture', sessionIds: null }] })
+  assert.match(hub().textContent, /Archive catalog unavailable/)
+  assert.equal(hub().querySelector('input[type=checkbox]'), null)
   assert.deepEqual(settings.writes, [])
 })
 
-test('Chat Control refuses stale concurrent policy confirmation and preserves newer protection', async t => {
-  const settings = settingsFixture('conversation-lifecycle',
-    { retention: 'forever', overrides: [], protectedIds: [], protectedWorkspaces: [] })
-  const { div, window, fixture } = await mount(t, { settings: settings.service },
-    'conversation-lifecycle', 'settings.section')
-  const confirmation = () => [...div.querySelectorAll('button')]
-    .find(button => button.textContent === 'Confirm and save')
-  await act(async () => {
-    const retention = div.querySelectorAll('select')[1]
-    retention.value = '7'
-    retention.dispatchEvent(new window.Event('change', { bubbles: true }))
-  })
-  assert.ok(confirmation())
-  const replacement = { record: { retention: 'forever', overrides: [],
-    protectedIds: ['protected-in-another-window'], protectedWorkspaces: [] } }
-  assert.equal((await settings.service.replace('abinadwan-conversation-lifecycle', replacement, 1)).ok, true)
-  await act(async () => { confirmation().click() })
-  assert.match(div.textContent, /Settings changed in another window/)
-  assert.equal(settings.writes.length, 2, 'external write and one rejected stale attempt')
-  assert.equal(settings.writes[1].revision, 1, 'the stale UI did not forge a newer revision')
-  const stored = (await settings.service.describe()).value.namespaces[0]
-  assert.equal(stored.revision, 2)
-  assert.deepEqual(stored.value.record.protectedIds, ['protected-in-another-window'])
-  assert.equal(stored.value.record.retention, 'forever', 'rejected draft did not override current policy')
+test('Archive Manager refuses a stale protection write and preserves newer protection', async t => {
+  const settings = settingsFixture('conversation-lifecycle', archiveRecord)
+  const { hub, fixture } = await mountArchive(t, { settings: settings.service })
+  const checkbox = () => protectionCheckbox(hub(), 'Protect Zulu report')
+  await settings.service.replace('abinadwan-conversation-lifecycle', {
+    record: { ...archiveRecord, protectedIds: ['protected-in-another-window'] },
+  }, 1)
+  await act(async () => checkbox().click())
+  assert.match(hub().textContent, /Settings changed in another window/)
+  assert.equal(settings.writes[1].revision, 1)
+  assert.equal(settings.writes.length, 2)
+  assert.deepEqual((await settings.service.describe()).value.namespaces[0].value.record.protectedIds, ['protected-in-another-window'])
   await act(async () => { fixture.ctx.emit('connection/reset') })
-  assert.equal(confirmation(), undefined, 'stale confirmation disappears when the catalog is reloaded')
+  assert.equal(checkbox().checked, false)
 })
 
-
-test('Chat Control respects read-only settings permission and never offers a destructive operation', async t => {
-  const settings = settingsFixture('conversation-lifecycle',
-    { retention: '7', overrides: [], protectedIds: [], protectedWorkspaces: [] })
-  const originalDescribe = settings.service.describe
+test('Archive Manager respects read-only protection and does not expose deletion or retention actions', async t => {
+  const settings = settingsFixture('conversation-lifecycle', archiveRecord)
+  const describe = settings.service.describe
   settings.service.describe = async () => {
-    const result = await originalDescribe()
+    const result = await describe()
     return { ...result, value: { ...result.value, writable: false } }
   }
-  const { div } = await mount(t, { settings: settings.service },
-    'conversation-lifecycle', 'settings.section')
-  assert.equal(div.querySelectorAll('select')[1].disabled, true,
-    'read-only users must not change retention policies')
-  assert.equal(div.querySelector('input[type=checkbox]').disabled, true,
-    'read-only users must not change protection flags')
-  assert.match(div.textContent, /Deletion is unavailable\. Automatic cleanup is disabled\./)
+  const { hub } = await mountArchive(t, { settings: settings.service })
+  assert.ok(hub().querySelectorAll('input[type=checkbox]').length > 0)
+  assert.ok([...hub().querySelectorAll('input[type=checkbox]')].every(input => input.disabled))
+  assert.doesNotMatch(hub().textContent, /Preview deletion|Retention Policy|Cleanup Management|Storage usage/)
   assert.deepEqual(settings.writes, [])
 })
 
-
-test('Chat Control follows active Arabic Host locale and renders RTL labels without changing stored IDs', async t => {
-  const settings = settingsFixture('conversation-lifecycle', {
-    retention: 'forever', overrides: [], protectedIds: [], protectedWorkspaces: [],
-  })
-  const { div, fixture } = await mount(t, { settings: settings.service, hostLocale: 'ar' },
-    'conversation-lifecycle', 'settings.section')
-  const section = div.querySelector('section')
-  assert.equal(section.lang, 'ar')
-  assert.equal(section.dir, 'rtl')
-  assert.deepEqual([...div.querySelectorAll('h2')].map(node => node.textContent),
-    ['نظرة عامة', 'سياسة الاحتفاظ', 'المحادثات المحمية', 'إدارة التنظيف'])
-  assert.match(div.textContent, /الحذف غير متاح/)
-  assert.equal(div.querySelectorAll('select')[1].querySelector('option[value=forever]').textContent,
-    'احتفاظ دائم')
+test('Archive Manager follows Arabic Host locale and changes language without changing stored IDs', async t => {
+  const { hub, fixture } = await mountArchive(t, { hostLocale: 'ar' })
+  assert.equal(hub().querySelector('[lang]').lang, 'ar')
+  assert.equal(hub().querySelector('[dir]').dir, 'rtl')
+  assert.match(hub().textContent, /المحادثات المؤرشفة/)
+  assert.ok(protectionCheckbox(hub(), 'حماية Zulu report'))
   await act(async () => fixture.hostLocale.set({ active: 'en', revision: 1 }))
-  assert.equal(div.querySelector('section').lang, 'en')
-  assert.equal(div.querySelector('section').dir, 'ltr')
-  assert.match(div.textContent, /Retention Policy/)
+  assert.equal(hub().querySelector('[lang]').lang, 'en')
+  assert.equal(hub().querySelector('[dir]').dir, 'ltr')
+  assert.ok(protectionCheckbox(hub(), 'Protect Zulu report'))
 })
 
 test('Adaptive Reasoning composer localizes its accessible menu labels with Arabic Host locale', async t => {
@@ -942,8 +858,8 @@ test('Direct Chat history retries a failed catalog without leaking nonadmitted S
   assert.equal(div.querySelector('[role=alert]'), null)
 })
 
-test('Chat Control keeps a failed policy proposal for an explicit revision-checked retry', async t => {
-  const settings = settingsFixture('conversation-lifecycle', { retention: 'forever', overrides: [], protectedIds: [] })
+test('failed protection save does not alter the flag and allows explicit revision-checked retry', async t => {
+  const settings = settingsFixture('conversation-lifecycle', archiveRecord)
   const replace = settings.service.replace
   const revisions = []
   settings.service.replace = async (ns, value, revision) => {
@@ -951,22 +867,16 @@ test('Chat Control keeps a failed policy proposal for an explicit revision-check
     if (revisions.length === 1) return refused('settings/unavailable', 'fixture write failure')
     return replace(ns, value, revision)
   }
-  const { div, window } = await mount(t, { settings: settings.service }, 'conversation-lifecycle', 'settings.section')
-  const retention = div.querySelectorAll('select')[1]
-  const confirm = () => [...div.querySelectorAll('button')].find(button => button.textContent === 'Confirm and save')
-  await act(async () => {
-    retention.value = '30'
-    retention.dispatchEvent(new window.Event('change', { bubbles: true }))
-  })
-  await act(async () => confirm().click())
-  assert.match(div.textContent, /Save failed/)
-  assert.doesNotMatch(div.textContent, /Saved\./)
-  assert.equal((await settings.service.describe()).value.namespaces[0].value.record.retention, 'forever')
-  assert.equal(retention.value, '30')
-  await act(async () => confirm().click())
+  const { hub } = await mountArchive(t, { settings: settings.service })
+  const checkbox = () => protectionCheckbox(hub(), 'Protect Zulu report')
+  await act(async () => checkbox().click())
+  assert.match(hub().textContent, /Save failed/)
+  assert.equal(checkbox().checked, false)
+  assert.deepEqual((await settings.service.describe()).value.namespaces[0].value.record.protectedIds, [])
+  await act(async () => checkbox().click())
   assert.deepEqual(revisions, [1, 1])
-  assert.equal((await settings.service.describe()).value.namespaces[0].value.record.retention, '30')
-  assert.equal(confirm(), undefined)
+  assert.deepEqual(Array.from((await settings.service.describe()).value.namespaces[0].value.record.protectedIds), ['s1'])
+  assert.equal(checkbox().checked, true)
 })
 
 test('a failed statistics reset requires an authoritative reload before an explicit retry', async t => {

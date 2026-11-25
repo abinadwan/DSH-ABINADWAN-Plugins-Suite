@@ -1,6 +1,6 @@
 {
   "meta": {
-    "title": "Chat Control",
-    "description": "Browse and restore archived Workspace conversations, manage protection, and preview retention policies. Part of the ABINADWAN Plugins Suite."
+    "title": "Archive Manager",
+    "description": "Browse, search, protect and restore authorized archived Workspace conversations. Part of the ABINADWAN Plugins Suite."
   }
 }

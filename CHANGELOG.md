@@ -5,7 +5,7 @@ All notable changes are documented here.
 ## [Unreleased] — v1.1.0 development
 
 - Development candidate: `1.1.0-rc.1`. This is not a published stable release.
-- Add a Profile-scoped **Hide Archived Conversations** preference, enabled by default in Chat Control.
+- Rebrand Chat Control as **Archive Manager** and remove its Settings section and preview-only retention/cleanup controls (including the Direct Chat preview). Preserve the internal module ID and existing records. Manage plugin-scoped protection directly on the archive page; DSH owns its native sidebar visibility.
 - Add a bilingual archive hub in the native sidebar and full main panel with authorized metadata search, filters and sorting. Confirmed restore uses the native DSH workspace command after live access and protection checks.
 - Track the Desktop and CI acceptance gates in the [archive implementation report](docs/research/v1.1.0/CHAT_CONTROL_ARCHIVE_IMPLEMENTATION_REPORT.md).
 
