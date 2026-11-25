@@ -62,7 +62,7 @@ The suite installs as **one DSH bundle** containing **six independently toggleab
 
 The package is distributed as ready-to-run JavaScript. Installing it into DSH **does not require a local build step**. Node.js and npm are needed for contributor development and testing, not for ordinary installation through Harness Desktop.
 
-The `package.json` exports and `cordis.patch.yml` define the bundle, while the package-root client registers UI integrations against services provided by DSH. The build is tested against pinned DSH development dependencies; real Desktop behavior is a separate acceptance boundary.
+The `package.json` exports and `cordis.patch.yml` define the bundle, while the package-root client registers UI integrations against services provided by DSH. The browser carrier is generated from `client-src/` and canonical profile/locale sources (`npm run build:client`); no build is needed for installation. The build is tested against pinned DSH development dependencies; real Desktop behavior is a separate acceptance boundary.
 
 ## Installation (Harness Desktop)
 
@@ -94,6 +94,7 @@ git clone https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite.git
 cd DSH-ABINADWAN-Plugins-Suite
 git switch -c feature/your-change origin/develop
 npm ci --ignore-scripts
+npm run check:client
 npm test
 npm run check:regression
 npm run check:package

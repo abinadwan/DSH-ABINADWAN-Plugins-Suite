@@ -63,7 +63,9 @@
   "scripts": {
     "test": "node --test",
     "check:package": "node scripts/check-package.mjs",
-    "check:regression": "node --test test/phase08-regression.test.js && node qa/adaptive-reasoning-benchmark.mjs --json"
+    "check:regression": "node --test test/phase08-regression.test.js && node qa/adaptive-reasoning-benchmark.mjs --json",
+    "build:client": "node scripts/build-client.mjs",
+    "check:client": "node scripts/build-client.mjs --check"
   },
   "dsh": {
     "bundle": {
@@ -127,6 +129,7 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "@deepseek-ai/cordis": "4.1.0",
     "@deepseek-ai/cordis-plugin-loader": "1.1.0",
     "@deepseek-ai/dsh-app-boot": "0.2.2-rc.3",
     "@deepseek-ai/dsh-skill": "0.2.2-rc.3",
