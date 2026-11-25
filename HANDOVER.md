@@ -1,13 +1,13 @@
 # ABINADWAN Plugins Suite — development handover
 
-> **Published stable [v1.0.3](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.3)** includes the My Profile built-in preset fix. The archive implementation is on `feature/chat-control-archive-management-v1.1.0` and targets `develop` through [draft PR #72](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/72).
+> **Release source [v1.1.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.1.0)** includes Archive Manager ([PR #72](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/72)) and the v1.0.3 My Profile fix ([PR #73](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/73)). GitHub Releases determines publication; never treat a version bump as a published release.
 
 ## Current workflow and source of truth
 
 - `develop` is the integration base. [PR #33](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/33) supplies Direct Chat and My Profile security changes. [PR #34](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/34) supplies the catalog, retention and reasoning changes. The only Git conflict was in the Direct Chat Host entry point. The resolution keeps both tool-denial hooks and the hardened prepare route, adds the owner-only read-only catalog, and shares canonical directory validation between the two.
 - The [component reference](docs/DETAIL.md) describes current behavior. The [security audit](docs/research/SECURITY_CODE_AUDIT_2026_11_22.md) and [architecture review](docs/research/CHAT_CONTROL_ADAPTIVE_DIRECT_CHAT_V2.md) hold evidence, upstream API gaps and acceptance criteria.
-- My Profile's `v1.0.3` hotfix `452dbf68c2ea1f3b125de58a25596054a36812f2` is absent from `develop`. Integrate it through a separately reviewed PR before final integration. Track archive verification in the [implementation report](docs/research/v1.1.0/CHAT_CONTROL_ARCHIVE_IMPLEMENTATION_REPORT.md).
-- Changes move from `develop` to `main` through a reviewed PR. A public release is created from an explicitly approved stable commit. New `v1.1.0` work returns to `develop`; deletion requires independent architecture and safety acceptance before release.
+- My Profile's `v1.0.3` hotfix `452dbf68c2ea1f3b125de58a25596054a36812f2` was backported via merged [PR #73](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/73) with its exact guard and regression tests. Track archive verification in the [implementation report](docs/research/v1.1.0/CHAT_CONTROL_ARCHIVE_IMPLEMENTATION_REPORT.md) and [Phase 09](docs/research/v1.1.0/ARCHIVE_MANAGER_PHASE09.md).
+- Changes move from `develop` to `main` through a reviewed PR. A public release is created from an explicitly approved stable commit. Subsequent feature work starts from `develop` after release. Native automatic archive filtering and permanent deletion are not shipped in v1.1.0. Deletion research remains in [issue #67](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/issues/67), [PR #68](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/68), and [the archived report](docs/research/v1.1.0/CHAT_CONTROL_DELETION_PLUGIN_ONLY_PHASE01.md). Preserve the complete research revision `6bc6bc6c006f4449cf2fa52dbc89df809addade1` under an archival tag before deleting its feature branch.
 
 ## Consolidated component status
 

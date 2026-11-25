@@ -1,0 +1,205 @@
+# Chat Control v1.1.0 — Phase 01: plugin-only archive cleanup
+
+> **Historical research archive (2026-11-25).** Preserved from the immutable research revision [`6bc6bc6c006f4449cf2fa52dbc89df809addade1`](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/tree/6bc6bc6c006f4449cf2fa52dbc89df809addade1) and [PR #68](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/68). The following record retains its original historical status and evidence. No associated runtime inspection or deletion code is included in v1.1.0; the architecture remains blocked. It is not current usage guidance.
+
+**Status:** Implementation candidate on a feature branch, pending CI and review. **No Session deletion enabled.** Stable `v1.0.2` remains unchanged.
+
+## Owner architecture constraint
+
+All new product code belongs to `abinadwan/DSH-ABINADWAN-Plugins-Suite`. **Do not edit, fork/patch, or replace DeepSeek Harness (DSH) core modules.** The plugin may integrate with *public, supported, owner-authorized DSH Host services*; those services are dependencies, not code modifications.
+
+## Source-grounded deletion boundary
+
+The DSH `SessionPersistence` abstract API exposes `create`, `open`, `flush`, `stat`, `list` but **not** `delete`. This is explicit in `packages/session/session-persistence/src/index.ts` and the persistence README. The default JSONL provider also explicitly says that files accumulate until removed externally, and SQLite has separate Segment/event storage and migration semantics. `WorkspaceRegistry.delete(workspaceId)` removes the Workspace registration **without deleting Session histories**, so it must never be used as Session deletion. Archive/unarchive changes visibility and activity lifecycle, not stored history. Full-text search keeps a separate derived SQLite index; attachments are content-addressed, potentially shared and deliberately retained.
+
+References:
+- [DSH SessionPersistence contract](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/session/session-persistence/src/index.ts)
+- [DSH JSONL persistence](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/session/session-persistence-jsonl/README.md)
+- [DSH SQLite persistence](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/session/session-persistence-sqlite/README.md)
+- [DSH Workspace registry](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/workspace/workspace/README.md)
+- [DSH derived search index](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/session-query/session-query-sqlite/README.md)
+- [DSH shared attachments](https://github.com/deepseek-ai/deepseek-harness/blob/master/packages/attachment/attachment-local/README.md)
+
+There is no verified user-authorized atomic Session delete contract in the inspected upstream source. The current user-approved requirement is to **implement the feature entirely inside the plugin** without modifying DSH core. Hence no system file deletion, SQL row deletion, Workspace registry mutation or dynamic upstream patch is permitted in Phase 01. A plugin-only engine may be evaluated in subsequent stages only if it proves the full necessary storage/lock/index/registry/attachment/recovery lifecycle on the installed Host. If that cannot be proven, **report the inability rather than simulate deletion**.
+
+## This phase implements
+
+1. An independent **Preview archived cleanup** action inside the existing Chat Control Settings UI.
+2. Snapshot-only candidate classification; all archived (including recently archived) can be previewed without changing the retention policy. No filesystem paths or chat contents are read.
+3. Exclusions: protected Session or Workspace, pinned, running, retained, migrating, Direct Chat (separate ownership check required), subagent/dependent Session, ambiguous membership or unadmitted Session. A malformed archive/protection snapshot disables the preview.
+4. Clear disclaimer in UI: the preliminary list is not an executable deletion plan; no permanent-delete action, automatic timer or approval recording exists.
+5. Source-predicate and mounted React tests for archive-only behavior, protection, ambiguity and zero mutation.
+
+## Phase 02 — Host read-only storage verification (implemented on this feature branch)
+
+The plugin now registers an owner-only, local DSH Connection Fetch route at
+`POST /api/abinadwan-chat-control/inspect`. Only the **user-authorized owner Peer** may
+call it; viewers are refused by the Host connection boundary. Requests are
+strictly limited to a set of 1–20 unique, validated Session IDs in a small
+JSON body. The route does not accept file paths, a delete flag or a mutation
+intent.
+
+**What the server actually checks:**
+
+- Exact one-to-one Workspace membership from `workspaceRegistry.list()`;
+  invalid or duplicate registry entries fail closed.
+- Current archival and pin flags from the Host registry, plus the plugin's
+  stored protected Session/Workspace policy.
+- A metadata-only `sessionPersistence.stat(id)` lookup for the exact ID.
+  Missing artifacts, migration-required formats and subagent/fork-derived
+  records cannot pass this preliminary check.
+- The catalog/protection snapshot is rechecked after asynchronous reads and
+  a changed result returns a conflict; unknown storage errors return a
+  generic unavailable response, not an absolute path or raw exception text.
+- When the backend exposes `sizeBytes`, the UI may show the **stored
+  per-Session artifact size only**. This is **not** measured disk recovery:
+  shared attachments, legacy generations and derived SQLite indexes are
+  outside that number.
+
+Every returned row has `deletable: false` and the response has
+`executable: false`. The best possible result is
+`requires-deletion-transaction`; it explicitly means that the Host has
+**no verified authorized transaction** to execute deletion. The button
+**Inspect archived candidates with Host** in Chat Control runs this
+read-only request after the user opens the archived preview. The request
+does not change profile settings, archive state or Session history.
+
+Tests include malformed requests, duplicated IDs, protected and absent
+rows, changed registry/policy, JSONL-style metadata, owner-vs-viewer
+admission through the *native* pinned DSH Connection service, route disposal,
+and mounted React UI. See
+`plugins/conversation-lifecycle/inspect.js`,
+`test/chat-control-inspect.test.js`,
+`qa/chat-control-inspect-host-check.mjs` and
+`test/new-plugins-settings.test.js`.
+
+**Open architectural blocker:** No public atomic deletion operation exists
+in the observed DSH SessionPersistence/Workspace lifecycle contract.
+A plugin-only transaction design must still prove safe synchronization
+with the *Host-owned* in-memory membership, archive and persistence state.
+A filesystem unlink alone is not a valid solution, and this stage does
+not take any destructive action.
+
+## Subsequent execution gate (not implemented)
+
+Before enabling even single deletion:
+- Authenticate the local owner/Profile/authorization on the Host. Bind confirmation to the exact selected IDs, connection generation, catalog and settings revision.
+- Recheck ongoing turns, jobs, schedules, subagents, open writers and other connected clients under an exclusion fence.
+- Identify persistence backend (JSONL or SQLite), legacy generations, forks and dependencies, Workspace membership, pin/archive state, search index and shared attachment references. Do not derive deletion paths from user-controlled Session IDs.
+- Design a plugin-owned *recoverable* transaction with power-loss recovery and idempotent per-ID status; prove no stale views, orphaned references or silent cross-Session deletion.
+- Measure bytes with a supported file/storage observation and report only confirmed reclaimed bytes, noting retained shared attachments and other generations.
+- Test on a **disposable DSH Desktop Profile** with fictional data; verify restart, crash/fault recovery and no collateral changes. If any gate is absent, the delete control must remain unavailable.
+- Expand to selected bulk and empty archive only after single-item deletion succeeds; auto-cleanup is separate explicit opt-in.
+
+**Do not call any preliminary preview result a real deletion or a native deletion acceptance Pass.** Keep stable `main` and `v1.0.2` untouched.
+
+## Phase 03 — Direct Chat and Workspace-origin fail-closed hardening (implemented on feature branch)
+
+A review of the Phase 02 Host inspection found a gap: the browser classified
+Direct Chat sessions before making the request, but the **Host route did not
+independently exclude the Direct Chat storage tree**. Consequently a manually
+crafted owner request could receive the preliminary
+`requires-deletion-transaction` result for a Direct Chat Session. This
+must not become a future deletion-authorization bypass.
+
+The read-only Host preflight now:
+
+- Requires an absolute registered Workspace path and an absolute stored
+  Session `header.cwd`; missing/relative paths report
+  `workspace-path-unverified`.
+- Excludes the entire `abinadwan-direct-chat-data` path segment, covering
+  the permanent Direct Chat Workspace and legacy `session-*` directories;
+  it reports `direct-chat-requires-separate-verification`. This is a
+  **negative exclusion only**, not positive ownership authorization of
+  other filesystem paths. No content, paths or files are returned to clients.
+- Includes Workspace paths in the before/after catalog signature so a
+  concurrent identity/path change invalidates the pending read-only result.
+- Displays the two new refusal reasons in the English and Arabic UI, and
+  tests both server exclusion cases and path-revision conflicts.
+
+**Still blocked:** This is deliberately not a Session deletion engine or
+permission to call `fs.rm`, mutate storage SQLite rows, detach Workspaces,
+or claim reclaimed disk space. The pinned DSH Host has no supported
+single-Session delete transaction. Real permanent deletion still requires a
+separately proven backend/registry concurrency and recovery contract.
+
+## Phase 04 — Single-Session archived preflight (implemented on feature branch)
+
+The existing **Preview deletion** row for an individual Session can now request
+the same owner-only, read-only Host route, but only when that Session is archived
+and passes the browser's preliminary exclusion checks. The new control is
+**Inspect selected archived conversation with Host**; it does not say Delete.
+
+The selected Session ID is the only ID sent to the Host. Results are accepted
+only when the response is explicitly `mode:'read-only'`, `executable:false`,
+contains the exact requested ID in order and `deletable:false`. The UI cannot
+turn the inspection into a deletion command.
+
+- Protected, non-archived, active, retained and unverified rows are disabled.
+- A selection change, scope change, host inventory update or settings reload
+  aborts the previous request and discards its outcome.
+- Host rejection and unavailable service are shown as failure/refusal, never
+  success. No settings, registry, Session files or indexes are mutated.
+- Mounted React tests cover one-Session request scope, exclusion, non-mutation
+  and a stale asynchronous response after changing selections.
+
+**Remaining gate:** a truly safe persistent Session delete transaction is still
+unavailable from the DSH Host. This phase increases user-visible inspection and
+safety only; it does not implement the permanent delete requested in issue #67.
+
+## Phase 05 — Fixture-only deletion transaction and recovery spike
+
+This phase adds **test-support/chat-control-delete-transaction-spike.js** and
+**test/chat-control-delete-spike.test.js**. The engine is **only imported by
+the Node test suite**. It is not packaged into the DSH Host plugin, not
+registered on the Connection bridge, and cannot delete production Sessions.
+It accepts only a temporary path whose canonical basename starts with
+`chat-control-delete-fixture-` and contains the exact sentinel
+`fixture-only.marker`. Its fake storage layout and JSON manifest are
+**not** the real DSH JSONL/SQLite storage format.
+
+The disposable fixture models an explicit Profile + Session ID + manifest
+revision + typed confirmation (`DELETE <id>`) and rejects ambiguous
+membership, running work, pin/protection, non-archival, derived/child
+histories, inbound references, unknown fake search-index entries, missing
+logs, cross-Profile requests, concurrent writers, and uncommitted
+transactions. The sample includes two Workspaces and shared attachment
+bytes to verify that deleting one fictional log changes neither another
+Workspace's log nor a shared attachment.
+
+**Illustrative transaction stages:**
+
+1. Write an intent journal to a fixture-owned directory.
+2. Atomically rename the one fictional log into a fixture-only quarantine.
+3. Commit one fake manifest revision that removes Session membership, archive
+   entry and fake search index, and creates a tombstone for recovery.
+4. Remove the quarantined log and journal. An interruption **before** step 3
+   restores the log; one **after** step 3 finishes cleanup. Recovery refuses
+   conflicting or foreign journal records rather than guessing.
+
+Test interruption hooks simulate failures **between awaited operations**;
+they are not physical power-loss tests, Windows disk durability guarantees,
+or verified races against real DSH live writers. This model deliberately
+uses a single fake JSON manifest for data structures that real DSH stores
+across different services, backends and independent transactions.
+
+### Real DSH readiness gates — status after Phase 05
+
+| Gate | Fixture-only evidence | Live DSH status |
+| --- | --- | --- |
+| Exact Profile, Session, revision, typed confirmation | Simulated | No Host transaction admission |
+| Serialize activity/jobs/reminders/open handles | Simulated flags/fixture lock | **Blocked:** no Host-wide delete fence |
+| Workspace account and archive reconciliation | Fake manifest atomic update | **Blocked:** DSH registry has no Session-detach-delete transaction |
+| Physical JSONL/SQLite history + generations | One fictional .jsonl per Session | **Blocked:** no provider delete contract |
+| Search index and attachments | Fake index removed; shared file retained | **Blocked:** cannot prove real cross-service sync/reference ownership |
+| Restart and interruption | Simulated checkpoint recovery | **Blocked:** no native Desktop crash/power-loss proof |
+| Space reclamation | Not measured | **Blocked:** no authoritative cross-backend reclaimed-byte count |
+
+**Decision:** The fixture spike establishes a candidate failure-handling
+pattern, not permission to implement raw `fs.rm` or SQLite `DELETE` on
+a live Profile. No UI Delete or bulk/automatic removal has been enabled.
+To ship actual deletion, we require a supported, owner-authorized transaction
+that fences all Host writers and atomically/or recoverably reconciles
+registry, persisted generations, live caches, query index and shared assets.
+Until those capabilities exist, leave `executable:false` and
+`deletable:false` intact and keep Issue #67 open.

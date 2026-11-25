@@ -19,7 +19,7 @@
 
 <p align="center">
   <a href="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/workflows/test.yml"><img alt="CI" src="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/workflows/test.yml/badge.svg" /></a>
-  <a href="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.3"><img alt="Release v1.0.3" src="https://img.shields.io/badge/release-v1.0.3-22c55e" /></a>
+  <a href="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.1.0"><img alt="Release v1.1.0" src="https://img.shields.io/badge/release-v1.1.0-22c55e" /></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-22c55e" /></a>
 </p>
 
@@ -31,7 +31,7 @@
   <a href="https://github.com/deepseek-ai/deepseek-harness"><img alt="DeepSeek Harness DSH" src="https://img.shields.io/badge/DeepSeek%20Harness-DSH-0F172A" /></a>
 </p>
 
-> **Latest release [v1.0.3](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.3).** For installation, use the full commit SHA shown by the published release. Archive Manager (formerly Chat Control) is on the v1.1.0 development branch.
+> **Release source [v1.1.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.1.0).** The [GitHub Releases page](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases) is authoritative for publication. Install only a published stable release using its full commit SHA. Archive Manager replaces Chat Control in this version.
 
 ## Overview
 
@@ -77,7 +77,7 @@ github:abinadwan/DSH-ABINADWAN-Plugins-Suite#RELEASE_COMMIT_SHA
 4. Complete the installation through the native Plugins UI, then **restart Harness** if requested.
 5. Open **Plugins → ABINADWAN Plugins Suite**, enable the bundle and select the components you want to activate.
 
-Replace `RELEASE_COMMIT_SHA` with the full commit SHA of the published [v1.0.3 release](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.3). Test development commits using a reviewed full SHA in a disposable DSH Profile.
+Replace `RELEASE_COMMIT_SHA` with the full commit SHA of the published [v1.1.0 release](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.1.0). Test development commits using a reviewed full SHA in a disposable DSH Profile.
 
 **Profile separation matters:** Desktop and CLI can use different DSH Profiles. Installing into a CLI Profile does not necessarily install into the Desktop Profile. Before replacing an existing installation, preserve its known-good revision, configuration and any relevant user backup.
 
@@ -100,7 +100,7 @@ npm run check:package
 
 `npm test` covers component/runtime contracts, UI fixtures, documentation references and the configured safety cases. `npm run check:package` creates and checks the packaged plugin against its source expectations. CI runs these checks and pinned offline Harness integration fixtures on Windows and Ubuntu with Node.js 22 and 24. Desktop acceptance requires separate tests.
 
-`develop` is the integration branch. It includes Direct Chat tool-denial and My Profile disclosure hardening, authorized Direct Chat history, historical preview-only retention in Chat Control (removed from the Archive Manager candidate UI), and opt-in Adaptive Reasoning recommendations with Profile-local aggregate statistics. Use `develop` as the base for feature PRs. The consolidated changes go to `main` through owner review, and release publication requires separate approval. See the [component details](docs/DETAIL.md), [changelog](CHANGELOG.md) and [development handover](HANDOVER.md).
+`develop` is the integration branch. It includes Direct Chat tool-denial and My Profile disclosure hardening, authorized Direct Chat history, Archive Manager with native archive browsing, scoped protection and restore (preview-only retention removed), and opt-in Adaptive Reasoning recommendations with Profile-local aggregate statistics. Use `develop` as the base for feature PRs. The consolidated changes go to `main` through owner review, and release publication requires separate approval. See the [component details](docs/DETAIL.md), [changelog](CHANGELOG.md) and [development handover](HANDOVER.md).
 
 ## Documentation and project policy
 

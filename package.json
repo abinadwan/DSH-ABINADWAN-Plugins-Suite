@@ -1,6 +1,6 @@
 {
   "name": "@abinadwan/dsh-plugins-suite",
-  "version": "1.1.0-rc.1",
+  "version": "1.1.0",
   "description": "Six-component DeepSeek Harness suite: Environment & Context, Humanizer, My Profile, Direct Chat, Archive Manager and Adaptive Reasoning.",
   "private": true,
   "type": "module",
@@ -110,6 +110,7 @@
     "humanizer",
     "my-profile",
     "direct-chat",
+    "archive-manager",
     "chat-control",
     "adaptive-reasoning"
   ],

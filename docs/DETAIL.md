@@ -1,6 +1,6 @@
 # ABINADWAN Plugins Suite — component details
 
-**Published source release [v1.0.3](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.3) tagged from `main`.** One community-maintained DSH bundle exposes six independently switchable components. The package's public identity remains `@abinadwan/dsh-plugins-suite`.
+**Release source [v1.1.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.1.0).** One community-maintained DSH bundle exposes six independently switchable components. The package's public identity remains `@abinadwan/dsh-plugins-suite`.
 
 > **Release boundary:** A version bump, development branch merge, or successful CI run does not publish a GitHub Release or validate every Desktop security path. See [the releases page](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases) for actually published artifacts.
 
@@ -82,7 +82,7 @@ Use a row's protection checkbox to restrict restore through Archive Manager and 
 
 Select **Restore**, then **Confirm restore** to return an eligible conversation to DSH's conversation list using native Session access and fresh catalog/protection checks. Open the conversation in DSH after restoration. The native endpoint does not offer atomic plugin protection checks and restore together. Browsing does not read transcript content. No retention policy, storage usage, deletion, cleanup preview or automatic cleanup controls are displayed.
 
-[Archive API research](research/v1.1.0/CHAT_CONTROL_NATIVE_API_RESEARCH.md) · [Previous implementation and acceptance](research/v1.1.0/CHAT_CONTROL_ARCHIVE_IMPLEMENTATION_REPORT.md) · [Phase 09](research/v1.1.0/ARCHIVE_MANAGER_PHASE09.md) · [Lifecycle implementation history](archive/research/NEW_PLUGINS_PHASE_C_CONTINUATION.md)
+[Archive API research](research/v1.1.0/CHAT_CONTROL_NATIVE_API_RESEARCH.md) · [Previous implementation and acceptance](research/v1.1.0/CHAT_CONTROL_ARCHIVE_IMPLEMENTATION_REPORT.md) · [Phase 09](research/v1.1.0/ARCHIVE_MANAGER_PHASE09.md) · [Lifecycle implementation history](archive/research/NEW_PLUGINS_PHASE_C_CONTINUATION.md) · [Archived deletion research (not shipped)](research/v1.1.0/CHAT_CONTROL_DELETION_PLUGIN_ONLY_PHASE01.md)
 
 ## Adaptive Reasoning
 
@@ -104,7 +104,7 @@ The supported installation identity is `@abinadwan/dsh-plugins-suite`. Select th
 github:abinadwan/DSH-ABINADWAN-Plugins-Suite#RELEASE_COMMIT_SHA
 ~~~
 
-For CLI installations, use the matching DSH `plugin --profile <name> add` workflow in the environment that runs that Profile. Back up My Profile and the Profile configuration before any replacement or migration. Install **v1.0.3** using the full SHA of the official tag published from `main`. The updater discovers changes through published releases.
+For CLI installations, use the matching DSH `plugin --profile <name> add` workflow in the environment that runs that Profile. Back up My Profile and the Profile configuration before any replacement or migration. Install **v1.1.0** only once its official stable release is published from `main`, using the full SHA of that release. The updater discovers changes through published releases.
 
 **Suite updates (GitHub Releases)** lives on the suite's Plugins detail page. It checks for a published, non-prerelease GitHub Release on startup and every 24 hours while loaded, with manual **Check again**. If a newer release exists, **Update now** verifies the tag, immutable target SHA and remote package manifest; it requires user confirmation and delegates to DSH's `pluginManager.updateBundle`. There is no unattended install. In-app update requires the existing Git installation to be pinned to a complete commit SHA; unpinned Git installations receive manual migration guidance. Updates may require a restart, and Host rollback is attempted but cannot be guaranteed to succeed in every failure mode.
 

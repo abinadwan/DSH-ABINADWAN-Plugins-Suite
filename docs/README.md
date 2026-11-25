@@ -1,6 +1,6 @@
 # Documentation index — ABINADWAN Plugins Suite
 
-**Current published source release [v1.0.3](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.3) on `main`.**
+**Release source [v1.1.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.1.0); confirm publication on [GitHub Releases](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases).**
 
 ## Where to start
 
@@ -9,7 +9,8 @@
 - [v1.0.1 development progress tracker](DEVELOPMENT_PROGRESS_V1.0.1.md): eight phase candidates, completed/pending work, verified checks, blockers and deferred Desktop acceptance.
 - [Current feature reference](DETAIL.md): **all six** component behaviors, default states, icons, security limitations, updates, supported installations and known gaps.
 - [My Profile contract](PERSONAL_PROFILE_LOCAL_SETTINGS.md): settings and privacy rules.
-- [Chat Control v1.1.0 plan](research/v1.1.0/CHAT_CONTROL_ARCHIVE_MANAGEMENT.md), [native API research](research/v1.1.0/CHAT_CONTROL_NATIVE_API_RESEARCH.md) and [implementation report](research/v1.1.0/CHAT_CONTROL_ARCHIVE_IMPLEMENTATION_REPORT.md).
+- [Historical Chat Control archive plan](research/v1.1.0/CHAT_CONTROL_ARCHIVE_MANAGEMENT.md), [native API research](research/v1.1.0/CHAT_CONTROL_NATIVE_API_RESEARCH.md), [implementation report](research/v1.1.0/CHAT_CONTROL_ARCHIVE_IMPLEMENTATION_REPORT.md) and [Archive Manager Phase 09](research/v1.1.0/ARCHIVE_MANAGER_PHASE09.md).
+- [Archived deletion research](research/v1.1.0/CHAT_CONTROL_DELETION_PLUGIN_ONLY_PHASE01.md) — historical evidence only; not an enabled feature.
 - [Changelog](../CHANGELOG.md), [handover](../HANDOVER.md) and [security policy](../SECURITY.md) for implementation history, acceptance and threat boundaries.
 
 ## Documentation audit — 2026-11-21
@@ -20,7 +21,7 @@ The root README covers technology and installation. [DETAIL.md](DETAIL.md) cover
 
 ## Current reader-facing documentation
 
-These pages describe the current development contracts. Use the v1.0.3 tag for stable release documentation.
+These pages describe the current development contracts. Use the published stable release tag for release-specific documentation.
 
 | File | Reason to keep |
 | --- | --- |
