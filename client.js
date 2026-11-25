@@ -630,14 +630,14 @@ window.__ModuleLoader__.load({
     const PREFERENCES_HEADER='Response preferences (follow the current request and higher-priority host/safety/tool requirements; custom guidance takes precedence over other style preferences where compatible).'
     function languageInstruction(language) {
       const native=language[1].split(' — ')[0]
-      return 'Write your response in '+language[3]+(native===language[3]?'':' ('+native+')')+' even when the user writes in another language, unless the user explicitly asks for a different language.'
+      return 'Required response language: '+language[3]+(native===language[3]?'':' ('+native+')')+'. Write the answer in this language. The input language is not a request to switch languages. Switch only if the user explicitly requests a different output language.'
     }
     function previewProfilePreferences(pref) {
       const lines = []
       const style = PROFILE_STYLES.find(item=>item[0]===pref.style)
       const language = PROFILE_LANGUAGES.find(item=>item[0]===pref.responseLanguage)
-      if(style?.[3]) lines.push(style[3])
       if(language?.[3]) lines.push(languageInstruction(language))
+      if(style?.[3]) lines.push(style[3])
       for(const [key,,,less,more] of PROFILE_TRAITS) {
         if(pref.traits[key]===0) lines.push(less)
         if(pref.traits[key]===2) lines.push(more)

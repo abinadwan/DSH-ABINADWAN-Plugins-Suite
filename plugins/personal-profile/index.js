@@ -3,7 +3,7 @@
 //
 // v5 shares populated saved fields; older records retain their former scope until Save.
 import z from '@deepseek-ai/schemastery'
-import { RECORD_VERSION, SECTION_NAME, CONTEXT_NAME, profileContext, eligibleAssembly } from './preferences.js'
+import { RECORD_VERSION, SECTION_NAME, CONTEXT_NAME, profileContext, responsePreferences, profileDisclosure, eligibleAssembly } from './preferences.js'
 export { RECORD_VERSION } from './preferences.js'
 
 const choice = (values,initial) => z.union(values).default(initial)
@@ -58,14 +58,17 @@ export function apply(ctx,config) {
     child.effect(()=>child.settings.configure({auto:false},ctx.fiber))
   })
   ctx.inject(['systemPrompt'], child => {
-    const text=context=>{
+    const read=(context,render)=>{
       if(!eligibleAssembly(context))return ''
-      try { return profileContext(config.record.get()) } catch { return '' }
+      try{return render(config.record.get())}catch{return ''}
     }
-    if(typeof child.systemPrompt.context==='function'){
-      child.systemPrompt.context({name:CONTEXT_NAME,order:1000,interpolate:false,text})
-    }else{
-      child.systemPrompt.section({name:SECTION_NAME,order:50,interpolate:false,text})
+    const supportsContext=typeof child.systemPrompt.context==='function'
+    child.systemPrompt.section({name:SECTION_NAME,order:1000,interpolate:false,
+      text:context=>read(context,record=>supportsContext?responsePreferences(record):
+        [responsePreferences(record),profileDisclosure(record)].filter(Boolean).join('\n\n'))})
+    if(supportsContext){
+      child.systemPrompt.context({name:CONTEXT_NAME,order:1000,interpolate:false,
+        text:context=>read(context,profileContext)})
     }
   })
 }

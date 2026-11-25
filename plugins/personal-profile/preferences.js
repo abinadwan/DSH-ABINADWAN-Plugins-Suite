@@ -45,14 +45,14 @@ function neutralProfilePreferences() {
 const PREFERENCES_HEADER='Response preferences (follow the current request and higher-priority host/safety/tool requirements; custom guidance takes precedence over other style preferences where compatible).'
 function languageInstruction(language) {
   const native=language[1].split(' — ')[0]
-  return 'Write your response in '+language[3]+(native===language[3]?'':' ('+native+')')+' even when the user writes in another language, unless the user explicitly asks for a different language.'
+  return 'Required response language: '+language[3]+(native===language[3]?'':' ('+native+')')+'. Write the answer in this language. The input language is not a request to switch languages. Switch only if the user explicitly requests a different output language.'
 }
 export function previewProfilePreferences(pref) {
   const lines = []
   const style = PROFILE_STYLES.find(item=>item[0]===pref.style)
   const language = PROFILE_LANGUAGES.find(item=>item[0]===pref.responseLanguage)
-  if(style?.[3]) lines.push(style[3])
   if(language?.[3]) lines.push(languageInstruction(language))
+  if(style?.[3]) lines.push(style[3])
   for(const [key,,,less,more] of PROFILE_TRAITS) {
     if(pref.traits[key]===0) lines.push(less)
     if(pref.traits[key]===2) lines.push(more)
@@ -97,8 +97,8 @@ export function profileDisclosure(record){
 }
 export function profileContext(record){
   if(!record||![2,3,4,RECORD_VERSION].includes(record.version))return ''
-  const parts=[profileDisclosure(record),responsePreferences(record)].filter(Boolean)
-  return ['Current My Profile settings. Use the latest values instead of earlier My Profile settings. Do not infer omitted details. Follow the current request and host instructions.',...(parts.length?parts:['No active personal details or response preferences.'])].join('\n\n')
+  const details=profileDisclosure(record)
+  return ['Current My Profile settings. These personal details replace earlier My Profile context; do not infer omitted details. Follow the current system response instructions, not earlier profile preferences in conversation history.',details||'No active personal details.'].join('\n\n')
 }
 export function eligibleAssembly(context) {
   const a=context?.agent, selection=context?.modelSelection, header=a?.session?.header

@@ -41,7 +41,7 @@ async function send(agent,adapter,label){
   assert.equal(adapter.requests.length,count+1,'one adapter attempt expected')
   return adapter.requests.at(-1)
 }
-test('native rc.3: dynamic profile context reaches both routes; update and clear continue the same session',async()=>{
+test('native rc.3: hybrid profile context and system preferences reach both routes, including updates',async()=>{
   const ctx=new Context()
   try{
     for(const plugin of [LlmRuntime,SessionStore,SessionProjectionRegistry,SystemPrompt,ToolRuntime,NativeToolExecutor,AgentRegistry])await ctx.plugin(plugin)
@@ -49,6 +49,7 @@ test('native rc.3: dynamic profile context reaches both routes; update and clear
     const record=profile.emptyRecord()
     record.information={preferredName:marker,nationality:country,gender:'male'}
     record.preferences.custom=custom
+    record.preferences.responseLanguage='ja'
     const fiber=ctx.plugin(profile,{record});await fiber.await()
     for(const [provider,inHistory] of [['plain',false],['history',true]]){
       await fiber.update({record})
@@ -61,16 +62,20 @@ test('native rc.3: dynamic profile context reaches both routes; update and clear
       assert.ok(block,'native runtime-context snapshot reaches adapter')
       assert.match(textOf(block),new RegExp(marker))
       assert.match(textOf(block),new RegExp(country))
-      assert.match(textOf(block),/FICTIONAL_CUSTOM \{\{literal\}\}/)
+      assert.doesNotMatch(textOf(block),/FICTIONAL_CUSTOM|Required response language/)
+      const system=first.messages.filter(m=>m.role==='system').map(textOf).join('\n')
+      assert.match(system,/FICTIONAL_CUSTOM \{\{literal\}\}/)
+      assert.match(system,/Required response language: Japanese/)
       assert.ok(first.messages.indexOf(block)>first.messages.findIndex(m=>m.role==='system'))
       assert.doesNotMatch(first.messages.filter(m=>m.role==='system').map(textOf).join('\n'),new RegExp(marker))
       const same=await send(agent,adapter,'Continue unchanged')
       assert.equal(same.messages.filter(m=>m.source?.kind==='runtime-context'&&textOf(m).includes('Current My Profile settings')).length,1,'unchanged context is not duplicated')
-      const next=structuredClone(record);next.information.preferredName=replacement;next.preferences.custom=''
+      const next=structuredClone(record);next.information.preferredName=replacement;next.preferences.custom='';next.preferences.responseLanguage='en'
       await fiber.update({record:next})
       const updated=await send(agent,adapter,'Continue after edit')
       assert.match(textOf(latestContext(updated)),new RegExp(replacement))
-      assert.doesNotMatch(textOf(latestContext(updated)),/FICTIONAL_CUSTOM/)
+      assert.doesNotMatch(textOf(latestContext(updated)),/FICTIONAL_CUSTOM|Required response language/)
+      assert.match(updated.messages.map(textOf).join('\n'),/Required response language: English/)
       await fiber.update({record:profile.emptyRecord()})
       const cleared=await send(agent,adapter,'Continue after clearing')
       assert.match(textOf(latestContext(cleared)),/No active personal details/)

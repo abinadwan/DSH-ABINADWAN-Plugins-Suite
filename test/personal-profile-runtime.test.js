@@ -94,22 +94,34 @@ class Registry extends Service{
   context(s){assert.ok(!this.contexts.has(s.name));this.contexts.set(s.name,s);return this.ctx.effect(()=>()=>this.contexts.delete(s.name))}
   section(s){this.sections.set(s.name,s);return this.ctx.effect(()=>()=>this.sections.delete(s.name))}
 }
-test('native dynamic context is lifecycle-scoped, refreshed from committed settings and not duplicated',async()=>{
+test('hybrid context and instructions are lifecycle-scoped, refreshed and separated',async()=>{
   const ctx=new Context()
   try{
     await ctx.plugin(Registry).await()
     const f=ctx.plugin(profile,{record:record()});await f.await()
     const current=()=>ctx.systemPrompt.contexts.get(CONTEXT_NAME)
-    assert.equal(ctx.systemPrompt.sections.size,0)
+    const instructions=()=>ctx.systemPrompt.sections.get(SECTION_NAME)
+    assert.equal(ctx.systemPrompt.sections.size,1)
+    assert.equal(instructions().interpolate,false)
+    assert.match(instructions().text(selection()),/Synthetic instruction/)
+    assert.doesNotMatch(instructions().text(selection()),/SYNTHETIC_NAME/)
+    assert.doesNotMatch(current().text(selection()),/Synthetic instruction/)
+    assert.equal(instructions().text({}),'')
     assert.equal(ctx.systemPrompt.contexts.size,1)
     assert.equal(current().interpolate,false)
     assert.match(current().text(selection()),/SYNTHETIC_NAME/)
     assert.equal(current().text({}),'')
+    const updated=record();updated.preferences.responseLanguage='ja'
+    await f.update({record:updated})
+    assert.match(instructions().text(selection()),/Required response language: Japanese/)
+    assert.doesNotMatch(current().text(selection()),/Required response language/)
     await f.update({record:profile.emptyRecord()})
+    assert.equal(instructions().text(selection()),'')
     assert.match(current().text(selection()),/No active personal details/)
     assert.doesNotMatch(current().text(selection()),/SYNTHETIC_NAME/)
     await f.dispose()
     assert.equal(ctx.systemPrompt.contexts.size,0)
+    assert.equal(ctx.systemPrompt.sections.size,0)
     await ctx.plugin(profile,{record:record()}).await()
     assert.equal(ctx.systemPrompt.contexts.size,1)
   }finally{await ctx.fiber.dispose()}
@@ -120,7 +132,7 @@ const P7D={
   grill:'Before recommending a decision or plan, ask the user 2-3 specific questions about missing requirements and name the key risks.',
 }
 const P7D_HEADER='Response preferences (follow the current request and higher-priority host/safety/tool requirements; custom guidance takes precedence over other style preferences where compatible).'
-const languageLine=name=>'Write your response in '+name+' even when the user writes in another language, unless the user explicitly asks for a different language.'
+const languageLine=name=>'Required response language: '+name+'. Write the answer in this language. The input language is not a request to switch languages. Switch only if the user explicitly requests a different output language.'
 const count=(s,line)=>s.split('\n').filter(l=>l===line).length
 test('7D: adopted lines render exactly once when selected and never otherwise',()=>{
   const r=profile.emptyRecord()
@@ -152,7 +164,7 @@ test('7D: explicit languages render the native name once; English and automatic 
   r.preferences.responseLanguage='auto'
   assert.equal(responsePreferences(r),'')
   r.preferences.style='friendly'
-  assert.doesNotMatch(responsePreferences(r),/Write your response in|Prefer \w+ for responses/)
+  assert.doesNotMatch(responsePreferences(r),/Required response language|Prefer \w+ for responses/)
 })
 
 test('7D: worst-case section stays within the measured size budget',()=>{
@@ -160,7 +172,7 @@ test('7D: worst-case section stays within the measured size budget',()=>{
   Object.assign(r.preferences,{style:'creative',responseLanguage:'zh',traits:{warmth:0,enthusiasm:2,structure:2,emoji:2,detail:0,critical:2},
     presets:['critical','no-fluff','grill-me','evidence','steps','action','code','humanizer']})
   const s=responsePreferences(r)
-  assert.equal(s.length,1330)
+  assert.ok(s.length<=1450,'compact preference section budget')
   assert.equal(s.split('\n').length,17)
 })
 
@@ -168,6 +180,16 @@ test('7D: worst-case section stays within the measured size budget',()=>{
 
 test('custom text is active when saved, with explicit language override preserved',()=>{
   const r=record();r.preferences.responseLanguage='ja'
-  assert.match(responsePreferences(r),/unless the user explicitly asks for a different language/)
+  assert.match(responsePreferences(r),/Switch only if the user explicitly requests a different output language/)
   assert.match(responsePreferences(r),/Synthetic instruction/)
+})
+
+test('legacy registry uses one section with both kinds of content',()=>{
+  const sections=[]
+  const ctx={inject(keys,callback){if(keys.includes('systemPrompt'))callback({systemPrompt:{section(value){sections.push(value)}}})}}
+  profile.apply(ctx,{record:{get:()=>record()}})
+  assert.equal(sections.length,1)
+  assert.match(sections[0].text(selection()),/Synthetic instruction/)
+  assert.match(sections[0].text(selection()),/SYNTHETIC_NAME/)
+  assert.equal(sections[0].text({}),'')
 })

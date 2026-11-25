@@ -10,7 +10,7 @@
 | --- | --- | --- | --- |
 | <img src="../plugins/environment-context/icon.png" width="28" alt="Environment & Context icon"/> **Environment & Context** | On | Conversation header / right inspector | Read-only session summaries and estimated usage |
 | <img src="../plugins/humanizer/icon.png" width="28" alt="Humanizer icon"/> **Humanizer** | On | Skill registry / agent requests | Edits supplied prose when the Skill is loaded |
-| <img src="../plugins/personal-profile/icon.png" width="28" alt="My Profile icon"/> **My Profile** | Off | **Settings → My Profile** | Saved profile/preferences in native runtime context |
+| <img src="../plugins/personal-profile/icon.png" width="28" alt="My Profile icon"/> **My Profile** | Off | **Settings → My Profile** | Saved personal context and native system preferences |
 | <img src="../plugins/direct-chat/assets/png/icon-256.png" width="28" alt="Direct Chat icon"/> **Direct Chat** | Off | Below native **New Session** | One shared Workspace, independent native chat Sessions |
 | <img src="../plugins/conversation-lifecycle/assets/png/icon-256.png" width="28" alt="Archive Manager icon"/> **Archive Manager** | Off | **Archives** in the sidebar | Authorized archive browsing, search, protection and native restore |
 | <img src="../plugins/adaptive-reasoning/assets/png/icon-256.png" width="28" alt="Adaptive Reasoning icon"/> **Adaptive Reasoning** | Off | Native composer / model effort settings | Manual Session effort, opt-in recommendations and Profile aggregates |
@@ -43,7 +43,7 @@ Enabling the component registers the runtime Skill `abinadwan-humanizer` through
 
 **Navigation:** enable the component under Plugins, then open **Settings → My Profile**. The old main-sidebar **Personal Profile** button was removed; internal IDs and stored configuration were *not* renamed.
 
-**Information and instructions:** version 5 uses one native settings record with populated preferred name, nationality, gender, response style, language, traits, presets and custom instructions. Save makes these values available to supported local and cloud models. Empty fields and unspecified gender are omitted. DSH dynamic runtime context supplies the current snapshot; older registries use a single system section. The plugin does not add a model call or block continuation.
+**Information and instructions:** version 5 uses one native settings record with populated preferred name, nationality, gender, response style, language, traits, presets and custom instructions. Save makes these values available to supported local and cloud models. Empty fields and unspecified gender are omitted. DSH dynamic runtime context supplies personal details; a native system section supplies response instructions. Older registries use a combined system section. The plugin does not add a model call or block continuation.
 
 **Interface language:** Follow DSH is the default; Arabic, English, Spanish, French, German, Chinese and Japanese can be selected independently of model response language.
 

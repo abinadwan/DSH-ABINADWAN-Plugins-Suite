@@ -53,9 +53,9 @@ test('Personal Profile Host attaches settings and prompt services independently'
   assert.ok(profile.Config)
   assert.equal(profile.inject,undefined)
   const calls=[]
-  const ctx={fiber:{},inject(keys,callback){calls.push(keys);callback({effect(fn){return fn()},settings:{configure(options,owner){calls.push([options,owner])}},systemPrompt:{context(options){calls.push(options.name)}}})},
+  const ctx={fiber:{},inject(keys,callback){calls.push(keys);callback({effect(fn){return fn()},settings:{configure(options,owner){calls.push([options,owner])}},systemPrompt:{context(options){calls.push(options.name)},section(options){calls.push(options.name)}}})},
     on(event,listener){calls.push(event);assert.equal(typeof listener,'function')}}
   profile.apply(ctx)
-  // One native dynamic context; no llm/stream refusal hook.
-  assert.deepEqual(calls,[['settings'],[{auto:false},ctx.fiber],['systemPrompt'],'abinadwan:personal-profile-context'])
+  // One system section and one runtime context; no llm/stream refusal hook.
+  assert.deepEqual(calls,[['settings'],[{auto:false},ctx.fiber],['systemPrompt'],'abinadwan:personal-profile-preferences','abinadwan:personal-profile-context'])
 })

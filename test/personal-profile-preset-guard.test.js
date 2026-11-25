@@ -2,16 +2,18 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import {readFileSync} from 'node:fs'
 import {emptyRecord} from '../plugins/personal-profile/index.js'
-import {profileContext} from '../plugins/personal-profile/preferences.js'
+import {profileContext,responsePreferences} from '../plugins/personal-profile/preferences.js'
 
-test('every behavior preset works in the current context, without duplicate fields',()=>{
+test('every behavior preset is a system preference, separate from personal context',()=>{
   for(const preset of ['critical','no-fluff','grill-me','evidence','steps','action','code','humanizer']){
     const record=emptyRecord()
     record.information.preferredName='FICTIONAL_PROFILE_NAME'
     record.preferences.presets=[preset]
     const text=profileContext(record)
     assert.equal(text.match(/FICTIONAL_PROFILE_NAME/g)?.length,1)
-    assert.match(text,/Response preferences/)
+    assert.doesNotMatch(text,/Response preferences/)
+    assert.match(responsePreferences(record),/Response preferences/)
+    assert.doesNotMatch(responsePreferences(record),/FICTIONAL_PROFILE_NAME/)
     assert.match(text,/Current My Profile settings/)
   }
 })
