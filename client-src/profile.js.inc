@@ -2,14 +2,14 @@
     const PERSONAL_FIELDS = ['preferredName','nationality','gender']
     const POLICY_VALUES = ['private','allow']
     const GENDER_VALUES = ['','male','female','unspecified']
-    // v4 removes both sharing switches and Ask First. Legacy records are read-only.
-    const PROFILE_VERSION = 4
+    // v5 has no sharing switches. Legacy records remain readable.
+    const PROFILE_VERSION = 5
     const LEGACY_POLICY_VALUES = ['private','ask_first','allow']
     const PROFILE_CUSTOM_MAX = 8192
     const privatePolicies = () => Object.fromEntries(PERSONAL_FIELDS.map(key=>[key,'private']))
     const emptyInformation = () => ({preferredName:'',nationality:'',gender:''})
     const emptyProfileRecord = () => ({version:PROFILE_VERSION,locale:'auto',information:emptyInformation(),
-      preferences:neutralProfilePreferences(),policies:privatePolicies()})
+      preferences:neutralProfilePreferences()})
     // Payload guard for the serialized record (UTF-16 units) and for restore
     // text/files. Large enough for any v1 record with many Workspace rows.
     const PROFILE_MAX_CHARS = 3_000_000
@@ -53,15 +53,17 @@
     /** Saved unified records must be complete. Backups have a separate decoder. */
     function decodeProfile(value) {
       profileRoot(value)
-      profileCheck([2,3,PROFILE_VERSION].includes(value.version),'unsupportedVersion')
-      const legacy=value.version!==PROFILE_VERSION
-      const keys=['version','locale','information','preferences','policies']
-      if(legacy)keys.push('allowPersonalInformation','allowCloud')
+      profileCheck([2,3,4,PROFILE_VERSION].includes(value.version),'unsupportedVersion')
+      const legacy=value.version!==PROFILE_VERSION,old=value.version<4
+      const keys=['version','locale','information','preferences',...(legacy?['policies']:[])]
+      if(old)keys.push('allowPersonalInformation','allowCloud')
       profileCheck(profileKeys(value,keys))
-      profileCheck((value.version===PROFILE_VERSION?['auto','en','ar','zh','es','fr','de','ja']:['ar','en']).includes(value.locale)&&(!legacy||(typeof value.allowPersonalInformation==='boolean'&&typeof value.allowCloud==='boolean')))
+      profileCheck((old?['ar','en']:['auto','en','ar','zh','es','fr','de','ja']).includes(value.locale)&&(!old||(typeof value.allowPersonalInformation==='boolean'&&typeof value.allowCloud==='boolean')))
+      const p=decodePreferences(value.preferences)
+      if(!legacy)profileCheck(!Object.hasOwn(value.preferences,'sendCustom'))
       return {version:value.version,locale:value.locale,information:decodeInformation(value.information),
-        preferences:decodePreferences(value.preferences),policies:decodePolicies(value.policies,legacy),
-        ...(legacy?{allowPersonalInformation:value.allowPersonalInformation,allowCloud:value.allowCloud}:{})}
+        preferences:legacy?p:withoutCustomConsent(p),...(legacy?{policies:decodePolicies(value.policies,old)}:{}),
+        ...(old?{allowPersonalInformation:value.allowPersonalInformation,allowCloud:value.allowCloud}:{})}
     }
     /** Strict decoder of the 0.7.0/0.7.1 record (v1). Used to migrate, never to save. */
     function decodeLegacyProfile(value) {
@@ -90,7 +92,7 @@
     // given under the per-Workspace model does not carry over.
     function migrateLegacyProfile(legacy) {
       return {version:PROFILE_VERSION,locale:legacy.locale,information:{...legacy.information},
-        preferences:withoutCustomConsent(decodePreferences(legacy.global)),policies:privatePolicies()}
+        preferences:withoutCustomConsent(decodePreferences(legacy.global))}
     }
     /** Workspace-specific data or permissions that a migration would discard. */
     const legacyDiscards = legacy => legacy.workspaces.length>0||legacy.allowPersonalInformation||legacy.allowCloud
@@ -107,27 +109,24 @@
       }
     }
     function decodeUnifiedBackup(value) {
-      profileCheck([2,3,PROFILE_VERSION].includes(value.version),'unsupportedVersion')
-      const objectField=(parent,key,code)=>{
-        if(Object.hasOwn(parent,key)){
-          const field=parent[key]
-          profileCheck(field!==null&&typeof field==='object'&&!Array.isArray(field),code)
-        }
+      profileRoot(value)
+      profileCheck([2,3,4,PROFILE_VERSION].includes(value.version),'unsupportedVersion')
+      const legacy=value.version!==PROFILE_VERSION,old=value.version<4
+      const allowed=['version','locale','information','preferences',...(legacy?['policies']:[]),...(old?['allowPersonalInformation','allowCloud']:[])]
+      profileCheck(Object.keys(value).every(k=>allowed.includes(k)))
+      for(const key of ['information','preferences','policies'])if(Object.hasOwn(value,key)){
+        profileCheck(value[key]!==null&&typeof value[key]==='object'&&!Array.isArray(value[key]),key==='policies'?'invalidPolicy':undefined)
       }
-      for(const key of ['information','preferences','policies']) objectField(value,key,key==='policies'?'invalidPolicy':undefined)
-      if(value.preferences)objectField(value.preferences,'traits')
-      const base=emptyProfileRecord()
-      const legacy=value.version!==PROFILE_VERSION
-      const candidate={...overlayProfile(base,value),version:value.version,policies:{...base.policies,...value.policies}}
-      // v1-v3 backups cannot express 'auto'; an omitted locale is a valid
-      // sparse backup and must not inherit the current v4 default.
-      if(legacy&&!Object.hasOwn(value,'locale'))candidate.locale='ar'
-      if(legacy){
+      if(Object.hasOwn(value.preferences??{},'traits'))profileCheck(value.preferences.traits!==null&&typeof value.preferences.traits==='object'&&!Array.isArray(value.preferences.traits))
+      const candidate={...overlayProfile(emptyProfileRecord(),value),version:value.version}
+      if(legacy)candidate.policies={...privatePolicies(),...value.policies}
+      if(old){
+        if(!Object.hasOwn(value,'locale'))candidate.locale='ar'
         for(const key of ['allowPersonalInformation','allowCloud'])if(!Object.hasOwn(value,key))candidate[key]=false
       }
       decodeProfile(candidate)
-      const {allowPersonalInformation,allowCloud,...rest}=value
-      return {...rest,version:PROFILE_VERSION,...(value.policies?{policies:Object.fromEntries(Object.entries(value.policies).map(([k,v])=>[k,v==='allow'?'allow':'private']))}:{})}
+      const {allowPersonalInformation,allowCloud,policies,preferences,...rest}=value
+      return {...rest,version:PROFILE_VERSION,...(preferences?{preferences:withoutCustomConsent(preferences)}:{})}
     }
     // Appends imported custom instructions to the existing text. Paragraphs
     // (blocks separated by a blank line) whose trimmed text already exists are
@@ -185,6 +184,7 @@
       const [migrationAck,setMigrationAck]=React.useState(false)
       const [legacyView,setLegacyView]=React.useState(false)
       const [revision,setRevision]=React.useState(null)
+      const [loadedGeneration,setLoadedGeneration]=React.useState(null)
       const [status,setStatus]=React.useState('loading')
       const [page,setPage]=React.useState('information')
       const [exportView,setExportView]=React.useState(false)
@@ -194,8 +194,6 @@
       const [replaceAck,setReplaceAck]=React.useState(false)
       const [restoreReview,setRestoreReview]=React.useState(null)
       const [restoreAck,setRestoreAck]=React.useState(false)
-      const [restorePermissions,setRestorePermissions]=React.useState(false)
-      const [permissionsAck,setPermissionsAck]=React.useState(false)
       const [mergedText,setMergedText]=React.useState(null)
       const importGeneration=React.useRef(0)
       const request=React.useRef(0)
@@ -206,11 +204,11 @@
       const clearRestore=()=>{
         importGeneration.current++
         setRestoreReview(null);setRestoreStrategy('merge');setRestoreAck(false);setReplaceAck(false)
-        setRestorePermissions(false);setPermissionsAck(false);setMergedText(null)
+        setMergedText(null)
       }
       const load = async () => {
         const id=++request.current,g=connectionSource.getSnapshot()
-        inFlight.current=true;setConfirmReload(false);setStatus('loading');setRevision(null);setSaved(null)
+        inFlight.current=true;setConfirmReload(false);setStatus('loading');setLoadedGeneration(null);setRevision(null);setSaved(null)
         setRecord(emptyProfileRecord());setLegacy(null);setMigrationAck(false);setLegacyView(false)
         setExportView(false);setBackupMessage('');setRestoreText('');clearRestore()
         if(!access.current.canRead){inFlight.current=false;setStatus('unavailable');return}
@@ -220,6 +218,7 @@
           if(response?.ok!==true||!Array.isArray(response.value?.namespaces))throw new Error('Unavailable')
           const snapshot=profileView(response.value.namespaces.find(x=>x.ns===PROFILE_NS))
           if(response.value.writable!==true)throw new Error('Read only')
+          setLoadedGeneration(g)
           if(snapshot.legacy){
             // Stored v1 stays untouched until the user reviews and Saves.
             setRecord(migrateLegacyProfile(snapshot.legacy));setSaved(snapshot.legacy);setLegacy(snapshot.legacy)
@@ -227,8 +226,8 @@
           }else{
             const stored=snapshot.record
             const upgrade=stored.version!==PROFILE_VERSION
-            const {allowPersonalInformation,allowCloud,...rest}=stored
-            setRecord(upgrade ? {...rest,version:PROFILE_VERSION,policies:privatePolicies()} : stored)
+            const {allowPersonalInformation,allowCloud,policies,...rest}=stored
+            setRecord(upgrade ? {...rest,version:PROFILE_VERSION,preferences:withoutCustomConsent(rest.preferences)} : stored)
             setSaved(stored);setRevision(snapshot.revision);setStatus(upgrade?'sharingUpgrade':'ready')
           }
         } catch {if(id===request.current&&lifetimeValid(g))setStatus('unavailable')}
@@ -237,17 +236,13 @@
       const [confirmReload,setConfirmReload]=React.useState(false)
       const dirtyRef=React.useRef(false)
       React.useEffect(()=>{
-        // A reconnect or access change re-reads only a clean page. A dirty draft
-        // stays on screen: Save remains revision-checked, Reload asks first.
-        if(dirtyRef.current){
-          request.current++;inFlight.current=false
-          setStatus(access.current.canRead?'reconnected':'unavailable')
-        }else void load()
+        // Never carry a draft across a connection reset or lost read access.
+        void load()
         return()=>{request.current++;importGeneration.current++;inFlight.current=false}
       },[canRead,generation])
-      const migrationBlocked=legacy!==null&&legacyDiscards(legacy)&&!migrationAck
+      const migrationBlocked=Boolean(saved&&saved.version!==PROFILE_VERSION&&!migrationAck)
       const save = async () => {
-        if(inFlight.current||revision===null||!canRead||!canWrite||generation!==connectionSource.getSnapshot()||migrationBlocked)return
+        if(inFlight.current||revision===null||!canRead||!canWrite||loadedGeneration!==generation||generation!==connectionSource.getSnapshot()||migrationBlocked)return
         let next
         try{if(profileTooLarge(record)){setStatus('tooLarge');return}next=decodeProfile(record)}catch{setStatus('invalid');return}
         const id=++request.current,g=generation
@@ -270,7 +265,8 @@
       const language=record.locale==='auto'?hostLanguage:record.locale
       const values=record.information,preferences=record.preferences
       const busy=status==='loading'||status==='saving'
-      const editable=canRead&&canWrite&&revision!==null&&!busy&&generation===connectionSource.getSnapshot()
+      const visibleProfile=canRead&&loadedGeneration===generation&&generation===connectionSource.getSnapshot()
+      const editable=visibleProfile&&canWrite&&revision!==null&&!busy
       const dirty=saved!==null&&!sameJson(record,saved)
       dirtyRef.current=dirty
       const unsavedWork=dirty||status==='failed'||status==='conflict'||status==='reconnected'
@@ -1079,7 +1075,8 @@
         "followDsh": "DSH の言語に合わせる"
       }
       const uiDictionaries={ar,en,es,fr,de,zh,ja}
-      const t = key => (uiDictionaries[language]||en)[key] || en[key] || key
+      const sharingCopy = {"ar":{"warning":"تُحفظ البيانات محليًا دون تشفير خاص بالإضافة. بعد الحفظ تُتاح جميع المعلومات المعبأة والتفضيلات والتعليمات للنماذج المحلية والسحابية. لا تدخل أسرارًا أو معلومات حساسة.","accessHint":"جميع الحقول غير الفارغة متاحة للنموذج بعد الحفظ.","retention":"قد تبقى البيانات السابقة في سجل المحادثة والملخصات وسجلات Harness وأنظمة المزود. تعديلها أو حذفها لا يمحو النسخ السابقة.","customConsentHint":"تُطبق التعليمات المحفوظة على النماذج المحلية والسحابية. لا تدخل معلومات حساسة.","exportHint":"نسخة JSON غير مشفرة وتشمل المسودة الحالية. احفظها بأمان.","replaceAllHint":"تحل الإعدادات المستوردة محل المسودة الحالية.","sharingUpgrade":"راجع البيانات القديمة. بعد حفظ الإصدار الجديد تصبح جميع الحقول المعبأة والتعليمات متاحة للنماذج.","upgradeTitle":"تحديث إعدادات الملف الشخصي","upgradeRollback":"يحفظ الإصدار 5 بعد المراجعة. احتفظ بنسخة أصلية قبل الترقية.","migrationAck":"راجعت البيانات وأوافق على سياسة الإتاحة الجديدة بعد الحفظ وإزالة إعدادات مساحات العمل القديمة.","migrationMasters":"لن تنتقل خيارات المشاركة القديمة."},"en":{"warning":"Stored locally without plugin-level encryption. Saving makes all populated information, preferences and custom instructions available to local and cloud models. Do not enter secrets or sensitive information.","accessHint":"All nonempty fields are available to the model after Save.","retention":"Earlier data may remain in conversation history, summaries, Harness logs and provider systems. Editing or deleting data does not erase earlier copies.","customConsentHint":"Saved instructions apply to local and cloud models. Do not enter sensitive information.","exportHint":"JSON backups are unencrypted and include the current draft. Store securely.","replaceAllHint":"Imported settings replace the current draft.","sharingUpgrade":"Review existing data. Saving the new version makes all populated information and custom instructions available to all models.","upgradeTitle":"Update profile settings","upgradeRollback":"Save upgrades settings to version 5. Keep an original copy before upgrading.","migrationAck":"I reviewed the data and agree to the new sharing behavior after Save and removal of old Workspace-specific settings.","migrationMasters":"Old sharing choices do not carry over."}}
+      const t = key => (sharingCopy[language]||sharingCopy.en)[key] || (uiDictionaries[language]||en)[key] || en[key] || key
       const rtl = language === 'ar'
       const surface = { border:'1px solid rgba(128,128,128,.3)', borderRadius:13,
         padding:20, background:'rgba(128,128,128,.045)', marginBottom:16 }
@@ -1337,9 +1334,11 @@
       function jsonActions(prefix, text, fileName, viewing, setViewing) {
         return h('div',{style:row},
           h('button',{id:'pp-'+prefix+'-download',type:'button',style:btn,onClick:e=>{
+            if(!lifetimeValid(generation)||loadedGeneration!==generation)return
             let ok=false;try{ok=downloadJson(e,text(),fileName)}catch{ok=false}
             setBackupMessage(ok?'downloaded':'downloadFailed')}},t('download')),
           h('button',{id:'pp-'+prefix+'-copy',type:'button',style:btn,onClick:e=>{
+            if(!lifetimeValid(generation)||loadedGeneration!==generation)return
             const pending=(async()=>copyJson(e,text()))()
             pending.then(ok=>setBackupMessage(ok?'copied':'copyFailed'),()=>setBackupMessage('copyFailed'))}},t('copy')),
           h('button',{id:'pp-'+prefix+'-view',type:'button',style:btn,'aria-expanded':viewing,
@@ -1349,12 +1348,7 @@
         border:'1px solid rgba(208,158,52,.7)', borderRadius:10,
         background:'rgba(208,158,52,.1)',fontSize:13,lineHeight:1.7} }, t('warning'))
       const backupStatus = backupMessage ? h('p',{id:'pp-backup-status',role:'status',style:{fontWeight:600}},t(backupMessage)) : null
-      const exportText = () => JSON.stringify(
-        // Preserve existing v2 compatibility for en/ar overrides. Follow DSH
-        // and additional UI locales require v4 to round-trip without data loss.
-        record.locale==='ar'||record.locale==='en'
-          ? decodeProfile({...record,version:2,allowPersonalInformation:false,allowCloud:false})
-          : decodeProfile(record),null,2)
+      const exportText = () => JSON.stringify(decodeProfile(record),null,2)
       const legacyText = () => JSON.stringify(legacy,null,2)
       // ---- Restore preview helpers (read-only rendering) ----
       const summarize = r => {
@@ -1371,8 +1365,6 @@
           ['traits',t('characteristics'),traits.length?traits.join(rtl?'، ':', '):t('neutral')],
           ['presets',t('presets'),presets.length?presets.join(rtl?'، ':', '):t('none')],
           ['custom',t('customInstructions'),p.custom.length+' '+t('characters')],
-          ['sendCustom',t('sendCustom'),p.sendCustom===true?t('on'):t('off')],
-          ...PERSONAL_FIELDS.map(key=>['policy-'+key,t('fieldPolicies')+' — '+t(key),policyLabel(r.policies[key])]),
 
         ]
       }
@@ -1386,11 +1378,7 @@
         const proposal=overlayProfile(base,restoreReview.incoming)
         const preferences=withoutCustomConsent(proposal.preferences)
         if(merge)preferences.custom=mergedCustom
-        const policies={...base.policies}
-        // An imported value is not automatically authorized by an older choice.
-        for(const key of PERSONAL_FIELDS)if(proposal.information[key]!==base.information[key])policies[key]='private'
-        if(restorePermissions)Object.assign(policies,restoreReview.permissions)
-        return {...proposal,preferences,policies}
+        return {...proposal,preferences}
       }
       const startReview = text => {
         clearRestore()
@@ -1406,8 +1394,7 @@
               legacyWorkspaces:legacyBackup.workspaces.map(w=>w.id)})
           }else{
             const incoming=decodeUnifiedBackup(parsed)
-            const permissions=Object.keys(incoming.policies??{}).length ? incoming.policies : null
-            setRestoreReview({incoming,permissions,legacyWorkspaces:[]})
+            setRestoreReview({incoming,legacyWorkspaces:[]})
           }
           setBackupMessage('reviewReady')
         // Never clear a conflict/failed state: those require a reload before Save.
@@ -1433,15 +1420,12 @@
       if (page === 'information') {
         contents = card(t('information'),
           h('p',{style:muted},t('accessHint')),
-          ...PERSONAL_FIELDS.map(id=>h('div',{key:id,style:{display:'flex',alignItems:'center',flexWrap:'wrap',columnGap:12,minWidth:0}},
-            h('div',{style:{flex:'1 1 220px',minWidth:0}},id==='gender'
-              ? dropdown(id,t(id),values.gender,GENDER_VALUES.map(v=>[v,genderLabel(v)]),v=>setField(id,v))
-              : input(id,t(id),values[id],v=>setField(id,v))),
-            checkbox('policy-'+id,record.policies[id]==='allow',
-              v=>setRecord(old=>({...old,policies:{...old.policies,[id]:v?'allow':'private'}})),t('available')+' — '+t(id)))),
+          ...PERSONAL_FIELDS.map(id=>id==='gender'
+            ? h(React.Fragment,{key:id},dropdown(id,t(id),values.gender,GENDER_VALUES.map(v=>[v,genderLabel(v)]),v=>setField(id,v)))
+            : input(id,t(id),values[id],v=>setField(id,v))),
           h('p',{style:muted},t('sharedTitle')),
           h('output',{id:'pp-shared-preview',dir:'auto',style:{display:'block',whiteSpace:'pre-wrap',overflowWrap:'anywhere'}},
-            PERSONAL_FIELDS.filter(k=>record.policies[k]==='allow'&&(k==='gender'?['male','female'].includes(values[k]):values[k].trim())).map(k=>t(k)).join(rtl?'، ':', ')||t('sharedNone')),
+            PERSONAL_FIELDS.filter(k=>k==='gender'?['male','female'].includes(values[k]):values[k].trim()).map(k=>t(k)).join(rtl?'، ':', ')||t('sharedNone')),
           h('p',{role:'note',style:muted},t('retention')))
        } else if (page === 'instructions') {
         const setPreference = (key,value) => setPreferences(old=>key==='custom'?{...withoutCustomConsent(old),custom:value}:({...old,[key]:value}))
@@ -1489,7 +1473,6 @@
             h('textarea',{id:'pp-custom',rows:6,maxLength:PROFILE_CUSTOM_MAX,style:control,'aria-describedby':'pp-custom-count',
               value:preferences.custom,onChange:e=>setPreference('custom',e.target.value),dir:'auto'}),
             h('p',{id:'pp-custom-count',style:{...muted,marginTop:6}},preferences.custom.length+' / '+PROFILE_CUSTOM_MAX+' '+t('characters')),
-            checkbox('send-custom',preferences.sendCustom===true,v=>setPreferences(old=>v?{...old,sendCustom:true}:withoutCustomConsent(old)),t('sendCustom'),{disabled:!preferences.custom.trim()}),
             h('p',{style:muted},t('customConsentHint')),
             h('button',{type:'button',id:'pp-reset-preferences',style:{...btn,marginTop:12},
               onClick:()=>setPreferences(()=>neutralProfilePreferences())},t('resetPreferences'))),
@@ -1501,11 +1484,11 @@
         const mergeTooLong=!!restoreReview&&restoreStrategy==='merge'&&mergedCustom.length>PROFILE_CUSTOM_MAX
         let proposalValid=false
         try{proposalValid=!!proposal&&!mergeTooLong&&!!decodeProfile(proposal)}catch{proposalValid=false}
-        const canApply=proposalValid&&restoreAck&&(!restorePermissions||permissionsAck)&&(restoreStrategy!=='replace'||replaceAck)
+        const canApply=proposalValid&&restoreAck&&(restoreStrategy!=='replace'||replaceAck)
         const strategyOption=(value,title,hint)=>h('div',{key:value,style:check},
           h('input',{id:'pp-strategy-'+value,type:'radio',name:'pp-strategy',value,checked:restoreStrategy===value,
             style:{marginTop:5},'aria-describedby':'pp-strategy-'+value+'-hint',
-            onChange:()=>{setRestoreStrategy(value);setRestoreAck(false);setReplaceAck(false);setPermissionsAck(false)}}),
+            onChange:()=>{setRestoreStrategy(value);setRestoreAck(false);setReplaceAck(false)}}),
           h('div',null,h('label',{htmlFor:'pp-strategy-'+value,style:{fontWeight:650}},title),
             h('p',{id:'pp-strategy-'+value+'-hint',style:{...muted,marginTop:2}},hint)))
         const currentRows=summarize(record)
@@ -1534,16 +1517,7 @@
             h('div',{style:{marginTop:14}},
               h('label',{htmlFor:'pp-restore-imported',style:label},t('importedInstructions')),
               h('textarea',{id:'pp-restore-imported',readOnly:true,rows:5,dir:'auto',style:control,value:importedCustom??''})),
-          h('h3',{style:{fontSize:15,marginTop:18}},t('permissionsTitle')),
-          restoreReview.permissions ? h(React.Fragment,null,
-            h('p',{style:muted},t('permissionsDefault')),
-            checkbox('restore-permissions',restorePermissions,v=>{setRestorePermissions(v);setPermissionsAck(false);setRestoreAck(false)},t('restorePermissions')),
-            restorePermissions ? h('div',{style:{padding:'10px 14px',border:'1px solid rgba(208,58,52,.5)',borderRadius:10}},
-              h('ul',{id:'pp-restore-permission-list',style:{margin:'0 0 8px'}},
-                ...PERSONAL_FIELDS.filter(key=>Object.hasOwn(restoreReview.permissions,key))
-                  .map(key=>h('li',{key},t(key)+': '+policyLabel(restoreReview.permissions[key])))),
-               checkbox('restore-permissions-ack',permissionsAck,v=>{setPermissionsAck(v);setRestoreAck(false)},t('permissionsAck'))) : null)
-            : h('p',{style:muted},t('permissionsLegacy')),
+          h('p',{role:'note',style:muted},t('warning')),
           restoreStrategy==='replace' ? checkbox('restore-replace-ack',replaceAck,setReplaceAck,t('replaceConfirm'),{disabled:!proposalValid}) : null,
           checkbox('restore-confirm',restoreAck,setRestoreAck,t('confirm'),{disabled:!proposalValid}),
           h('div',{style:row},
@@ -1589,16 +1563,23 @@
         h('p',{style:muted},t('exportHint')),
         jsonActions('legacy',legacyText,backupFileName(true),legacyView,setLegacyView),
         legacyView?jsonView('legacy-json',legacyText(),t('legacyJson')):null,
-        legacyDiscards(legacy) ? checkbox('migration-ack',migrationAck,setMigrationAck,t('migrationAck'),{disabled:!editable}) : null,
+        checkbox('migration-ack',migrationAck,setMigrationAck,t('migrationAck'),{disabled:!editable}),
         page!=='backup'?backupStatus:null) : null
-      const upgradePending=saved?.version===2||saved?.version===3
+      const upgradePending=Boolean(saved&&!legacy&&saved.version!==PROFILE_VERSION)
       const upgradeCard=upgradePending ? card(t('upgradeTitle'),
-        h('p',{id:'pp-upgrade-note',role:'note'},t('upgradeRollback')),
+        h('p',{id:'pp-upgrade-note',role:'note'},t('sharingUpgrade')+' '+t('upgradeRollback')),
+        checkbox('migration-ack',migrationAck,setMigrationAck,t('migrationAck'),{disabled:!editable}),
+        jsonActions('original',()=>JSON.stringify(saved,null,2),'personal-profile-original.json',legacyView,setLegacyView),
+        legacyView?jsonView('original-json',JSON.stringify(saved,null,2),t('exportJson')):null,
         page!=='backup' ? h(React.Fragment,null,
           h('p',{style:muted},t('exportHint')),
           jsonActions('rollback',exportText,backupFileName(false),exportView,setExportView),
           exportView?jsonView('rollback-json',exportText(),t('exportJson')):null,
           backupStatus) : null) : null
+      if(!visibleProfile)return h('div',{'data-personal-profile-panel':'native-settings',lang:hostLanguage,dir:hostLanguage==='ar'?'rtl':'ltr'},
+        h('p',{id:'pp-save-status',role:'status'},canRead?t(status):t('unavailable')),
+        h('button',{id:'pp-reload',type:'button',disabled:!canRead||busy,onClick:()=>{void load()}},t('reload')),
+        h('button',{id:'pp-save',type:'button',disabled:true},t('save')))
       return h('div',{'data-personal-profile-panel':'native-settings',lang:language,
         dir:rtl?'rtl':'ltr',style:{height:'100%',overflowY:'auto',boxSizing:'border-box',
           padding:'max(var(--dsh-frame-top-clearance, 0px), 28px) clamp(18px,4vw,56px) 52px',
@@ -1670,9 +1651,9 @@
     function ProfileDraft() {
       return h('section',{'data-personal-profile-draft':'',style:{borderTop:border,padding:'20px 0'}},
         h('h3',null,'My Profile — local settings'),
-        h('p',null,'One unified profile: Preferred name, Nationality, Gender, response preferences and optional Custom Instructions. All access is Private by default.'),
+        h('p',null,'One unified profile: Preferred name, Nationality, Gender, response preferences and optional Custom Instructions.'),
         h('p',null,'Saved in the active Harness Profile without plugin-level encryption. Open My Profile to edit. Saved response preferences apply to supported native agent steps.'),
-        h('p',null,'Only saved personal details you explicitly allow can be included in supported native agent requests, including requests to cloud providers. Revoking access does not erase information already sent.'))
+        h('p',null,'Saved nonempty details and instructions are available to local and cloud models. Earlier copies can remain in history.'))
     }
     const PROFILE_MODULE = TYPE + '/personal-profile'
     /** The Host's own enablement of the Profile row on the subject page; false when it says Off. */
