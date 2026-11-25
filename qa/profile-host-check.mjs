@@ -150,3 +150,40 @@ test('rc.3 real loop: committed config, new and existing sessions, disable and c
     await send(a,plain,'disabled after policy changes')
   }finally{await ctx.fiber.dispose()}
 })
+
+// v1.0.3 regression: exercise the actual rc.3 Agent Loop and llm/stream hook
+// for every built-in preset, not just the pure staleDisclosure classifier.
+test('rc.3 real loop: every built-in preset reaches an offline adapter on fresh and replayed turns',async()=>{
+  const ctx=new Context()
+  try {
+    for(const service of [LlmRuntime,SessionStore,SessionProjectionRegistry,SystemPrompt,ToolRuntime,
+      NativeToolExecutor,AgentRegistry])await ctx.plugin(service)
+    await ctx.plugin(AgentLoop,{agents:[]})
+    const history=new Capture(true)
+    ctx.llm.registerAdapter(['preset-offline'],history)
+    const ids=['critical','no-fluff','grill-me','evidence','steps','action','code','humanizer']
+    const fixtureName='FICTIONAL_PRESET_FIELD'
+    let fiber=null
+    for(const preset of ids)for(const share of [false,true]){
+      const record=profile.emptyRecord()
+      record.preferences.presets=[preset]
+      record.information.preferredName=fixtureName
+      if(share)record.policies.preferredName='allow'
+      if(fiber===null){fiber=ctx.plugin(profile,{record});await fiber.await()}
+      else await fiber.update({record})
+      const agent=await ctx.agentLoop.create(SessionId('preset-'+preset+'-'+share),{provider:'preset-offline',model:'test'})
+      installModelSelection(agent.ctx)
+      for(const stage of ['fresh','replay']){
+        const before=history.requests.length
+        agent.followup(createUserMessage({content:[{type:'text',text:stage}],source:{kind:'user'}}))
+        await agent.whenIdle()
+        assert.equal(history.requests.length,before+1,
+          `provider blocked ${preset} (${share?'shared':'private'}), stage=${stage}`)
+        const payload=JSON.stringify(history.requests.at(-1))
+        assert.match(payload,/Response preferences/,preset)
+        if(share)assert.match(payload,new RegExp(fixtureName))
+        else assert.doesNotMatch(payload,new RegExp(fixtureName))
+      }
+    }
+  }finally{await ctx.fiber.dispose()}
+})
