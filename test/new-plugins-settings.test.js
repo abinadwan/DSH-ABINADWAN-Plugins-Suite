@@ -180,16 +180,35 @@ async function mountArchive(t, options = {}) {
       id, title: titles[i], displayTitle: titles[i], blank: false, running: id === 'active', updatedAt: new Date(2026, 3, 20 - i).getTime(),
     }])) },
     ...options,
-  }, 'conversation-lifecycle', 'settings.section')
-  const en = result.fixture.hostLocale.getSnapshot().active !== 'ar'
-  await act(async () => {
-    const launch = archiveButton(result.div, en ? 'Archived Conversations' : 'المحادثات المؤرشفة')
-    assert.ok(launch, 'Chat Control exposes the archive through its native settings slot')
-    launch.focus()
-    launch.click()
-  })
-  return { ...result, hub: () => result.div.querySelector('[role=dialog]'), settings }
+  }, 'conversation-lifecycle', 'main')
+  const panel = result.fixture.entries('main').find(row => row.options.key === 'abinadwan-chat-control-archive')
+  const sidebar = result.fixture.entries('sidebar.panellist').find(row => row.options.id === panel?.options.key)
+  assert.ok(panel && sidebar, 'Archive is a native global panel with a matching sidebar entry')
+  assert.equal(result.div.querySelector('[role=dialog]'), null, 'Archive must not be a modal')
+  return { ...result, hub: () => result.div.querySelector('[data-chat-control-archive]'), settings }
 }
+
+test('Archive global panel and sidebar share the component lifecycle and localized navigation label', async () => {
+  const fixture = await clientHarness()
+  const id = 'abinadwan-chat-control-archive'
+  const rows = [...fixture.rows(), { moduleName: `${base}/conversation-lifecycle`, enabled: true, fiberPhase: 'active' }]
+  try {
+    fixture.setRows(rows)
+    await fixture.changed()
+    const sidebar = fixture.entries('sidebar.panellist').find(row => row.options.id === id)
+    assert.ok(sidebar)
+    assert.equal(sidebar.options.label(), 'Archives')
+    assert.ok(fixture.entries('main').some(row => row.options.key === id))
+    fixture.setRows(rows.map(row => row.moduleName === `${base}/conversation-lifecycle` ? { ...row, enabled: false } : row))
+    await fixture.changed()
+    assert.ok(!fixture.entries('sidebar.panellist').some(row => row.options.id === id))
+    assert.ok(!fixture.entries('main').some(row => row.options.key === id))
+    fixture.setRows(rows)
+    await fixture.changed()
+    assert.ok(fixture.entries('sidebar.panellist').some(row => row.options.id === id))
+    assert.ok(fixture.entries('main').some(row => row.options.key === id))
+  } finally { await fixture.dispose() }
+})
 
 test('Archive Hub joins authorized rows, searches titles and workspaces, and sorts and filters metadata', async t => {
   const { hub } = await mountArchive(t)

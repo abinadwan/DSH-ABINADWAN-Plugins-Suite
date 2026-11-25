@@ -2875,7 +2875,7 @@ window.__ModuleLoader__.load({
 
     const archiveCopy = {
       en: {
-        title: 'Archived Conversations', hide: 'Hide Archived Conversations',
+        title: 'Archived Conversations', navigation: 'Archives', openFromSidebar: 'Open Archives from the sidebar or More.', hide: 'Hide Archived Conversations',
         sidebar: 'For the DSH sidebar, use View options → Hide archived.',
         history: 'Restore a conversation before opening it in DSH.',
         count: n => `${n} archived conversation${n === 1 ? '' : 's'}`,
@@ -2892,7 +2892,7 @@ window.__ModuleLoader__.load({
         changed: 'The conversation or your access changed. Review the list and try again.',
       },
       ar: {
-        title: 'المحادثات المؤرشفة', hide: 'إخفاء المحادثات المؤرشفة',
+        title: 'المحادثات المؤرشفة', navigation: 'الأرشيف', openFromSidebar: 'افتح الأرشيف من الشريط الجانبي أو قائمة المزيد.', hide: 'إخفاء المحادثات المؤرشفة',
         sidebar: 'للشريط الجانبي في DSH، اختر خيارات العرض ← إخفاء المؤرشفة.',
         history: 'استعد المحادثة قبل فتحها في DSH.', count: n => `المحادثات المؤرشفة: ${n.toLocaleString('ar')}`,
         loading: 'جارٍ تحميل المحادثات المؤرشفة…', empty: 'ما فيه محادثات مؤرشفة.',
@@ -3066,7 +3066,7 @@ window.__ModuleLoader__.load({
           'aria-label': `${copy.restore} ${row.title || copy.untitled}`, onClick: event => onRestore(row, event.currentTarget) }, copy.restore) : null)
     }
 
-    function ArchiveHub({ services, catalog, settings, generation, authorized, language, onClose }) {
+    function ArchiveHub({ services, catalog, settings, generation, authorized, language }) {
       const copy = archiveCopy[language]
       const [filters, setFilters] = React.useState({ search: '', workspace: '', protection: 'all', pin: 'all', after: '', sort: 'newest' })
       const [limit, setLimit] = React.useState(archivePageSize)
@@ -3154,10 +3154,12 @@ window.__ModuleLoader__.load({
         }
       }
 
-      return h(Modal, { open: true, title: copy.title, onClose, closeLabel: copy.close,
-        footer: h(Button, { size: 'sm', onClick: onClose }, copy.close) },
+      return h('section', { 'data-chat-control-archive': '', 'aria-label': copy.title,
+        style: { height: '100%', minHeight: 0, minWidth: 0, overflow: 'auto', boxSizing: 'border-box',
+          padding: 'max(24px, var(--dsh-frame-top-clearance, 0px)) 24px 32px' } },
       h('div', { lang: language, dir: language === 'ar' ? 'rtl' : 'ltr',
-        style: { display: 'grid', gap: 10, minWidth: 0, overflowWrap: 'anywhere' } },
+        style: { display: 'grid', gap: 16, minWidth: 0, maxWidth: 1120, marginInline: 'auto', overflowWrap: 'anywhere' } },
+        h('h1', { style: { margin: 0, fontSize: 24, fontWeight: 600 } }, copy.title),
         resultState !== 'ready' ? h(React.Fragment, null,
           h('p', { role: resultState === 'error' ? 'alert' : 'status' }, copy[resultState]),
           ['error', 'unavailable'].includes(resultState) ? h(Button, { size: 'sm', onClick: () => {
@@ -3195,6 +3197,20 @@ window.__ModuleLoader__.load({
             message ? h('p', { role: message === 'failed' ? 'alert' : 'status' }, copy[message]) : null)))
     }
 
+    function ArchivePage({ services, useRemoteAccess }) {
+      const language = useUiLanguage(services.locale)
+      const settings = useSuiteRecord(services.settings, 'conversation-lifecycle', useRemoteAccess, services.connection)
+      const generation = suiteWatch(services.host)
+      const authorized = useRemoteAccess?.('settings/describe') === true
+      const catalog = useArchiveCatalog(services, generation, authorized)
+      const { workspace, sessions } = catalog
+      const ready = authorized && Boolean(settings.source) && Boolean(generation) && catalog.status === 'ready'
+      const rows = React.useMemo(() => ready && settings.record ? archiveInventory(workspace, sessions, settings.record) : [],
+        [ready, workspace, sessions, settings.record])
+      return h(ArchiveHub, { key: generation?.id ?? 'disconnected', services, generation, authorized, settings,
+        catalog: { status: catalog.status, rows, reload: catalog.reload }, language })
+    }
+
     function WorkspaceLifecycle({ services, useRemoteAccess }) {
       const language = useUiLanguage(services.locale)
       const t = value => uiCopy(value, language)
@@ -3202,7 +3218,6 @@ window.__ModuleLoader__.load({
       const generation = suiteWatch(services.host)
       const authorized = useRemoteAccess?.('settings/describe') === true
       const settingsAvailable = Boolean(settings.source)
-      const [archiveOpen, setArchiveOpen] = React.useState(false)
       const catalog = useArchiveCatalog(services, generation, authorized)
       const { workspace, sessions } = catalog
       const [scope, setScope] = React.useState('')
@@ -3236,8 +3251,6 @@ window.__ModuleLoader__.load({
       const rows = retentionRows(inventory.rows.filter(row => !row.legacyDirectChat), workspace,
         change?.next ?? record, previewAt ?? Date.now())
       const visibleRows = record?.hideArchived === false ? rows : rows.filter(row => !archived.has(row.id))
-      const archiveRows = React.useMemo(() => ready && archiveOpen && record ? archiveInventory(workspace, sessions, record) : [],
-        [ready, archiveOpen, workspace, sessions, record])
       const selectedRow = selected && rows.find(row => row.id === selected)
       const update = next => {
         setChange(null)
@@ -3261,11 +3274,7 @@ window.__ModuleLoader__.load({
         h('header', null, h('h1', { style: { margin: '0 0 4px', fontSize: 18, lineHeight: 1.3 } }, t('Chat Control')),
           h('p', { style: { ...lifecycleMuted, margin: 0 } }, 'Part of the ABINADWAN Plugins Suite.')),
         h(SuiteRecordStatus, { settings, language }),
-        h('div', { style: lifecycleActions },
-          h(Button, { size: 'sm', 'aria-haspopup': 'dialog', 'aria-expanded': archiveOpen,
-            onClick: () => setArchiveOpen(true) }, archiveCopy[language].title)),
-        archiveOpen ? h(ArchiveHub, { key: generation?.id ?? 'disconnected', services, generation, authorized, settings,
-          catalog: { status: catalog.status, rows: archiveRows, reload: catalog.reload }, language, onClose: () => setArchiveOpen(false) }) : null,
+        h('p', { style: { ...lifecycleMuted, margin: 0 } }, archiveCopy[language].openFromSidebar),
         h(LifecycleGroup, { title: t('Overview') },
           h('label', { style: lifecycleLabel }, t('Workspace'),
             h('select', { style: lifecycleSelect, value: chosen ? scope : '', disabled: !ready, onChange: event => {
@@ -3973,6 +3982,19 @@ window.__ModuleLoader__.load({
           unarchive: typeof workspaceService.unarchiveSession === 'function' ? id => workspaceService.unarchiveSession(id) : undefined,
           whenRestoreAccess: (id, callback) => uiSession.whenAccess(id, restoreEndpoint, callback) }
         const id = 'abinadwan-conversation-lifecycle'
+        const archivePanel = 'abinadwan-chat-control-archive'
+        // The native layout owns selection, More pinning and fallback when a
+        // main entry retires. These registrations share the component lifetime.
+        ctx.slots.inject('main', () => ctx.slots.register({ name: 'main', key: archivePanel },
+          props => h(ArchivePage, { ...props, services })))
+        ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({ name: 'sidebar.panellist',
+          id: archivePanel, order: 100,
+          label: () => archiveCopy[uiLanguage(services.locale?.getSnapshot?.())].navigation },
+          ({ size }) => h('svg', { width: size, height: size, viewBox: '0 0 24 24', fill: 'none',
+            stroke: 'currentColor', strokeWidth: pluginGlyphStrokeWidth, strokeLinecap: 'round',
+            strokeLinejoin: 'round', 'aria-hidden': true },
+            h('rect', { x: 3, y: 4, width: 18, height: 5, rx: 1 }),
+            h('path', { d: 'M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M10 13h4' }))))
         ctx.slots.inject('settings.section', () => ctx.slots.register({ name: 'settings.section',
           id, label: 'Chat Control', order: 45 }, props => h(WorkspaceLifecycle, { ...props, services })))
         ctx.slots.inject('settings.section.icon', () => ctx.slots.register({ name: 'settings.section.icon', id },

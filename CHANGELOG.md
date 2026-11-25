@@ -6,7 +6,7 @@ All notable changes are documented here.
 
 - Development candidate: `1.1.0-rc.1`. This is not a published stable release.
 - Add a Profile-scoped **Hide Archived Conversations** preference, enabled by default in Chat Control.
-- Add a bilingual archive hub with authorized metadata search, filters and sorting. Confirmed restore uses the native DSH workspace command after live access and protection checks.
+- Add a bilingual archive hub in the native sidebar and full main panel with authorized metadata search, filters and sorting. Confirmed restore uses the native DSH workspace command after live access and protection checks.
 - Track the Desktop and CI acceptance gates in the [archive implementation report](docs/research/v1.1.0/CHAT_CONTROL_ARCHIVE_IMPLEMENTATION_REPORT.md).
 
 ## [1.0.3] — Released (2026-11-24)
