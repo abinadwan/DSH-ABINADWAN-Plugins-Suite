@@ -19,6 +19,7 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci --ignore-scripts
+      - run: npm run check:client
       - run: npm test
       - run: npm run check:package
 

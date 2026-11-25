@@ -4,7 +4,7 @@ import {execFileSync} from 'node:child_process'
 import {readFileSync} from 'node:fs'
 import {validatePackageFiles} from '../test-support/package-policy.js'
 test('package rejects all development scripts, fixtures, retired DPAPI code and QA',()=>{
-  for(const path of ['scripts/personal-profile-windows-probe.mjs','scripts/preview-personal-profile.mjs','test-support/client.js','test/example.js','qa/report.md']){
+  for(const path of ['scripts/personal-profile-windows-probe.mjs','scripts/preview-personal-profile.mjs','test-support/client.js','test/example.js','qa/report.md','client-src/preamble.js.inc']){
     assert.throws(()=>validatePackageFiles([{path}]),/Development preview or tooling/)
   }
 })

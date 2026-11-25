@@ -1,4 +1,4 @@
-// Mirrored browser catalog/renderer. Parity test protects the lazy CJS client contract.
+// Canonical browser/Host preference catalog and renderer; the browser carrier is generated from this source.
 const PROFILE_STYLES = [
   ['default','الافتراضي','Default',''],
   ['professional','احترافي','Professional','Use polished, precise, professional language.'],

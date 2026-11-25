@@ -4,12 +4,17 @@
 
 Package 1.1.0 contains six independently toggleable components; see [component contracts](../DETAIL.md). The Host entry is `index.js`, the browser carrier is `client.js`, and `cordis.patch.yml` defines the native bundle. Component implementations, locales and icons live under `plugins/`. Preserve exports, IDs, settings namespaces and migration contracts.
 
+## Browser source and distribution
+
+The DSH lazy-CJS carrier `client.js` is generated deterministically from ordered `client-src/*.js.inc` fragments. The canonical Arabic dictionaries are in `locale/dsh-ui-ar.json`; the shared profile catalog and renderer are in `plugins/personal-profile/preferences.js`. Edit those sources rather than the generated carrier, run `npm run build:client`, and commit the resulting `client.js`. The installer still receives ready-to-run JavaScript and requires no build tool. `npm run check:client` checks reproducibility and syntax in CI; source fragments and build scripts are excluded from the package.
+
 ## Workflow and checks
 
 Start from `develop`; propose changes via PR to `develop`. Promotion to `main` and publication require separate owner approval.
 
 ```sh
 npm ci --ignore-scripts
+npm run check:client
 npm test
 npm run check:regression
 npm run check:package
