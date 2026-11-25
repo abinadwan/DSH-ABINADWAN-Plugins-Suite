@@ -1,7 +1,7 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { existsSync, readFileSync, readdirSync } from 'node:fs'
-import { dirname, join, resolve } from 'node:path'
+import { dirname, join, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const root = fileURLToPath(new URL('..', import.meta.url))
@@ -10,12 +10,6 @@ const root = fileURLToPath(new URL('..', import.meta.url))
 const sourceCheckout = existsSync(join(root, 'package-lock.json'))
 const read = path => readFileSync(join(root, path), 'utf8')
 const packageJson = JSON.parse(read('package.json'))
-const archivedAcceptanceReport = join(root, 'docs', 'DSH_DESKTOP_ACCEPTANCE_REPORT_V1.0.1.md')
-const archivedSourceLinks = new Set([
-  'source/docs/DSH_DESKTOP_FINAL_ACCEPTANCE_V1.0.1.md',
-  'source/docs/DEVELOPMENT_PROGRESS_V1.0.1.md',
-])
-
 const icons = [
   'plugins/environment-context/icon.png',
   'plugins/humanizer/icon.png',
@@ -71,61 +65,33 @@ function docsUnder(directory) {
 function localLinkSource(text) {
   return [
     ...Array.from(text.matchAll(/\]\(([^)]+)\)/g), match => match[1]),
-    ...Array.from(text.matchAll(/\bsrc=["']([^"']+)["']/g), match => match[1]),
+    ...Array.from(text.matchAll(/\b(?:src|href)=["']([^"']+)["']/g), match => match[1]),
   ].filter(href => href && !/^(?:https?:|mailto:|#|data:)/i.test(href))
 }
 
 function assertLocalLinksResolve(document, markdown) {
-  const isArchivedAcceptance = document === archivedAcceptanceReport
   for (const href of localLinkSource(markdown)) {
     const pathPart = href.split('#', 1)[0].split('?', 1)[0]
     if (!pathPart || /\s/.test(pathPart) || pathPart.includes('$')) continue
     const link = decodeURIComponent(pathPart)
-    // The archived report retains paths from the offline acceptance bundle.
-    if (isArchivedAcceptance && (link === 'desktop-wire-fixture.mjs' ||
-      /^evidence\/(?:\d{2}-[\w-]+\.jpg|(?:native|fixture)-[\w-]+\.jsonl?|sanitized\/[\w-]+\.log)$/.test(link))) continue
-    const target = isArchivedAcceptance && archivedSourceLinks.has(link)
-      ? resolve(root, link.slice('source/'.length))
-      : resolve(dirname(document), link)
-    assert.ok(target.startsWith(root), 'link escapes checkout: ' + href)
+    const target = resolve(dirname(document), link)
+    assert.ok(target === root || target.startsWith(root.endsWith(sep) ? root : root + sep), 'link escapes checkout: ' + href)
     assert.ok(existsSync(target), 'broken local link from ' + document + ': ' + href)
   }
 }
 
-test('only the archived v1.0.1 acceptance report can reference offline evidence', () => {
-  const screenshot = '[Desktop screenshot](evidence/02-candidate-native-details.jpg)'
-  assert.doesNotThrow(() => assertLocalLinksResolve(archivedAcceptanceReport, [
-    screenshot,
-    '[Native trace](evidence/native-wire.jsonl)',
-    '[Profile fixture](evidence/fixture-profile-allow.json)',
-    '[Sanitized log](evidence/sanitized/npm-test.log)',
-    '[Loopback fixture](desktop-wire-fixture.mjs)',
-  ].join('\n')))
-  if (sourceCheckout) {
-    assert.doesNotThrow(() => assertLocalLinksResolve(archivedAcceptanceReport, [
-      '[Acceptance checklist](source/docs/DSH_DESKTOP_FINAL_ACCEPTANCE_V1.0.1.md)',
-      '[Development progress](source/docs/DEVELOPMENT_PROGRESS_V1.0.1.md)',
-    ].join('\n')))
-  }
-
-  for (const document of [
-    join(root, 'README.md'),
-    join(root, 'docs', 'DETAIL.md'),
-    join(root, 'docs', 'DSH_DESKTOP_REMEDIATION_V1.0.2.md'),
-    join(root, 'docs', 'archive', 'DSH_DESKTOP_ACCEPTANCE_REPORT_V1.0.1.md'),
-  ]) {
-    assert.throws(() => assertLocalLinksResolve(document, screenshot), /broken local link/)
-  }
-  for (const href of ['missing.md', 'source/docs/missing.md', 'evidence/missing.jpg', 'evidence/../02-missing.jpg']) {
-    assert.throws(() => assertLocalLinksResolve(archivedAcceptanceReport, `[Broken](${href})`), /broken local link/)
+test('active docs reject unresolved local links and offline evidence', () => {
+  for (const href of ['missing.md', 'evidence/native-wire.jsonl', 'source/docs/missing.md', '../../../../missing.md']) {
+    assert.throws(() => assertLocalLinksResolve(join(root, 'docs', 'DETAIL.md'), `[Broken](${href})`), /broken local link|link escapes checkout/)
   }
 })
 
 test('all repository docs Markdown links and embedded local image paths resolve', t => {
-  if (!sourceCheckout) return t.skip('source-only historical docs are not part of the packed plugin')
+  if (!sourceCheckout) return t.skip('source-only documentation tree is not part of the packed plugin')
   const docs = docsUnder(join(root, 'docs'))
-  assert.ok(docs.length >= 44, 'documentation index and audited records should exist')
-  for (const document of [join(root, 'README.md'), join(root, 'HANDOVER.md'), join(root, 'CHANGELOG.md'), ...docs]) {
+  for (const path of ['docs/README.md', 'docs/DETAIL.md', 'docs/design/BRANDING.md', 'docs/plugins/my-profile.md']) assert.ok(existsSync(join(root, path)), path)
+  for (const folder of ['archive', 'research', 'superpowers']) assert.ok(!existsSync(join(root, 'docs', folder)), 'historical docs must not be active: ' + folder)
+  for (const document of [...docsUnder(join(root, 'plugins')), ...docs, ...readdirSync(root).filter(name => name.endsWith('.md')).map(name => join(root, name))]) {
     assertLocalLinksResolve(document, readFileSync(document, 'utf8'))
   }
 })

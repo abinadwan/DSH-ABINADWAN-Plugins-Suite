@@ -2,13 +2,13 @@
 
 The Direct Chat button below the native New Session control opens a native DSH Session under one permanent Workspace titled **Direct Chat**. Each non-blank conversation gets a different Session ID, its own log and its own agent continuation. The plugin does not fork previous Sessions, paste old transcripts into new chats or install cross-session memory/retrieval. The DSH native composer reuses an unsubmitted blank draft; after the first message, the next click creates another Session.
 
-**No more `session-*` Workspace per click.** The Host always returns the same profile-scoped directory: `<profile>/abinadwan-direct-chat-data/Direct Chat`. Workspace registration is idempotent by canonical path. Earlier `session-*` Workspace registrations and directories are deliberately left untouched; no automatic migration or deletion occurs.
+**Workspace registration.** The Host always returns the same profile-scoped directory: `<profile>/abinadwan-direct-chat-data/Direct Chat`. Workspace registration is idempotent by canonical path. Earlier `session-*` Workspace registrations and directories are deliberately left untouched; no automatic migration or deletion occurs.
 
 **Critical limit:** this isolates *conversation history*, not the underlying filesystem. All new Direct Chat Sessions share the same Workspace `cwd`, because DSH Workspace membership requires that path. The existing pre-execute and dispatch tool-denial guards remain, but they are policy guards, **not a Windows LPAC or process/filesystem sandbox**. They also cover older per-chat paths. No claims of high-assurance isolation or cross-plugin confidentiality are made.
 
-Direct Chat stays Off by default. The permanent Workspace appears in DSH's existing native tree. The earlier v1.0.0 Windows Desktop checks covered the top button, one Workspace, separate Sessions, restart and a comparative tool denial. The consolidated history and Host changes still require Desktop acceptance.
+Direct Chat stays Off by default. The permanent Workspace appears in DSH's existing native tree. The earlier v1.0.0 Windows Desktop checks covered the top button, one Workspace, separate Sessions, restart and a comparative tool denial. Native history acceptance covered the owner-approved 1,000-Session scope; other Host and Desktop limitations remain.
 
-The Host guards canonicalize paths, including junctions and missing children under aliases. Prepare and catalog share validation of the Profile-owned directory. Prepare uses owner-only permissions for new POSIX directories, redacts filesystem errors and returns `Cache-Control: no-store`. Both routes use DSH owner authorization in the pinned Host fixture. [Security analysis](../../docs/research/SECURITY_CODE_AUDIT_2026_11_22.md)
+The Host guards canonicalize paths, including junctions and missing children under aliases. Prepare and catalog share validation of the Profile-owned directory. Prepare uses owner-only permissions for new POSIX directories, redacts filesystem errors and returns `Cache-Control: no-store`. Both routes use DSH owner authorization in the pinned Host fixture. [Security analysis](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/98c27e87e216f11000ab92adcb79d51388031a28/docs/research/SECURITY_CODE_AUDIT_2026_11_22.md)
 
 ## Sidebar placement
 
@@ -16,7 +16,7 @@ The button is now mounted via DSH's public `sidebar.session.action` HOC immediat
 
 ## Direct Chat history
 
-The history action by **New Session** opens the authorized native catalog for the permanent Direct Chat Workspace. The latest activity appears first. Search matches titles and native Session IDs, with pages of 25. History opens existing Sessions and can rename through the native Session API when Chat Control protection state is available. Requesting creation order reads metadata for up to 100 registered conversations and falls back to recent order if complete timestamps are unavailable. Chat Control supplies retention settings, protection labels and dry-run previews. The existing Workspace list and Session context menu continue to serve normal navigation and historical registrations.
+The history action by **New Session** opens the authorized native catalog for the permanent Direct Chat Workspace. The latest activity appears first. Search matches titles and native Session IDs, with pages of 25. History opens existing Sessions and can rename through the native Session API when Archive Manager protection state is available. Requesting creation order reads metadata for up to 100 registered conversations and falls back to recent order if complete timestamps are unavailable. Archive Manager supplies scoped protection; retention previews and automatic cleanup are not exposed. The existing Workspace list and Session context menu continue to serve normal navigation and historical registrations.
 
 
 ## Large-history title search — measured limitation (v1.0.2-rc.3)
@@ -29,8 +29,7 @@ The history action by **New Session** opens the authorized native catalog for th
 | 1,000 | 1,000 | 100% | Pass on initial and cold-restart runs |
 | 10,000 | 8,185 | 81.85% (about 80%) | Fail on initial and cold-restart runs; 1,815 saved titles were unavailable |
 
-**Test context:** Windows x64, installed DSH Desktop/Host 0.2.2-rc.5, 2026-11-23, package 1.0.2-rc.3, isolated fictional inventories. Across six native runs (initial and cold restart at each size), 58 checks passed and 2 failed (both were the 10,000-Session pre-open title-search case). These are observed results from this environment, **not** a plugin limit of 8,000 Sessions and **not** evidence that 80% title availability can be relied upon for other inventory sizes or machines. H04 remains open; the five earlier blocked cases and MP02 are separate.
+**Test context:** Windows x64, installed DSH Desktop/Host 0.2.2-rc.5, 2026-11-23, package 1.0.2-rc.3, isolated fictional inventories. Across six native runs (initial and cold restart at each size), 58 checks passed and 2 failed (both were the 10,000-Session pre-open title-search case). These are observed results from this environment, **not** a plugin limit of 8,000 Sessions and **not** evidence that 80% title availability can be relied upon for other inventory sizes or machines. The owner closed H04 through a supported title-search scope of 1,000 Sessions and acceptance of the high-load failure, not by fixing the Host.
 
-[Full Windows H04 retest and performance results](../../docs/DSH_DESKTOP_DIRECT_CHAT_H04_FOLLOWUP_V1.0.2_RC3.md)
+[Full Windows H04 retest and performance results](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/98c27e87e216f11000ab92adcb79d51388031a28/docs/DSH_DESKTOP_DIRECT_CHAT_H04_FOLLOWUP_V1.0.2_RC3.md)
 
-[Capability and security review](../../docs/research/CHAT_CONTROL_ADAPTIVE_DIRECT_CHAT_V2.md)

@@ -1,7 +1,7 @@
 // Regression coverage for the native-settings Personal Profile page.
 // 0.7.2: unified profile (record v2), v0.7.1 migration, complete backup and
 // two-strategy restore. Coverage changes are audited in
-// docs/PERSONAL_PROFILE_V072_CHANGE_RECORD.md (section 13). Fictional data only.
+// the v0.7.2 migration contract. Fictional data only.
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { act } from 'react'

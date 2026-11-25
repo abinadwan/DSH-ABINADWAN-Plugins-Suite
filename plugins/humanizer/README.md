@@ -1,6 +1,6 @@
 # Humanizer
 
-**Runtime Skill available in suite 0.5.0. Enabled by default.**
+**Enabled by default.**
 
 <img src="icon.png" width="96" alt="Purple Humanizer writing pencil"/>
 

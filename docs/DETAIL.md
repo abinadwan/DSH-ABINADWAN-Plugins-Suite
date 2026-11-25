@@ -15,7 +15,7 @@
 | <img src="../plugins/conversation-lifecycle/assets/png/icon-256.png" width="28" alt="Archive Manager icon"/> **Archive Manager** | Off | **Archives** in the sidebar | Authorized archive browsing, search, protection and native restore |
 | <img src="../plugins/adaptive-reasoning/assets/png/icon-256.png" width="28" alt="Adaptive Reasoning icon"/> **Adaptive Reasoning** | Off | Native composer / model effort settings | Manual Session effort, opt-in recommendations and Profile aggregates |
 
-Enabled components preserve their existing internal IDs and saved settings namespaces. Turning a component off removes its active UI/behavior; **disabling is not a data-delete operation**. The icons above are bundled files, not remote services. See [artwork provenance](BRANDING.md) and [new icon artwork](NEW_PLUGINS_BRANDING.md).
+Enabled components preserve their existing internal IDs and saved settings namespaces. Turning a component off removes its active UI/behavior; **disabling is not a data-delete operation**. The icons above are bundled files, not remote services. See [artwork provenance](design/BRANDING.md).
 
 ## Environment & Context
 
@@ -51,9 +51,9 @@ Enabling the component registers the runtime Skill `abinadwan-humanizer` through
 
 **Backup and restore:** exports are unencrypted JSON. Manual English/Arabic interface overrides retain compatible **v2** exports; **Follow DSH** and the other five interface languages export **v4** so the choice survives restoration. v1–v4 imports are supported. Review & Merge preserves omitted settings, while Replace All and importing sharing permissions require explicit confirmation. Legacy values migrate without automatically authorizing disclosure. Use an archived Harness configuration or compatible v2 backup before attempting a downgrade; old versions may not understand v4 exports.
 
-**Limits:** a revision-checked Save is required before storing changes. The plugin does not encrypt its local settings or erase information already sent, stored in conversations, logs, provider records, files or summaries. The send-time guard recognizes stale structured disclosure blocks across CR, LF, NEL and Unicode line separators. Shared field values are sanitized in the prompt copy before sending. Outgoing-request privacy verification on real Desktop remains a separately tracked acceptance concern.
+**Limits:** a revision-checked Save is required before storing changes. The plugin does not encrypt its local settings or erase information already sent, stored in conversations, logs, provider records, files or summaries. The send-time guard recognizes stale structured disclosure blocks across CR, LF, NEL and Unicode line separators. Shared field values are sanitized in the prompt copy before sending. The owner accepted the MP02 pre-provider refusal and fresh-session privacy control. The historical provider-wire continuation criterion remains Blocked, not Pass; arbitrary historical text cannot be comprehensively scrubbed.
 
-[Current settings contract](PERSONAL_PROFILE_LOCAL_SETTINGS.md) · [Settings rename/language change](SETTINGS_NAVIGATION_NAMES_2026_11_21.md) · [Phase 7 acceptance](PERSONAL_PROFILE_PHASE7_WINDOWS_ACCEPTANCE.md)
+[Current settings contract](plugins/my-profile.md)
 
 ## Direct Chat
 
@@ -65,9 +65,9 @@ Enabling the component registers the runtime Skill `abinadwan-humanizer` through
 
 **Tool security:** the Host installs pre-execute and guard policies to deny DSH tool execution for Direct Chat paths. A comparative Windows test using the same cloud model observed a normal Workspace run a PowerShell command and Direct Chat return **“Direct chats do not run tools.”** This is accepted **behavioral evidence**, not a complete audit of every Host tool route or third-party/plugin boundary.
 
-**Non-goals / risks:** all Sessions in the one Direct Chat Workspace share the same filesystem `cwd`. Separate histories do **not** imply per-chat file permissions, LPAC/AppContainer isolation or independently encrypted storage. Direct Chat honors saved Archive Manager protection for supported rename actions. The historical retention preview is no longer exposed; automatic cleanup and Session deletion are unavailable. Further cross-session request-trace and deep Host authorization tests were **deferred with owner approval**, not passed. The earlier v1.0.0 behavioral evidence covers the [Phase 2 implementation](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/25). The consolidated changes have separate Desktop acceptance gates.
+**Non-goals / risks:** all Sessions in the one Direct Chat Workspace share the same filesystem `cwd`. Separate histories do **not** imply per-chat file permissions, LPAC/AppContainer isolation or independently encrypted storage. Direct Chat honors saved Archive Manager protection for supported rename actions. The historical retention preview is no longer exposed; automatic cleanup and Session deletion are unavailable. Further cross-session request-trace and deep Host authorization tests were **deferred with owner approval**, not passed. The earlier v1.0.0 behavioral evidence covers the [Phase 2 implementation](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/25). The owner-approved title-search scope is 1,000 registered Sessions, based on v1.0.2 native acceptance. At 10,000 Sessions, the native stress test failed (8,185 titles available); exact-ID lookup worked. This is not a performance SLA or a Host fix.
 
-[Direct Chat design](../plugins/direct-chat/README.md) · [Phase 2 acceptance record](research/DIRECT_CHAT_PHASE2_DESKTOP_ACCEPTANCE.md)
+[Direct Chat contract](../plugins/direct-chat/README.md)
 
 <a id="chat-control"></a>
 ## Archive Manager
@@ -82,7 +82,7 @@ Use a row's protection checkbox to restrict restore through Archive Manager and 
 
 Select **Restore**, then **Confirm restore** to return an eligible conversation to DSH's conversation list using native Session access and fresh catalog/protection checks. Open the conversation in DSH after restoration. The native endpoint does not offer atomic plugin protection checks and restore together. Browsing does not read transcript content. No retention policy, storage usage, deletion, cleanup preview or automatic cleanup controls are displayed.
 
-[Archive API research](research/v1.1.0/CHAT_CONTROL_NATIVE_API_RESEARCH.md) · [Previous implementation and acceptance](research/v1.1.0/CHAT_CONTROL_ARCHIVE_IMPLEMENTATION_REPORT.md) · [Phase 09](research/v1.1.0/ARCHIVE_MANAGER_PHASE09.md) · [Lifecycle implementation history](archive/research/NEW_PLUGINS_PHASE_C_CONTINUATION.md) · [Archived deletion research (not shipped)](research/v1.1.0/CHAT_CONTROL_DELETION_PLUGIN_ONLY_PHASE01.md)
+**Acceptance boundary:** previous native restore evidence does not establish complete acceptance of the final Archive Manager UI.
 
 ## Adaptive Reasoning
 
@@ -94,7 +94,7 @@ Select **Restore**, then **Confirm restore** to return an eligible conversation 
 
 **Not implemented:** automatic application, message-only temporary effort, and plugin-managed subagent effort policies. Those request paths are explicitly rejected rather than silently persisting a misleading selection. Some models do not expose effort options.
 
-[Chat Control, Adaptive Reasoning and Direct Chat capability review](research/CHAT_CONTROL_ADAPTIVE_DIRECT_CHAT_V2.md) · [Historical Adaptive Reasoning handover](research/ADAPTIVE_REASONING_HANDOVER.md)
+
 
 ## Installation and updates
 
@@ -104,16 +104,15 @@ The supported installation identity is `@abinadwan/dsh-plugins-suite`. Select th
 github:abinadwan/DSH-ABINADWAN-Plugins-Suite#RELEASE_COMMIT_SHA
 ~~~
 
-For CLI installations, use the matching DSH `plugin --profile <name> add` workflow in the environment that runs that Profile. Back up My Profile and the Profile configuration before any replacement or migration. Install **v1.1.0** only once its official stable release is published from `main`, using the full SHA of that release. The updater discovers changes through published releases.
+For CLI installations, use the matching DSH `plugin --profile <name> add` workflow in the environment that runs that Profile. Back up My Profile and the Profile configuration before any replacement or migration. Install the published **v1.1.0** using its full release commit SHA. The updater discovers changes through published releases.
 
 **Suite updates (GitHub Releases)** lives on the suite's Plugins detail page. It checks for a published, non-prerelease GitHub Release on startup and every 24 hours while loaded, with manual **Check again**. If a newer release exists, **Update now** verifies the tag, immutable target SHA and remote package manifest; it requires user confirmation and delegates to DSH's `pluginManager.updateBundle`. There is no unattended install. In-app update requires the existing Git installation to be pinned to a complete commit SHA; unpinned Git installations receive manual migration guidance. Updates may require a restart, and Host rollback is attempted but cannot be guaranteed to succeed in every failure mode.
 
-The updater does **not** follow unreviewed `develop` commits, automatically replace a branch-tracking installation, silently restart Desktop or copy user conversations to GitHub. The update checker is not the Desktop application updater. [Update feasibility and future design](research/SUITE_AUTO_UPDATE_FEASIBILITY.md).
+The updater does **not** follow unreviewed `develop` commits, automatically replace a branch-tracking installation, silently restart Desktop or copy user conversations to GitHub. The update checker is not the Desktop application updater.
 
 ## Compatibility, verification and remaining gates
 
-- Development tests use the pinned DSH/Loader libraries and run `npm test` plus `npm run check:package` on Windows and Linux with Node 22/24. These tests do not replace real Desktop validation.
-- Historical documentation contains experimental LPAC companion processes, encrypted storage and per-Workspace profiles that were replaced. These **are not active capabilities**. Consult [documentation index](README.md) before interpreting old phase reports.
+- Development tests use the pinned DSH/Loader libraries and run `npm test`, `npm run check:regression` and `npm run check:package` on Windows and Linux with Node 22/24. These tests do not replace real Desktop validation.
 - Accepted Windows Direct Chat behavioral tests do not establish high-assurance filesystem or request-level isolation; My Profile's final multilingual Settings smoke test and request-level privacy assessment remain separately tracked.
 - Release publication and Desktop installation are separate actions. Review the release notes and the Host and Desktop validation limits before upgrading.
 
@@ -121,4 +120,4 @@ The updater does **not** follow unreviewed `develop` commits, automatically repl
 
 [Root README](../README.md) · [Documentation index](README.md) · [Changelog](../CHANGELOG.md) · [Security policy](../SECURITY.md) · [Issues](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/issues)
 
-Community-maintained MIT-licensed project, independent of DeepSeek and DSH Desktop vendors. Historical design records remain for audit; actual behavior is determined by the version and Host under test.
+Community-maintained MIT-licensed project, independent of DeepSeek and DSH Desktop vendors. Actual behavior is determined by the version and Host under test.

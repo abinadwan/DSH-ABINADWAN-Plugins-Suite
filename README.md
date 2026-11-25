@@ -95,20 +95,21 @@ cd DSH-ABINADWAN-Plugins-Suite
 git switch -c feature/your-change origin/develop
 npm ci --ignore-scripts
 npm test
+npm run check:regression
 npm run check:package
 ```
 
 `npm test` covers component/runtime contracts, UI fixtures, documentation references and the configured safety cases. `npm run check:package` creates and checks the packaged plugin against its source expectations. CI runs these checks and pinned offline Harness integration fixtures on Windows and Ubuntu with Node.js 22 and 24. Desktop acceptance requires separate tests.
 
-`develop` is the integration branch. It includes Direct Chat tool-denial and My Profile disclosure hardening, authorized Direct Chat history, Archive Manager with native archive browsing, scoped protection and restore (preview-only retention removed), and opt-in Adaptive Reasoning recommendations with Profile-local aggregate statistics. Use `develop` as the base for feature PRs. The consolidated changes go to `main` through owner review, and release publication requires separate approval. See the [component details](docs/DETAIL.md), [changelog](CHANGELOG.md) and [development handover](HANDOVER.md).
+`develop` is the integration branch. It includes Direct Chat tool-denial and My Profile disclosure hardening, authorized Direct Chat history, Archive Manager with native archive browsing, scoped protection and restore (preview-only retention removed), and opt-in Adaptive Reasoning recommendations with Profile-local aggregate statistics. Use `develop` as the base for feature PRs. The consolidated changes go to `main` through owner review, and release publication requires separate approval. See the [component details](docs/DETAIL.md), [changelog](CHANGELOG.md) and [development handover](docs/architecture/development.md).
 
 ## Documentation and project policy
 
-- [Archive Manager](docs/DETAIL.md#chat-control) and [native API research](docs/research/v1.1.0/CHAT_CONTROL_NATIVE_API_RESEARCH.md).
+- [Archive Manager](docs/DETAIL.md#chat-control).
 - [Component functionality, constraints and troubleshooting](docs/DETAIL.md)
-- [Documentation index and historical archive](docs/README.md)
+- [Current documentation index](docs/README.md)
 - [Release history](CHANGELOG.md) · [Security policy](SECURITY.md) · [Third-party notices](THIRD_PARTY_NOTICES.md)
 - [Accessibility commitment and reporting barriers](ACCESSIBILITY.md)
-- [Artwork provenance](docs/BRANDING.md) · [License](LICENSE)
+- [Artwork provenance](docs/design/BRANDING.md) · [License](LICENSE)
 
 The suite is an independent community project distributed under the **MIT License**; it is not an official DeepSeek product. DSH and third-party names belong to their respective owners.
