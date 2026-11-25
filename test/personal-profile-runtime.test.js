@@ -125,8 +125,8 @@ test('hybrid context and instructions are lifecycle-scoped, refreshed and separa
     const updated=record();updated.preferences.responseLanguage='ja'
     await f.update({record:updated})
     assert.match(instructions().text(selection()),/saved default response language is Japanese/)
-    assert.match(reminder().text(turn),/Answer in Japanese .*unless the current request explicitly asks/)
-    assert.doesNotMatch(current().text(selection()),/saved default response language|Answer in Japanese/)
+    assert.match(reminder().text(turn),/Write your entire response in Japanese \(日本語\)\./)
+    assert.doesNotMatch(current().text(selection()),/saved default response language|Write your entire response in Japanese/)
     await f.update({record:profile.emptyRecord()})
     assert.equal(instructions().text(selection()),'')
     assert.match(reminder().text(turn),/No active saved response preferences/)
@@ -214,7 +214,7 @@ test('reminder mirrors validated built-in preferences without copying personal o
   Object.assign(r.preferences,{responseLanguage:'de',style:'technical',presets:['steps']})
   r.preferences.traits.emoji=0
   const text=responseReminder(r,'test-turn')
-  assert.match(text,/Answer in German \(Deutsch\) unless the current request explicitly asks for a different output language/)
+  assert.match(text,/Write your entire response in German \(Deutsch\)\./)
   assert.match(text,/Use precise technical terminology/)
   assert.match(text,/Avoid unnecessary emoji/)
   assert.match(text,/Break complex tasks into actionable steps/)
@@ -222,6 +222,6 @@ test('reminder mirrors validated built-in preferences without copying personal o
   assert.doesNotMatch(text,/SYNTHETIC_NAME|SYNTHETIC_COUNTRY|Synthetic instruction/)
   const legacy={...r,version:4,preferences:{...r.preferences,sendCustom:false}}
   assert.doesNotMatch(responseReminder(legacy,'test-turn'),/Apply the current saved custom instructions/)
-  assert.doesNotMatch(responseReminder({...r,preferences:{...r.preferences,style:'unknown'}},'test-turn'),/Answer in German|technical terminology|Current reminder revision/)
+  assert.doesNotMatch(responseReminder({...r,preferences:{...r.preferences,style:'unknown'}},'test-turn'),/Write your entire response in German|technical terminology|Current reminder revision/)
   assert.equal(responseReminder({version:1},'test-turn'),'')
 })

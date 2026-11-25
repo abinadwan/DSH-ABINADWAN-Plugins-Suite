@@ -118,7 +118,7 @@ export function responseReminder(record,revision){
   return [header,
     'Current reminder revision: '+revision+'. Earlier profile reminders no longer apply.',
     'Follow the current user request and higher-priority host/safety/tool requirements.',
-    ...(language?.[3]?['Answer in '+languageName(language)+' unless the current request explicitly asks for a different output language.']:[]),
+    ...(language?.[3]?['Write your entire response in '+languageName(language)+'.']:[]),
     ...builtIn,
     ...(hasCustom?['Apply the current saved custom instructions in the system response preferences; they take precedence over other style preferences where compatible.']:[]),
   ].join('\n')
