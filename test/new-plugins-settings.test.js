@@ -99,7 +99,7 @@ async function mount(t, options, active, slot) {
   })
   const injected = entry.options.inject?.('test-session') ?? {}
   await act(async () => root.render(React.createElement(entry.component,
-    { ...injected, useRemoteAccess: () => true, useAccess: () => true })))
+    { ...injected, useRemoteAccess: options.useRemoteAccess ?? (() => true), useAccess: () => true })))
   return { div, window, fixture }
 }
 
@@ -146,9 +146,230 @@ test('retention previews archived Workspace chats, excludes active and Direct ch
   await act(async () => [...div.querySelectorAll('button')].find(button => button.textContent === 'Confirm and save').click())
   assert.equal(settings.writes[0].revision, 1)
   assert.equal(settings.writes[0].value.record.retention, '30')
-  await act(async () => div.querySelector('input[type=checkbox]').click())
-  assert.deepEqual(Array.from(settings.writes[1].value.record.protectedIds), ['cold'])
-  assert.equal(settings.writes[1].revision, 2)
+  const checkbox = label => [...div.querySelectorAll('label')].find(item => item.textContent.trim() === label)?.querySelector('input')
+  assert.equal(checkbox('Protect A cold chat'), undefined)
+  await act(async () => checkbox('Hide Archived Conversations').click())
+  assert.equal(settings.writes[1].value.record.hideArchived, false)
+  await act(async () => checkbox('Protect A cold chat').click())
+  assert.deepEqual(Array.from(settings.writes[2].value.record.protectedIds), ['cold'])
+  assert.equal(settings.writes[2].revision, 3)
+})
+
+const archiveRecord = { retention: 'forever', overrides: [], protectedIds: [], protectedWorkspaces: [] }
+const archiveButton = (root, label) => [...root.querySelectorAll('button')].find(item => item.textContent === label)
+const archiveSelect = async (root, label, value) => act(async () => {
+  const input = [...root.querySelectorAll('select, input')].find(item => item.labels?.[0]?.firstChild.textContent === label)
+  assert.ok(input, label)
+  if (input.tagName === 'SELECT') input.value = value
+  else Object.getOwnPropertyDescriptor(document.defaultView.HTMLInputElement.prototype, 'value').set.call(input, value)
+  input.dispatchEvent(new document.defaultView.Event(input.tagName === 'SELECT' ? 'change' : 'input', { bubbles: true }))
+})
+
+async function mountArchive(t, options = {}) {
+  const ids = ['s1', 's2', 'active', 'ambiguous', 'pinned', 'protected']
+  const titles = ['Zulu report', 'Alpha memo', 'Active work', 'Ambiguous title', 'Pinned draft', 'Protected draft']
+  const settings = settingsFixture('conversation-lifecycle', { ...archiveRecord, protectedIds: ['protected'] })
+  const result = await mount(t, {
+    settings: settings.service,
+    archivedSessionIds: ['s1', 's2', 'missing', 'ambiguous', 'pinned', 'protected'], pinnedSessionIds: ['pinned'],
+    workspaceItems: [
+      { workspaceId: 'w1', title: 'North Workspace', sessionIds: ['s1', 'active', 'ambiguous', 'pinned', 'protected', 'missing'] },
+      { workspaceId: 'w2', title: 'South Workspace', sessionIds: ['s2', 'ambiguous'] },
+    ],
+    sessions: { phase: 'ready', ids, byId: Object.fromEntries(ids.map((id, i) => [id, {
+      id, title: titles[i], displayTitle: titles[i], blank: false, running: id === 'active', updatedAt: new Date(2026, 3, 20 - i).getTime(),
+    }])) },
+    ...options,
+  }, 'conversation-lifecycle', 'settings.section')
+  const en = result.fixture.hostLocale.getSnapshot().active !== 'ar'
+  await act(async () => {
+    const launch = archiveButton(result.div, en ? 'Archived Conversations' : 'المحادثات المؤرشفة')
+    assert.ok(launch, 'Chat Control exposes the archive through its native settings slot')
+    launch.focus()
+    launch.click()
+  })
+  return { ...result, hub: () => result.div.querySelector('[role=dialog]'), settings }
+}
+
+test('Archive Hub joins authorized rows, searches titles and workspaces, and sorts and filters metadata', async t => {
+  const { hub } = await mountArchive(t)
+  const titles = () => [...hub().querySelectorAll('li strong')].map(node => node.textContent)
+  assert.deepEqual(titles(), ['Zulu report', 'Alpha memo', 'Pinned draft', 'Protected draft'])
+  assert.match(hub().textContent, /4 archived conversations/)
+  assert.doesNotMatch(hub().textContent, /missing|Ambiguous title|Active work/)
+  await archiveSelect(hub(), 'Sort by', 'name')
+  assert.deepEqual(titles(), ['Alpha memo', 'Pinned draft', 'Protected draft', 'Zulu report'])
+  await archiveSelect(hub(), 'Sort by', 'oldest')
+  assert.deepEqual(titles(), ['Protected draft', 'Pinned draft', 'Alpha memo', 'Zulu report'])
+  await archiveSelect(hub(), 'Sort by', 'workspace')
+  assert.deepEqual(titles(), ['Pinned draft', 'Protected draft', 'Zulu report', 'Alpha memo'])
+  await archiveSelect(hub(), 'Search archived conversations', 'South')
+  assert.deepEqual(titles(), ['Alpha memo'])
+  await archiveSelect(hub(), 'Workspace', 'w1')
+  assert.match(hub().textContent, /No matching archived conversations/)
+  await archiveSelect(hub(), 'Search archived conversations', '')
+  await archiveSelect(hub(), 'Protection', 'yes')
+  assert.deepEqual(titles(), ['Protected draft'])
+  await archiveSelect(hub(), 'Protection', 'all')
+  await archiveSelect(hub(), 'Pinned', 'yes')
+  assert.deepEqual(titles(), ['Pinned draft'])
+  await archiveSelect(hub(), 'Pinned', 'all')
+  await archiveSelect(hub(), 'Updated on or after', '2026-04-19')
+  assert.deepEqual(titles(), ['Zulu report'])
+})
+
+test('Archive restore asks for confirmation, applies live native state, and never opens a session', async t => {
+  const calls = []
+  const { fixture, hub } = await mountArchive(t, {
+    onOpenSession: () => assert.fail('Archive access must never open a Session'),
+    onUnarchive: async id => {
+      calls.push(id)
+      const state = fixture.workspaces.getSnapshot()
+      fixture.workspaces.set({ ...state, archivedSessionIds: state.archivedSessionIds.filter(value => value !== id) })
+    },
+  })
+  const restore = title => archiveButton([...hub().querySelectorAll('li')].find(row => row.textContent.includes(title)), 'Restore')
+  assert.equal(restore('Protected draft').disabled, true)
+  assert.equal(restore('Pinned draft').disabled, true)
+  await act(async () => restore('Zulu report').click())
+  assert.deepEqual(calls, [])
+  await act(async () => archiveButton(hub(), 'Cancel').click())
+  assert.deepEqual(calls, [])
+  await act(async () => restore('Zulu report').click())
+  await act(async () => archiveButton(hub(), 'Confirm restore').click())
+  assert.deepEqual(calls, ['s1'])
+  assert.match(hub().textContent, /Conversation restored/)
+  assert.match(hub().textContent, /3 archived conversations/)
+  assert.doesNotMatch(hub().textContent, /Zulu report/)
+})
+
+test('Archive Hub withholds rows without settings access and localizes controls and direction', async t => {
+  const { hub } = await mountArchive(t, { hostLocale: 'ar', useRemoteAccess: () => false })
+  assert.equal(hub().querySelector('[dir]').dir, 'rtl')
+  assert.match(hub().textContent, /ما عندك صلاحية عرض المحادثات المؤرشفة/)
+  assert.doesNotMatch(hub().textContent, /Zulu report/)
+})
+
+test('Restore confirmation and metadata cannot survive a lost or changed Host', async t => {
+  const calls = []
+  let changed = false
+  const { fixture, hub } = await mountArchive(t, { onUnarchive: async id => calls.push(id),
+    readArchiveSessions: async () => changed ? ok({ items: [] }) : undefined })
+  await act(async () => archiveButton(hub(), 'Restore').click())
+  assert.ok(archiveButton(hub(), 'Confirm restore'))
+  await act(async () => fixture.host.set(undefined))
+  assert.match(hub().textContent, /Host disconnected/)
+  assert.doesNotMatch(hub().textContent, /Zulu report|Confirm restore/)
+  changed = true
+  await act(async () => fixture.host.set({ id: 2, host: { home: 'C:/OtherFixture' } }))
+  assert.doesNotMatch(hub().textContent, /Zulu report/)
+  assert.deepEqual(calls, [])
+  const nextWorkspace = { ...fixture.workspaces.getSnapshot(), items: [{ workspaceId: 'other', title: 'Other profile', sessionIds: ['s1'] }],
+    archivedSessionIds: [], pinnedSessionIds: [] }
+  await act(async () => {
+    fixture.workspaces.set(nextWorkspace)
+    fixture.sessions.set({ phase: 'ready', ids: ['s1'], byId: { s1: { id: 's1', displayTitle: 'Other title' } } })
+  })
+  assert.match(hub().textContent, /No archived conversations/)
+  assert.doesNotMatch(hub().textContent, /Zulu report/)
+})
+
+test('the confirm button never sends an unarchive after Session access is withdrawn', async t => {
+  const { hub, fixture } = await mountArchive(t, { onUnarchive: () => assert.fail('Access was withdrawn') })
+  await act(async () => archiveButton(hub(), 'Restore').click())
+  assert.equal(document.activeElement, archiveButton(hub(), 'Confirm restore'))
+  await act(async () => fixture.sessionAccess.set(false))
+  assert.equal(archiveButton(hub(), 'Restore').disabled, true)
+  await act(async () => archiveButton(hub(), 'Confirm restore').click())
+  assert.match(hub().textContent, /conversation or your access changed/)
+  assert.match(hub().textContent, /4 archived conversations/)
+})
+
+test('archive loading, unavailable catalog and Host error never show cached rows', async t => {
+  let releaseWorkspace
+  let response = () => new Promise(resolve => { releaseWorkspace = resolve })
+  const { hub } = await mountArchive(t, { readArchiveWorkspaces: () => response() })
+  assert.match(hub().textContent, /Loading archived conversations/)
+  await act(async () => releaseWorkspace({ items: [], archivedSessionIds: {}, pinnedSessionIds: [] }))
+  assert.match(hub().textContent, /Archive catalog unavailable/)
+  response = async () => { throw new Error('Native fixture disconnected') }
+  await act(async () => archiveButton(hub(), 'Refresh archive').click())
+  assert.match(hub().textContent, /Could not load the archive catalog/)
+  assert.doesNotMatch(hub().textContent, /Zulu report/)
+})
+
+test('a background catalog refresh keeps the search focus and verifies native updates', async t => {
+  let complete
+  let wait = false
+  const { hub, fixture } = await mountArchive(t, { readArchiveSessions: () => wait
+    ? new Promise(resolve => { complete = resolve }) : undefined })
+  const search = hub().querySelector('input[type=search]')
+  search.focus()
+  wait = true
+  await act(async () => fixture.sessions.set({ ...fixture.sessions.getSnapshot() }))
+  assert.equal(document.activeElement, search)
+  assert.match(hub().textContent, /Zulu report/)
+  wait = false
+  await act(async () => complete(ok({ items: [] })))
+  assert.match(hub().textContent, /No archived conversations/)
+})
+
+test('the archive reads the current native catalog even if the shared Session cache is still pending', async t => {
+  const { hub } = await mountArchive(t, {
+    sessions: { phase: 'pending', ids: [], byId: {} },
+    readArchiveSessions: async () => ok({ items: [{ sessionId: 's1', blank: false, running: false,
+      projections: { kind: 'cached', asOfSeq: 0, values: { title: 'Native archive row' } } }] }),
+  })
+  assert.match(hub().textContent, /Native archive row/)
+})
+
+test('a refreshed local projection cannot re-admit an overlapping Session from a prior Host', async t => {
+  let freshHost = false
+  const { hub, fixture } = await mountArchive(t, { readArchiveSessions: async () => freshHost ? ok({ items: [] }) : undefined })
+  assert.match(hub().textContent, /Zulu report/)
+  const previous = fixture.sessions.getSnapshot()
+  freshHost = true
+  await act(async () => fixture.host.set(undefined))
+  await act(async () => {
+    fixture.host.set({ id: 2, host: { home: 'C:/OtherFixture' } })
+    fixture.workspaces.set({ ...fixture.workspaces.getSnapshot(), items: [{ workspaceId: 'other', title: 'New Profile', sessionIds: ['s1'] }],
+      archivedSessionIds: ['s1'], pinnedSessionIds: [] })
+    fixture.sessions.set({ ...previous, projectionsBySession: {} })
+  })
+  assert.match(hub().textContent, /No archived conversations/)
+  assert.doesNotMatch(hub().textContent, /Zulu report/)
+})
+
+test('restore rereads protection saved during catalog verification even without a settings update event', async t => {
+  const settings = settingsFixture('conversation-lifecycle', archiveRecord)
+  const calls = []
+  let verifying = false
+  let releaseCatalog
+  const { hub } = await mountArchive(t, { settings: settings.service, onUnarchive: async id => calls.push(id),
+    readArchiveSessions: () => verifying ? new Promise(resolve => { releaseCatalog = resolve }) : undefined })
+  await act(async () => archiveButton(hub(), 'Restore').click())
+  verifying = true
+  await act(async () => archiveButton(hub(), 'Confirm restore').click())
+  assert.equal(typeof releaseCatalog, 'function')
+  await settings.service.replace('abinadwan-conversation-lifecycle', { record: { ...archiveRecord, protectedIds: ['s1'] } }, 1)
+  await act(async () => releaseCatalog())
+  assert.deepEqual(calls, [])
+  assert.match(hub().textContent, /conversation or your access changed/)
+})
+
+test('native restore failure leaves the row and count intact and disable releases its lifecycle', async t => {
+  const { hub, fixture } = await mountArchive(t, { onUnarchive: async () => { throw new Error('Native fixture refusal') } })
+  await act(async () => archiveButton(hub(), 'Restore').click())
+  await act(async () => archiveButton(hub(), 'Confirm restore').click())
+  assert.match(hub().querySelector('[role=alert]').textContent, /Could not restore/)
+  assert.match(hub().textContent, /4 archived conversations/)
+  const enabled = fixture.rows()
+  fixture.setRows(enabled.map(row => row.moduleName === `${base}/conversation-lifecycle` ? { ...row, enabled: false } : row))
+  await fixture.changed()
+  assert.equal(fixture.entries('settings.section').filter(entry => entry.options.id === 'abinadwan-conversation-lifecycle').length, 0)
+  fixture.setRows(enabled)
+  await fixture.changed()
+  assert.equal(fixture.entries('settings.section').filter(entry => entry.options.id === 'abinadwan-conversation-lifecycle').length, 1)
 })
 
 test('retention confirmation expires when the underlying settings revision is reloaded', async t => {

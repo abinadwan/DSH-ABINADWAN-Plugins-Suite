@@ -43,6 +43,8 @@
     "icon.svg",
     "locale/*.json",
     "docs/DETAIL.md",
+    "docs/research/v1.1.0/CHAT_CONTROL_NATIVE_API_RESEARCH.md",
+    "docs/research/v1.1.0/CHAT_CONTROL_ARCHIVE_IMPLEMENTATION_REPORT.md",
     "docs/BRANDING.md",
     "docs/PERSONAL_PROFILE_LOCAL_SETTINGS.md",
     "docs/PERSONAL_PROFILE_WINDOWS_ACCEPTANCE.md",
@@ -76,6 +78,7 @@
         "@deepseek-ai/dsh-api-remote-access",
         "@deepseek-ai/dsh-client-ui-sidebar",
         "@deepseek-ai/dsh-client-ui-workspace",
+        "@deepseek-ai/dsh-client-ui-session",
         "@deepseek-ai/dsh-client-locale",
         "@deepseek-ai/dsh-client-ui-layout"
       ],
