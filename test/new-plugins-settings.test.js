@@ -189,7 +189,7 @@ async function mountArchive(t, options = {}) {
 }
 
 test('Archive global panel and sidebar share the component lifecycle and localized navigation label', async () => {
-  const fixture = await clientHarness()
+  const fixture = await clientHarness({ hostLocale: 'en' })
   const id = 'abinadwan-chat-control-archive'
   const rows = [...fixture.rows(), { moduleName: `${base}/conversation-lifecycle`, enabled: true, fiberPhase: 'active' }]
   try {
@@ -197,6 +197,10 @@ test('Archive global panel and sidebar share the component lifecycle and localiz
     await fixture.changed()
     const sidebar = fixture.entries('sidebar.panellist').find(row => row.options.id === id)
     assert.ok(sidebar)
+    assert.equal(sidebar.options.label(), 'Archives')
+    fixture.hostLocale.set({ active: 'ar', revision: 1 })
+    assert.equal(sidebar.options.label(), 'الأرشيف')
+    fixture.hostLocale.set({ active: 'en', revision: 2 })
     assert.equal(sidebar.options.label(), 'Archives')
     assert.ok(fixture.entries('main').some(row => row.options.key === id))
     fixture.setRows(rows.map(row => row.moduleName === `${base}/conversation-lifecycle` ? { ...row, enabled: false } : row))
