@@ -12,6 +12,8 @@ import * as NativeToolExecutor from '@deepseek-ai/dsh-tool-executor-native'
 import AgentRegistry,{installModelSelection} from '@deepseek-ai/dsh-agent'
 import AgentLoop from '@deepseek-ai/dsh-agent-loop'
 import * as profile from '../plugins/personal-profile/index.js'
+import * as renderer from '../plugins/personal-profile/preferences.js'
+import { assembleMessages } from './profile-ollama-check.mjs'
 
 class Capture extends LlmAdapter {
   requests=[]
@@ -60,6 +62,13 @@ test('native rc.3: hybrid profile context and system preferences reach both rout
       const first=await send(agent,adapter,'Who am I?')
       const block=latestContext(first)
       assert.ok(block,'native runtime-context snapshot reaches adapter')
+      const revision = textOf(block).match(/Current reminder revision: ([a-f0-9]+)\./)?.[1]
+      assert.ok(revision)
+      const simulated = assembleMessages(renderer, record, [{role:'user',content:'Who am I?'}], revision)
+      assert.deepEqual(first.messages.map(message=>message.role), simulated.map(message=>message.role))
+      assert.equal(textOf(block), simulated.at(-1).content, 'native snapshot framing matches the API simulation')
+      assert.ok(textOf(first.messages[0]).includes(renderer.responsePreferences(record)))
+      assert.deepEqual(first.tools ?? [], [], 'minimal fixture intentionally has no tool schemas')
       assert.match(textOf(block),new RegExp(marker))
       assert.match(textOf(block),new RegExp(country))
       assert.doesNotMatch(textOf(block),/FICTIONAL_CUSTOM/)
