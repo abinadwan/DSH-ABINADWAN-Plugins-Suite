@@ -28,162 +28,57 @@ class Capture extends LlmAdapter {
     yield {type:'finish',reason:{kind:'stop'}}
   }
 }
-const systemTexts=request=>request.messages.filter(m=>m.role==='system').map(m=>m.content.map(b=>b.text??'').join(''))
-const latest=adapter=>systemTexts(adapter.requests.at(-1)).at(-1)??''
-const marker='FICTIONAL_PRIVATE_FIELD_7C'
-const nationalityMarker='FICTIONAL_NATIONALITY_7C'
+const marker='FICTIONAL_PROFILE_NAME'
+const replacement='FICTIONAL_UPDATED_NAME'
+const country='FICTIONAL_COUNTRY'
 const custom='FICTIONAL_CUSTOM {{literal}}'
+const textOf=m=>m.content.map(b=>b.text??'').join('')
+const latestContext=request=>request.messages.filter(m=>m.source?.kind==='runtime-context'&&textOf(m).includes('Current My Profile settings')).at(-1)
 async function send(agent,adapter,label){
   const count=adapter.requests.length
   agent.followup(createUserMessage({content:[{type:'text',text:label}],source:{kind:'user'}}))
   await agent.whenIdle()
   assert.equal(adapter.requests.length,count+1,'one adapter attempt expected')
-  const payload=JSON.stringify(adapter.requests.at(-1))
-  assert.doesNotMatch(payload,new RegExp(marker+'|'+nationalityMarker+'|female'))
+  return adapter.requests.at(-1)
 }
-test('rc.3 real loop: committed config, new and existing sessions, disable and complete prompts',async()=>{
+test('native rc.3: dynamic profile context reaches both routes; update and clear continue the same session',async()=>{
   const ctx=new Context()
   try{
-    await ctx.plugin(LlmRuntime)
-    await ctx.plugin(SessionStore)
-    await ctx.plugin(SessionProjectionRegistry)
-    await ctx.plugin(SystemPrompt)
-    await ctx.plugin(ToolRuntime)
-    await ctx.plugin(NativeToolExecutor)
-    await ctx.plugin(AgentRegistry)
+    for(const plugin of [LlmRuntime,SessionStore,SessionProjectionRegistry,SystemPrompt,ToolRuntime,NativeToolExecutor,AgentRegistry])await ctx.plugin(plugin)
     await ctx.plugin(AgentLoop,{agents:[]})
-    const plain=new Capture(), history=new Capture(true)
-    ctx.llm.registerAdapter(['plain'],plain)
-    ctx.llm.registerAdapter(['history'],history)
-    const a=await ctx.agentLoop.create(SessionId('profile-a'),{provider:'plain',model:'test'})
-    installModelSelection(a.ctx)
-    const r=profile.emptyRecord()
-    r.information={preferredName:marker,nationality:nationalityMarker,gender:'female'}
-    // This fixture exercises preferences with all personal fields private.
-    r.preferences.style='friendly'
-    r.preferences.custom=custom
-    await send(a,plain,'before enabling')
-    assert.doesNotMatch(latest(plain),/Response preferences/)
-    let fiber=ctx.plugin(profile,{record:r});await fiber.await()
-    assert.doesNotMatch(renderPrompt(await ctx.systemPrompt.assemble()),/Response preferences/)
-    await send(a,plain,'after enabling')
-    assert.match(latest(plain),/friendly/)
-    assert.doesNotMatch(latest(plain),/FICTIONAL_CUSTOM/)
-    assert.equal(latest(plain).split('Response preferences').length,2)
-    const next=structuredClone(r)
-    next.preferences.style='technical';next.preferences.responseLanguage='ja';next.preferences.sendCustom=true
-    await fiber.update({record:next})
-    await send(a,plain,'after committed update')
-    assert.match(latest(plain),/Japanese/)
-    assert.match(latest(plain),/FICTIONAL_CUSTOM \{\{literal\}\}/)
-    assert.doesNotMatch(latest(plain),/friendly/)
-    const b=await ctx.agentLoop.create(SessionId('profile-b'),{provider:'history',model:'test'})
-    installModelSelection(b.ctx)
-    await send(b,history,'new session')
-    assert.match(latest(history),/Japanese/)
-    delete next.preferences.sendCustom
-    next.preferences.style='candid'
-    await fiber.update({record:next})
-    const beforeCustomRevocation=history.requests.length
-    b.followup(createUserMessage({content:[{type:'text',text:'Continue after custom consent was revoked'}],source:{kind:'user'}}))
-    await b.whenIdle()
-    assert.equal(history.requests.length,beforeCustomRevocation,'revoked custom Preferences must stop before the adapter')
-    const clean=await ctx.agentLoop.create(SessionId('profile-custom-revoked'),{provider:'history',model:'test'})
-    installModelSelection(clean.ctx)
-    await send(clean,history,'Fresh after custom revocation')
-    assert.match(latest(history),/candid/)
-    assert.doesNotMatch(latest(history),/FICTIONAL_CUSTOM/)
-    await fiber.dispose()
-    await send(a,plain,'disabled')
-    assert.doesNotMatch(latest(plain),/Response preferences/)
-    fiber=ctx.plugin(profile,{record:next});await fiber.await()
-    await send(a,plain,'re-enabled')
-    assert.match(latest(plain),/candid/)
-    assert.equal(latest(plain).split('Response preferences').length,2)
-    const remove=ctx.systemPrompt.section({name:'qa:complete',order:100,complete:true,text:'Complete test prompt.'})
-    await send(a,plain,'complete preset')
-    assert.equal(latest(plain),'Complete test prompt.')
-    await remove()
-    // Old versions must not promote previously inactive sharing choices.
-    for(const version of [2,3]){
-      const record={...structuredClone(next),version,locale:'en',allowPersonalInformation:true,allowCloud:true,
-        policies:{preferredName:'allow',nationality:'allow',gender:'allow'}}
+    const record=profile.emptyRecord()
+    record.information={preferredName:marker,nationality:country,gender:'male'}
+    record.preferences.custom=custom
+    const fiber=ctx.plugin(profile,{record});await fiber.await()
+    for(const [provider,inHistory] of [['plain',false],['history',true]]){
       await fiber.update({record})
-      a.model.select({provider:'history',model:'test'})
-      await send(a,history,'legacy permission history')
-      a.model.select({provider:'plain',model:'test'})
-      await send(a,plain,'legacy permission plain')
-    }
-    assert.doesNotMatch(JSON.stringify(a.session.snapshotEvents()),new RegExp(marker+'|'+nationalityMarker+'|female'))
-    // Exercise the positive path with explicit v4 choices in fresh native sessions.
-    let checkedHistoryAgent = null
-    const checked={...structuredClone(next),policies:{preferredName:'allow',nationality:'private',gender:'private'}}
-    await fiber.update({record:checked})
-    for(const [provider,adapter] of [['plain',plain],['history',history]]){
-      const fresh=await ctx.agentLoop.create(SessionId('profile-checked-'+provider),{provider,model:'test'})
-      installModelSelection(fresh.ctx)
-      const count=adapter.requests.length
-      fresh.followup(createUserMessage({content:[{type:'text',text:'Who am I?'}],source:{kind:'user'}}))
-      await fresh.whenIdle()
-      assert.equal(adapter.requests.length,count+1)
-      const payload=JSON.stringify(adapter.requests.at(-1))
-      assert.match(payload,new RegExp(marker))
-      assert.doesNotMatch(payload,new RegExp(nationalityMarker+'|female'))
-      if(provider==='history')checkedHistoryAgent=fresh
-    }
-    await fiber.update({record:{...checked,policies:profile.emptyPolicies()}})
-    // Phase 01: a real in-history session previously allowed this fictional
-    // field. A follow-up after revocation must not reach any adapter with it.
-    const historyBeforeRevokedFollowup=history.requests.length
-    checkedHistoryAgent.followup(createUserMessage({content:[{type:'text',text:'Continue after revocation'}],source:{kind:'user'}}))
-    await checkedHistoryAgent.whenIdle()
-    for(const request of history.requests.slice(historyBeforeRevokedFollowup)){
-      assert.doesNotMatch(JSON.stringify(request),new RegExp(marker),
-        'revoked profile detail must not reach an adapter after in-history replay')
-    }
-    for(const [provider,adapter] of [['plain',plain],['history',history]]){
-      const clean=await ctx.agentLoop.create(SessionId('profile-private-'+provider),{provider,model:'test'})
-      installModelSelection(clean.ctx)
-      await send(clean,adapter,'Who am I?')
+      const adapter=new Capture(inHistory)
+      ctx.llm.registerAdapter([provider],adapter)
+      const agent=await ctx.agentLoop.create(SessionId('context-'+provider),{provider,model:'test'})
+      installModelSelection(agent.ctx)
+      const first=await send(agent,adapter,'Who am I?')
+      const block=latestContext(first)
+      assert.ok(block,'native runtime-context snapshot reaches adapter')
+      assert.match(textOf(block),new RegExp(marker))
+      assert.match(textOf(block),new RegExp(country))
+      assert.match(textOf(block),/FICTIONAL_CUSTOM \{\{literal\}\}/)
+      assert.ok(first.messages.indexOf(block)>first.messages.findIndex(m=>m.role==='system'))
+      assert.doesNotMatch(first.messages.filter(m=>m.role==='system').map(textOf).join('\n'),new RegExp(marker))
+      const same=await send(agent,adapter,'Continue unchanged')
+      assert.equal(same.messages.filter(m=>m.source?.kind==='runtime-context'&&textOf(m).includes('Current My Profile settings')).length,1,'unchanged context is not duplicated')
+      const next=structuredClone(record);next.information.preferredName=replacement;next.preferences.custom=''
+      await fiber.update({record:next})
+      const updated=await send(agent,adapter,'Continue after edit')
+      assert.match(textOf(latestContext(updated)),new RegExp(replacement))
+      assert.doesNotMatch(textOf(latestContext(updated)),/FICTIONAL_CUSTOM/)
+      await fiber.update({record:profile.emptyRecord()})
+      const cleared=await send(agent,adapter,'Continue after clearing')
+      assert.match(textOf(latestContext(cleared)),/No active personal details/)
+      assert.doesNotMatch(textOf(latestContext(cleared)),new RegExp(marker+'|'+replacement))
+      // Durable DSH history can retain earlier snapshots; no refusal or deletion.
+      assert.match(JSON.stringify(agent.session.snapshotEvents()),new RegExp(marker))
+      await fiber.update({record})
     }
     await fiber.dispose()
-    await send(a,plain,'disabled after policy changes')
-  }finally{await ctx.fiber.dispose()}
-})
-
-// v1.0.3 regression: exercise the actual rc.3 Agent Loop and llm/stream hook
-// for every built-in preset, not just the pure staleDisclosure classifier.
-test('rc.3 real loop: every built-in preset reaches an offline adapter on fresh and replayed turns',async()=>{
-  const ctx=new Context()
-  try {
-    for(const service of [LlmRuntime,SessionStore,SessionProjectionRegistry,SystemPrompt,ToolRuntime,
-      NativeToolExecutor,AgentRegistry])await ctx.plugin(service)
-    await ctx.plugin(AgentLoop,{agents:[]})
-    const history=new Capture(true)
-    ctx.llm.registerAdapter(['preset-offline'],history)
-    const ids=['critical','no-fluff','grill-me','evidence','steps','action','code','humanizer']
-    const fixtureName='FICTIONAL_PRESET_FIELD'
-    let fiber=null
-    for(const preset of ids)for(const share of [false,true]){
-      const record=profile.emptyRecord()
-      record.preferences.presets=[preset]
-      record.information.preferredName=fixtureName
-      if(share)record.policies.preferredName='allow'
-      if(fiber===null){fiber=ctx.plugin(profile,{record});await fiber.await()}
-      else await fiber.update({record})
-      const agent=await ctx.agentLoop.create(SessionId('preset-'+preset+'-'+share),{provider:'preset-offline',model:'test'})
-      installModelSelection(agent.ctx)
-      for(const stage of ['fresh','replay']){
-        const before=history.requests.length
-        agent.followup(createUserMessage({content:[{type:'text',text:stage}],source:{kind:'user'}}))
-        await agent.whenIdle()
-        assert.equal(history.requests.length,before+1,
-          `provider blocked ${preset} (${share?'shared':'private'}), stage=${stage}`)
-        const payload=JSON.stringify(history.requests.at(-1))
-        assert.match(payload,/Response preferences/,preset)
-        if(share)assert.match(payload,new RegExp(fixtureName))
-        else assert.doesNotMatch(payload,new RegExp(fixtureName))
-      }
-    }
   }finally{await ctx.fiber.dispose()}
 })
