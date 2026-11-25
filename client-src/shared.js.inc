@@ -1,3 +1,4 @@
+    const border = '1px solid rgba(128,128,128,.27)'
     function Icon({ size = 18, active = false }) {
       return suiteGlyph('environment-context', size, { opacity: active ? 1 : .85, display: 'block' })
     }
