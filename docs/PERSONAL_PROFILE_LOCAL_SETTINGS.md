@@ -1,4 +1,4 @@
-# My Profile — Settings and privacy contract (v1.0.0)
+# My Profile — Settings and privacy contract (current contract)
 
 My Profile is optional and disabled by default. The page appears under **Settings → My Profile**, not the main sidebar. It uses one native settings record across Workspaces of the active Harness Profile.
 
@@ -12,7 +12,7 @@ Preferred name, nationality and gender are on one page, each beside an independe
 
 ## Agent Instructions
 
-Response preferences, style, language, traits, presets and custom instructions are unchanged. Editing or restoring custom instructions clears their separate sending consent.
+Response preferences include style, language, traits, presets and custom instructions. Editing or restoring custom instructions clears their separate sending consent.
 
 ## Compatibility and storage
 
@@ -28,4 +28,4 @@ Exports contain the current draft, including unsaved information, instructions a
 
 The plugin contributes to supported native agent steps only. While My Profile is enabled, the send-time guard refuses recognizable earlier Profile details or custom instructions that current saved choices no longer authorize. This does not erase information from previously sent messages, provider systems, logs, stored history, summaries, files, or other sources. A new clean Workspace/session should receive only current checked fields from this plugin; this is not a promise of global Workspace isolation.
 
-Use synthetic values and a disposable Desktop Profile to check saved and unsaved checkbox changes, new conversations, switching providers, retries, restart, backup and rollback. Verify outgoing request contents where permitted; a model's refusal or ignorance alone does not prove exclusion. Changes for My Profile and language navigation were merged into `develop` in [PR #26](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/26) after successful cross-platform CI. Final Windows multilingual Settings checks and request-level disclosure security verification remain open; `develop` integration must not be described as stable-release acceptance.
+The owner accepted the pre-provider refusal and fresh-session privacy control for MP02; the historical provider-wire continuation test remains Blocked, not Pass. The guard recognizes known structured sections and cannot guarantee removal of arbitrary historical text. Use fictional data in disposable Profiles for verification; inspect outgoing requests where permitted rather than relying on model responses.

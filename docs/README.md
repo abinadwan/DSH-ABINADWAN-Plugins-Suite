@@ -1,111 +1,12 @@
-# Documentation index — ABINADWAN Plugins Suite
+# Documentation — ABINADWAN Plugins Suite
 
-**Release source [v1.1.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.1.0); confirm publication on [GitHub Releases](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases).**
+Current source baseline: package 1.1.0, six independently switchable components. [Published releases](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases) determine publication.
 
-## Where to start
+- [Installation and technology stack](../README.md)
+- [Six-component behavior and limitations](DETAIL.md)
+- [My Profile settings, privacy and migration](PERSONAL_PROFILE_LOCAL_SETTINGS.md)
+- [Artwork](BRANDING.md)
+- [Development and verification](../HANDOVER.md)
+- [Security](../SECURITY.md), [accessibility](../ACCESSIBILITY.md), [contributing](../CONTRIBUTING.md), [release history](../CHANGELOG.md), [third-party notices](../THIRD_PARTY_NOTICES.md).
 
-- [Root README](../README.md): installation, components and development/release distinction.
-- [v1.0.2 Desktop remediation handoff](DSH_DESKTOP_REMEDIATION_V1.0.2.md): targeted fixes, regression gates, native evidence and the blocked historical revocation case.
-- [v1.0.1 development progress tracker](DEVELOPMENT_PROGRESS_V1.0.1.md): eight phase candidates, completed/pending work, verified checks, blockers and deferred Desktop acceptance.
-- [Current feature reference](DETAIL.md): **all six** component behaviors, default states, icons, security limitations, updates, supported installations and known gaps.
-- [My Profile contract](PERSONAL_PROFILE_LOCAL_SETTINGS.md): settings and privacy rules.
-- [Historical Chat Control archive plan](research/v1.1.0/CHAT_CONTROL_ARCHIVE_MANAGEMENT.md), [native API research](research/v1.1.0/CHAT_CONTROL_NATIVE_API_RESEARCH.md), [implementation report](research/v1.1.0/CHAT_CONTROL_ARCHIVE_IMPLEMENTATION_REPORT.md) and [Archive Manager Phase 09](research/v1.1.0/ARCHIVE_MANAGER_PHASE09.md).
-- [Archived deletion research](research/v1.1.0/CHAT_CONTROL_DELETION_PLUGIN_ONLY_PHASE01.md) — historical evidence only; not an enabled feature.
-- [Changelog](../CHANGELOG.md), [handover](../HANDOVER.md) and [security policy](../SECURITY.md) for implementation history, acceptance and threat boundaries.
-
-## Documentation audit — 2026-11-21
-
-The earlier audit examined **43 existing Markdown files** under `docs/` (before adding this index). All were related to the repository; none warranted permanent deletion. A later organization pass moved **15 superseded research and planning records** to [`archive/`](archive/README.md) without losing their contents or Git history. [`research/`](research/README.md) retains four useful technical reference reports plus original desktop-contract evidence JSON. The archives are **historical**, not instructions for the current implementation.
-
-The root README covers technology and installation. [DETAIL.md](DETAIL.md) covers the six components and their limitations. Historical reports retain their original version and test evidence.
-
-## Current reader-facing documentation
-
-These pages describe the current development contracts. Use the published stable release tag for release-specific documentation.
-
-| File | Reason to keep |
-| --- | --- |
-| [DETAIL.md](DETAIL.md) | Canonical six-component feature/limitations reference |
-| [PERSONAL_PROFILE_LOCAL_SETTINGS.md](PERSONAL_PROFILE_LOCAL_SETTINGS.md) | Current My Profile interface, sharing and backup rules |
-| [SETTINGS_NAVIGATION_NAMES_2026_11_21.md](SETTINGS_NAVIGATION_NAMES_2026_11_21.md) | My Profile / Chat Control navigation, localization and compatibility decision |
-| [BRANDING.md](BRANDING.md) | Suite and component icon provenance |
-| [NEW_PLUGINS_BRANDING.md](NEW_PLUGINS_BRANDING.md) | Direct Chat, Chat Control and Adaptive Reasoning artwork |
-
-## Personal Profile: superseded designs and original plans
-
-These explain decisions already abandoned or replaced. They are **not** instructions to reimplement encryption, old sidebar controls, global consent switches or old storage models.
-
-| File | Reason to keep |
-| --- | --- |
-| [PERSONAL_PROFILE_PHASE1.md](PERSONAL_PROFILE_PHASE1.md) | Superseded data and permission design |
-| [PERSONAL_PROFILE_PHASE2.md](PERSONAL_PROFILE_PHASE2.md) | Superseded in-memory consent design |
-| [PERSONAL_PROFILE_PHASE3.md](PERSONAL_PROFILE_PHASE3.md) | Superseded agent-instruction design |
-| [PERSONAL_PROFILE_PHASE4.md](PERSONAL_PROFILE_PHASE4.md) | Superseded UI prototype and screenshots |
-| [PERSONAL_PROFILE_PHASE5.md](PERSONAL_PROFILE_PHASE5.md) | Superseded encrypted-storage proposal |
-| [PERSONAL_PROFILE_PHASE6A.md](PERSONAL_PROFILE_PHASE6A.md) | Synthetic integration/security exploration |
-| [PERSONAL_PROFILE_PHASE6B1.md](PERSONAL_PROFILE_PHASE6B1.md) | Synthetic Host identity exploration |
-| [PERSONAL_PROFILE_V072_CHANGE_RECORD.md](PERSONAL_PROFILE_V072_CHANGE_RECORD.md) | Historical v0.7.2 architecture and migration |
-| [PERSONAL_PROFILE_WINDOWS_ACCEPTANCE.md](PERSONAL_PROFILE_WINDOWS_ACCEPTANCE.md) | Historical 0.7.2 Windows acceptance evidence |
-
-## Personal Profile: later research, tests and acceptance evidence
-
-Version numbers and branch names below identify **historical baselines**, not the current packaged version. Preserve them so unresolved privacy findings do not disappear.
-
-| File | Reason to keep |
-| --- | --- |
-| [PERSONAL_PROFILE_PHASE7_RESEARCH.md](PERSONAL_PROFILE_PHASE7_RESEARCH.md) | Phase 7A source-contract research |
-| [PERSONAL_PROFILE_PHASE7B_CHANGE_RECORD.md](PERSONAL_PROFILE_PHASE7B_CHANGE_RECORD.md) | Phase 7B candidate integration record |
-| [PERSONAL_PROFILE_PHASE7C_PRIVACY_GATE.md](PERSONAL_PROFILE_PHASE7C_PRIVACY_GATE.md) | Phase 7C security limitation |
-| [PERSONAL_PROFILE_PHASE7D_PLAN.md](PERSONAL_PROFILE_PHASE7D_PLAN.md) | Response-preference benchmark plan/outcome |
-| [PERSONAL_PROFILE_PHASE7D_CANDIDATES.md](PERSONAL_PROFILE_PHASE7D_CANDIDATES.md) | Benchmarked instruction alternatives |
-| [PERSONAL_PROFILE_PHASE7D_BENCHMARK.md](PERSONAL_PROFILE_PHASE7D_BENCHMARK.md) | Benchmark methods, evidence and results |
-| [PERSONAL_PROFILE_PHASE7_WINDOWS_ACCEPTANCE.md](PERSONAL_PROFILE_PHASE7_WINDOWS_ACCEPTANCE.md) | Owner Windows candidate tests and still-open request-level checks |
-| [PERSONAL_PROFILE_PHASE8_AUDIT.md](PERSONAL_PROFILE_PHASE8_AUDIT.md) | Read-only recovery/privacy findings |
-| [PERSONAL_PROFILE_PHASE8_PLAN.md](PERSONAL_PROFILE_PHASE8_PLAN.md) | Owner-approved simplified disclosure decisions |
-| [PERSONAL_PROFILE_PHASE8_REPORT.md](PERSONAL_PROFILE_PHASE8_REPORT.md) | Earlier branch verification; not unconditional release approval |
-
-## Active technical research and evidence (historical baselines)
-
-Research items listed here are historical source/Host baselines that may still inform future engineering. **Only the currently implemented behavior in [DETAIL.md](DETAIL.md) is authoritative.** The Direct Chat Phase 2 acceptance record preserves owner-approved Windows behavior with deliberately deferred deep Host isolation checks.
-
-| File | Reason to keep |
-| --- | --- |
-| [research/SECURITY_CODE_AUDIT_2026_11_22.md](research/SECURITY_CODE_AUDIT_2026_11_22.md) | Source-level Direct Chat and My Profile hardening review; known unverified Host boundaries |
-| [research/CHAT_CONTROL_ADAPTIVE_DIRECT_CHAT_V2.md](research/CHAT_CONTROL_ADAPTIVE_DIRECT_CHAT_V2.md) | Consolidated feature matrix, API limitations and Desktop acceptance checklist |
-| [research/ADAPTIVE_REASONING_HANDOVER.md](research/ADAPTIVE_REASONING_HANDOVER.md) | Original adaptive reasoning implementation and limitations |
-| [research/new-plugins-desktop-evidence.json](research/new-plugins-desktop-evidence.json) | Original 2026-11-18 read-only DSH Desktop/SDK contract inventory (data, not current runtime assurance) |
-| [archive/research/DIRECT_CHAT_GLOBAL_CHAT_PHASE1.md](archive/research/DIRECT_CHAT_GLOBAL_CHAT_PHASE1.md) | First native Direct Chat replacement checks |
-| [research/DIRECT_CHAT_PHASE2_DESKTOP_ACCEPTANCE.md](research/DIRECT_CHAT_PHASE2_DESKTOP_ACCEPTANCE.md) | Owner-accepted Phase 2 and open security boundaries |
-| [research/NEW_PLUGINS_PHASE_A.md](research/NEW_PLUGINS_PHASE_A.md) | Initial feasibility/DSH contract research |
-| [archive/research/NEW_PLUGINS_PHASE_C.md](archive/research/NEW_PLUGINS_PHASE_C.md) | Delete/retention feasibility research |
-| [archive/research/NEW_PLUGINS_PHASE_C_CONTINUATION.md](archive/research/NEW_PLUGINS_PHASE_C_CONTINUATION.md) | Native Settings and Desktop contracts |
-| [archive/research/NEW_PLUGINS_PHASE_C_UI_CORRECTION.md](archive/research/NEW_PLUGINS_PHASE_C_UI_CORRECTION.md) | Historical UI correction/screenshots |
-| [archive/research/NEW_PLUGINS_PHASE_D.md](archive/research/NEW_PLUGINS_PHASE_D.md) | Core functionality design and evidence |
-| [archive/research/NEW_PLUGINS_PHASE_D2.md](archive/research/NEW_PLUGINS_PHASE_D2.md) | Old QA-only Direct Chat companion prototype |
-| [archive/research/NEW_PLUGINS_PHASE_D3.md](archive/research/NEW_PLUGINS_PHASE_D3.md) | Old companion/LPAC work, not current architecture |
-| [research/SUITE_AUTO_UPDATE_FEASIBILITY.md](research/SUITE_AUTO_UPDATE_FEASIBILITY.md) | Future unattended updates only; current update-now flow is in DETAIL.md |
-
-## Superseded research, QA prototypes and implementation plans
-
-These superseded research reports and implementation plans are project-related, but have been relocated into `docs/archive`. Do not follow their commands or use their experimental capability claims without comparing with the current source, Host and requirements.
-
-| File | Reason to keep |
-| --- | --- |
-| [archive/superpowers/plans/2026-11-16-personal-profile-consent.md](archive/superpowers/plans/2026-11-16-personal-profile-consent.md) | Historical consent plan |
-| [superpowers/plans/2026-11-16-personal-profile-instructions.md](archive/superpowers/plans/2026-11-16-personal-profile-instructions.md) | Historical instructions plan |
-| [superpowers/plans/2026-11-16-personal-profile-integration.md](archive/superpowers/plans/2026-11-16-personal-profile-integration.md) | Historical integration plan |
-| [superpowers/plans/2026-11-16-personal-profile-phase1.md](archive/superpowers/plans/2026-11-16-personal-profile-phase1.md) | Historical Phase 1 plan |
-| [superpowers/plans/2026-11-16-personal-profile-storage.md](archive/superpowers/plans/2026-11-16-personal-profile-storage.md) | Historical storage plan |
-| [superpowers/plans/2026-11-16-personal-profile-ui.md](archive/superpowers/plans/2026-11-16-personal-profile-ui.md) | Historical UI plan |
-| [superpowers/plans/2026-11-18-new-plugins.md](archive/superpowers/plans/2026-11-18-new-plugins.md) | Historic new-plugin implementation plan |
-| [superpowers/specs/2026-11-18-new-plugins-design.md](archive/superpowers/specs/2026-11-18-new-plugins-design.md) | Historic conditional Phase B specification |
-
-## Rules for maintaining this directory
-
-1. Update `DETAIL.md` and the root README when observable component behavior, supported UI names, defaults, storage, backup formats or release policy change.
-2. New historical QA reports must say which branch/commit/Host was actually tested and which gates remain open. Do not retroactively convert proposals into proof.
-3. Keep internal identifiers and persistent setting namespaces separate from public labels **My Profile** and **Archive Manager** (formerly Chat Control).
-4. Preserve prior Desktop/security evidence even if the old implementation was removed. Label it historical and link the current architecture instead of silently erasing risk decisions.
-5. Confirm relative Markdown links and all seven component/suite icon files exist. Refer to the published v1.0.0 release by its verified full commit SHA and disclose outstanding Host/Desktop security acceptance limits instead of assuming all validation gates passed.
-
-Documentation/packaging checks run in repository CI alongside `npm test` and `npm run check:package`. The archived files are not published as runtime capabilities. Read [research classification](research/README.md) and [archive README](archive/README.md) before using an old design.
+Active documentation describes implemented behavior and known constraints. Do not add speculative designs, retired experiments, historical phase reports or future roadmaps to the checkout. Git history retains prior revisions.

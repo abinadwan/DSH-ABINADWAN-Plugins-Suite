@@ -95,6 +95,7 @@ cd DSH-ABINADWAN-Plugins-Suite
 git switch -c feature/your-change origin/develop
 npm ci --ignore-scripts
 npm test
+npm run check:regression
 npm run check:package
 ```
 
@@ -104,9 +105,9 @@ npm run check:package
 
 ## Documentation and project policy
 
-- [Archive Manager](docs/DETAIL.md#chat-control) and [native API research](docs/research/v1.1.0/CHAT_CONTROL_NATIVE_API_RESEARCH.md).
+- [Archive Manager](docs/DETAIL.md#chat-control).
 - [Component functionality, constraints and troubleshooting](docs/DETAIL.md)
-- [Documentation index and historical archive](docs/README.md)
+- [Current documentation index](docs/README.md)
 - [Release history](CHANGELOG.md) · [Security policy](SECURITY.md) · [Third-party notices](THIRD_PARTY_NOTICES.md)
 - [Accessibility commitment and reporting barriers](ACCESSIBILITY.md)
 - [Artwork provenance](docs/BRANDING.md) · [License](LICENSE)

@@ -9,7 +9,7 @@ All notable changes are documented here.
 - Add a bilingual archive hub in the native sidebar and full main panel with authorized metadata search, filters and sorting. Confirmed restore uses the native DSH workspace command after live access and protection checks.
 - Carry forward the Direct Chat metadata history and tool-denial hardening, My Profile replay/privacy guard improvements and v1.0.3 preset fix, and Adaptive Reasoning opt-in recommendations and Profile-local statistics from the develop integration.
 - Owner reports the current Archive Manager works well and approves release; this does not establish exhaustive Desktop security verification. Automatic native sidebar filtering and permanent deletion are deferred. Historical deletion research is archived, not merged as product code.
-- Track automated and Desktop evidence in the [archive implementation report](docs/research/v1.1.0/CHAT_CONTROL_ARCHIVE_IMPLEMENTATION_REPORT.md) and [Phase 09](docs/research/v1.1.0/ARCHIVE_MANAGER_PHASE09.md).
+- Track automated and Desktop evidence in the [archive implementation report](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/98c27e87e216f11000ab92adcb79d51388031a28/docs/research/v1.1.0/CHAT_CONTROL_ARCHIVE_IMPLEMENTATION_REPORT.md) and [Phase 09](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/98c27e87e216f11000ab92adcb79d51388031a28/docs/research/v1.1.0/ARCHIVE_MANAGER_PHASE09.md).
 
 ## [1.0.3] — Released (2026-11-24)
 
@@ -19,7 +19,7 @@ All notable changes are documented here.
 
 ## [1.0.2] — Released (2026-11-23)
 
-- Added keyboard arrow, Home and End navigation to My Profile tabs. Native Windows acceptance and owner-approved release-scope dispositions are recorded in [the final acceptance report](docs/DSH_DESKTOP_NATIVE_FINAL_ACCEPTANCE_V1.0.2.md); historical native `FAIL`/`BLOCKED` evidence is retained.
+- Added keyboard arrow, Home and End navigation to My Profile tabs. Native Windows acceptance and owner-approved release-scope dispositions are recorded in [the final acceptance report](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/98c27e87e216f11000ab92adcb79d51388031a28/docs/DSH_DESKTOP_NATIVE_FINAL_ACCEPTANCE_V1.0.2.md); historical native `FAIL`/`BLOCKED` evidence is retained.
 - Localize the Direct Chat action and retry feedback and the Adaptive Reasoning recommendation dialog in Arabic. Keep keyboard focus on the Direct Chat action during preparation.
 - Suppress Adaptive Reasoning acknowledgements from an earlier provider/model route or connection.
 
@@ -45,7 +45,7 @@ All notable changes are documented here.
 ### Earlier development changes integrated into this release
 
 - My Profile interface languages (2026-11-21): new v4 profiles default to **Follow DSH** (`auto`), subscribing to the DSH Locale service; users may override the plugin interface independently in English, Arabic, Chinese, Spanish, French, German or Japanese and Save. Existing saved `en`/`ar` are retained. Automatic and added locale modes export v4 backups to round-trip correctly; explicit English/Arabic still export compatible v2. Response language remains separate. Regression tests cover Host switching, manual overrides, seven locales, and export format.
-- Settings navigation cleanup (2026-11-21): **Personal Profile → My Profile**, moving its editor from the main left sidebar to native **Settings** via `settings.section` and `settings.section.icon`; **Conversation Lifecycle → Chat Control** in Settings, its page heading and the plugin/component metadata. Stable Host module IDs, storage namespaces, existing saved records, access defaults, and enablement are unchanged. Export compatibility for newly added language modes is described above. Coverage: Settings visibility/disposal, metadata names, profile renderer and existing behavior. [Change record](docs/SETTINGS_NAVIGATION_NAMES_2026_11_21.md).
+- Settings navigation cleanup (2026-11-21): **Personal Profile → My Profile**, moving its editor from the main left sidebar to native **Settings** via `settings.section` and `settings.section.icon`; **Conversation Lifecycle → Chat Control** in Settings, its page heading and the plugin/component metadata. Stable Host module IDs, storage namespaces, existing saved records, access defaults, and enablement are unchanged. Export compatibility for newly added language modes is described above. Coverage: Settings visibility/disposal, metadata names, profile renderer and existing behavior. [Change record](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/98c27e87e216f11000ab92adcb79d51388031a28/docs/SETTINGS_NAVIGATION_NAMES_2026_11_21.md).
 - Direct Chat Phase 2 uses one persistent Workspace, native Sessions and Host tool-denial policy. Owner Windows functional acceptance was recorded; deep Host request security and filesystem isolation were deferred. Historical LPAC/AppContainer companion exploration is **not** shipped in this design.
 - My Profile current development behavior: one My Information page with three independent Available to agent checkboxes, no Ask First or global/cloud switches; v4 native settings, compatible v2 exports for explicit English/Arabic and v4 exports for Follow DSH/other UI locales; legacy choices start private and imports review consent. Checked saved fields enter supported native agent prompts. Recognizable unauthorized replay remains gated. Desktop acceptance pending.
 - Adaptive Reasoning keeps manual effort and a single Host. Temporary effort and unsupported subagent policies stay unavailable on Harness rc.3 and rc.5.
@@ -58,13 +58,13 @@ All notable changes are documented here.
 - Fail-closed structured personal-information exclusion across every policy combination and route. Positive disclosure remains blocked; no claim that old model history can be erased.
 - Offline real Harness rc.3 integration tests, Windows/Linux Node 22/24 matrix and packaging checks.
 - Version-dependent tests now derive expected UI versions from the manifest; source lockfile checks run before packaging and extracted-artifact checks remain independent of source-only files.
-- Owner-reported Windows functional results and actual rollback to 0.7.2 recorded in [Phase 7 Desktop acceptance](docs/PERSONAL_PROFILE_PHASE7_WINDOWS_ACCEPTANCE.md). Remaining checks, including actual outgoing-request evidence, are explicitly open.
-- Phase 7D response-preference wording: the selected language is followed even when the user writes in another language (explicit requests still win), and Creative, Grill-Me and low-warmth instructions are stronger. The changes were benchmarked on local models with held-out checks. Code Reviewer and Humanizer are unchanged. Details: [Phase 7D plan](docs/PERSONAL_PROFILE_PHASE7D_PLAN.md).
-- No stable update offer until remaining acceptance gates are resolved and a stable release is explicitly approved. Structured disclosure remains deferred to [Phase 8](docs/PERSONAL_PROFILE_PHASE8_PLAN.md).
+- Owner-reported Windows functional results and actual rollback to 0.7.2 recorded in [Phase 7 Desktop acceptance](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/98c27e87e216f11000ab92adcb79d51388031a28/docs/PERSONAL_PROFILE_PHASE7_WINDOWS_ACCEPTANCE.md). Remaining checks, including actual outgoing-request evidence, are explicitly open.
+- Phase 7D response-preference wording: the selected language is followed even when the user writes in another language (explicit requests still win), and Creative, Grill-Me and low-warmth instructions are stronger. The changes were benchmarked on local models with held-out checks. Code Reviewer and Humanizer are unchanged. Details: [Phase 7D plan](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/98c27e87e216f11000ab92adcb79d51388031a28/docs/PERSONAL_PROFILE_PHASE7D_PLAN.md).
+- No stable update offer until remaining acceptance gates are resolved and a stable release is explicitly approved. Structured disclosure remains deferred to [Phase 8](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/98c27e87e216f11000ab92adcb79d51388031a28/docs/PERSONAL_PROFILE_PHASE8_PLAN.md).
 
 ## [0.7.2] — Released
 
-Personal Profile redesign approved by the owner after Windows Desktop review of 0.7.1. Native Harness persistence and revision-checked writes are unchanged. Details: [0.7.2 change record](docs/PERSONAL_PROFILE_V072_CHANGE_RECORD.md).
+Personal Profile redesign approved by the owner after Windows Desktop review of 0.7.1. Native Harness persistence and revision-checked writes are unchanged. Details: [0.7.2 change record](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/98c27e87e216f11000ab92adcb79d51388031a28/docs/PERSONAL_PROFILE_V072_CHANGE_RECORD.md).
 
 ### Changed
 
