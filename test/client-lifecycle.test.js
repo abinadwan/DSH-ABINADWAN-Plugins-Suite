@@ -84,7 +84,7 @@ test('Profile component detail explains native settings without collecting input
   assert.ok(walk(tree, x => x.props?.['data-personal-profile-draft'] === ''))
   assert.equal(walk(tree, x => ['input', 'textarea', 'select', 'form'].includes(x.type)), null)
   const text = JSON.stringify(tree)
-  for (const label of ['Preferred name','Nationality','Gender','Custom Instructions','Private','Only saved personal details you explicitly allow']) assert.ok(text.includes(label), label)
+  for (const label of ['Preferred name','Nationality','Gender','Custom Instructions','Saved nonempty details','local and cloud models']) assert.ok(text.includes(label), label)
   app.setRows([])
   await app.changed()
   assert.equal(app.slots.records.has('abinadwan-profile-draft'), false)
