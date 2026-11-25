@@ -2,11 +2,20 @@
 
 All notable changes are documented here.
 
-## [Unreleased] — v1.1.0 development
+## [1.1.0] — release source (2026-11-25)
 
-- Development candidate: `1.1.0-rc.1`. This is not a published stable release.
-- Planned: safe permanent Session deletion, archive cleanup and measured disk-reclamation reporting in Chat Control, subject to a supported/reviewed DSH deletion contract, confirmation, authorization and recovery evidence. **Not implemented yet.**
-- The published stable `v1.0.2` retains preview-only retention and remains unchanged.
+- Align package, lockfile and browser update metadata at `1.1.0`. Publication is a separate GitHub Release action; the owner approved the release scope on 2026-11-25.
+- Rebrand Chat Control as **Archive Manager** and remove its Settings section and preview-only retention/cleanup controls (including the Direct Chat preview). Preserve the internal module ID and existing records. Manage plugin-scoped protection directly on the archive page; DSH owns its native sidebar visibility.
+- Add a bilingual archive hub in the native sidebar and full main panel with authorized metadata search, filters and sorting. Confirmed restore uses the native DSH workspace command after live access and protection checks.
+- Carry forward the Direct Chat metadata history and tool-denial hardening, My Profile replay/privacy guard improvements and v1.0.3 preset fix, and Adaptive Reasoning opt-in recommendations and Profile-local statistics from the develop integration.
+- Owner reports the current Archive Manager works well and approves release; this does not establish exhaustive Desktop security verification. Automatic native sidebar filtering and permanent deletion are deferred. Historical deletion research is archived, not merged as product code.
+- Track automated and Desktop evidence in the [archive implementation report](docs/research/v1.1.0/CHAT_CONTROL_ARCHIVE_IMPLEMENTATION_REPORT.md) and [Phase 09](docs/research/v1.1.0/ARCHIVE_MANAGER_PHASE09.md).
+
+## [1.0.3] — Released (2026-11-24)
+
+- **My Profile hotfix:** Fix the preset instruction catalog mismatch that rejected all eight built-in behavior presets as unauthorized custom instructions, returning `INVALID_REQUEST` even in fresh chats. Recognize the same instruction element used by the renderer while preserving historical sharing revocation checks.
+- Add source-level and pinned DSH Agent Loop regressions with synthetic profile fields for every preset, fresh and historical model requests, explicit field permissions, edited/revoked fields, custom-text consent and Windows/Unicode line endings.
+- Align suite, lockfile, client update metadata and release documentation with the patch version. No new profile fields or data migration; this change does not guarantee a local model will follow injected instructions.
 
 ## [1.0.2] — Released (2026-11-23)
 

@@ -7,7 +7,7 @@ import { runInNewContext } from 'node:vm'
 // Read production predicates, not an independent implementation of catalog authorization.
 const source = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
 const start = source.indexOf('    const catalogReady =')
-const end = source.indexOf('    function CleanupPreview', start)
+const end = source.indexOf('    function retentionRows(', start)
 assert.ok(start > 0 && end > start)
 const { catalogReady, conversationInventory } = runInNewContext(
   "const lifecycleDurations = ['365', '180', '90', '30', '7'];\n" +

@@ -405,7 +405,8 @@ test('native Settings persists new feature preferences and rejects a stale numer
   const lifecycleId = 'abinadwan-conversation-lifecycle'
   const reasoningId = 'abinadwan-adaptive-reasoning'
   const retention = { retention: '30', overrides: [], protectedIds: ['fixture'] }
-  const migratedRetention = { ...retention, protectedWorkspaces: [] }
+  const migratedRetention = { ...retention, protectedWorkspaces: [], hideArchived: true }
+  const savedRetention = { ...migratedRetention, hideArchived: false }
   const preferences = [{ ...route, effort: 'deliberate-v2' }]
   let ctx = await start()
   try {
@@ -413,6 +414,7 @@ test('native Settings persists new feature preferences and rejects a stale numer
     const reasoning = describe(ctx, reasoningId)
     assert.equal(lifecycle.autoGenerate, false)
     assert.equal(lifecycle.value.record.retention, 'forever')
+    assert.equal(lifecycle.value.record.hideArchived, true)
     assert.equal(reasoning.autoGenerate, false)
     assert.deepEqual(reasoning.value.record.preferences, [])
     assert.ok(Number.isSafeInteger(lifecycle.revision))
@@ -422,6 +424,7 @@ test('native Settings persists new feature preferences and rejects a stale numer
     assert.ok(changed.revision > lifecycle.revision)
     await assert.rejects(ctx.settings.replace(lifecycle.ns, { record: { retention: '7' } }, lifecycle.revision),
       { name: 'SettingsConflictError' })
+    await ctx.settings.replace(lifecycle.ns, { record: savedRetention }, changed.revision)
     await ctx.settings.replace(reasoning.ns, { record: { preferences } }, describe(ctx, reasoningId).revision)
     const persisted = await readFile(patchPath, 'utf8')
     assert.match(persisted, /deliberate-v2/)
@@ -429,7 +432,7 @@ test('native Settings persists new feature preferences and rejects a stale numer
     await ctx.fiber.dispose()
 
     ctx = await start()
-    assert.deepEqual(describe(ctx, lifecycleId).value.record, migratedRetention)
+    assert.deepEqual(describe(ctx, lifecycleId).value.record, savedRetention)
     assert.deepEqual(describe(ctx, reasoningId).value.record.preferences, preferences)
   } finally {
     await ctx.fiber.dispose()

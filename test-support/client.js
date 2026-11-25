@@ -242,14 +242,60 @@ export async function clientHarness(options = {}) {
   const settings=options.settings||{describe:()=>Promise.resolve(refused('access/denied','not available')),replace:()=>Promise.resolve(refused('access/denied','not available'))}
   await ctx.plugin({name:'remote.settings',apply:child=>{new SettingsRemote(child,settings)}})
   const sessions = observable(options.sessions || sessionSnapshot())
+  const host = observable({ id: 1, host: { home: 'C:/Fixture' } })
+  ctx.provide('connection', { generation: host })
+  const sessionAccess = observable(options.sessionAccess ?? true)
+  ctx.provide('uiSession', { whenAccess(id, action, callback) {
+    if (typeof id !== 'string' || action !== 'workspace/unarchiveSession') throw new Error('Unexpected Session access query')
+    let effects = []
+    const dispose = () => { effects.splice(0).reverse().forEach(effect => effect()) }
+    const update = () => {
+      dispose()
+      if (sessionAccess.getSnapshot()) {
+        const installed = callback()
+        effects = typeof installed === 'function' ? [installed] : [...installed]
+      }
+    }
+    update()
+    const unsubscribe = sessionAccess.subscribe(update)
+    return () => { unsubscribe(); dispose() }
+  } })
   const workspaces = new HostWorkspaceModel({
     items: options.workspaceItems || [{ workspaceId: 'w', title: 'HomeBook', path: 'C:/Work/HomeBook', sessionIds: ['s1'] }],
-    archivedSessionIds: options.archivedSessionIds ?? [], pinnedSessionIds: [], state: 'idle', phase: 'ready', error: null,
+    archivedSessionIds: options.archivedSessionIds ?? [], pinnedSessionIds: options.pinnedSessionIds ?? [], state: 'idle', phase: 'ready', error: null,
   })
+  class WorkspaceRemote extends Service {
+    constructor(ctx) { super(ctx, 'remote.workspace') }
+    async * follow(signal) {
+      const baseline = await options.readArchiveWorkspaces?.(signal) ?? workspaces.getSnapshot()
+      yield { type: 'baseline', value: baseline }
+    }
+  }
+  class SessionRemote extends Service {
+    constructor(ctx) { super(ctx, 'remote.session') }
+    async list(_request, signal) {
+      if (options.readArchiveSessions) {
+        const result = await options.readArchiveSessions(signal)
+        if (result) return result
+      }
+      const snapshot = sessions.getSnapshot()
+      return ok({ items: (snapshot.ids ?? []).flatMap(id => {
+        const row = snapshot.byId[id]
+        if (!row) return []
+        const values = { ...row.projectionValues, ...snapshot.projectionsBySession?.[id]?.values }
+        values.title ??= row.title ?? row.displayTitle
+        values.agentPreset ??= row.agentPreset
+        return [{ ...row, sessionId: row.id, projections: { kind: 'cached', asOfSeq: 0, values } }]
+      }) })
+    }
+  }
+  await ctx.plugin({ name: 'remote.workspace', apply: child => { new WorkspaceRemote(child) } })
+  await ctx.plugin({ name: 'remote.session', apply: child => { new SessionRemote(child) } })
   ctx.provide('sessions', { list: sessions, refresh: options.refresh || (async () => {}), subagentAddress: () => undefined,
     binding: id => options.sessionBinding?.(id), using: options.onSessionUsing })
   ctx.provide('workspaces', {
     list: workspaces,
+    unarchiveSession: options.onUnarchive,
     create: input => options.onWorkspaceCreate?.(input) ?? { workspaceId: 'direct-workspace', path: input.path, title: 'Direct Chat' },
     rename: (id, title) => options.onWorkspaceRename?.(id, title) ?? Promise.resolve({ workspaceId: id, title }),
     delete: id => options.onWorkspaceDelete?.(id) ?? Promise.resolve(),
@@ -307,7 +353,7 @@ export async function clientHarness(options = {}) {
   await tick()
   return {
     ctx, fiber, access, slots, tabs, events: remote.events, timers, intervals, mountedListeners, hostLocale,
-    sessions, workspaces, loaded, plugin, get opened() { return opened },
+    sessions, workspaces, host, sessionAccess, loaded, plugin, get opened() { return opened },
     slot(name) { return [...slots.records.values()].find(record => record.options.name === name)?.component },
     entries(name) { return [...slots.records.values()].filter(record => record.options.name === name) },
     rows: () => rows,
