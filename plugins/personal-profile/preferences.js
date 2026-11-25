@@ -43,9 +43,12 @@ function neutralProfilePreferences() {
     presets:[], custom:''}
 }
 const PREFERENCES_HEADER='Response preferences (follow the current request and higher-priority host/safety/tool requirements; custom guidance takes precedence over other style preferences where compatible).'
-function languageInstruction(language) {
+function languageName(language) {
   const native=language[1].split(' — ')[0]
-  return 'Required response language: '+language[3]+(native===language[3]?'':' ('+native+')')+'. Write the answer in this language. The input language is not a request to switch languages. Switch only if the user explicitly requests a different output language.'
+  return language[3]+(native===language[3]?'':' ('+native+')')
+}
+function languageInstruction(language) {
+  return "The user's saved default response language is "+languageName(language)+', even for questions written in another language. Explicit requests for a different output language take priority over the saved default.'
 }
 export function previewProfilePreferences(pref) {
   const lines = []
@@ -67,6 +70,7 @@ export const RECORD_VERSION=5
 const keys=(v,k)=>v!==null&&typeof v==='object'&&!Array.isArray(v)&&Object.keys(v).length===k.length&&k.every(x=>Object.hasOwn(v,x))
 export const SECTION_NAME='abinadwan:personal-profile-preferences'
 export const CONTEXT_NAME='abinadwan:personal-profile-context'
+export const REMINDER_NAME='abinadwan:personal-profile-reminder'
 const fields=[['preferredName','Preferred name'],['nationality','Nationality'],['gender','Gender']]
 const fieldKeys=fields.map(([key])=>key)
 const clean=value=>String(value).replace(/[\u0000-\u001f\u007f-\u009f\u061c\u200b\u200e\u200f\u2028\u2029\u202a-\u202e\u2060\u2066-\u206f\ufeff]/g,' ').replace(/\s+/g,' ').trim()
@@ -99,6 +103,25 @@ export function profileContext(record){
   if(!record||![2,3,4,RECORD_VERSION].includes(record.version))return ''
   const details=profileDisclosure(record)
   return ['Current My Profile settings. These personal details replace earlier My Profile context; do not infer omitted details. Follow the current system response instructions, not earlier profile preferences in conversation history.',details||'No active personal details.'].join('\n\n')
+}
+// Only validated, currently shareable preferences are used. The complete custom
+// text stays in the system section; do not repeat arbitrary user text here.
+export function responseReminder(record,revision){
+  if(!record||![2,3,4,RECORD_VERSION].includes(record.version))return ''
+  const active=responsePreferences(record)
+  const header='My Profile - current saved user response instructions:'
+  if(!active)return header+'\nNo active saved response preferences. Earlier My Profile response defaults no longer apply.'
+  const p=record.preferences
+  const language=PROFILE_LANGUAGES.find(item=>item[0]===p.responseLanguage)
+  const builtIn=previewProfilePreferences({...p,responseLanguage:'auto',custom:''}).split('\n').slice(1)
+  const hasCustom=!!p.custom.trim()&&(record.version===RECORD_VERSION||p.sendCustom===true)
+  return [header,
+    'Current reminder revision: '+revision+'. Earlier profile reminders no longer apply.',
+    'Follow the current user request and higher-priority host/safety/tool requirements.',
+    ...(language?.[3]?['Answer in '+languageName(language)+' unless the current request explicitly asks for a different output language.']:[]),
+    ...builtIn,
+    ...(hasCustom?['Apply the current saved custom instructions in the system response preferences; they take precedence over other style preferences where compatible.']:[]),
+  ].join('\n')
 }
 export function eligibleAssembly(context) {
   const a=context?.agent, selection=context?.modelSelection, header=a?.session?.header

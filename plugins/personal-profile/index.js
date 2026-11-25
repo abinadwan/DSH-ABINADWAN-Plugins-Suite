@@ -2,8 +2,9 @@
 // transport. The active Harness Profile owns the file.
 //
 // v5 shares populated saved fields; older records retain their former scope until Save.
+import {randomBytes} from 'node:crypto'
 import z from '@deepseek-ai/schemastery'
-import { RECORD_VERSION, SECTION_NAME, CONTEXT_NAME, profileContext, responsePreferences, profileDisclosure, eligibleAssembly } from './preferences.js'
+import { RECORD_VERSION, SECTION_NAME, CONTEXT_NAME, REMINDER_NAME, profileContext, responseReminder, responsePreferences, profileDisclosure, eligibleAssembly } from './preferences.js'
 export { RECORD_VERSION } from './preferences.js'
 
 const choice = (values,initial) => z.union(values).default(initial)
@@ -67,8 +68,18 @@ export function apply(ctx,config) {
       text:context=>read(context,record=>supportsContext?responsePreferences(record):
         [responsePreferences(record),profileDisclosure(record)].filter(Boolean).join('\n\n'))})
     if(supportsContext){
+      // AssembleContext.signal is the native turn control signal. Keep the
+      // revision stable for admission refresh, retries and tool steps within
+      // that turn. A new turn renews the snapshot without a separate request.
+      const revisions=new WeakMap()
+      const revision=signal=>{
+        if(!revisions.has(signal))revisions.set(signal,randomBytes(8).toString('hex'))
+        return revisions.get(signal)
+      }
       child.systemPrompt.context({name:CONTEXT_NAME,order:1000,interpolate:false,
         text:context=>read(context,profileContext)})
+      child.systemPrompt.context({name:REMINDER_NAME,order:1100,interpolate:false,
+        text:context=>read(context,record=>responseReminder(record,revision(context.signal)))})
     }
   })
 }

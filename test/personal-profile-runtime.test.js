@@ -4,7 +4,7 @@ import {readFileSync} from 'node:fs'
 import {runInNewContext} from 'node:vm'
 import {Context,Service} from '@deepseek-ai/cordis'
 import * as profile from '../plugins/personal-profile/index.js'
-import {responsePreferences,eligibleAssembly,SECTION_NAME,CONTEXT_NAME,profileDisclosure,profileContext} from '../plugins/personal-profile/preferences.js'
+import {responsePreferences,eligibleAssembly,SECTION_NAME,CONTEXT_NAME,REMINDER_NAME,profileDisclosure,profileContext,responseReminder} from '../plugins/personal-profile/preferences.js'
 function selection(){
   const agent={session:{header:{}},options:{}}
   return {agent,scope:agent,signal:new AbortController().signal,modelSelection:{provider:'test',model:'test'}}
@@ -101,29 +101,44 @@ test('hybrid context and instructions are lifecycle-scoped, refreshed and separa
     const f=ctx.plugin(profile,{record:record()});await f.await()
     const current=()=>ctx.systemPrompt.contexts.get(CONTEXT_NAME)
     const instructions=()=>ctx.systemPrompt.sections.get(SECTION_NAME)
+    const reminder=()=>ctx.systemPrompt.contexts.get(REMINDER_NAME)
+    const turn=selection()
     assert.equal(ctx.systemPrompt.sections.size,1)
     assert.equal(instructions().interpolate,false)
     assert.match(instructions().text(selection()),/Synthetic instruction/)
     assert.doesNotMatch(instructions().text(selection()),/SYNTHETIC_NAME/)
     assert.doesNotMatch(current().text(selection()),/Synthetic instruction/)
     assert.equal(instructions().text({}),'')
-    assert.equal(ctx.systemPrompt.contexts.size,1)
+    assert.equal(ctx.systemPrompt.contexts.size,2)
     assert.equal(current().interpolate,false)
+    assert.equal(reminder().interpolate,false)
+    assert.ok(reminder().order>current().order)
+    assert.equal(reminder().text({}),'')
+    const first=reminder().text(turn)
+    assert.match(first,/current saved user response instructions/)
+    assert.match(first,/Apply the current saved custom instructions/)
+    assert.doesNotMatch(first,/Synthetic instruction|SYNTHETIC_NAME|SYNTHETIC_COUNTRY/)
+    assert.equal(reminder().text(turn),first,'same turn retains its revision')
+    assert.notEqual(reminder().text(selection()),first,'new turn renews its revision')
     assert.match(current().text(selection()),/SYNTHETIC_NAME/)
     assert.equal(current().text({}),'')
     const updated=record();updated.preferences.responseLanguage='ja'
     await f.update({record:updated})
-    assert.match(instructions().text(selection()),/Required response language: Japanese/)
-    assert.doesNotMatch(current().text(selection()),/Required response language/)
+    assert.match(instructions().text(selection()),/saved default response language is Japanese/)
+    assert.match(reminder().text(turn),/Answer in Japanese .*unless the current request explicitly asks/)
+    assert.doesNotMatch(current().text(selection()),/saved default response language|Answer in Japanese/)
     await f.update({record:profile.emptyRecord()})
     assert.equal(instructions().text(selection()),'')
+    assert.match(reminder().text(turn),/No active saved response preferences/)
+    assert.doesNotMatch(reminder().text(turn),/Japanese|Synthetic instruction|Current reminder revision/)
+    assert.equal(reminder().text(turn),reminder().text(selection()),'neutral reminders do not renew every turn')
     assert.match(current().text(selection()),/No active personal details/)
     assert.doesNotMatch(current().text(selection()),/SYNTHETIC_NAME/)
     await f.dispose()
     assert.equal(ctx.systemPrompt.contexts.size,0)
     assert.equal(ctx.systemPrompt.sections.size,0)
     await ctx.plugin(profile,{record:record()}).await()
-    assert.equal(ctx.systemPrompt.contexts.size,1)
+    assert.equal(ctx.systemPrompt.contexts.size,2)
   }finally{await ctx.fiber.dispose()}
 })
 const P7D={
@@ -132,7 +147,7 @@ const P7D={
   grill:'Before recommending a decision or plan, ask the user 2-3 specific questions about missing requirements and name the key risks.',
 }
 const P7D_HEADER='Response preferences (follow the current request and higher-priority host/safety/tool requirements; custom guidance takes precedence over other style preferences where compatible).'
-const languageLine=name=>'Required response language: '+name+'. Write the answer in this language. The input language is not a request to switch languages. Switch only if the user explicitly requests a different output language.'
+const languageLine=name=>"The user's saved default response language is "+name+', even for questions written in another language. Explicit requests for a different output language take priority over the saved default.'
 const count=(s,line)=>s.split('\n').filter(l=>l===line).length
 test('7D: adopted lines render exactly once when selected and never otherwise',()=>{
   const r=profile.emptyRecord()
@@ -164,7 +179,7 @@ test('7D: explicit languages render the native name once; English and automatic 
   r.preferences.responseLanguage='auto'
   assert.equal(responsePreferences(r),'')
   r.preferences.style='friendly'
-  assert.doesNotMatch(responsePreferences(r),/Required response language|Prefer \w+ for responses/)
+  assert.doesNotMatch(responsePreferences(r),/saved default response language|Prefer \w+ for responses/)
 })
 
 test('7D: worst-case section stays within the measured size budget',()=>{
@@ -180,7 +195,7 @@ test('7D: worst-case section stays within the measured size budget',()=>{
 
 test('custom text is active when saved, with explicit language override preserved',()=>{
   const r=record();r.preferences.responseLanguage='ja'
-  assert.match(responsePreferences(r),/Switch only if the user explicitly requests a different output language/)
+  assert.match(responsePreferences(r),/Explicit requests for a different output language take priority over the saved default/)
   assert.match(responsePreferences(r),/Synthetic instruction/)
 })
 
@@ -192,4 +207,21 @@ test('legacy registry uses one section with both kinds of content',()=>{
   assert.match(sections[0].text(selection()),/Synthetic instruction/)
   assert.match(sections[0].text(selection()),/SYNTHETIC_NAME/)
   assert.equal(sections[0].text({}),'')
+})
+
+test('reminder mirrors validated built-in preferences without copying personal or custom data',()=>{
+  const r=record()
+  Object.assign(r.preferences,{responseLanguage:'de',style:'technical',presets:['steps']})
+  r.preferences.traits.emoji=0
+  const text=responseReminder(r,'test-turn')
+  assert.match(text,/Answer in German \(Deutsch\) unless the current request explicitly asks for a different output language/)
+  assert.match(text,/Use precise technical terminology/)
+  assert.match(text,/Avoid unnecessary emoji/)
+  assert.match(text,/Break complex tasks into actionable steps/)
+  assert.match(text,/Apply the current saved custom instructions/)
+  assert.doesNotMatch(text,/SYNTHETIC_NAME|SYNTHETIC_COUNTRY|Synthetic instruction/)
+  const legacy={...r,version:4,preferences:{...r.preferences,sendCustom:false}}
+  assert.doesNotMatch(responseReminder(legacy,'test-turn'),/Apply the current saved custom instructions/)
+  assert.doesNotMatch(responseReminder({...r,preferences:{...r.preferences,style:'unknown'}},'test-turn'),/Answer in German|technical terminology|Current reminder revision/)
+  assert.equal(responseReminder({version:1},'test-turn'),'')
 })

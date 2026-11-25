@@ -43,7 +43,7 @@ Enabling the component registers the runtime Skill `abinadwan-humanizer` through
 
 **Navigation:** enable the component under Plugins, then open **Settings → My Profile**. The old main-sidebar **Personal Profile** button was removed; internal IDs and stored configuration were *not* renamed.
 
-**Information and instructions:** version 5 uses one native settings record with populated preferred name, nationality, gender, response style, language, traits, presets and custom instructions. Save makes these values available to supported local and cloud models. Empty fields and unspecified gender are omitted. DSH dynamic runtime context supplies personal details; a native system section supplies response instructions. Older registries use a combined system section. The plugin does not add a model call or block continuation.
+**Information and instructions:** version 5 uses one native settings record with populated preferred name, nationality, gender, response style, language, traits, presets and custom instructions. Save makes these values available to supported local and cloud models. Empty fields and unspecified gender are omitted. DSH dynamic runtime context supplies personal details and a turn-renewed reminder of active saved response preferences; a native system section supplies the complete response instructions. Older registries use a combined system section. The plugin does not add a model call or block continuation.
 
 **Interface language:** Follow DSH is the default; Arabic, English, Spanish, French, German, Chinese and Japanese can be selected independently of model response language.
 

@@ -628,9 +628,12 @@ window.__ModuleLoader__.load({
         presets:[], custom:''}
     }
     const PREFERENCES_HEADER='Response preferences (follow the current request and higher-priority host/safety/tool requirements; custom guidance takes precedence over other style preferences where compatible).'
-    function languageInstruction(language) {
+    function languageName(language) {
       const native=language[1].split(' — ')[0]
-      return 'Required response language: '+language[3]+(native===language[3]?'':' ('+native+')')+'. Write the answer in this language. The input language is not a request to switch languages. Switch only if the user explicitly requests a different output language.'
+      return language[3]+(native===language[3]?'':' ('+native+')')
+    }
+    function languageInstruction(language) {
+      return "The user's saved default response language is "+languageName(language)+', even for questions written in another language. Explicit requests for a different output language take priority over the saved default.'
     }
     function previewProfilePreferences(pref) {
       const lines = []
