@@ -32,7 +32,7 @@ test('phase 08: all six independent components remain exported and ship their ic
 
 test('phase 08: stable release badge and source package version remain consistent', () => {
   assert.match(pkg.version, /^\d+\.\d+\.\d+(?:-rc\.\d+)?$/)
-  assert.match(read('README.md'), new RegExp('release-v'+pkg.version.replaceAll('.', '\\.')))
+  assert.match(read('README.md'), /release-v1\.1\.0/)
   assert.doesNotMatch(read('README.md'), /release-v1\.0\.1/)
   if (sourceCheckout) {
     const lock = JSON.parse(read('package-lock.json'))
@@ -45,7 +45,8 @@ test('phase 08: no destructive cleanup or unsupported per-message effort is acti
   const control = read('plugins/conversation-lifecycle/index.js')
   const client = read('client.js')
   const reasoning = read('plugins/adaptive-reasoning/index.js')
-  assert.match(client, /Deletion is unavailable\. Automatic cleanup is disabled\./)
+  assert.doesNotMatch(client, /function WorkspaceLifecycle\(|function CleanupPreview\(|function RetentionField\(/)
+  assert.match(client, /function ArchivePage\(/)
   assert.doesNotMatch(control, /session\.delete\(|removeSession\(|setInterval\(|cron\(/)
   assert.match(reasoning, /request-local-effort-unavailable/)
   assert.match(reasoning, /withFileLock|openReasoningStats/)

@@ -2,9 +2,14 @@
 
 All notable changes are documented here.
 
-## [Unreleased]
+## [1.1.0] — release source (2026-11-25)
 
-- Next planned feature work targets v1.1.0. Safe permanent Session deletion and archived-chat cleanup are **not** available in v1.0.2 and require an approved DSH storage/deletion contract.
+- Align package, lockfile and browser update metadata at `1.1.0`. Publication is a separate GitHub Release action; the owner approved the release scope on 2026-11-25.
+- Rebrand Chat Control as **Archive Manager** and remove its Settings section and preview-only retention/cleanup controls (including the Direct Chat preview). Preserve the internal module ID and existing records. Manage plugin-scoped protection directly on the archive page; DSH owns its native sidebar visibility.
+- Add a bilingual archive hub in the native sidebar and full main panel with authorized metadata search, filters and sorting. Confirmed restore uses the native DSH workspace command after live access and protection checks.
+- Carry forward the Direct Chat metadata history and tool-denial hardening, My Profile replay/privacy guard improvements and v1.0.3 preset fix, and Adaptive Reasoning opt-in recommendations and Profile-local statistics from the develop integration.
+- Owner reports the current Archive Manager works well and approves release; this does not establish exhaustive Desktop security verification. Automatic native sidebar filtering and permanent deletion are deferred. Historical deletion research is archived, not merged as product code.
+- Track automated and Desktop evidence in the [archive implementation report](docs/research/v1.1.0/CHAT_CONTROL_ARCHIVE_IMPLEMENTATION_REPORT.md) and [Phase 09](docs/research/v1.1.0/ARCHIVE_MANAGER_PHASE09.md).
 
 ## [1.0.3] — Released (2026-11-24)
 

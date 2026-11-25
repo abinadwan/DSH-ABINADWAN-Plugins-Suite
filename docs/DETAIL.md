@@ -1,6 +1,6 @@
 # ABINADWAN Plugins Suite — component details
 
-**Published source release: [v1.0.3](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.3) (tagged from `main`).** One community-maintained DSH bundle exposes six independently switchable components. The package's public identity remains `@abinadwan/dsh-plugins-suite`. The three recently added components are integrated; earlier exploratory prototypes and acceptance reports are historical evidence, not separate active plugins.
+**Release source [v1.1.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.1.0).** One community-maintained DSH bundle exposes six independently switchable components. The package's public identity remains `@abinadwan/dsh-plugins-suite`.
 
 > **Release boundary:** A version bump, development branch merge, or successful CI run does not publish a GitHub Release or validate every Desktop security path. See [the releases page](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases) for actually published artifacts.
 
@@ -12,7 +12,7 @@
 | <img src="../plugins/humanizer/icon.png" width="28" alt="Humanizer icon"/> **Humanizer** | On | Skill registry / agent requests | Edits supplied prose when the Skill is loaded |
 | <img src="../plugins/personal-profile/icon.png" width="28" alt="My Profile icon"/> **My Profile** | Off | **Settings → My Profile** | Saved profile/preferences and per-field sharing choices |
 | <img src="../plugins/direct-chat/assets/png/icon-256.png" width="28" alt="Direct Chat icon"/> **Direct Chat** | Off | Below native **New Session** | One shared Workspace, independent native chat Sessions |
-| <img src="../plugins/conversation-lifecycle/assets/png/icon-256.png" width="28" alt="Chat Control icon"/> **Chat Control** | Off | **Settings → Chat Control** | Inventory, protection flags, retention configuration and preview |
+| <img src="../plugins/conversation-lifecycle/assets/png/icon-256.png" width="28" alt="Archive Manager icon"/> **Archive Manager** | Off | **Archives** in the sidebar | Authorized archive browsing, search, protection and native restore |
 | <img src="../plugins/adaptive-reasoning/assets/png/icon-256.png" width="28" alt="Adaptive Reasoning icon"/> **Adaptive Reasoning** | Off | Native composer / model effort settings | Manual Session effort, opt-in recommendations and Profile aggregates |
 
 Enabled components preserve their existing internal IDs and saved settings namespaces. Turning a component off removes its active UI/behavior; **disabling is not a data-delete operation**. The icons above are bundled files, not remote services. See [artwork provenance](BRANDING.md) and [new icon artwork](NEW_PLUGINS_BRANDING.md).
@@ -59,27 +59,30 @@ Enabling the component registers the runtime Skill `abinadwan-humanizer` through
 
 <img src="../plugins/direct-chat/assets/png/icon-256.png" width="64" alt="Blue chat bubble"/>
 
-**Navigation:** enable Direct Chat, then use the button immediately beneath DSH's native **New Session** control. **Direct Chat history** opens next to that control. It lists authorized conversations from the registered Direct Chat Workspace, supports metadata search and defaults to last activity. Creation order is available when the Host can verify every creation timestamp for up to 100 registered conversations. Direct Chat history uses pages of 25 and keeps the native Projects tree and **New Session** control available. Use the native Session rename operation from the history dialog when Chat Control's protection settings are available, or use the native Workspace menu.
+**Navigation:** enable Direct Chat, then use the button immediately beneath DSH's native **New Session** control. **Direct Chat history** opens next to that control. It lists authorized conversations from the registered Direct Chat Workspace, supports metadata search and defaults to last activity. Creation order is available when the Host can verify every creation timestamp for up to 100 registered conversations. Direct Chat history uses pages of 25 and keeps the native Projects tree and **New Session** control available. Use the native Session rename operation from the history dialog when Archive Manager's protection settings are available, or use the native Workspace menu.
 
 **Implemented:** a permanent profile-owned directory `abinadwan-direct-chat-data/Direct Chat` is registered as one DSH Workspace. A blank draft Session may be reused. After sending a first message, the next Direct Chat creates another native Session ID with its own history and agent continuation; the plugin does not copy other Sessions' transcripts into new requests. Conversations can be reopened through the native Workspace/Session UI, and the owner reported retention across Windows Desktop restart. Previously created experimental `session-*` directories/registrations are preserved, never automatically deleted or migrated.
 
 **Tool security:** the Host installs pre-execute and guard policies to deny DSH tool execution for Direct Chat paths. A comparative Windows test using the same cloud model observed a normal Workspace run a PowerShell command and Direct Chat return **“Direct chats do not run tools.”** This is accepted **behavioral evidence**, not a complete audit of every Host tool route or third-party/plugin boundary.
 
-**Non-goals / risks:** all Sessions in the one Direct Chat Workspace share the same filesystem `cwd`. Separate histories do **not** imply per-chat file permissions, LPAC/AppContainer isolation or independently encrypted storage. Direct Chat uses Chat Control’s Workspace retention policy and dry-run preview when Chat Control is enabled. Automatic cleanup and Session deletion are unavailable. Further cross-session request-trace and deep Host authorization tests were **deferred with owner approval**, not passed. The earlier v1.0.0 behavioral evidence covers the [Phase 2 implementation](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/25). The consolidated changes have separate Desktop acceptance gates.
+**Non-goals / risks:** all Sessions in the one Direct Chat Workspace share the same filesystem `cwd`. Separate histories do **not** imply per-chat file permissions, LPAC/AppContainer isolation or independently encrypted storage. Direct Chat honors saved Archive Manager protection for supported rename actions. The historical retention preview is no longer exposed; automatic cleanup and Session deletion are unavailable. Further cross-session request-trace and deep Host authorization tests were **deferred with owner approval**, not passed. The earlier v1.0.0 behavioral evidence covers the [Phase 2 implementation](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/25). The consolidated changes have separate Desktop acceptance gates.
 
 [Direct Chat design](../plugins/direct-chat/README.md) · [Phase 2 acceptance record](research/DIRECT_CHAT_PHASE2_DESKTOP_ACCEPTANCE.md)
 
-## Chat Control
+<a id="chat-control"></a>
+## Archive Manager
 
-<img src="../plugins/conversation-lifecycle/assets/png/icon-256.png" width="64" alt="Green conversation/clock"/>
+<img src="../plugins/conversation-lifecycle/assets/png/icon-256.png" width="64" alt="Archive Manager icon"/>
 
-**Previously named Conversation Lifecycle.** Enable under Plugins, then open **Settings → Chat Control**. Its component/module ID is still `abinadwan-conversation-lifecycle`; existing saved policy is not renamed or migrated.
+**Previously named Chat Control and Conversation Lifecycle.** Enable under Plugins, then open **Archives** in the sidebar (or **More** if unpinned). No dedicated Settings page remains. The internal component/module ID `abinadwan-conversation-lifecycle` and stored record schema are unchanged. Historical retention and visibility values are preserved but no longer exposed or applied as cleanup controls.
 
-**Implemented:** an authorized Workspace conversation inventory, conversation and Workspace protection, a default retention preference and optional Workspace-specific overrides. Supported choices include **Forever, 365, 180, 90, 30 and 7 days**. The UI previews individual eligibility and retention candidates with known last prompt dates and an explicit UTC cutoff. It uses the catalog’s running state and the current window’s view leases. Other clients’ open views are outside that preview signal.
+The full-page hub uses authorized Workspace and Session metadata and one archive inventory for counts, search, filtering and sorting. It displays titles, Workspace, last update when available, protection and pin status. It excludes ambiguous, unadmitted, blank, subagent and legacy Direct Chat rows. The DSH native sidebar owns **View options → Hide archived**; Archive Manager does not change that filter.
 
-**Not implemented:** a production deletion worker, automatic scheduled retention, permanent conversation deletion or bulk data removal. Previewing a cleanup must not be presented as a real cleanup. DSH's session persistence and deletion authority remain separate; no automatic destructive action is enabled.
+Use a row's protection checkbox to restrict restore through Archive Manager and supported Direct Chat rename actions. Workspace protection also applies to rows within that Workspace. **Manage saved protection** lets the owner manage Workspace flags and authorized existing non-listed protected sessions, without clearing older flags automatically. This is plugin-scoped protection, not a lock on native DSH operations or an access-control boundary. Settings writes are revision-checked.
 
-[Lifecycle implementation history](archive/research/NEW_PLUGINS_PHASE_C_CONTINUATION.md) · [Settings navigation record](SETTINGS_NAVIGATION_NAMES_2026_11_21.md)
+Select **Restore**, then **Confirm restore** to return an eligible conversation to DSH's conversation list using native Session access and fresh catalog/protection checks. Open the conversation in DSH after restoration. The native endpoint does not offer atomic plugin protection checks and restore together. Browsing does not read transcript content. No retention policy, storage usage, deletion, cleanup preview or automatic cleanup controls are displayed.
+
+[Archive API research](research/v1.1.0/CHAT_CONTROL_NATIVE_API_RESEARCH.md) · [Previous implementation and acceptance](research/v1.1.0/CHAT_CONTROL_ARCHIVE_IMPLEMENTATION_REPORT.md) · [Phase 09](research/v1.1.0/ARCHIVE_MANAGER_PHASE09.md) · [Lifecycle implementation history](archive/research/NEW_PLUGINS_PHASE_C_CONTINUATION.md) · [Archived deletion research (not shipped)](research/v1.1.0/CHAT_CONTROL_DELETION_PLUGIN_ONLY_PHASE01.md)
 
 ## Adaptive Reasoning
 
@@ -101,7 +104,7 @@ The supported installation identity is `@abinadwan/dsh-plugins-suite`. Select th
 github:abinadwan/DSH-ABINADWAN-Plugins-Suite#RELEASE_COMMIT_SHA
 ~~~
 
-For CLI installations, use the matching DSH `plugin --profile <name> add` workflow in the environment that runs that Profile. Back up My Profile and the Profile configuration before any replacement or migration. **v1.0.3 is published from `main`**; install using the full SHA of the official tag. Future commits on `develop` remain unpublished until separately released, and changing a manifest alone never makes a version discoverable by the updater.
+For CLI installations, use the matching DSH `plugin --profile <name> add` workflow in the environment that runs that Profile. Back up My Profile and the Profile configuration before any replacement or migration. Install **v1.1.0** only once its official stable release is published from `main`, using the full SHA of that release. The updater discovers changes through published releases.
 
 **Suite updates (GitHub Releases)** lives on the suite's Plugins detail page. It checks for a published, non-prerelease GitHub Release on startup and every 24 hours while loaded, with manual **Check again**. If a newer release exists, **Update now** verifies the tag, immutable target SHA and remote package manifest; it requires user confirmation and delegates to DSH's `pluginManager.updateBundle`. There is no unattended install. In-app update requires the existing Git installation to be pinned to a complete commit SHA; unpinned Git installations receive manual migration guidance. Updates may require a restart, and Host rollback is attempted but cannot be guaranteed to succeed in every failure mode.
 
@@ -112,7 +115,7 @@ The updater does **not** follow unreviewed `develop` commits, automatically repl
 - Development tests use the pinned DSH/Loader libraries and run `npm test` plus `npm run check:package` on Windows and Linux with Node 22/24. These tests do not replace real Desktop validation.
 - Historical documentation contains experimental LPAC companion processes, encrypted storage and per-Workspace profiles that were replaced. These **are not active capabilities**. Consult [documentation index](README.md) before interpreting old phase reports.
 - Accepted Windows Direct Chat behavioral tests do not establish high-assurance filesystem or request-level isolation; My Profile's final multilingual Settings smoke test and request-level privacy assessment remain separately tracked.
-- Publication of **v1.0.3** does not automatically run an updater, migrate user data, enable disabled components, or change an existing Desktop installation. The release is explicitly owner-approved; outstanding Host/Desktop validation gates above remain outstanding.
+- Release publication and Desktop installation are separate actions. Review the release notes and the Host and Desktop validation limits before upgrading.
 
 ## Support, license and provenance
 

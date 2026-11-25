@@ -3,10 +3,10 @@ import { readFileSync } from 'node:fs'
 import { runInNewContext } from 'node:vm'
 import test from 'node:test'
 
-// Exercise the exact production preview predicates without exporting private UI internals.
+// Exercise the retained historical retention predicates; no runtime cleanup or preview UI calls them.
 const client = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
 const start = client.indexOf('    const catalogReady =')
-const end = client.indexOf('    function CleanupPreview', start)
+const end = client.indexOf('    const archiveCopy =', start)
 assert.ok(start > 0 && end > start, 'the Chat Control source contract must stay identifiable')
 const { catalogReady, conversationInventory, retentionRows } = runInNewContext(
   "const lifecycleDurations = ['365', '180', '90', '30', '7'];\n" +

@@ -1,6 +1,6 @@
 # Documentation index — ABINADWAN Plugins Suite
 
-**Current published source release: [v1.0.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.0.0) on `main`.**
+**Release source [v1.1.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.1.0); confirm publication on [GitHub Releases](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases).**
 
 ## Where to start
 
@@ -9,17 +9,19 @@
 - [v1.0.1 development progress tracker](DEVELOPMENT_PROGRESS_V1.0.1.md): eight phase candidates, completed/pending work, verified checks, blockers and deferred Desktop acceptance.
 - [Current feature reference](DETAIL.md): **all six** component behaviors, default states, icons, security limitations, updates, supported installations and known gaps.
 - [My Profile contract](PERSONAL_PROFILE_LOCAL_SETTINGS.md): settings and privacy rules.
+- [Historical Chat Control archive plan](research/v1.1.0/CHAT_CONTROL_ARCHIVE_MANAGEMENT.md), [native API research](research/v1.1.0/CHAT_CONTROL_NATIVE_API_RESEARCH.md), [implementation report](research/v1.1.0/CHAT_CONTROL_ARCHIVE_IMPLEMENTATION_REPORT.md) and [Archive Manager Phase 09](research/v1.1.0/ARCHIVE_MANAGER_PHASE09.md).
+- [Archived deletion research](research/v1.1.0/CHAT_CONTROL_DELETION_PLUGIN_ONLY_PHASE01.md) — historical evidence only; not an enabled feature.
 - [Changelog](../CHANGELOG.md), [handover](../HANDOVER.md) and [security policy](../SECURITY.md) for implementation history, acceptance and threat boundaries.
 
 ## Documentation audit — 2026-11-21
 
 The earlier audit examined **43 existing Markdown files** under `docs/` (before adding this index). All were related to the repository; none warranted permanent deletion. A later organization pass moved **15 superseded research and planning records** to [`archive/`](archive/README.md) without losing their contents or Git history. [`research/`](research/README.md) retains four useful technical reference reports plus original desktop-contract evidence JSON. The archives are **historical**, not instructions for the current implementation.
 
-**Current documentation policy:** the root README focuses on the technology and installation; [DETAIL.md](DETAIL.md) is the single detailed reference for all six component features and limitations. **v1.0.0** has been published from `main`; future feature-branch commits are not releases unless separately approved, merged and tagged. Historical reports retain their original version and test evidence.
+The root README covers technology and installation. [DETAIL.md](DETAIL.md) covers the six components and their limitations. Historical reports retain their original version and test evidence.
 
 ## Current reader-facing documentation
 
-These pages describe the current development contracts. Use the v1.0.0 tag for release-specific documentation.
+These pages describe the current development contracts. Use the published stable release tag for release-specific documentation.
 
 | File | Reason to keep |
 | --- | --- |
@@ -102,7 +104,7 @@ These superseded research reports and implementation plans are project-related, 
 
 1. Update `DETAIL.md` and the root README when observable component behavior, supported UI names, defaults, storage, backup formats or release policy change.
 2. New historical QA reports must say which branch/commit/Host was actually tested and which gates remain open. Do not retroactively convert proposals into proof.
-3. Keep internal identifiers and persistent setting namespaces separate from the public labels **My Profile** and **Chat Control**.
+3. Keep internal identifiers and persistent setting namespaces separate from public labels **My Profile** and **Archive Manager** (formerly Chat Control).
 4. Preserve prior Desktop/security evidence even if the old implementation was removed. Label it historical and link the current architecture instead of silently erasing risk decisions.
 5. Confirm relative Markdown links and all seven component/suite icon files exist. Refer to the published v1.0.0 release by its verified full commit SHA and disclose outstanding Host/Desktop security acceptance limits instead of assuming all validation gates passed.
 
