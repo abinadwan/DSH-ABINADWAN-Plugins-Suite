@@ -71,7 +71,8 @@ const BUILT_IN_PREFERENCES=new Set([
   ...PROFILE_STYLES.map(item=>item[3]),
   ...PROFILE_LANGUAGES.filter(item=>item[3]).map(languageInstruction),
   ...PROFILE_TRAITS.flatMap(([, , , less, more])=>[less,more]),
-  ...PROFILE_PRESETS.map(item=>item[5]),
+  // A preset's rendered instruction is index 4, matching previewProfilePreferences.
+  ...PROFILE_PRESETS.map(item=>item[4]),
 ].filter(Boolean))
 
 // Structured fields are optional profile data, not instructions.
