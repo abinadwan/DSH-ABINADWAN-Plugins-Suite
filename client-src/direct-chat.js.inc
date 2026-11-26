@@ -234,12 +234,16 @@
           return true
         }
         if (typeof ctx.sessions.using === 'function') {
-          services.rename = (workspaceId, id, title, generation) =>
-            ctx.sessions.using(id, { source: 'workspaceOperation', signal: lifetime.signal }, async reference => {
+          services.rename = async (workspaceId, id, title, generation) => {
+            // Reject stale actions before obtaining a native Session reference.
+            if (!member(workspaceId, id, generation)) throw new Error('Direct Chat membership changed')
+            return ctx.sessions.using(id, { source: 'workspaceOperation', signal: lifetime.signal }, async reference => {
+              // Membership or connection generation may change while acquiring it.
               if (!member(workspaceId, id, generation)) throw new Error('Direct Chat membership changed')
               const result = await reference.binding.session.rename(title)
               if (!result.ok) throw new Error('Direct Chat rename refused')
             })
+          }
         }
         ctx.effect(() => () => lifetime.abort(), 'direct-chat: abort pending navigation')
         async function startChat() {

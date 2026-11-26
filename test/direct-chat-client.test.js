@@ -118,3 +118,66 @@ test('Direct Chat creation button fails closed without the permission hook or gr
     assert.equal(Boolean(result), typeof access === 'function' && access('session/create') === true)
   }
 })
+
+test('Direct Chat rename rejects stale actions before reference acquisition and rechecks after readiness', async t => {
+  const id = 'verified-chat'
+  const direct = { workspaceId: 'direct', title: 'Direct Chat', sessionIds: [id] }
+  const ordinary = { workspaceId: 'ordinary', title: 'Project', sessionIds: [] }
+  const sessions = { phase: 'ready', ids: [id], byId: { [id]: { id, title: 'Original', blank: false } } }
+  const acquired = [], renamed = []
+  let duringAcquisition
+  const app = await clientHarness({
+    workspaceItems: [direct, ordinary], sessions,
+    async onSessionUsing(sessionId, options, operation) {
+      acquired.push(sessionId)
+      assert.equal(options.source, 'workspaceOperation')
+      assert.equal(options.signal.aborted, false)
+      await duringAcquisition?.()
+      return operation({ binding: { session: { async rename(title) {
+        renamed.push([sessionId, title])
+        return { ok: true }
+      } } } })
+    },
+  })
+  t.after(() => app.dispose())
+  active(app)
+  await app.changed()
+  const entry = app.entries('sidebar.session.action').find(row => row.options.id === 'abinadwan-direct-chat')
+  const { services } = entry.options.inject()
+  const generation = () => services.connection.getSnapshot()
+  const setMembership = items => app.workspaces.set({ ...app.workspaces.getSnapshot(), items })
+  const rename = (gen = generation()) => services.rename('direct', id, 'Updated', gen)
+  const denied = { message: 'Direct Chat membership changed' }
+
+  const previousGeneration = generation()
+  app.ctx.emit('connection/reset')
+  assert.notEqual(generation(), previousGeneration)
+  await assert.rejects(rename(previousGeneration), denied)
+  setMembership([{ ...direct, sessionIds: [] }, { ...ordinary, sessionIds: [id] }])
+  await assert.rejects(rename(), denied)
+  setMembership([direct, { ...ordinary, sessionIds: [id] }])
+  await assert.rejects(rename(), denied)
+  setMembership([direct, ordinary])
+  app.sessions.set({ phase: 'ready', ids: [], byId: {} })
+  await assert.rejects(rename(), denied)
+  app.sessions.set(sessions)
+  assert.deepEqual(acquired, [], 'already-stale actions never request a Session reference')
+
+  duringAcquisition = () => setMembership([{ ...direct, sessionIds: [] }, ordinary])
+  await assert.rejects(rename(), denied)
+  setMembership([direct, ordinary])
+  duringAcquisition = () => app.ctx.emit('connection/reset')
+  await assert.rejects(rename(), denied)
+  assert.deepEqual(acquired, [id, id], 'only initially valid actions begin acquisition')
+  assert.deepEqual(renamed, [], 'membership or generation changes during acquisition prevent mutation')
+
+  duringAcquisition = undefined
+  await rename()
+  assert.deepEqual(acquired, [id, id, id])
+  assert.deepEqual(renamed, [[id, 'Updated']], 'authorized rename still works')
+  app.setRows(app.rows().map(row => row.moduleName === base + '/direct-chat'
+    ? { ...row, enabled: false, fiberPhase: null } : row))
+  await app.changed()
+  await assert.rejects(rename(), denied)
+  assert.deepEqual(acquired, [id, id, id], 'disposed plugin never acquires a reference')
+})
