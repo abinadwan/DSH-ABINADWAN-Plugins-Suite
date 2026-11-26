@@ -1,8 +1,8 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
+import '../test-support/dom-global.js'
 import React, {act} from 'react'
 import {createRoot} from 'react-dom/client'
-import {JSDOM} from 'jsdom'
 import {clientHarness,base,tick} from '../test-support/client.js'
 
 const id='abinadwan-humanizer-studio'
@@ -19,9 +19,11 @@ test('Studio native keyed main and sidebar registration follows Humanizer lifecy
   assert.ok(!app.entries('sidebar.panellist').some(row=>row.options.id===id))
 })
 test('Studio uses live native catalog, sends only explicit text, supports RTL and clear',async t=>{
-  const dom=new JSDOM('<!doctype html><div id="root"></div>',{url:'http://localhost/'})
-  const old={window:globalThis.window,document:globalThis.document,act:globalThis.IS_REACT_ACT_ENVIRONMENT}
-  globalThis.window=dom.window;globalThis.document=dom.window.document;globalThis.IS_REACT_ACT_ENVIRONMENT=true
+  const dom={window:globalThis.window}
+  const oldAct=globalThis.IS_REACT_ACT_ENVIRONMENT
+  globalThis.IS_REACT_ACT_ENVIRONMENT=true
+  const container=dom.window.document.createElement('div')
+  dom.window.document.body.append(container)
   const sent=[]
   const app=await clientHarness({React,document:dom.window.document,modelCatalog:()=>({groups:[{id:'p',name:'Provider',models:[{id:'m',name:'Model'}]}]}),
     fetch:async(url,options)=>{
@@ -31,8 +33,8 @@ test('Studio uses live native catalog, sends only explicit text, supports RTL an
       return {ok:false,status:404,json:async()=>({})}
     }})
   app.hostLocale.set(locale)
-  const root=createRoot(dom.window.document.getElementById('root'))
-  t.after(async()=>{await act(async()=>root.unmount());await app.dispose();dom.window.close();globalThis.window=old.window;globalThis.document=old.document;globalThis.IS_REACT_ACT_ENVIRONMENT=old.act})
+  const root=createRoot(container)
+  t.after(async()=>{await act(async()=>root.unmount());await app.dispose();container.remove();globalThis.IS_REACT_ACT_ENVIRONMENT=oldAct})
   const q=selector=>dom.window.document.querySelector(selector)
   const panel=app.entries('main').find(row=>row.options.key===id)
   await act(async()=>root.render(React.createElement(panel.component)))
@@ -44,7 +46,7 @@ test('Studio uses live native catalog, sends only explicit text, supports RTL an
   const change=async(selector,value)=>{
     const node=q(selector)
     const proto=node.tagName==='SELECT'?dom.window.HTMLSelectElement.prototype:dom.window.HTMLTextAreaElement.prototype
-    await act(async()=>{Object.getOwnPropertyDescriptor(proto,'value').set.call(node,value);node.dispatchEvent(new dom.window.Event(node.tagName==='SELECT'?'change':'input',{bubbles:true}))})
+    await act(async()=>{if(node.tagName==='SELECT')node.value=value;else Object.getOwnPropertyDescriptor(proto,'value').set.call(node,value);node.dispatchEvent(new dom.window.Event(node.tagName==='SELECT'?'change':'input',{bubbles:true}))})
   }
   await change('[data-studio-model]',JSON.stringify(['p','m']))
   await change('[data-studio-editor="source"]','نص 123')
