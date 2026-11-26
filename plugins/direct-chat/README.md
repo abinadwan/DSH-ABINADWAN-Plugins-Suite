@@ -20,6 +20,12 @@ The acceptance criterion is to reduce unnecessary tool visibility using supporte
 
 [Original validation report](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/3834346f96eb1b3745ee4fb42833736148300782/docs/research/DIRECT_CHAT_PHASE_3_2_MEDIUM_VALIDATION.md) · [Sanitized evidence](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/3834346f96eb1b3745ee4fb42833736148300782/docs/research/evidence/direct-chat-phase-3-2-medium/results.json)
 
+## DC-02 — profile-local identity fallback
+
+Live native Workspace membership takes precedence for newly classified agents. On a verified positive membership lookup, the plugin remembers the Session ID using a SHA-256-named, empty marker under `<profile>/abinadwan-direct-chat-identities`. The cache is local to that profile; it stores neither conversation text, titles, paths nor raw IDs. On missing, invalid or throwing registry access, known identities are checked before the legacy cwd fallback. A successful non-Direct membership lookup for a fresh agent revokes its cached identity. Already recognized live agents retain their existing denial until recreated. Ordinary unknown agents are not globally denied during a registry outage.
+
+Storage is best effort, uses exclusive marker creation, rejects directory aliases and non-private POSIX entries, and does not modify existing permissions. Windows ACL confidentiality is not independently established. Markers remain until an authoritative negative lookup for that ID; this is not a synchronized membership database or a security boundary against another process with profile write access. A storage failure can leave stale on-disk markers or prevent restart persistence; the in-memory classification remains valid for the current activation. An unknown Direct Chat Session with both unavailable membership and a non-Direct cwd may still escape classification. This change reduces the observed dependency on the live registry; it does not guarantee universal denial. Local installed-Host validation remains pending.
+
 ## Sidebar placement
 
 The button is now mounted via DSH's public `sidebar.session.action` HOC immediately below the native New Session button, **above Plugins and the Workspace browser**, without replacing DSH's New Session control. It does not render at the footer. DSH exposes no public arbitrary header row seat; this is the highest supported native control region. DSH currently exposes a single native Workspace tree.

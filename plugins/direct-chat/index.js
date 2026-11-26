@@ -4,6 +4,7 @@ import { realpathSync } from 'node:fs'
 import { mkdir, realpath } from 'node:fs/promises'
 import { basename, dirname, isAbsolute, join, sep } from 'node:path'
 import { registerCatalog } from './catalog.js'
+import { identityCache } from './identity-cache.js'
 import { checkedDirectory, directoryName, pathKey, workspaceName } from './workspace-path.js'
 
 export const name = 'abinadwan-direct-chat'
@@ -41,24 +42,32 @@ function isDirectChatCwd(cwd, roots) {
   }
   return false
 }
-// The native registry is authoritative for current membership. Keep cwd
-// recognition for old Sessions and the interval before a new Session is attached.
-function directChatPolicy(roots, getRegistry) {
+// Live native membership takes precedence over the profile-local fallback.
+// Keep cwd recognition for old Sessions and the interval before attachment.
+function directChatPolicy(roots, getRegistry, identities) {
   const restrictedAgents = new WeakSet()
   function owns(agent) {
     if (!agent || typeof agent !== 'object') return false
     if (restrictedAgents.has(agent)) return true
     const header = agent.session?.header
-    let direct = isDirectChatCwd(header?.cwd, roots)
-    if (!direct && typeof header?.id === 'string') {
+    let direct = false
+    if (typeof header?.id === 'string' && header.id.length > 0) {
       try {
-        const workspaces = getRegistry()?.list() ?? []
-        direct = workspaces.some(workspace => workspace.sessionIds?.includes(header.id) &&
+        const workspaces = getRegistry()?.list()
+        if (!Array.isArray(workspaces) || workspaces.some(workspace =>
+          !Array.isArray(workspace?.sessionIds) || pathKey(workspace.path) === undefined)) {
+          throw new Error('membership-unavailable')
+        }
+        direct = workspaces.some(workspace => workspace.sessionIds.includes(header.id) &&
           isDirectChatCwd(workspace.path, roots))
+        if (direct) identities.remember(header.id)
+        else identities.forget(header.id)
       } catch {
-        // Keep path-based legacy protection even when registry access fails.
+        // Missing or invalid native membership must not discard verified IDs.
+        direct = identities.has(header.id)
       }
     }
+    direct ||= isDirectChatCwd(header?.cwd, roots)
     if (direct) restrictedAgents.add(agent)
     return direct
   }
@@ -99,7 +108,8 @@ export function apply(ctx) {
     registry = current
     child.effect(() => () => { if (registry === current) registry = undefined })
   })
-  const { owns, deny } = directChatPolicy(roots, () => registry)
+  const identities = identityCache(profileDir, message => ctx.logger.warn(message))
+  const { owns, deny } = directChatPolicy(roots, () => registry, identities)
   // Native agent-scoped restriction filters inherited tool definitions before
   // requests. It is not a replacement for the two dispatch guards.
   ctx.on('agent/created', ({ agent }) => {
