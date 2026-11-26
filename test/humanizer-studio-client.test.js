@@ -25,11 +25,22 @@ test('Studio uses live native catalog, sends only explicit text, supports RTL an
   const container=dom.window.document.createElement('div')
   dom.window.document.body.append(container)
   const sent=[]
+  const storageCalls=[]
+  let saved={version:1,revision:'initial',draft:null,history:[]}
   const app=await clientHarness({React,document:dom.window.document,modelCatalog:()=>({groups:[{id:'p',name:'Provider',models:[{id:'m',name:'Model'}]}]}),
     fetch:async(url,options)=>{
       const path=new URL(url).pathname
       if(path.endsWith('/status'))return {ok:true,json:async()=>({available:true,protocol:1})}
       if(path.endsWith('/edit')){sent.push(JSON.parse(options.body));return {ok:true,json:async()=>({text:'نتيجة 123'})}}
+      if(path.endsWith('/storage')){storageCalls.push('load');return {ok:true,json:async()=>saved}}
+      if(path.endsWith('/storage/change')){
+        const command=JSON.parse(options.body);storageCalls.push(command)
+        assert.equal(command.revision,saved.revision)
+        if(command.action==='save-draft')saved={...saved,revision:'r1',draft:command.entry}
+        if(command.action==='save-history')saved={...saved,revision:'r2',history:[{id:'h1',savedAt:1,entry:command.entry}]}
+        if(command.action==='clear-all')saved={version:1,revision:'r3',draft:null,history:[]}
+        return {ok:true,json:async()=>saved}
+      }
       return {ok:false,status:404,json:async()=>({})}
     }})
   app.hostLocale.set(locale)
@@ -57,6 +68,26 @@ test('Studio uses live native catalog, sends only explicit text, supports RTL an
   assert.deepEqual(sent,[{service:'humanize',provider:'p',model:'m',sourceText:'نص 123',inputLanguage:'auto',outputLanguage:'ar'}])
   assert.equal(q('[data-studio-editor="result"]').value,'نتيجة 123')
   assert.equal(q('[data-studio-editor="result"]').dir,'rtl')
+  assert.deepEqual(storageCalls,[],'processing must not touch persistent storage')
+  await act(async()=>q('[data-studio-storage-open]').click())
+  for(let i=0;i<3;i++)await act(async()=>{await tick()})
+  await act(async()=>q('[data-studio-save-draft]').click())
+  for(let i=0;i<3;i++)await act(async()=>{await tick()})
+  assert.equal(saved.draft.sourceText,'نص 123')
+  await act(async()=>q('[data-studio-save-history]').click())
+  for(let i=0;i<3;i++)await act(async()=>{await tick()})
+  assert.equal(saved.history.length,1)
+  await act(async()=>q('[data-studio-clear]').click())
+  assert.equal(saved.draft.sourceText,'نص 123','editor clear does not silently delete saved items')
+  await act(async()=>q('[data-studio-restore-draft]').click())
+  assert.equal(q('[data-studio-editor="source"]').value,'نص 123')
+  await act(async()=>q('[data-studio-clear-saved]').click())
+  assert.equal(saved.history.length,1,'confirmation is required')
+  await act(async()=>q('[data-studio-confirm-clear]').click())
+  for(let i=0;i<3;i++)await act(async()=>{await tick()})
+  assert.equal(saved.draft,null)
+  assert.equal(saved.history.length,0)
+  await act(async()=>q('[data-studio-storage-close]').click())
   await act(async()=>q('[data-studio-clear]').click())
   assert.equal(q('[data-studio-editor="source"]').value,'')
   assert.equal(q('[data-studio-editor="result"]').value,'')

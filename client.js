@@ -3854,7 +3854,52 @@ window.__ModuleLoader__.load({
       const [busy,setBusy] = React.useState(false)
       const [notice,setNotice] = React.useState('')
       const pending = React.useRef(null)
+      const storagePending = React.useRef(null)
+      const [saved,setSaved] = React.useState(null)
+      const [storageBusy,setStorageBusy] = React.useState(false)
+      const [storageNotice,setStorageNotice] = React.useState('')
+      const [confirmClear,setConfirmClear] = React.useState(false)
       const current = () => !services.lifetime.aborted && services.generation.getSnapshot() === generation
+      React.useEffect(()=>()=>{storagePending.current?.abort();storagePending.current=null},[services,generation])
+      function closeStorage(){
+        storagePending.current?.abort();storagePending.current=null
+        setSaved(null);setStorageBusy(false);setStorageNotice('');setConfirmClear(false)
+      }
+      async function storageOperation(command){
+        if(!current()||storagePending.current||busy||catalog.phase!=='ready'||services.catalogRevision.getSnapshot()!==revision)return
+        if(command&&(!saved||command.revision!==saved.revision))return
+        const controller=new AbortController()
+        storagePending.current=controller
+        const signal=AbortSignal.any([controller.signal,services.lifetime,AbortSignal.timeout(12000)])
+        const valid=()=>current()&&storagePending.current===controller
+        setStorageBusy(true);setStorageNotice('');setConfirmClear(false)
+        try{
+          const state=await studioFetch(command?'storage/change':'storage',signal,command)
+          if(!valid()||signal.aborted)return
+          if(state?.version!==1||typeof state.revision!=='string'||!Array.isArray(state.history)||state.history.length>10||
+            (state.draft!==null&&typeof state.draft!=='object'))throw Error('STUDIO_STORAGE_UNAVAILABLE')
+          setSaved(state)
+          setStorageNotice(command?tr('Saved changes.','تم حفظ التغييرات.'):tr('Saved items loaded.','تم تحميل العناصر المحفوظة.'))
+        }catch{
+          // A write might have committed before a lost reply. Do not retry it.
+          if(valid()){setSaved(null);setStorageNotice(tr('Storage unavailable or changed. Reopen saved items before another write.','التخزين غير متاح أو تغير. افتح العناصر المحفوظة مجددًا قبل أي تعديل.'))}
+        }finally{if(valid()){storagePending.current=null;setStorageBusy(false)}}
+      }
+      function snapshot(){
+        return {service,provider:chosen?.provider??'',model:chosen?.model??'',inputLanguage:from,outputLanguage:to,
+          sourceText:source,result,editingBrief:service==='custom'?brief:''}
+      }
+      function restore(entry){
+        if(!current()||busy||storageBusy||!entry)return
+        if(!studioTools.some(row=>row[0]===entry.service)||typeof entry.sourceText!=='string'||entry.sourceText.length>12000||
+          typeof entry.result!=='string'||entry.result.length>24000||typeof entry.editingBrief!=='string'||entry.editingBrief.length>2000)return
+        setService(entry.service);setSource(entry.sourceText);setResult(entry.result);setBrief(entry.editingBrief)
+        setFrom(entry.inputLanguage==='auto'||known(entry.inputLanguage)?entry.inputLanguage:'auto')
+        setTo(entry.outputLanguage==='preserve'||known(entry.outputLanguage)?entry.outputLanguage:'preserve')
+        const key=JSON.stringify([entry.provider,entry.model])
+        setSelection(models.some(model=>model.key===key)?key:'')
+        setNotice(tr('Saved text restored. Nothing was sent to a model.','تمت استعادة النص المحفوظ دون إرساله إلى موديل.'))
+      }
       function stop() {
         pending.current?.abort()
         pending.current = null
@@ -3865,6 +3910,7 @@ window.__ModuleLoader__.load({
         const signal = AbortSignal.any([controller.signal,services.lifetime,AbortSignal.timeout(15000)])
         const valid = () => current() && !signal.aborted && services.catalogRevision.getSnapshot() === revision
         stop()
+        closeStorage()
         setSelection('')
         setCatalog({phase:'loading',groups:[]})
         void (async () => {
@@ -3891,7 +3937,7 @@ window.__ModuleLoader__.load({
       const ready = catalog.phase==='ready' && !!chosen && languageValid && source.trim().length>0 && source.length<=12000 &&
         (service!=='custom'||(brief.trim().length>0&&brief.length<=2000))
       async function processText() {
-        if (!ready || busy || pending.current || !current() || services.catalogRevision.getSnapshot() !== revision) return
+        if (!ready || busy || storagePending.current || pending.current || !current() || services.catalogRevision.getSnapshot() !== revision) return
         const controller = new AbortController()
         pending.current=controller
         const signal=AbortSignal.any([controller.signal,services.lifetime,AbortSignal.timeout(125000)])
@@ -3920,7 +3966,7 @@ window.__ModuleLoader__.load({
       return h('main',{'data-humanizer-studio':'',dir:language==='ar'?'rtl':'ltr',style:{padding:20,display:'grid',gap:14,overflow:'auto',alignContent:'start',height:'100%'}},
         h('h2',{style:{margin:0,fontSize:20}},tr('Humanizer Studio','استوديو Humanizer')),
         h('p',{style:{...lifecycleMuted,margin:0}},tr('Independent text editing. Results depend on the selected model. Review facts and citations.','تحرير نصوص مستقل. تعتمد جودة النتائج على الموديل المختار؛ راجع الحقائق والمصادر.')),
-        h('p',{role:'note',style:{...lifecycleMuted,margin:0}},tr('This Studio does not save text. Processing sends it through the selected provider and Host middleware, which may retain it. Avoid sensitive text.','لا يحفظ الاستوديو النصوص. تُرسل المعالجة عبر المزوّد المختار ووسائط Host التي قد تحتفظ بها. تجنب النصوص الحساسة.')),
+        h('p',{role:'note',style:{...lifecycleMuted,margin:0}},tr('Text is not saved automatically. Processing sends it through the selected provider and Host middleware, which may retain it. Avoid sensitive text.','لا تُحفظ النصوص تلقائيًا. تُرسل المعالجة عبر المزوّد المختار ووسائط Host التي قد تحتفظ بها. تجنب النصوص الحساسة.')),
         catalog.phase!=='ready'?h('div',{role:'status'},catalog.phase==='loading'?tr('Checking Studio availability…','جارٍ التحقق من توفر الاستوديو…'):tr('Studio unavailable or access denied.','الاستوديو غير متاح أو الوصول مرفوض.'),
           h('button',{type:'button',style:studioButton,onClick:()=>setRefresh(value=>value+1)},tr('Retry','إعادة المحاولة'))):
         h('div',{style:{display:'grid',gap:12}},
@@ -3938,11 +3984,34 @@ window.__ModuleLoader__.load({
             editor(tr('Result','النتيجة'),result,setResult,24000,studioDirection(to==='preserve'?from:to),'result')),
           !languageValid?h('p',{role:'status',style:lifecycleMuted},tr('Choose a valid language; translation requires an output language.','اختر لغة صالحة؛ الترجمة تتطلب لغة للنتيجة.')):null,
           h('div',{style:{display:'flex',gap:8,flexWrap:'wrap'}},
-            h('button',{type:'button','data-studio-process':'',disabled:!ready||busy,style:studioButton,onClick:processText},tr('Process text','معالجة النص')),
+            h('button',{type:'button','data-studio-process':'',disabled:!ready||busy||storageBusy,style:studioButton,onClick:processText},tr('Process text','معالجة النص')),
             busy?h('button',{type:'button','data-studio-cancel':'',style:studioButton,onClick:()=>{stop();setNotice(tr('Cancelled.','أُلغيت المعالجة.'))}},tr('Cancel','إلغاء')):null,
             h('button',{type:'button','data-studio-clear':'',style:studioButton,onClick:clear},tr('Clear text','مسح النصوص')),
             h('button',{type:'button',disabled:busy,style:studioButton,onClick:()=>setRefresh(value=>value+1)},tr('Refresh models','تحديث الموديلات'))),
-          h('p',{role:'status','aria-live':'polite',style:lifecycleMuted},busy?tr('Processing…','جارٍ المعالجة…'):notice)))
+          h('p',{role:'status','aria-live':'polite',style:lifecycleMuted},busy?tr('Processing…','جارٍ المعالجة…'):notice)),
+        h('section',{'aria-label':tr('Optional local storage','التخزين المحلي الاختياري'),style:{...studioTextStyle,display:'grid',gap:9}},
+          h('h3',{style:{margin:0,fontSize:15}},tr('Draft and history','المسودة والسجل')),
+          h('p',{style:lifecycleMuted},tr('Optional, manual saving in this Host Profile. Saved text is not encrypted. One draft, up to 10 history items; deleting here does not erase backups or provider copies.','حفظ يدوي اختياري داخل Profile لهذا المضيف. النص المحفوظ غير مشفر. مسودة واحدة وحتى 10 عناصر بالسجل؛ الحذف هنا لا يمحو النسخ الاحتياطية أو نسخ المزوّد.')),
+          h('div',{style:{display:'flex',flexWrap:'wrap',gap:8}},
+            h('button',{type:'button','data-studio-storage-open':'',style:studioButton,disabled:busy||storageBusy||catalog.phase!=='ready',onClick:()=>storageOperation()},saved?tr('Reload saved items','تحديث المحفوظات'):tr('Open saved items (opt in)','فتح المحفوظات (اختياري)')),
+            saved||storageBusy?h('button',{type:'button','data-studio-storage-close':'',style:studioButton,onClick:closeStorage},tr('Close saved items','إغلاق المحفوظات')):null),
+          saved?h('div',{style:{display:'grid',gap:8}},
+            h('div',{style:{display:'flex',flexWrap:'wrap',gap:8}},
+              h('button',{type:'button','data-studio-save-draft':'',style:studioButton,disabled:busy||storageBusy||![source,result,service==='custom'?brief:''].some(value=>value.trim()),onClick:()=>storageOperation({action:'save-draft',revision:saved.revision,entry:snapshot()})},tr('Save / replace draft','حفظ / استبدال المسودة')),
+              h('button',{type:'button','data-studio-save-history':'',style:studioButton,disabled:busy||storageBusy||!source.trim()||!result.trim()||saved.history.length>=10,onClick:()=>storageOperation({action:'save-history',revision:saved.revision,entry:snapshot()})},tr('Save to history','حفظ في السجل')),
+              saved.draft?h('button',{type:'button','data-studio-restore-draft':'',style:studioButton,disabled:busy||storageBusy,onClick:()=>restore(saved.draft)},tr('Restore draft','استعادة المسودة')):null,
+              saved.draft?h('button',{type:'button','data-studio-delete-draft':'',style:studioButton,disabled:busy||storageBusy,onClick:()=>storageOperation({action:'clear-draft',revision:saved.revision})},tr('Delete draft','حذف المسودة')):null),
+            h('p',{style:lifecycleMuted},tr('Saved history: ','عناصر السجل: ')+saved.history.length+' / 10'),
+            ...saved.history.map(row=>h('div',{key:row.id,style:{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap'}},
+              h('span',{dir:'auto',style:{flex:1,overflowWrap:'anywhere'}},String(row.entry?.sourceText??'').slice(0,80)),
+              h('button',{type:'button','data-studio-restore-history':row.id,style:studioButton,disabled:busy||storageBusy,onClick:()=>restore(row.entry)},tr('Restore','استعادة')),
+              h('button',{type:'button','data-studio-delete-history':row.id,style:studioButton,disabled:busy||storageBusy,onClick:()=>storageOperation({action:'delete-history',revision:saved.revision,id:row.id})},tr('Delete','حذف')))),
+            confirmClear?h('div',{role:'group','aria-label':tr('Confirm deletion','تأكيد الحذف')},
+              h('p',null,tr('Delete the saved draft and all history from this Host?','حذف المسودة وكل السجل المحفوظ من هذا المضيف؟')),
+              h('button',{type:'button','data-studio-confirm-clear':'',style:studioButton,disabled:busy||storageBusy,onClick:()=>storageOperation({action:'clear-all',revision:saved.revision})},tr('Confirm delete','تأكيد الحذف')),
+              h('button',{type:'button',style:studioButton,onClick:()=>setConfirmClear(false)},tr('Cancel','إلغاء'))):
+              h('button',{type:'button','data-studio-clear-saved':'',style:studioButton,disabled:busy||storageBusy||(!saved.draft&&!saved.history.length),onClick:()=>setConfirmClear(true)},tr('Delete all saved items','حذف كل المحفوظات'))):null,
+          h('p',{role:'status','aria-live':'polite',style:lifecycleMuted},storageBusy?tr('Working…','جارٍ التنفيذ…'):storageNotice)))
     }
     const humanizerStudioPlugin = {
       inject:['slots','locale','remote','remote.session','connection'],
