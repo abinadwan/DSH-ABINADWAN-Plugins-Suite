@@ -23,7 +23,7 @@ test('packaged artwork stays self-contained and within size limits', () => {
   assert.match(icon, /<svg[^>]*viewBox="0 0 256 256"/)
   assert.doesNotMatch(icon, /<script|<image|<foreignObject|xlink:href|(?:href|src)=['"]https?:\/\//i)
   assert.ok(p.files.includes('icon.svg'))
-  assert.ok(p.files.includes('locale/*.json'))
+  for (const path of ['locale/en.json','locale/ar.json','locale/dsh-ui-ar.json']) assert.ok(p.files.includes(path),path)
   assert.ok(p.files.includes('icon.png'))
   const png = readFileSync(new URL('../icon.png', import.meta.url))
   assert.equal(png.subarray(0,8).toString('hex'), '89504e470d0a1a0a')
