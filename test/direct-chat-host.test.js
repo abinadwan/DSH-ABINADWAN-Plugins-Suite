@@ -6,12 +6,15 @@ import test from 'node:test'
 import * as plugin from '../plugins/direct-chat/index.js'
 
 function fixture(profile, catalogServices) {
-  let guard, preExecute
+  let guard, preExecute, agentCreated
   const routes = new Map()
   const warnings = []
   const ctx = {
     profileContext: { dir: profile },
-    on(name, fn) { if (name === 'tools/pre-execute') preExecute = fn },
+    on(name, fn) {
+      if (name === 'tools/pre-execute') preExecute = fn
+      if (name === 'agent/created') agentCreated = fn
+    },
     inject(_services, mount) { if (catalogServices) mount({ ...this, ...catalogServices }) },
     effect(fn) { fn() },
     tools: { guard(fn) { guard = fn; return () => {} } },
@@ -23,7 +26,7 @@ function fixture(profile, catalogServices) {
     logger: { warn(...args) { warnings.push(args) } },
   }
   plugin.apply(ctx)
-  return { handler: routes.get('/api/abinadwan-direct-chat/prepare'), routes, guard: () => guard, preExecute: () => preExecute, warnings }
+  return { handler: routes.get('/api/abinadwan-direct-chat/prepare'), routes, guard: () => guard, preExecute: () => preExecute, agentCreated: () => agentCreated, warnings }
 }
 const request = (body = '{}') => new Request('http://localhost/api/abinadwan-direct-chat/prepare', {
   method: 'POST', headers: { 'content-type': 'application/json' }, body,
@@ -267,4 +270,35 @@ test('prepare and catalog refuse insecure existing POSIX directories without mod
     assert.equal((await fx.handler.fetch(request())).status, 200)
     assert.equal((await catalog()).status, 200)
   }
+})
+
+test('native Session membership denies tools even if the agent cwd is different; restrictions are agent scoped', async t => {
+  const profile = await mkdtemp(join(tmpdir(), 'suite-direct-chat-identity-'))
+  t.after(() => rm(profile, { recursive: true, force: true }))
+  const direct = join(profile, 'abinadwan-direct-chat-data', 'Direct Chat')
+  const other = join(profile, 'Project')
+  const workspaces = [
+    { id: 'direct', path: direct, sessionIds: ['direct-id'] },
+    { id: 'ordinary', path: other, sessionIds: ['ordinary-id'] },
+  ]
+  const fx = fixture(profile, { workspaceRegistry: { list: () => workspaces } })
+  const restrictions = []
+  const agentFor = id => ({
+    session: { header: { id, cwd: other } },
+    ctx: { tools: { restrict(value) { restrictions.push([id, value]) } } },
+  })
+  const directAgent = agentFor('direct-id')
+  const ordinary = agentFor('ordinary-id')
+  fx.agentCreated()({ agent: directAgent })
+  fx.agentCreated()({ agent: ordinary })
+  assert.deepEqual(restrictions, [['direct-id', { allow: [] }]])
+  assert.equal(fx.guard()({ agent: directAgent })?.info.code, 'DIRECT_CHAT_TOOL_DENIED')
+  assert.equal((await fx.preExecute()({ agent: directAgent },
+    () => assert.fail('identity-based denial bypassed'))).kind, 'deny')
+  assert.equal(fx.guard()({ agent: ordinary }), undefined)
+  workspaces[0].sessionIds = []
+  assert.equal(fx.guard()({ agent: directAgent })?.info.code, 'DIRECT_CHAT_TOOL_DENIED',
+    'a recognized live Direct Chat Agent stays denied after membership changes')
+  workspaces[0].sessionIds = ['late-id']
+  assert.equal(fx.guard()({ agent: agentFor('late-id') })?.info.code, 'DIRECT_CHAT_TOOL_DENIED')
 })

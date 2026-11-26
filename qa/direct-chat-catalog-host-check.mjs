@@ -126,12 +126,13 @@ test('Direct Chat denies a model tool call before an independent, retried empty 
   await agent.whenIdle()
   assert.equal(executions, 0)
   assert.equal(requests.length, 4, 'one tool-call attempt, one empty attempt, and two empty retries')
-  assert.deepEqual(requests[0].tools.map(tool => tool.name), ['fixture_web_search'])
+  assert.ok(requests.every(request => (request.tools ?? []).length === 0),
+    'inherited tool definitions must be absent from every Direct Chat request')
   assert.equal(new Set(failures).size, 1, 'empty responses were retries of the same step')
   assert.equal(failures.length, 3)
   const denied = requests[1].messages.find(message => message.role === 'tool')
   assert.ok(denied, 'a tool result is available to the next request')
-  assert.match(JSON.stringify(denied), /Direct chats do not run tools\./)
+  // A fabricated tool call must not execute even when a model ignores the empty tool list.
   assert.deepEqual(requests[1].messages, requests[2].messages)
   assert.deepEqual(requests[2].messages, requests[3].messages)
 })

@@ -41,10 +41,33 @@ function isDirectChatCwd(cwd, roots) {
   }
   return false
 }
-function denyTools(roots) {
-  return ({ agent }) => isDirectChatCwd(agent?.session?.header.cwd, roots)
-    ? { reason: 'Direct chats do not run tools.', info: { name: 'DirectChatPolicy', code: 'DIRECT_CHAT_TOOL_DENIED' } }
-    : undefined
+// The native registry is authoritative for current membership. Keep cwd
+// recognition for old Sessions and the interval before a new Session is attached.
+function directChatPolicy(roots, getRegistry) {
+  const restrictedAgents = new WeakSet()
+  function owns(agent) {
+    if (!agent || typeof agent !== 'object') return false
+    if (restrictedAgents.has(agent)) return true
+    const header = agent.session?.header
+    let direct = isDirectChatCwd(header?.cwd, roots)
+    if (!direct && typeof header?.id === 'string') {
+      try {
+        const workspaces = getRegistry()?.list() ?? []
+        direct = workspaces.some(workspace => workspace.sessionIds?.includes(header.id) &&
+          isDirectChatCwd(workspace.path, roots))
+      } catch {
+        // Keep path-based legacy protection even when registry access fails.
+      }
+    }
+    if (direct) restrictedAgents.add(agent)
+    return direct
+  }
+  return {
+    owns,
+    deny: ({ agent }) => owns(agent)
+      ? { reason: 'Direct chats do not run tools.', info: { name: 'DirectChatPolicy', code: 'DIRECT_CHAT_TOOL_DENIED' } }
+      : undefined,
+  }
 }
 async function ensureDirectory(path) {
   // Restrict new POSIX directories and validate existing ones without changing their permissions.
@@ -70,7 +93,18 @@ export function apply(ctx) {
   } catch {
     // The prepare route separately verifies the canonical Profile directory.
   }
-  const deny = denyTools(roots)
+  let registry
+  ctx.inject(['workspaceRegistry'], child => {
+    const current = child.workspaceRegistry
+    registry = current
+    child.effect(() => () => { if (registry === current) registry = undefined })
+  })
+  const { owns, deny } = directChatPolicy(roots, () => registry)
+  // Native agent-scoped restriction filters inherited tool definitions before
+  // requests. It is not a replacement for the two dispatch guards.
+  ctx.on('agent/created', ({ agent }) => {
+    if (owns(agent)) agent.ctx.tools.restrict({ allow: [] })
+  })
   ctx.on('tools/pre-execute', (exec, next) => {
     const denial = deny(exec)
     return denial === undefined ? next() : Promise.resolve({ kind: 'deny', ...denial })
