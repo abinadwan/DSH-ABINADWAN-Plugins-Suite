@@ -5,6 +5,8 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { Context } from '@deepseek-ai/cordis'
 import LlmRuntime, { LlmAdapter } from '@deepseek-ai/dsh-llm'
+import { HostConnectionService } from '@deepseek-ai/dsh-client-connection'
+import Sessions from '@deepseek-ai/dsh-session'
 import { streamStudioRequest } from '../plugins/humanizer/studio-request.js'
 import { runStudioEdit, STUDIO_SERVICES } from '../plugins/humanizer/studio-engine.js'
 
@@ -129,5 +131,54 @@ test('Studio nine-service engine uses real native catalog and synthetic adapter 
       assert.deepEqual(request.tools ?? [], [])
       assert.equal(request.sessionId, undefined)
     }
+  } finally { await ctx.fiber.dispose() }
+})
+
+test('native connection owner admission and observable LLM waterfall: fixture only, no Studio route registered by production', async () => {
+  const ctx = new Context()
+  try {
+    await ctx.plugin(LlmRuntime).await()
+    await ctx.plugin(Sessions).await()
+    await ctx.plugin({ name: 'studio-fixture-connection', apply(child) { new HostConnectionService(child, [], {}) } }).await()
+    const adapter = new Capture()
+    ctx.llm.registerAdapter([provider], adapter)
+    const observed = []
+    let sessionEvents = 0
+    ctx.on('session/event', () => { sessionEvents++ })
+    ctx.on('llm/stream', (options, next) => {
+      observed.push(JSON.parse(options.messages[0].content[0].text).sourceText)
+      assert.equal(Reflect.set(options, 'provider', 'foreign'), false)
+      assert.equal(Reflect.set(options.messages[0].content[0], 'text', 'replacement'), false)
+      return next()
+    })
+    const path = '/api/abinadwan-studio-feasibility-fixture'
+    const fixture = ctx.plugin({name:'studio-feasibility-owner-probe', apply(child) {
+      child.effect(() => child.connection.fetch.register({
+        path, methods: ['POST'], requestBody: 'streaming',
+        async fetch(request) {
+          // Fixed synthetic input; this is an admission probe, not production body parsing.
+          const text = await runStudioEdit(child.llm, {
+            provider, model, service:'humanize', sourceText:source,
+            inputLanguage:'auto', outputLanguage:'preserve',
+          }, [], request.signal)
+          return Response.json({text}, {headers:{'cache-control':'no-store'}})
+        },
+      }))
+    }})
+    await fixture.await()
+    const transport = ctx.connection.createSharedFetchHandler('/api')
+    const send = peer => transport.fetch(new Request('http://localhost' + path, {method:'POST'}), peer)
+    assert.equal((await send({principal:{kind:'viewer'}})).status, 403)
+    assert.equal(adapter.requests.length, 0)
+    const reply = await send(ctx.connection.browserPeer)
+    assert.equal(reply.status, 200)
+    assert.equal(reply.headers.get('cache-control'), 'no-store')
+    assert.deepEqual(await reply.json(), {text:'Synthetic revision 123.'})
+    assert.equal(adapter.requests.length, 1)
+    assert.deepEqual(observed, [source], 'even identity-free source is visible to native waterfall observers')
+    assert.equal(adapter.requests[0].provider, provider)
+    assert.equal(sessionEvents, 0)
+    await fixture.dispose()
+    assert.equal((await send(ctx.connection.browserPeer)).status, 404)
   } finally { await ctx.fiber.dispose() }
 })

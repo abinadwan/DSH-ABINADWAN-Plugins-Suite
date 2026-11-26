@@ -72,3 +72,18 @@ test('incomplete, tool, excessive and provider-error responses never return part
     native([finish,finish]), native([finish]), native([],{error:sourceText}),
   ]) await assert.rejects(runStudioEdit(llm,base,locales,signal()),err=>err.message.startsWith('STUDIO_')&&!err.message.includes(sourceText))
 })
+
+test('request data is frozen against ordinary interceptor mutation, not a privacy sandbox', () => {
+  const request = buildStudioRequest(base, locales, signal())
+  assert.equal(Reflect.set(request, 'provider', 'foreign'), false)
+  assert.equal(Reflect.set(request, 'system', 'override'), false)
+  assert.equal(Reflect.set(request.messages[0].content[0], 'text', 'replacement'), false)
+  assert.throws(() => request.tools.push({}), TypeError)
+  assert.equal(payload(request).sourceText, sourceText)
+})
+test('catalog errors are sanitized and do not reach a provider', async () => {
+  const llm = native([])
+  llm.listProviders = () => { throw Error(sourceText) }
+  await assert.rejects(runStudioEdit(llm,base,locales,signal()), {message:'STUDIO_CATALOG_FAILED'})
+  assert.equal(llm.requests.length,0)
+})

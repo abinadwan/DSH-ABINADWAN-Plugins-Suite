@@ -45,28 +45,32 @@ export function buildStudioRequest(input, locales, signal) {
   if (Object.keys(input).some(key => !keys.includes(key)) ||
     !keys.slice(0, 6).every(key => Object.hasOwn(input, key))) fail('STUDIO_INVALID_REQUEST')
   const { service, provider, model, sourceText, inputLanguage, outputLanguage, editingBrief } = input
-  if (!Object.hasOwn(operations, service) || !routeText(provider) || !routeText(model)) fail('STUDIO_INVALID_REQUEST')
+  if (typeof service !== 'string' || !Object.hasOwn(operations, service) || !routeText(provider) || !routeText(model)) fail('STUDIO_INVALID_REQUEST')
   if (!validText(sourceText, STUDIO_LIMITS.source)) fail('STUDIO_INVALID_SOURCE')
   if (service === 'custom' ? !validText(editingBrief, STUDIO_LIMITS.brief) : editingBrief !== undefined) fail('STUDIO_INVALID_BRIEF')
   const from = selectLocale(inputLanguage, 'auto', locales)
   const to = selectLocale(outputLanguage, 'preserve', locales)
   if (service === 'translate' && to === 'preserve') fail('STUDIO_TRANSLATION_TARGET_REQUIRED')
-  if (!signal || typeof signal.aborted !== 'boolean') fail('STUDIO_INVALID_SIGNAL')
+  if (!(signal instanceof AbortSignal)) fail('STUDIO_INVALID_SIGNAL')
   if (signal.aborted) fail('STUDIO_CANCELLED')
   const payload = { inputLanguage: from, outputLanguage: to, sourceText }
   if (service === 'custom') payload.editingBrief = editingBrief
   // No source text, user-supplied brief or catalog label enters the system prompt.
-  return {
+  const block = Object.freeze({ type: 'text', text: JSON.stringify(payload) })
+  const message = Object.freeze({ role: 'user', content: Object.freeze([block]) })
+  return Object.freeze({
     provider, model, system: policy + '\nOperation: ' + operations[service],
-    maxTokens: STUDIO_LIMITS.maxTokens, tools: [], signal,
-    messages: [{ role: 'user', content: [{ type: 'text', text: JSON.stringify(payload) }] }],
-  }
+    maxTokens: STUDIO_LIMITS.maxTokens, tools: Object.freeze([]), signal,
+    messages: Object.freeze([message]),
+  })
 }
 
 export async function runStudioEdit(llm, input, locales, signal) {
   const request = buildStudioRequest(input, locales, signal)
-  if (!llm.listProviders().some(entry => entry.id === request.provider)) fail('STUDIO_MODEL_UNAVAILABLE')
-  let models
+  let providers, models
+  try { providers = llm.listProviders() }
+  catch { fail('STUDIO_CATALOG_FAILED') }
+  if (!Array.isArray(providers) || !providers.some(entry => entry.id === request.provider)) fail('STUDIO_MODEL_UNAVAILABLE')
   try { models = await llm.listModels(request.provider) }
   catch { fail('STUDIO_CATALOG_FAILED') }
   if (signal.aborted) fail('STUDIO_CANCELLED')
