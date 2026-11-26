@@ -78,7 +78,7 @@ window.__ModuleLoader__.load({
 
     // Only stable published GitHub Releases may trigger an in-app update offer.
     // This browser-side checker never installs anything without a separate click.
-    const INSTALLED_VERSION = '1.1.0'
+    const INSTALLED_VERSION = '1.1.1'
     const PACKAGE_NAME = '@abinadwan/dsh-plugins-suite'
     const RELEASE_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/latest'
     const COMMIT_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/commits/'
@@ -2681,6 +2681,16 @@ window.__ModuleLoader__.load({
     const archivePageSize = 25
     const validArchiveId = id => typeof id === 'string' && id.trim().length > 0
     const validArchiveSet = ids => Array.isArray(ids) && ids.every(validArchiveId)
+    const validArchiveProtectionRecord = record => Boolean(record && typeof record === 'object' &&
+      !Array.isArray(record) && validArchiveSet(record.protectedIds) && record.protectedIds.length <= 10000 &&
+      validArchiveSet(record.protectedWorkspaces) && record.protectedWorkspaces.length <= 1000 &&
+      [...record.protectedIds, ...record.protectedWorkspaces].every(id => id.length <= 256))
+    function archivePolicyView(response) {
+      if (!response?.ok || !Array.isArray(response.value?.namespaces)) return null
+      const matches = response.value.namespaces.filter(view => view?.ns === 'abinadwan-conversation-lifecycle')
+      const view = matches.length === 1 ? suiteSettingsView(matches[0]) : null
+      return validArchiveProtectionRecord(view?.value?.record) ? view : null
+    }
     const titleOrEmpty = value => typeof value === 'string' ? value : ''
 
     async function readArchiveWorkspaceBaseline(workspaceRemote, signal) {
@@ -2724,6 +2734,7 @@ window.__ModuleLoader__.load({
     function useArchiveCatalog(services, generation, authorized) {
       const [result, setResult] = React.useState(null)
       const [attempt, setAttempt] = React.useState(0)
+      const revision = React.useRef(0)
       React.useEffect(() => {
         if (!generation || !authorized) { setResult(null); return }
         const request = new AbortController()
@@ -2731,11 +2742,17 @@ window.__ModuleLoader__.load({
         let dirty = false
         let reading = false
         async function refresh() {
+          if (active.aborted || services.host.getSnapshot() !== generation) return
           dirty = true
+          revision.current++
+          // Preserve the last authorized view and search focus during refresh,
+          // but invalidate every action based on its now superseded snapshot.
+          setResult(previous => previous ? { ...previous } : previous)
           if (reading) return
           reading = true
           while (dirty && !active.aborted && services.host.getSnapshot() === generation) {
             dirty = false
+            const readVersion = revision.current
             const read = new AbortController()
             const deadline = AbortSignal.any([active, read.signal, AbortSignal.timeout(12000)])
             let catalog
@@ -2744,7 +2761,8 @@ window.__ModuleLoader__.load({
             } catch (error) {
               catalog = { status: error?.code === 'remote-access/denied' ? 'unauthorized' : 'error' }
             } finally { read.abort() }
-            if (!active.aborted && services.host.getSnapshot() === generation) setResult({ generation, attempt, catalog })
+            if (!dirty && revision.current === readVersion && !active.aborted &&
+                services.host.getSnapshot() === generation) setResult({ generation, attempt, catalog, revision: readVersion })
           }
           reading = false
         }
@@ -2753,11 +2771,13 @@ window.__ModuleLoader__.load({
         const unsubscribeWorkspaces = services.workspaces.subscribe(() => { void refresh() })
         const unsubscribeSessions = services.sessions.subscribe(() => { void refresh() })
         void refresh()
-        return () => { request.abort(); unsubscribeWorkspaces(); unsubscribeSessions() }
+        return () => { revision.current++; request.abort(); unsubscribeWorkspaces(); unsubscribeSessions() }
       }, [services, generation, authorized, attempt])
       const current = authorized && result && result.generation === generation && result.attempt === attempt
-      return { ...(current ? result.catalog : { status: 'loading' }),
-        reload: () => setAttempt(value => value + 1) }
+      const isCurrent = () => Boolean(current && result.catalog.status === 'ready' &&
+        result.revision === revision.current && !services.lifetime.aborted && services.host.getSnapshot() === generation)
+      return { ...(current ? result.catalog : { status: 'loading' }), isCurrent,
+        reload: () => { revision.current++; setAttempt(value => value + 1) } }
     }
 
     function archiveInventory(workspaces, sessions, record) {
@@ -2849,16 +2869,22 @@ window.__ModuleLoader__.load({
       const summary = React.useRef(null)
       const pending = React.useRef(null)
       const mounted = React.useRef(false)
+      const latest = React.useRef(null)
       const settingsEpoch = services.connection.getSnapshot()
       const policyCurrent = ['ready', 'saved'].includes(settings.status)
       const resultState = !authorized ? 'unauthorized' : !generation ? 'disconnected'
         : catalog.status !== 'ready' ? catalog.status : settings.status === 'loading' ? 'loading'
-        : !settings.record ? 'unavailable' : 'ready'
+        : !validArchiveProtectionRecord(settings.record) ? 'unavailable' : 'ready'
+      latest.current = { authorized, generation, source: settings.source }
+      const actionCurrent = () => mounted.current && !services.lifetime.aborted &&
+        latest.current.authorized && latest.current.generation === generation &&
+        latest.current.source === settings.source && catalog.isCurrent() &&
+        services.host.getSnapshot() === generation && services.connection.getSnapshot() === settingsEpoch
       const visible = resultState === 'ready' ? catalog.rows : []
       const matching = filterArchive(visible, filters, language)
       const workspaces = [...new Map(visible.map(row => [row.owner.workspaceId, row.workspaceTitle])).entries()]
         .sort((a, b) => a[1].localeCompare(b[1], language))
-      const confirming = resultState === 'ready' && policyCurrent && proposal?.generation === generation && proposal.source === settings.source &&
+      const confirming = resultState === 'ready' && catalog.isCurrent() && policyCurrent && proposal?.generation === generation && proposal.source === settings.source &&
         matching.some(row => row.id === proposal.id && row.owner.workspaceId === proposal.workspaceId && archiveRestorable(row)) ? proposal : null
       const busy = status?.generation === generation && status?.value === 'working'
       const message = resultState === 'ready' && status?.generation === generation ? status?.value : null
@@ -2874,10 +2900,9 @@ window.__ModuleLoader__.load({
         else if (proposal) setProposal(null)
       }, [confirming, proposal])
 
-      const canProtect = resultState === 'ready' && Boolean(settings.writable) && !busy
+      const canProtect = resultState === 'ready' && catalog.isCurrent() && Boolean(settings.writable) && !busy
       function changeProtection(field, id, checked) {
-        if (!canProtect || pending.current || services.host.getSnapshot() !== generation ||
-            services.connection.getSnapshot() !== settingsEpoch) return
+        if (!canProtect || pending.current || !actionCurrent()) return
         const admitted = field === 'protectedIds'
           ? visible.some(row => row.id === id) || catalog.savedRows.some(row => row.id === id)
           : field === 'protectedWorkspaces' && catalog.protectionWorkspaces.some(row => row.workspaceId === id)
@@ -2886,7 +2911,9 @@ window.__ModuleLoader__.load({
         if (checked) next.add(id)
         else next.delete(id)
         setProposal(null)
-        void settings.save({ ...settings.record, [field]: [...next] })
+        // Keep every retired compatibility field and all other protection flags.
+        const record = { ...settings.record, [field]: [...next] }
+        if (validArchiveProtectionRecord(record)) void settings.save(record)
       }
 
       function updateFilter(key, value) {
@@ -2895,7 +2922,7 @@ window.__ModuleLoader__.load({
       }
 
       async function restore() {
-        if (!mounted.current || !confirming || pending.current || !services.unarchive || !services.whenRestoreAccess) return
+        if (!actionCurrent() || !confirming || pending.current || !services.unarchive || !services.whenRestoreAccess) return
         const currentGeneration = () => services.host.getSnapshot() === generation
         const request = new AbortController()
         pending.current = request
@@ -2904,33 +2931,30 @@ window.__ModuleLoader__.load({
         setStatus({ generation, value: 'working' })
         let outcome = 'changed'
         try {
-          if (!currentGeneration() || services.connection.getSnapshot() !== settingsEpoch) return
+          if (!actionCurrent()) return
           const signal = AbortSignal.any([request.signal, services.lifetime, AbortSignal.timeout(12000)])
           signal.throwIfAborted()
           const aborted = new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true }))
           const catalog = await Promise.race([readArchiveCatalog(services, services.sessions.getSnapshot(), signal), aborted])
-          if (signal.aborted || !currentGeneration() || services.connection.getSnapshot() !== settingsEpoch || catalog.status !== 'ready') return
+          if (signal.aborted || !actionCurrent() || catalog.status !== 'ready') return
           // A protection update can land during the catalog read before its
           // document notification arrives. Read the policy after that lookup.
           const policy = await Promise.race([services.settings.describe(), aborted])
-          if (signal.aborted || !currentGeneration() || services.connection.getSnapshot() !== settingsEpoch) return
-          const view = policy?.ok && policy.value?.namespaces?.find(view => view.ns === 'abinadwan-conversation-lifecycle')
-          if (view?.revision !== confirming.source.revision) { settings.reload(); return }
-          if (!view.value?.record) return
-          const candidate = archiveInventory(catalog.workspace, catalog.sessions, view.value.record).find(row =>
-            row.id === confirming.id && row.owner.workspaceId === confirming.workspaceId)
-          const currentSession = services.sessions.getSnapshot().byId?.[confirming.id]
+          if (signal.aborted || !actionCurrent()) return
+          const view = archivePolicyView(policy)
+          if (!view || view.revision !== confirming.source.revision) { settings.reload(); return }
+          const target = row => row.id === confirming.id && row.owner.workspaceId === confirming.workspaceId
+          const candidate = archiveInventory(catalog.workspace, catalog.sessions, view.value.record).find(target)
+          const currentSessions = services.sessions.getSnapshot()
           const currentWorkspace = services.workspaces.getSnapshot()
-          if (!Array.isArray(currentWorkspace?.items) || !validArchiveSet(currentWorkspace.archivedSessionIds) ||
+          if (!catalogReady(currentWorkspace, currentSessions) || !validArchiveSet(currentWorkspace.archivedSessionIds) ||
               !validArchiveSet(currentWorkspace.pinnedSessionIds)) return
-          const owners = currentWorkspace.items.filter(item => Array.isArray(item?.sessionIds) && item.sessionIds.includes(confirming.id))
-          if (!archiveRestorable(candidate) || owners.length !== 1 || owners[0].workspaceId !== confirming.workspaceId ||
-              currentSession?.running === true || currentWorkspace.pinnedSessionIds.includes(confirming.id) ||
-              Object.values(currentSession?.retainedBy ?? {}).some(count => count > 0) || !currentWorkspace.archivedSessionIds.includes(confirming.id)) return
+          const currentCandidate = archiveInventory(currentWorkspace, currentSessions, view.value.record).find(target)
+          if (!archiveRestorable(candidate) || !archiveRestorable(currentCandidate)) return
           let allowed = false
           const dispose = services.whenRestoreAccess(confirming.id, () => { allowed = true; return [] })
           dispose()
-          if (!allowed) return
+          if (!allowed || signal.aborted || !actionCurrent()) return
           await services.unarchive(confirming.id)
           outcome = 'restored'
         } catch {
@@ -2976,9 +3000,10 @@ window.__ModuleLoader__.load({
                   h('input', { type: 'date', style: lifecycleSelect, value: filters.after,
                     onChange: event => updateFilter('after', event.target.value) })) : null),
               matching.length ? h('ul', { style: { margin: 0, padding: 0, listStyle: 'none' } },
-                ...matching.slice(0, limit).map(row => h(ArchiveRow, { key: row.id, row, copy, date, services, busy: busy || !policyCurrent,
+                ...matching.slice(0, limit).map(row => h(ArchiveRow, { key: row.id, row, copy, date, services, busy: busy || !policyCurrent || !catalog.isCurrent(),
                   canProtect, onProtect: (id, checked) => changeProtection('protectedIds', id, checked),
                   onRestore: (item, trigger) => {
+                    if (!actionCurrent()) return
                     setStatus(null)
                     setProposal({ generation, source: settings.source, id: item.id, workspaceId: item.owner.workspaceId, trigger })
                   } }))) : h('p', { role: 'status' }, copy.noResults),
@@ -3009,7 +3034,7 @@ window.__ModuleLoader__.load({
       const { workspace, sessions } = catalog
       const ready = authorized && Boolean(settings.source) && Boolean(generation) && catalog.status === 'ready'
       const inventory = React.useMemo(() => {
-        if (!ready || !settings.record) return { rows: [], savedRows: [], protectionWorkspaces: [] }
+        if (!ready || !validArchiveProtectionRecord(settings.record)) return { rows: [], savedRows: [], protectionWorkspaces: [] }
         const record = settings.record
         const rows = archiveInventory(workspace, sessions, record)
         const archivedIds = new Set(rows.map(row => row.id))
@@ -3028,7 +3053,7 @@ window.__ModuleLoader__.load({
         return { rows, savedRows, protectionWorkspaces }
       }, [ready, workspace, sessions, settings.record])
       return h(ArchiveHub, { key: generation?.id ?? 'disconnected', services, generation, authorized, settings,
-        catalog: { status: catalog.status, ...inventory, reload: catalog.reload }, language })
+        catalog: { status: catalog.status, ...inventory, isCurrent: catalog.isCurrent, reload: catalog.reload }, language })
     }
 
     const reasoningCell = { padding: '4px 8px', textAlign: 'end', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
@@ -3441,14 +3466,16 @@ window.__ModuleLoader__.load({
         [inventory, search, order, creationReady, createdAt])
       const limit = 25
       const activePage = Math.min(page, Math.max(0, Math.ceil(rows.length / limit) - 1))
-      const record = settings.record
-      const protectedIds = new Set(record?.protectedIds)
-      const protectedWorkspace = record?.protectedWorkspaces?.includes(selected?.workspaceId)
+      const record = validArchiveProtectionRecord(settings.record) ? settings.record : undefined
+      // An incomplete policy must disable rename, not hide known protection.
+      const protectedIds = new Set(validArchiveSet(settings.record?.protectedIds) ? settings.record.protectedIds : [])
+      const protectedWorkspace = validArchiveSet(settings.record?.protectedWorkspaces) &&
+        settings.record.protectedWorkspaces.includes(selected?.workspaceId)
       const archived = new Set(workspace?.archivedSessionIds)
       const error = current?.error || workspace?.state === 'error' || ready && current?.value?.workspaceId && !selected
       const loaded = ready && current?.value && !error
       const shown = rows.slice(activePage * limit, (activePage + 1) * limit)
-      const editing = edit && edit.generation === generation && shown.some(item => item.id === edit.id) &&
+      const editing = record && edit && edit.generation === generation && shown.some(item => item.id === edit.id) &&
         !protectedWorkspace && !protectedIds.has(edit.id) ? edit : null
 
       function changeOrder(event) {
@@ -3564,11 +3591,25 @@ window.__ModuleLoader__.load({
         }
         if (typeof ctx.sessions.using === 'function') {
           services.rename = async (workspaceId, id, title, generation) => {
-            // Reject stale actions before obtaining a native Session reference.
-            if (!member(workspaceId, id, generation)) throw new Error('Direct Chat membership changed')
-            return ctx.sessions.using(id, { source: 'workspaceOperation', signal: lifetime.signal }, async reference => {
-              // Membership or connection generation may change while acquiring it.
+            const assertMember = () => {
               if (!member(workspaceId, id, generation)) throw new Error('Direct Chat membership changed')
+            }
+            const readProtection = async () => {
+              assertMember()
+              const view = archivePolicyView(await services.settings?.describe?.())
+              assertMember()
+              if (!view || view.value.record.protectedIds.includes(id) ||
+                  view.value.record.protectedWorkspaces.includes(workspaceId)) {
+                throw new Error('Direct Chat protection policy unavailable or protected')
+              }
+              return view.revision
+            }
+            // Check saved protection, not only the rendered history controls.
+            const revision = await readProtection()
+            assertMember()
+            return ctx.sessions.using(id, { source: 'workspaceOperation', signal: lifetime.signal }, async reference => {
+              if (await readProtection() !== revision) throw new Error('Direct Chat protection changed')
+              assertMember()
               const result = await reference.binding.session.rename(title)
               if (!result.ok) throw new Error('Direct Chat rename refused')
             })
