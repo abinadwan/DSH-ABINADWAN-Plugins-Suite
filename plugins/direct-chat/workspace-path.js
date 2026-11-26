@@ -18,5 +18,9 @@ export async function checkedDirectory(path) {
   if (!canonical || pathKey(canonical) !== pathKey(path)) {
     throw new Error('The Direct Chat directory is not a dedicated profile-owned directory.')
   }
+  // Never silently chmod existing directories or assume POSIX mode bits describe Windows ACLs.
+  if (process.platform !== 'win32' && (stat.uid !== process.geteuid() || (stat.mode & 0o077) !== 0)) {
+    throw new Error('The Direct Chat directory must be owned by the effective user with no group or other access.')
+  }
   return canonical
 }

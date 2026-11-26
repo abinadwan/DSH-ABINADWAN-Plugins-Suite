@@ -47,7 +47,7 @@ function denyTools(roots) {
     : undefined
 }
 async function ensureDirectory(path) {
-  // Restrict newly created directories on POSIX; existing directories are not chmod'ed.
+  // Restrict new POSIX directories and validate existing ones without changing their permissions.
   await mkdir(path, { recursive: true, mode: 0o700 })
   return checkedDirectory(path)
 }

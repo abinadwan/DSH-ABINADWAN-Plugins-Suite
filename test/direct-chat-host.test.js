@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { lstat, mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises'
+import { chmod, lstat, mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import test from 'node:test'
@@ -242,4 +242,29 @@ test('one Host activation discovers the prepared native Workspace and still deni
   assert.equal(fx.guard()(execution)?.info.code, 'DIRECT_CHAT_TOOL_DENIED')
   assert.equal((await fx.preExecute()(execution, () => assert.fail('tool execution was admitted'))).kind, 'deny')
   assert.equal(fx.guard()({ agent: { session: { header: { cwd: workspaces[1].path } } } }), undefined)
+})
+
+test('prepare and catalog refuse insecure existing POSIX directories without modifying permissions', async t => {
+  if (process.platform === 'win32') return t.skip('Windows ACLs require separate validation')
+  const profile = await mkdtemp(join(tmpdir(), 'suite-direct-chat-existing-'))
+  t.after(() => rm(profile, { recursive: true, force: true }))
+  const root = join(profile, 'abinadwan-direct-chat-data')
+  const cwd = join(root, 'Direct Chat')
+  await mkdir(cwd, { recursive: true, mode: 0o700 })
+  const canonical = await realpath(cwd)
+  const fx = fixture(profile, {
+    workspaceRegistry: { list: () => [{ id: 'direct', path: canonical, sessionIds: [] }] },
+    sessionPersistence: { async stat() { throw new Error('unexpected metadata read') } },
+  })
+  const catalog = () => fx.routes.get('/api/abinadwan-direct-chat/catalog').fetch(
+    new Request('http://localhost/api/abinadwan-direct-chat/catalog'))
+  for (const path of [root, cwd]) {
+    await chmod(path, 0o755)
+    assert.equal((await fx.handler.fetch(request())).status, 500)
+    assert.equal((await catalog()).status, 503)
+    assert.equal((await lstat(path)).mode & 0o777, 0o755)
+    await chmod(path, 0o700)
+    assert.equal((await fx.handler.fetch(request())).status, 200)
+    assert.equal((await catalog()).status, 200)
+  }
 })

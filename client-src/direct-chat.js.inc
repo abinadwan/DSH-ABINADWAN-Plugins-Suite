@@ -1,7 +1,7 @@
     // ---------------------------------------------------------------- Direct Chat
     const DIRECT_CHAT_ID = 'abinadwan-direct-chat'
     function DirectChatButton({ wide, useRemoteAccess, startChat, language }) {
-      const permitted = typeof useRemoteAccess === 'function' ? useRemoteAccess('session/create') : true
+      const permitted = typeof useRemoteAccess === 'function' ? useRemoteAccess('session/create') : false
       const inflight = React.useRef(false)
       const [status, setStatus] = React.useState('idle')
       if (!permitted) return null
