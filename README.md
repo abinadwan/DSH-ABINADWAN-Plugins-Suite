@@ -19,7 +19,7 @@
 
 <p align="center">
   <a href="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/workflows/test.yml"><img alt="CI" src="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/workflows/test.yml/badge.svg" /></a>
-  <a href="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.1.0"><img alt="Release v1.1.0" src="https://img.shields.io/badge/release-v1.1.0-22c55e" /></a>
+  <a href="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.1.3"><img alt="Release v1.1.3" src="https://img.shields.io/badge/release-v1.1.3-22c55e" /></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-22c55e" /></a>
 </p>
 
@@ -31,9 +31,9 @@
   <a href="https://github.com/deepseek-ai/deepseek-harness"><img alt="DeepSeek Harness DSH" src="https://img.shields.io/badge/DeepSeek%20Harness-DSH-0F172A" /></a>
 </p>
 
-> **Latest published release [v1.1.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.1.0).** The [GitHub Releases page](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases) is authoritative for publication. Install only a published stable release using its full commit SHA. Archive Manager replaces Chat Control in this version.
+> **Release source [v1.1.3](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.1.3).** The [GitHub Releases page](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases) is authoritative for publication. Install only a published stable release using its full commit SHA. Includes the maintenance and privacy improvements to My Profile, Direct Chat, Archive Manager, Adaptive Reasoning and Environment & Context.
 >
-> **Development source:** `1.1.3` (unreleased candidate). See [CHANGELOG.md](CHANGELOG.md) for its improvements and verification status.
+> **Source version:** `1.1.3`. See [CHANGELOG.md](CHANGELOG.md) for its improvements and verification status.
 
 ## Overview
 
@@ -79,7 +79,7 @@ github:abinadwan/DSH-ABINADWAN-Plugins-Suite#RELEASE_COMMIT_SHA
 4. Complete the installation through the native Plugins UI, then **restart Harness** if requested.
 5. Open **Plugins → ABINADWAN Plugins Suite**, enable the bundle and select the components you want to activate.
 
-Replace `RELEASE_COMMIT_SHA` with the full commit SHA of the published [v1.1.0 release](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.1.0). Test development commits using a reviewed full SHA in a disposable DSH Profile.
+Replace `RELEASE_COMMIT_SHA` with the full commit SHA of the published [v1.1.3 release](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.1.3). Test development commits using a reviewed full SHA in a disposable DSH Profile.
 
 **Profile separation matters:** Desktop and CLI can use different DSH Profiles. Installing into a CLI Profile does not necessarily install into the Desktop Profile. Before replacing an existing installation, preserve its known-good revision, configuration and any relevant user backup.
 
