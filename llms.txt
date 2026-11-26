@@ -1,0 +1,55 @@
+# ABINADWAN Plugins Suite
+
+> An independent, MIT-licensed community plugin bundle for DeepSeek Harness (DSH). It provides six independently toggleable components using native Harness services. It is not an official DeepSeek product.
+
+Package: `@abinadwan/dsh-plugins-suite`. The suite ships ready-to-run JavaScript, uses Cordis and native DSH UI and service contracts, and does not require a separate application server. Model and provider compatibility depends on the installed Harness version and configured adapters.
+
+Use published GitHub Releases as the source of truth for available stable versions. Install approved releases using their full 40-character Git commit SHA. The `main` branch is the reviewed release-source branch; `develop` is the integration branch and may contain unreleased changes. Match documentation and code to the revision actually installed. A version bump or passing CI is not a published release or proof of full Desktop acceptance.
+
+## Getting started
+
+- [Project README](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/main/README.md): Overview, supported installation, updates and development.
+- [Published releases](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases): Authoritative release notes and published versions.
+- [Component details](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/main/docs/DETAIL.md): Capabilities, defaults, limitations and compatibility.
+- [Documentation index](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/main/docs/README.md): Documentation navigation.
+- [DeepSeek Harness](https://github.com/deepseek-ai/deepseek-harness): Upstream host project.
+
+## Components
+
+- [Environment & Context](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/main/docs/DETAIL.md#environment--context): Read-only environment and session inspector, including estimated context and token usage; does not enforce token budgets or provide authoritative billing.
+- [Humanizer](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/main/docs/DETAIL.md#humanizer): Native runtime Skill for explicit prose editing; no dedicated rewriting service or guaranteed detector evasion.
+- [My Profile](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/main/docs/DETAIL.md#my-profile): Native Profile settings, response preferences, personal context and JSON backup/restore. Consult the installed revision's privacy rules before sharing data.
+- [Direct Chat](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/main/docs/DETAIL.md#direct-chat): Distinct native chat Sessions within one shared Workspace, with tool-denial policies; not a filesystem or process sandbox.
+- [Archive Manager](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/main/docs/DETAIL.md#chat-control): Authorized archive browsing, search, scoped protection and native restore; not a global access-control boundary or automatic cleanup service.
+- [Adaptive Reasoning](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/main/docs/DETAIL.md#adaptive-reasoning): Manual supported reasoning-effort selection, opt-in local recommendations and aggregate statistics; no automatic effort application or global token budget enforcement.
+
+## Security and limitations
+
+- [Security policy](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/main/SECURITY.md): Data handling, disclosure, update checks, security boundaries and vulnerability reporting.
+- [License](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/main/LICENSE): MIT license.
+- [Third-party notices](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/main/THIRD_PARTY_NOTICES.md): Attribution and bundled third-party content.
+
+My Profile settings and JSON backups are not encrypted by the suite. Data sent to a selected local or cloud provider follows that provider's handling; disabling components does not erase saved data or earlier disclosures. Update checks contact public GitHub endpoints; installation updates require user confirmation and use the native Host updater. Do not infer full sandboxing, universal privacy enforcement, guaranteed rollback or universal provider support.
+
+## Development and verification
+
+- [Integration branch README](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/develop/README.md): Current development workflow and build/test instructions.
+- [Integration component details](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/develop/docs/DETAIL.md): Current development contracts, including changes not yet released.
+- [Integration security policy](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/develop/SECURITY.md): Development revision security and privacy boundaries.
+- [Development architecture](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/develop/docs/architecture/development.md): Architecture and maintenance workflow.
+- [My Profile development contract](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/develop/docs/plugins/my-profile.md): Current settings and context behavior.
+- [Package manifest](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/develop/package.json): Package exports, dependencies and scripts.
+- [Cordis bundle configuration](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/develop/cordis.patch.yml): Component registration and default activation.
+- [CI configuration](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/develop/.github/workflows/test.yml): Automated verification configuration.
+- [CI results](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/workflows/test.yml): Recorded runs; check the relevant commit and distinguish offline fixtures from real Desktop tests.
+
+## Documentation maintenance
+
+Review this file with every project modification or improvement. Update affected descriptions, links, compatibility, security/privacy boundaries, release references and verification claims in the same change whenever they change. Record an explicit no-impact review when no factual update is needed. Keep this index consistent with the authoritative documentation and code. Do not present proposed features or unverified tests as implemented or passed.
+
+## Optional
+
+- [Changelog](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/main/CHANGELOG.md): Change history.
+- [Contribution guidelines](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/develop/CONTRIBUTING.md): Contribution and development policies.
+- [Accessibility](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/main/ACCESSIBILITY.md): Accessibility commitment.
+- [Issue tracker](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/issues): Non-sensitive bug reports and feature requests.
