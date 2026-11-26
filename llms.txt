@@ -45,7 +45,7 @@ My Profile settings and JSON backups are not encrypted by the suite. Data sent t
 
 ## Documentation maintenance
 
-Review this file with every project modification or improvement. Update affected descriptions, links, compatibility, security/privacy boundaries, release references and verification claims in the same change whenever they change. Record an explicit no-impact review when no factual update is needed. Keep this index consistent with the authoritative documentation and code. Do not present proposed features or unverified tests as implemented or passed.
+Review this file with every project modification or improvement. Update affected descriptions, links, compatibility, security/privacy boundaries, release references and verification claims in the same change whenever they change. Record an explicit no-impact review when no factual update is needed. Keep this index consistent with the authoritative documentation and code. Do not present proposed features or unverified tests as implemented or passed. The v1.2.0 Humanizer Studio feasibility work on its feature branch is unreleased; consult its draft PR and CI for evidence, not as a statement of shipped capabilities.
 
 ## Optional
 

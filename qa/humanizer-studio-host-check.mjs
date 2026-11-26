@@ -5,6 +5,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { Context } from '@deepseek-ai/cordis'
 import LlmRuntime, { LlmAdapter } from '@deepseek-ai/dsh-llm'
+import { streamStudioRequest } from '../plugins/humanizer/studio-request.js'
 
 const provider = 'studio-fixture'
 const model = 'synthetic-text'
@@ -42,7 +43,7 @@ test('Studio feasibility: public LLM catalog and one-shot request without Sessio
     assert.ok(models.some(entry => entry.provider === provider && entry.id === model))
     const controller = new AbortController()
     const chunks = []
-    for await (const chunk of ctx.llm.stream(request(controller.signal))) chunks.push(chunk)
+    for await (const chunk of streamStudioRequest(ctx.llm, request(controller.signal))) chunks.push(chunk)
     assert.equal(adapter.requests.length, 1)
     const observed = adapter.requests[0]
     assert.equal(observed.provider, provider)
@@ -59,7 +60,9 @@ test('Studio feasibility: public LLM catalog and one-shot request without Sessio
   } finally { await ctx.fiber.dispose() }
 })
 
-test('Studio feasibility: pre-aborted one-shot must not reach the synthetic adapter', async () => {
+// Characterize the pinned Host independently; a future Host that blocks this
+// dispatch will require revisiting this baseline, not removing the Studio guard.
+test('Pinned native LLM can enter a synthetic adapter even with a pre-aborted signal', async () => {
   const ctx = new Context()
   try {
     await ctx.plugin(LlmRuntime).await()
@@ -67,15 +70,39 @@ test('Studio feasibility: pre-aborted one-shot must not reach the synthetic adap
     ctx.llm.registerAdapter([provider], adapter)
     const controller = new AbortController()
     controller.abort()
-    const chunks = []
-    let rejected = false
     try {
-      for await (const chunk of ctx.llm.stream(request(controller.signal))) chunks.push(chunk)
-    } catch (error) {
-      rejected = true
-      assert.ok(controller.signal.aborted)
-    }
+      for await (const chunk of ctx.llm.stream(request(controller.signal))) { void chunk }
+    } catch { /* Native rejection does not establish absence of dispatch. */ }
+    assert.equal(adapter.requests.length, 1)
+    assert.equal(adapter.requests[0].signal.aborted, true)
+  } finally { await ctx.fiber.dispose() }
+})
+
+test('Studio guarded dispatch never enters the native adapter for a pre-aborted request', async () => {
+  const ctx = new Context()
+  try {
+    await ctx.plugin(LlmRuntime).await()
+    const adapter = new Capture()
+    ctx.llm.registerAdapter([provider], adapter)
+    const controller = new AbortController()
+    controller.abort()
+    await assert.rejects(streamStudioRequest(ctx.llm, request(controller.signal)).next(), { name: 'AbortError' })
     assert.equal(adapter.requests.length, 0)
-    assert.ok(rejected || chunks.at(-1)?.reason?.kind === 'aborted')
+  } finally { await ctx.fiber.dispose() }
+})
+
+test('Studio cancellation suppresses remaining native stream chunks after the first chunk', async () => {
+  const ctx = new Context()
+  try {
+    await ctx.plugin(LlmRuntime).await()
+    const adapter = new Capture()
+    ctx.llm.registerAdapter([provider], adapter)
+    const controller = new AbortController()
+    const stream = streamStudioRequest(ctx.llm, request(controller.signal))
+    const first = await stream.next()
+    assert.equal(first.done, false)
+    assert.equal(adapter.requests.length, 1)
+    controller.abort()
+    await assert.rejects(stream.next(), { name: 'AbortError' })
   } finally { await ctx.fiber.dispose() }
 })
