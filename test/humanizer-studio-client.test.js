@@ -1,0 +1,64 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import React, {act} from 'react'
+import {createRoot} from 'react-dom/client'
+import {JSDOM} from 'jsdom'
+import {clientHarness,base,tick} from '../test-support/client.js'
+
+const id='abinadwan-humanizer-studio'
+const locale={active:'ar',revision:1,locales:[{id:'en',label:'English'},{id:'ar',label:'العربية'},{id:'fr',label:'Français'}]}
+test('Studio native keyed main and sidebar registration follows Humanizer lifecycle',async t=>{
+  const app=await clientHarness()
+  t.after(()=>app.dispose())
+  const sidebar=app.entries('sidebar.panellist').find(row=>row.options.id===id)
+  assert.equal(sidebar.options.order,11)
+  assert.ok(app.entries('main').some(row=>row.options.key===id))
+  app.setRows(app.rows().map(row=>row.moduleName===base+'/humanizer'?{...row,enabled:false}:row))
+  await app.changed()
+  assert.ok(!app.entries('main').some(row=>row.options.key===id))
+  assert.ok(!app.entries('sidebar.panellist').some(row=>row.options.id===id))
+})
+test('Studio uses live native catalog, sends only explicit text, supports RTL and clear',async t=>{
+  const dom=new JSDOM('<!doctype html><div id="root"></div>',{url:'http://localhost/'})
+  const old={window:globalThis.window,document:globalThis.document,act:globalThis.IS_REACT_ACT_ENVIRONMENT}
+  globalThis.window=dom.window;globalThis.document=dom.window.document;globalThis.IS_REACT_ACT_ENVIRONMENT=true
+  const sent=[]
+  const app=await clientHarness({React,document:dom.window.document,modelCatalog:()=>({groups:[{id:'p',name:'Provider',models:[{id:'m',name:'Model'}]}]}),
+    fetch:async(url,options)=>{
+      const path=new URL(url).pathname
+      if(path.endsWith('/status'))return {ok:true,json:async()=>({available:true,protocol:1})}
+      if(path.endsWith('/edit')){sent.push(JSON.parse(options.body));return {ok:true,json:async()=>({text:'نتيجة 123'})}}
+      return {ok:false,status:404,json:async()=>({})}
+    }})
+  app.hostLocale.set(locale)
+  const root=createRoot(dom.window.document.getElementById('root'))
+  t.after(async()=>{await act(async()=>root.unmount());await app.dispose();dom.window.close();globalThis.window=old.window;globalThis.document=old.document;globalThis.IS_REACT_ACT_ENVIRONMENT=old.act})
+  const q=selector=>dom.window.document.querySelector(selector)
+  const panel=app.entries('main').find(row=>row.options.key===id)
+  await act(async()=>root.render(React.createElement(panel.component)))
+  for(let i=0;i<4;i++)await act(async()=>{await tick()})
+  assert.equal(q('[data-humanizer-studio]').dir,'rtl')
+  assert.equal(q('[data-studio-model]').options.length,2)
+  assert.equal(q('[data-studio-output-language]').options.length,4)
+  assert.equal(sent.length,0)
+  const change=async(selector,value)=>{
+    const node=q(selector)
+    const proto=node.tagName==='SELECT'?dom.window.HTMLSelectElement.prototype:dom.window.HTMLTextAreaElement.prototype
+    await act(async()=>{Object.getOwnPropertyDescriptor(proto,'value').set.call(node,value);node.dispatchEvent(new dom.window.Event(node.tagName==='SELECT'?'change':'input',{bubbles:true}))})
+  }
+  await change('[data-studio-model]',JSON.stringify(['p','m']))
+  await change('[data-studio-editor="source"]','نص 123')
+  await change('[data-studio-output-language]','ar')
+  assert.equal(q('[data-studio-process]').disabled,false)
+  await act(async()=>q('[data-studio-process]').click())
+  for(let i=0;i<3;i++)await act(async()=>{await tick()})
+  assert.deepEqual(sent,[{service:'humanize',provider:'p',model:'m',sourceText:'نص 123',inputLanguage:'auto',outputLanguage:'ar'}])
+  assert.equal(q('[data-studio-editor="result"]').value,'نتيجة 123')
+  assert.equal(q('[data-studio-editor="result"]').dir,'rtl')
+  await act(async()=>q('[data-studio-clear]').click())
+  assert.equal(q('[data-studio-editor="source"]').value,'')
+  assert.equal(q('[data-studio-editor="result"]').value,'')
+  assert.equal(sent.length,1)
+  assert.equal(dom.window.localStorage.length,0)
+  assert.equal(dom.window.sessionStorage.length,0)
+})

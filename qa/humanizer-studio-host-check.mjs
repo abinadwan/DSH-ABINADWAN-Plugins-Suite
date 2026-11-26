@@ -9,7 +9,9 @@ import { HostConnectionService } from '@deepseek-ai/dsh-client-connection'
 import Sessions from '@deepseek-ai/dsh-session'
 import { streamStudioRequest } from '../plugins/humanizer/studio-request.js'
 import { runStudioEdit, STUDIO_SERVICES } from '../plugins/humanizer/studio-engine.js'
-import { registerStudioRoutes, STUDIO_PATH } from '../plugins/humanizer/studio-http.js'
+import { STUDIO_PATH } from '../plugins/humanizer/studio-http.js'
+import SkillRegistry from '@deepseek-ai/dsh-skill'
+import * as Humanizer from '../plugins/humanizer/index.js'
 
 const provider = 'studio-fixture'
 const model = 'synthetic-text'
@@ -135,7 +137,7 @@ test('Studio nine-service engine uses real native catalog and synthetic adapter 
   } finally { await ctx.fiber.dispose() }
 })
 
-test('native connection owner admission and observable LLM waterfall: candidate HTTP module', async () => {
+test('native Humanizer component owner admission, lifecycle and observable LLM waterfall', async () => {
   const ctx = new Context()
   try {
     await ctx.plugin(LlmRuntime).await()
@@ -152,8 +154,10 @@ test('native connection owner admission and observable LLM waterfall: candidate 
       assert.equal(Reflect.set(options.messages[0].content[0], 'text', 'replacement'), false)
       return next()
     })
-    const fixture = ctx.plugin({name:'studio-feasibility-owner-probe', inject:['connection','llm'], apply:registerStudioRoutes})
+    await ctx.plugin(SkillRegistry).await()
+    const fixture = ctx.plugin(Humanizer)
     await fixture.await()
+    assert.ok(await ctx.skills.get('abinadwan-humanizer'))
     const transport = ctx.connection.createSharedFetchHandler('/api')
     const url = 'http://localhost' + STUDIO_PATH
     const input = {provider,model,service:'humanize',sourceText:source,inputLanguage:'auto',outputLanguage:'preserve'}
@@ -175,6 +179,7 @@ test('native connection owner admission and observable LLM waterfall: candidate 
     assert.equal(adapter.requests[0].provider, provider)
     assert.equal(sessionEvents, 0)
     await fixture.dispose()
+    assert.equal(await ctx.skills.get('abinadwan-humanizer'),undefined)
     assert.equal((await send(ctx.connection.browserPeer)).status, 404)
     assert.equal((await status(ctx.connection.browserPeer)).status,404)
   } finally { await ctx.fiber.dispose() }

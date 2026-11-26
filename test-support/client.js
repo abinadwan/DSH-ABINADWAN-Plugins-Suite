@@ -273,6 +273,7 @@ export async function clientHarness(options = {}) {
   }
   class SessionRemote extends Service {
     constructor(ctx) { super(ctx, 'remote.session') }
+    async modelCatalog() { return wrap(options.modelCatalog || (() => ({groups:[]}))) }
     async list(_request, signal) {
       if (options.readArchiveSessions) {
         const result = await options.readArchiveSessions(signal)

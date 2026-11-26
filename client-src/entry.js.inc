@@ -96,6 +96,7 @@
           let pending = Promise.resolve()
           const components = [
             [TYPE + '/environment-context', environmentPlugin],
+            [TYPE + '/humanizer', humanizerStudioPlugin],
             [TYPE + '/personal-profile', profilePlugin],
             [TYPE + '/direct-chat', directChatPlugin],
             [TYPE + '/conversation-lifecycle', archiveManagerPlugin],
