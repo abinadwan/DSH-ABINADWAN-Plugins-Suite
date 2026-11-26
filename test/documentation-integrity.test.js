@@ -32,6 +32,10 @@ test('development source metadata, lockfile, client version and documentation ag
     assert.match(read(document), /releases\/tag\/v1\.1\.0/)
   }
   assert.match(read('docs/DETAIL.md'), /GitHub Release/i)
+  assert.ok(read('CHANGELOG.md').includes(`## [${packageJson.version}]`), 'versioned changelog entry missing')
+  for (const document of ['README.md', 'docs/DETAIL.md']) {
+    assert.ok(read(document).includes('`' + packageJson.version + '`'), 'current source version missing: ' + document)
+  }
 })
 
 test('installation instructions and package identity reflect the six-component develop integration workflow', () => {
