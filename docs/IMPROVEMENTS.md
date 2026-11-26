@@ -153,3 +153,23 @@ The 752 scored Ollama attempts completed with zero request errors across the smo
 On Windows with Node `v26.10.0`, `npm ci --ignore-scripts`, `npm run build:client`, `npm run check:client` and `npm run check:regression` succeeded. `npm test` passed 290 of 291 with the POSIX-only permissions check skipped. `npm run check:package` passed 283 of 285 with the POSIX check and source documentation-tree check skipped, and verified 99 packed files. The pinned native Host suite passed 26 of 26. The Windows junction test required execution outside the workspace sandbox.
 
 The QA changes are ready for local review. Release acceptance for model behavior still needs an isolated native Desktop run. Remaining cases include explicit and mixed-language output, automatic language after changes, custom literal formatting, personal information subject confusion, conflicting instructions, and request-level attribution of the reported Direct Chat usage.
+
+## Additional context experiments ? identity and automatic language
+
+On the local QA baseline f7a5e70 (production renderer unchanged from 14bf6e3), two isolated runner-only variants were compared with 14bf6e3 using native Ollama, think:false, temperature 0, seed 42, num_ctx 4096 and num_predict 512. The original full-suite selection is preserved; the new targeted suites are opt-in. All profile values and histories were synthetic.
+
+| Targeted suite | Attempts | Gemma baseline / candidate | Qwen baseline / candidate |
+| --- | ---: | --- | --- |
+| Identity subject | 40 | Required checks 5/5 / 5/5; silent 4/6 / 5/6 | Required checks 4/5 / 4/5; silent 5/6 / 5/6 |
+| Automatic language | 84 | Language 14/21 / 14/21 | Language 18/21 / 18/21 |
+
+All 124 attempts returned final text, with no request errors; eight automatic-language attempts ended at the output limit. Both identity variants still made Gemma describe itself before answering the short Arabic user-identity question, with or without saved details. Qwen's empty-profile Arabic answer improved from assistant identity to unavailable user details; the populated Arabic short question still missed the exact Latin name check in both variants (Arabic transliteration requires human review). The automatic-language candidate appended an explicit current-user-language default when the saved setting was auto. It did not fix Gemma's Chinese reply after clearing or improve either model's aggregate language checks. The strict language scorer can also flag legitimate embedded foreign-language terminology, so scores are not a complete semantic assessment.
+
+Neither candidate is accepted for production: no consistent improvement in the targeted failure mode across both models, and no Desktop acceptance evidence. The production renderer, wording B, silent guidance, profile schema, and Direct Chat policy remain unchanged. The tests are reproducible using:
+
+~~~powershell
+node qa/profile-ollama-check.mjs --suite identity-context --mode first --variants 14bf6e3,14bf6e3+identity-subject --out node_modules/profile-context-identity-v1.jsonl
+node qa/profile-ollama-check.mjs --suite auto-context --mode first --variants 14bf6e3,14bf6e3+auto-language --out node_modules/profile-context-auto-v1.jsonl
+~~~
+
+Use a new output path for repeated runs. These are matched API simulations, not full Desktop request traces. Native placement and precedence remain constrained by the pinned Harness assembly API; the plugin does not reorder host message history or bypass optional context suppression.

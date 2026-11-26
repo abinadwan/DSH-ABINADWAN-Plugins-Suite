@@ -201,6 +201,21 @@ async function loadRenderer(revision) {
     const render = (...args) => base.renderer[section](...args).replace(lead + silentGuidance, '')
     return {...base, renderer: {...base.renderer, [section]: render}, experiment}
   }
+  if (experiment === 'identity-subject') {
+    const base = await loadRenderer(baseRevision)
+    const profileContext = record => base.renderer.profileContext(record)
+      .replace('These personal details replace earlier My Profile context; do not infer omitted details.', 'These are details about the human user, not the assistant. They replace earlier My Profile context. When asked about the user, report only currently known details; omitted details are unknown.')
+    return {...base, renderer: {...base.renderer, profileContext}, transformSha256: sha256(profileContext.toString())}
+  }
+  if (experiment === 'auto-language') {
+    const base = await loadRenderer(baseRevision)
+    const responseReminder = (record, id) => {
+      const text = base.renderer.responseReminder(record, id)
+      if (!text || record?.preferences?.responseLanguage !== 'auto') return text
+      return text + '\nNo saved response language is selected. Use the language of the current user request unless it explicitly requests another output language.'
+    }
+    return {...base, renderer: {...base.renderer, responseReminder}, transformSha256: sha256(responseReminder.toString())}
+  }
   if (experiment === 'explicit-precedence') {
     const base = await loadRenderer(baseRevision)
     const responseReminder = (record, id) => base.renderer.responseReminder(record, id)
@@ -279,10 +294,10 @@ async function main() {
     out: {type: 'string'},
   }})
   const selected = cases.filter(scenario =>
-    (values.suite === 'full' && scenario.group !== 'direct' ||
+    (values.suite === 'full' && scenario.group !== 'direct' && !scenario.contextOnly ||
       values.suite === 'quiet-placement' && quietPlacementCases.has(scenario.id) || scenario.suites.includes(values.suite))
     && (!values.filter || scenario.id.startsWith(values.filter)))
-  if (!selected.length) throw new Error('No cases selected. Available suites: smoke, full, silent, quiet-placement, precedence, direct')
+  if (!selected.length) throw new Error('No cases selected. Available suites: smoke, full, silent, quiet-placement, precedence, direct, identity-context, auto-context')
   if (!['native', 'openai'].includes(values.api)) throw new Error('Invalid --api')
   if (!['both', 'first', 'last', 'default'].includes(values.mode)) throw new Error('Invalid --mode')
   const trials = boundedInt(values.trials, 'trials', 1, 5)

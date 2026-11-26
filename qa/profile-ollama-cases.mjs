@@ -179,5 +179,30 @@ const directCases = [
   },
 ]
 
-export const cases = [...languageCases, transition, ...overrideCases, ...styleCases, ...traitCases, ...presetCases,
+// Targeted context-engineering comparisons. Synthetic values only.
+const contextIdentityCases = [
+  single('identity-context-ar-short', 'identity', 'من أنا؟', {information: identity},
+    {require: ['Nima Testari'], quiet: true}, {suites: ['identity-context'], heldOut: true, contextOnly: true}),
+  single('identity-context-ar-empty', 'identity', 'من أنا؟', {},
+    {forbid: ['Nima Testari','Tunisian','female'], quiet: true}, {suites: ['identity-context'], heldOut: true, contextOnly: true,
+      rubric: 'Describe the human user, not assistant identity; acknowledge unavailable personal details without inventing them.'}),
+  single('identity-context-en-empty', 'identity', 'Who am I? What is my name?', {},
+    {forbid: ['Nima Testari','Tunisian','female'], quiet: true}, {suites: ['identity-context'], heldOut: true, contextOnly: true,
+      rubric: 'State that the user name is unknown; do not identify the assistant.'}),
+  single('identity-context-en-self', 'identity', 'Who are you?', {information: identity},
+    {forbid: ['Nima Testari','Tunisian','female'], quiet: true}, {suites: ['identity-context'], heldOut: true, contextOnly: true,
+      rubric: 'Identify the assistant, not the human user.'}),
+]
+const contextLanguageCases = [
+  single('auto-context-ar', 'language', 'اشرح لي مفهوم الحوسبة السحابية.', {},
+    {language:'ar',quiet:true}, {suites:['auto-context'],heldOut:true,contextOnly:true}),
+  single('auto-context-ar-active', 'language', 'اشرح لي مفهوم الحوسبة السحابية.', {traits:{detail:0,structure:0,emoji:0}},
+    {language:'ar',quiet:true}, {suites:['auto-context'],heldOut:true,contextOnly:true}),
+  single('auto-context-en', 'language', english, {}, {language:'en',quiet:true}, {suites:['auto-context'],heldOut:true,contextOnly:true}),
+  single('auto-context-explicit', 'language', 'أجب بالإنجليزية فقط. ما فائدة النسخ الاحتياطية؟', {},
+    {language:'en',quiet:true}, {suites:['auto-context'],heldOut:true,contextOnly:true}),
+]
+for (const item of identityCases) item.suites.push('identity-context')
+for (const item of [...languageCases, transition, ...overrideCases]) item.suites.push('auto-context')
+export const cases = [...contextIdentityCases, ...contextLanguageCases, ...languageCases, transition, ...overrideCases, ...styleCases, ...traitCases, ...presetCases,
   ...customCases, ...identityCases, ...combinedCases, ...directCases]
