@@ -2,7 +2,7 @@
 
 **Release source [v1.1.3](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.1.3).** One community-maintained DSH bundle exposes six independently switchable components. The package's public identity remains `@abinadwan/dsh-plugins-suite`.
 
-> **Source version:** `1.1.3`. See the [changelog](../CHANGELOG.md) for versioned changes.
+> **Development source:** `1.2.0` (unreleased candidate). See the [changelog](../CHANGELOG.md) for versioned changes.
 >
 > **Release boundary:** A version bump, development branch merge, or successful CI run does not publish a GitHub Release or validate every Desktop security path. See [the releases page](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases) for actually published artifacts.
 

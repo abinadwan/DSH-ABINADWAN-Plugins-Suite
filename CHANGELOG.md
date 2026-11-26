@@ -2,6 +2,12 @@
 
 All notable changes are documented here.
 
+## [1.2.0] — development candidate (unreleased)
+
+- Start owner-approved Humanizer Studio (HS-01 through HS-08) and additional security reviews 3.6 (Humanizer instruction integrity and privacy) and 3.7 (suite package, dependencies, updates and repository). Branch `feature/v1.2.0-humanizer-studio`, baseline `b883fe41f27fae0c89d6a4bda3d55f2f9bb65e54` (same source tree as published v1.1.3). No Studio runtime/UI is shipped by this initial commit.
+- Add an offline characterization of the public, pinned DSH LLM service for a standalone, tool-free one-shot text request using a synthetic adapter and no Session/Agent services. Check catalog membership, bounded request shape, separate system/input content, terminal success, and pre-aborted request behavior. This is a feasibility fixture, not a production authorization, storage, cancellation, provider or Desktop guarantee. CI pending. No DSH files or installed dependencies are modified.
+- Source version metadata aligned at 1.2.0; published release references remain v1.1.3.
+
 ## [1.1.3] — release source (2026-11-27)
 
 - Owner approved publication of this cumulative maintenance release after integration through [PR #85](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/85). Includes all changes listed under 1.1.1 and 1.1.2, plus the Environment & Context changes below and the project `llms.txt` index. The 1.1.1 and 1.1.2 development versions are not separate published releases. The GitHub Releases page remains authoritative for publication. Humanizer Studio is not included.

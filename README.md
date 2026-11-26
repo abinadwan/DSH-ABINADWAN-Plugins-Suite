@@ -33,7 +33,7 @@
 
 > **Release source [v1.1.3](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.1.3).** The [GitHub Releases page](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases) is authoritative for publication. Install only a published stable release using its full commit SHA. Includes the maintenance and privacy improvements to My Profile, Direct Chat, Archive Manager, Adaptive Reasoning and Environment & Context.
 >
-> **Source version:** `1.1.3`. See [CHANGELOG.md](CHANGELOG.md) for its improvements and verification status.
+> **Development source:** `1.2.0` (unreleased candidate). See [CHANGELOG.md](CHANGELOG.md) for its improvements and verification status.
 
 ## Overview
 

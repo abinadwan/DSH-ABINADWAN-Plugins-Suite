@@ -2,7 +2,7 @@
 
 ## Current baseline
 
-Development package 1.1.3 contains six independently toggleable components; see [component contracts](../DETAIL.md). The Host entry is `index.js`, the browser carrier is `client.js`, and `cordis.patch.yml` defines the native bundle. Component implementations, locales and icons live under `plugins/`. Preserve exports, IDs, settings namespaces and migration contracts.
+Development package 1.2.0 contains six independently toggleable components; see [component contracts](../DETAIL.md). The Host entry is `index.js`, the browser carrier is `client.js`, and `cordis.patch.yml` defines the native bundle. Component implementations, locales and icons live under `plugins/`. Preserve exports, IDs, settings namespaces and migration contracts.
 
 ## Browser source and distribution
 
