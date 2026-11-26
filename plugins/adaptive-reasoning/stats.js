@@ -6,6 +6,14 @@ import { performance } from 'node:perf_hooks'
 export const SOURCES = ['override', 'adaptive', 'manual', 'saved', 'default']
 export const MAX_KEYS = 64
 const MAX_UNTIMED = 32
+const MAX_COUNT = Number.MAX_SAFE_INTEGER
+const plus = (a, b) => Math.min(MAX_COUNT, a + b)
+// Only bounded identifiers, not URL-like values or control characters.
+// Custom identifiers can still contain personal information; this is not a secret detector.
+const safeLabel = value => typeof value === 'string' && value.length > 0 && value.length <= 256 &&
+  !/[\u0000-\u001f\u007f-\u009f\u202a-\u202e\u2066-\u2069?#]/u.test(value) && !value.includes('://')
+const usageFields = ['inputTokens', 'cacheReadTokens', 'cacheWriteTokens', 'outputTokens', 'totalTokens', 'reasoningTokens']
+const copyUsage = usage => Object.fromEntries(usageFields.filter(key => measured(usage?.[key])).map(key => [key, usage[key]]))
 export const bucket = () => ({ requests: 0, inputTokens: 0, outputTokens: 0, totalTokens: 0, totalReported: 0,
   reasoningTokens: 0, reasoningReported: 0, durationMs: 0, timed: 0 })
 
@@ -42,7 +50,7 @@ export class ReasoningStats {
     if (event.type === 'user/message' && session.header.origin !== 'subagent') {
       const kind = event.data.source.kind
       if (kind === 'user') {
-        this.pendingMessages.set(session, (this.pendingMessages.get(session) ?? 0) + 1)
+        this.pendingMessages.set(session, plus(this.pendingMessages.get(session) ?? 0, 1))
       }
     }
     if (event.type === 'step/end') this.pendingMessages.delete(session)
@@ -54,8 +62,8 @@ export class ReasoningStats {
     const row = {
       scope: session.header.origin === 'subagent' ? 'subagent' : 'session',
       effort: header?.config.reasoningEffort ?? 'default',
-      usage: event.data.usage,
-      route: header?.config,
+      usage: copyUsage(event.data.usage),
+      route: { provider: header?.config.provider, model: header?.config.model },
     }
     this.untimed.set(this.requestKey(session, event.seq), row)
     // Count a commit without timing even if its stream end is unavailable.
@@ -77,8 +85,9 @@ export class ReasoningStats {
         this.pendingMessages.delete(session)
         const header = session.requestHeader()
         const explicit = header?.config.reasoningEffort !== undefined && header.adapterDefaults?.reasoningEffort !== true
-        this.messages += messages
-        this.sources[explicit ? 'manual' : 'default'] += messages
+        this.messages = plus(this.messages, messages)
+        const source = explicit ? 'manual' : 'default'
+        this.sources[source] = plus(this.sources[source], messages)
       }
       return
     }
@@ -107,12 +116,12 @@ export class ReasoningStats {
    */
   request(scope, effort, usage, durationMs, route) {
     if (scope !== 'session' && scope !== 'subagent') return
-    if (typeof effort !== 'string' || !effort.length || effort.length > 256) effort = 'other'
+    if (!safeLabel(effort)) effort = 'other'
     const table = this.requests[scope]
     const key = Object.hasOwn(table, effort) || Object.keys(table).length < MAX_KEYS ? effort : 'other'
     addUsage(table[key] ??= bucket(), usage, durationMs)
     const { provider, model } = route ?? {}
-    if (![provider, model, effort].every(value => typeof value === 'string' && value.length > 0 && value.length <= 256)) return
+    if (![provider, model, effort].every(safeLabel)) return
     const routeKey = JSON.stringify([scope, provider, model, effort])
     if (!this.routes.has(routeKey) && this.routes.size < MAX_KEYS) {
       this.routes.set(routeKey, { scope, provider, model, effort, ...bucket() })
@@ -141,11 +150,24 @@ export class ReasoningStats {
 const measured = value => Number.isSafeInteger(value) && value >= 0
 
 function addUsage(row, usage, durationMs) {
-  row.requests++
-  if (usage && measured(usage.inputTokens)) row.inputTokens += usage.inputTokens + (measured(usage.cacheReadTokens) ? usage.cacheReadTokens : 0) + (measured(usage.cacheWriteTokens) ? usage.cacheWriteTokens : 0)
-  if (usage && measured(usage.outputTokens)) row.outputTokens += usage.outputTokens
-  if (usage && measured(usage.totalTokens)) { row.totalTokens += usage.totalTokens; row.totalReported++ }
+  row.requests = plus(row.requests, 1)
+  if (usage && measured(usage.inputTokens)) {
+    for (const key of ['inputTokens', 'cacheReadTokens', 'cacheWriteTokens']) {
+      if (measured(usage[key])) row.inputTokens = plus(row.inputTokens, usage[key])
+    }
+  }
+  if (usage && measured(usage.outputTokens)) row.outputTokens = plus(row.outputTokens, usage.outputTokens)
+  if (usage && measured(usage.totalTokens)) {
+    row.totalTokens = plus(row.totalTokens, usage.totalTokens)
+    row.totalReported = plus(row.totalReported, 1)
+  }
   // Only an adapter-reported count is used; a missing count is never estimated.
-  if (usage && measured(usage.reasoningTokens)) { row.reasoningTokens += usage.reasoningTokens; row.reasoningReported++ }
-  if (Number.isFinite(durationMs) && durationMs >= 0) { row.durationMs += durationMs; row.timed++ }
+  if (usage && measured(usage.reasoningTokens)) {
+    row.reasoningTokens = plus(row.reasoningTokens, usage.reasoningTokens)
+    row.reasoningReported = plus(row.reasoningReported, 1)
+  }
+  if (Number.isFinite(durationMs) && durationMs >= 0) {
+    row.durationMs = plus(row.durationMs, durationMs)
+    row.timed = plus(row.timed, 1)
+  }
 }
