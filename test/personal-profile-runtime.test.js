@@ -4,21 +4,16 @@ import {readFileSync} from 'node:fs'
 import {runInNewContext} from 'node:vm'
 import {Context,Service} from '@deepseek-ai/cordis'
 import * as profile from '../plugins/personal-profile/index.js'
-import {responsePreferences,eligibleAssembly,SECTION_NAME,DISCLOSURE_SECTION_NAME,profileDisclosure,previewProfileDisclosure,
-  disclosureBlocks,staleDisclosure,refuseStaleDisclosure} from '../plugins/personal-profile/preferences.js'
-
-const DISCLOSURE_HEADER='Personal details the user chose to share (use them only when relevant to the request):'
-/** Synthetic record: every field explicitly checked. */
-function disclosureRecord() {
-  const r=profile.emptyRecord()
-  r.information={preferredName:'SYNTHETIC_P8_NAME',nationality:'SYNTHETIC_P8_NATIONALITY',gender:'female'}
-  r.policies={preferredName:'allow',nationality:'allow',gender:'allow'}
-
-  return r
-}
-function selection() {
+import {responsePreferences,eligibleAssembly,SECTION_NAME,CONTEXT_NAME,REMINDER_NAME,profileDisclosure,profileContext,responseReminder} from '../plugins/personal-profile/preferences.js'
+function selection(){
   const agent={session:{header:{}},options:{}}
   return {agent,scope:agent,signal:new AbortController().signal,modelSelection:{provider:'test',model:'test'}}
+}
+function record(){
+  const r=profile.emptyRecord()
+  r.information={preferredName:'SYNTHETIC_NAME',nationality:'SYNTHETIC_COUNTRY',gender:'female'}
+  r.preferences.custom='Synthetic instruction {{literal}}'
+  return r
 }
 test('response renderer matches entire browser catalog and renderer',()=>{
   const client=readFileSync(new URL('../client.js',import.meta.url),'utf8').replace(/\r\n/g,'\n')
@@ -36,32 +31,12 @@ test('response renderer matches entire browser catalog and renderer',()=>{
         for(const k of Object.keys(r.preferences.traits))r.preferences.traits[k]=level
         r.preferences.presets=['critical','no-fluff','grill-me','evidence','steps','action','code','humanizer']
         r.preferences.custom='Fictional {{literal}}'
-        for(const consent of [true,false]){
-          r.preferences.sendCustom=consent
-          assert.equal(responsePreferences(r),preview(r.preferences))
-        }
+        assert.equal(responsePreferences(r),preview(r.preferences))
       }
     }
   }
 })
-test('structured fields are excluded even when all permissions allow; custom text requires opt-in',()=>{
-  const r=profile.emptyRecord()
-  r.information={preferredName:'Fictional private name',nationality:'Fictional private nationality',gender:'female'}
 
-  r.policies={preferredName:'allow',nationality:'allow',gender:'allow'}
-  r.preferences.custom='Fictional custom text'
-  assert.equal(responsePreferences(r),'')
-  r.preferences.style='friendly'
-  assert.match(responsePreferences(r),/friendly/)
-  assert.doesNotMatch(responsePreferences(r),/Fictional|female/)
-  r.preferences.sendCustom=true
-  assert.match(responsePreferences(r),/Fictional custom text/)
-  assert.doesNotMatch(responsePreferences(r),/Fictional private|female/)
-  assert.equal(responsePreferences({...r,version:1}),'')
-  for(const bad of [{sendCustom:'true'},{custom:'x'.repeat(8193)},{presets:['unknown']},{style:'unknown'},{traits:{}},{unknown:1}]){
-    assert.equal(responsePreferences({...r,preferences:{...r.preferences,...bad}}),'')
-  }
-})
 test('excludes diagnostic, aborted and subagent scopes',()=>{
   const c=selection()
   assert.ok(eligibleAssembly(c))
@@ -73,140 +48,107 @@ test('excludes diagnostic, aborted and subagent scopes',()=>{
   c.agent.session.header.delegationDepth=1;assert.equal(eligibleAssembly(c),false)
   c.agent.session.header.delegationDepth=0;c.agent.options.subagentDepth=1;assert.equal(eligibleAssembly(c),false)
 })
-// Real Cordis lifetime, small registry contract double (not actual Agent Loop).
-class Registry extends Service {
-  sections=new Map()
-  constructor(ctx){super(ctx,'systemPrompt')}
-  section(s){
-    assert.ok(!this.sections.has(s.name))
-    this.sections.set(s.name,s)
-    return this.ctx.effect(()=>()=>this.sections.delete(s.name))
+
+test('v5 emits every populated field and saved custom instruction without switches',()=>{
+  const r=record()
+  assert.equal(r.version,5)
+  assert.equal(r.policies,undefined)
+  assert.equal(r.preferences.sendCustom,undefined)
+  assert.match(profileDisclosure(r),/SYNTHETIC_NAME/)
+  assert.match(profileDisclosure(r),/SYNTHETIC_COUNTRY/)
+  assert.match(profileDisclosure(r),/female/)
+  assert.match(responsePreferences(r),/Synthetic instruction/)
+  assert.doesNotMatch(responsePreferences(r),/SYNTHETIC_NAME|SYNTHETIC_COUNTRY/)
+  assert.match(profileContext(r),/Current My Profile settings/)
+  assert.match(profileContext(profile.emptyRecord()),/No active personal details/)
+})
+test('legacy records retain their old scope until explicitly migrated',()=>{
+  const v5=record()
+  for(const version of [2,3,4]){
+    const r={...v5,version,policies:{preferredName:'allow',nationality:'private',gender:'private'},preferences:{...v5.preferences,sendCustom:false}}
+    if(version<4)Object.assign(r,{locale:'en',allowPersonalInformation:true,allowCloud:true})
+    assert.doesNotMatch(responsePreferences(r),/Synthetic instruction/)
+    assert.doesNotMatch(profileDisclosure(r),/SYNTHETIC_COUNTRY|female/)
+    assert.equal(profileDisclosure(r).includes('SYNTHETIC_NAME'),version===4)
+    r.preferences.sendCustom=true
+    assert.match(responsePreferences(r),/Synthetic instruction/)
   }
+})
+test('empty and unspecified fields omitted; structured fields stay single-line and quoted',()=>{
+  const r=record()
+  r.information={preferredName:'A\nB\u202eC\u2028D',nationality:' ',gender:'unspecified'}
+  const text=profileDisclosure(r)
+  assert.match(text,/Preferred name: "A B C D"/)
+  assert.doesNotMatch(text,/Nationality:|Gender:/)
+  assert.equal(text.split('\n').length,2)
+  assert.equal(profileDisclosure({...r,information:{...r.information,preferredName:'x'.repeat(129)}}),'')
+  assert.equal(profileDisclosure({...r,information:{}}),'')
+  for(const p of [{custom:'x'.repeat(8193)},{presets:['unknown']},{style:'unknown'},{traits:{}},{unknown:1},{sendCustom:true}]){
+    assert.equal(responsePreferences({...r,preferences:{...r.preferences,...p}}),'')
+  }
+})
+class Registry extends Service{
+  sections=new Map()
+  contexts=new Map()
+  constructor(ctx){super(ctx,'systemPrompt')}
+  context(s){assert.ok(!this.contexts.has(s.name));this.contexts.set(s.name,s);return this.ctx.effect(()=>()=>this.contexts.delete(s.name))}
+  section(s){this.sections.set(s.name,s);return this.ctx.effect(()=>()=>this.sections.delete(s.name))}
 }
-test('Cordis mount/update/dispose reads only volatile persisted config; optional services independent',async()=>{
+test('hybrid context and instructions are lifecycle-scoped, refreshed and separated',async()=>{
   const ctx=new Context()
   try{
     await ctx.plugin(Registry).await()
-    const r=profile.emptyRecord();r.preferences.style='friendly'
-    const fiber=ctx.plugin(profile,{record:r});await fiber.await()
-    const section=ctx.systemPrompt.sections.get(SECTION_NAME)
-    assert.ok(section);assert.equal(section.interpolate,false)
-    assert.match(section.text(selection()),/friendly/)
-    assert.equal(section.text({}),'')
-    const next=profile.emptyRecord();next.preferences.responseLanguage='ja'
-    await fiber.update({record:next})
-    assert.equal(ctx.systemPrompt.sections.size,2)
-    assert.match(ctx.systemPrompt.sections.get(SECTION_NAME).text(selection()),/Japanese/)
-    assert.doesNotMatch(ctx.systemPrompt.sections.get(SECTION_NAME).text(selection()),/friendly/)
-    await fiber.dispose()
+    const f=ctx.plugin(profile,{record:record()});await f.await()
+    const current=()=>ctx.systemPrompt.contexts.get(CONTEXT_NAME)
+    const instructions=()=>ctx.systemPrompt.sections.get(SECTION_NAME)
+    const reminder=()=>ctx.systemPrompt.contexts.get(REMINDER_NAME)
+    const turn=selection()
+    assert.equal(ctx.systemPrompt.sections.size,1)
+    assert.equal(instructions().interpolate,false)
+    assert.match(instructions().text(selection()),/Synthetic instruction/)
+    assert.doesNotMatch(instructions().text(selection()),/SYNTHETIC_NAME/)
+    assert.doesNotMatch(current().text(selection()),/Synthetic instruction/)
+    assert.equal(instructions().text({}),'')
+    assert.equal(ctx.systemPrompt.contexts.size,2)
+    assert.equal(current().interpolate,false)
+    assert.equal(reminder().interpolate,false)
+    assert.ok(reminder().order>current().order)
+    assert.equal(reminder().text({}),'')
+    const first=reminder().text(turn)
+    assert.match(first,/current saved user response instructions/)
+    assert.match(first,/Apply the current saved custom instructions/)
+    assert.doesNotMatch(first,/Synthetic instruction|SYNTHETIC_NAME|SYNTHETIC_COUNTRY/)
+    assert.equal(reminder().text(turn),first,'same turn retains its revision')
+    assert.notEqual(reminder().text(selection()),first,'new turn renews its revision')
+    assert.match(current().text(selection()),/SYNTHETIC_NAME/)
+    assert.equal(current().text({}),'')
+    const updated=record();updated.preferences.responseLanguage='ja'
+    await f.update({record:updated})
+    assert.match(instructions().text(selection()),/saved default response language is Japanese/)
+    assert.match(reminder().text(turn),/Write your entire response in Japanese \(日本語\)\./)
+    assert.doesNotMatch(current().text(selection()),/saved default response language|Write your entire response in Japanese/)
+    await f.update({record:profile.emptyRecord()})
+    assert.equal(instructions().text(selection()),'')
+    assert.match(reminder().text(turn),/No active saved response preferences/)
+    assert.doesNotMatch(reminder().text(turn),/Japanese|Synthetic instruction|Current reminder revision/)
+    assert.equal(reminder().text(turn),reminder().text(selection()),'neutral reminders do not renew every turn')
+    assert.match(current().text(selection()),/No active personal details/)
+    assert.doesNotMatch(current().text(selection()),/SYNTHETIC_NAME/)
+    await f.dispose()
+    assert.equal(ctx.systemPrompt.contexts.size,0)
     assert.equal(ctx.systemPrompt.sections.size,0)
-    await ctx.plugin(profile,{record:r}).await()
-    assert.equal(ctx.systemPrompt.sections.size,2)
+    await ctx.plugin(profile,{record:record()}).await()
+    assert.equal(ctx.systemPrompt.contexts.size,2)
   }finally{await ctx.fiber.dispose()}
 })
-
-// ---------- Phase 8: shared details (synthetic values only) ----------
-test('Each saved field is shared only when checked (all eight combinations)',()=>{
-  const labels=['Preferred name: SYNTHETIC_P8_NAME','Nationality: SYNTHETIC_P8_NATIONALITY','Gender: female']
-  for(const a of ['private','allow'])for(const b of ['private','allow'])for(const c of ['private','allow']){
-    const r={...disclosureRecord(),policies:{preferredName:a,nationality:b,gender:c}}
-    const lines=labels.filter((_,i)=>[a,b,c][i]==='allow')
-    assert.equal(profileDisclosure(r),lines.length?[DISCLOSURE_HEADER,...lines].join('\n'):'')
-    assert.doesNotMatch(responsePreferences(r),/SYNTHETIC_P8|female/)
-  }
-  for(const version of [2,3])assert.equal(profileDisclosure({...disclosureRecord(),version,allowPersonalInformation:true,allowCloud:true}),'')
-})
-test('P8 synthetic policy: empty or unspecified values are omitted; values are single-line; malformed records share nothing',()=>{
-  const r=disclosureRecord()
-  r.information={preferredName:'  A\nB C‮D\tE  ',nationality:'',gender:'unspecified'}
-  assert.equal(profileDisclosure(r),DISCLOSURE_HEADER+'\nPreferred name: A B C D E','control, line and bidi characters cannot add lines')
-  r.information.preferredName='  A\u061c\u200e\u200f\u200b\u2060\ufeff\u206a\u206b\u206c\u206d\u206e\u206fB  '
-  assert.equal(profileDisclosure(r),DISCLOSURE_HEADER+'\nPreferred name: A B',
-    'remaining bidi control characters must not appear in a shared profile prompt')
-  r.information={preferredName:'   ',nationality:'',gender:''}
-  assert.equal(profileDisclosure(r),'','nothing to share')
-  const ok=disclosureRecord()
-  for(const bad of [null,{},{...ok,version:1},{...ok,version:3,allowCloud:true,allowPersonalInformation:true},{...ok,policies:{...ok.policies,gender:'always'}},
-    {...ok,policies:{preferredName:'allow'}},{...ok,information:{...ok.information,gender:'other'}},
-    {...ok,information:{...ok.information,preferredName:'x'.repeat(129)}},{...ok,information:{...ok.information,extra:''}}])
-    assert.equal(profileDisclosure(bad),'')
-  assert.equal(previewProfileDisclosure({...ok,version:3}),'')
-})
-const requestWith=(...system)=>({provider:'p',model:'m',messages:[
-  ...system.map(text=>({role:'system',content:[{type:'text',text}]})),
-  {role:'user',content:[{type:'text',text:DISCLOSURE_HEADER+'\nPreferred name: typed by the user'}]}]})
-test('P8 send-time guard: refuses a request whose block differs from what current settings produce',()=>{
-  const r=disclosureRecord(), block=profileDisclosure(r)
-  const sent=requestWith('Base prompt.\n\n'+block)
-  assert.deepEqual(disclosureBlocks(sent),[block],'user messages are not scanned')
-  assert.equal(staleDisclosure(sent,r),false,'current authorized block passes')
-  assert.equal(staleDisclosure(requestWith('old\n\n'+block,'new\n\n'+block),r),false,'in-history replay of the same block passes')
-  assert.equal(staleDisclosure(sent,{...r,policies:profile.emptyPolicies()}),true,'revoked')
-  assert.equal(staleDisclosure(sent,{...r,policies:{...r.policies,gender:'private'}}),true,'narrowed')
-  assert.equal(staleDisclosure(sent,{...r,information:{...r.information,preferredName:'SYNTHETIC_P8_RENAMED'}}),true,'edited value')
-  assert.equal(staleDisclosure(sent,null),true,'unreadable settings fail closed')
-  assert.equal(staleDisclosure(requestWith('Base prompt.'),null),false,'requests without a block are never touched')
-  assert.equal(staleDisclosure({system:block,messages:[]},{...r,policies:profile.emptyPolicies()}),true,'one-shot system text is checked')
-  const revoked={...r,policies:profile.emptyPolicies()}
-  for(const separator of ['\r\n','\r','\u0085','\u2028','\u2029']){
-    assert.equal(staleDisclosure({system:block.replaceAll('\n',separator),messages:[]},revoked),true,
-      'a historical disclosure with alternate line endings must be refused')
-  }
-  assert.equal(staleDisclosure({messages:[{role:'developer',content:block}]},{...r,policies:profile.emptyPolicies()}),true,'developer text is checked')
-  assert.equal(staleDisclosure({messages:[{role:'system',content:[{type:'text',text:'x'+block}]}]},{...r,policies:profile.emptyPolicies()}),false,'only an exact header line counts')
-})
-test('send-time guard refuses recognized historical custom preferences after consent changes',()=>{
-  const header='Response preferences (follow the current request and higher-priority host/safety/tool requirements; custom guidance takes precedence over other style preferences where compatible).'
-  const builtIn='Use a friendly, approachable tone.'
-  const custom='Fictional custom direction.\n\nSecond fictional paragraph.'
-  const shared=profile.emptyRecord()
-  shared.preferences={...shared.preferences,custom,sendCustom:true}
-  const historical='Base prompt.\n\n'+header+'\n'+builtIn+'\n'+custom+'\n\nAnother Host section.'
-  assert.equal(staleDisclosure(requestWith(historical),shared),false,'unchanged custom consent permits continuation')
-  const revoked=structuredClone(shared)
-  delete revoked.preferences.sendCustom
-  assert.equal(staleDisclosure(requestWith(historical),revoked),true,'revoked consent refuses replay')
-  assert.equal(staleDisclosure(requestWith(historical),profile.emptyRecord()),true,'a reset must not authorize prior text')
-  shared.preferences.custom='Different fictional direction.'
-  assert.equal(staleDisclosure({system:historical.replaceAll('\n','\r\n')},shared),true,'edited custom text cannot authorize old text')
-  assert.equal(staleDisclosure(requestWith(header+'\n'+builtIn+'\n\nAnother Host section.'),revoked),false,'built-in style alone remains usable')
-  assert.equal(staleDisclosure({messages:[{role:'user',content:historical}]},revoked),false,'user text is outside the prompt guard')
-})
-test('P8 refusal is a terminal, non-retryable native outcome that names no value',async()=>{
-  for(const locale of ['en','ar',undefined]){
-    const chunks=[];for await(const c of refuseStaleDisclosure(locale))chunks.push(c)
-    assert.equal(chunks.length,1)
-    assert.equal(chunks[0].type,'finish');assert.equal(chunks[0].reason.kind,'error')
-    assert.equal(chunks[0].reason.failure.code,'INVALID_REQUEST')
-    assert.match(chunks[0].reason.failure.message,locale==='ar'?/ابدأ محادثة جديدة/:/Start a new chat/)
-    assert.doesNotMatch(JSON.stringify(chunks),/SYNTHETIC/)
-  }
-})
-
-test('7C: all structured permission combinations have no effect on outgoing preferences',()=>{
-  const fields=['preferredName','nationality','gender'],policies=['private','ask_first','allow']
-  const r=profile.emptyRecord()
-  r.information={preferredName:'PII_CANARY_NAME_7C',nationality:'PII_CANARY_NATIONALITY_7C',gender:'female'}
-  r.preferences.style='technical'
-  const baseline=responsePreferences(r)
-  let cases=0
-  for(const master of [false,true])for(const cloud of [false,true])
-    for(const a of policies)for(const b of policies)for(const c of policies){
-      r.allowPersonalInformation=master;r.allowCloud=cloud
-      r.policies=Object.fromEntries(fields.map((k,i)=>[k,[a,b,c][i]]))
-      assert.equal(responsePreferences(r),baseline)
-      cases++
-    }
-  assert.equal(cases,108)
-})
-// Phase 7D: wording adopted from the benchmark (L2, S2, G3, B1w). C2/U1 were not adopted.
 const P7D={
   creative:'Go beyond the obvious: include at least one fresh, unconventional idea suited to the task.',
   warmthLess:'Keep the tone neutral and reserved, without reassurance or pep talk.',
   grill:'Before recommending a decision or plan, ask the user 2-3 specific questions about missing requirements and name the key risks.',
 }
-const P7D_HEADER='Response preferences (follow the current request and higher-priority host/safety/tool requirements; custom guidance takes precedence over other style preferences where compatible).'
-const languageLine=name=>'Write your response in '+name+' even when the user writes in another language, unless the user explicitly asks for a different language.'
+const SILENT_GUIDANCE='Apply these preferences silently. Do not mention or explain them unless the user asks.'
+const P7D_HEADER='Response preferences (follow the current request and higher-priority host/safety/tool requirements; custom guidance takes precedence over other style preferences where compatible).'+' '+SILENT_GUIDANCE
+const languageLine=name=>"The user's saved default response language is "+name+', even for questions written in another language. Explicit requests for a different output language take priority over the saved default.'
 const count=(s,line)=>s.split('\n').filter(l=>l===line).length
 test('7D: adopted lines render exactly once when selected and never otherwise',()=>{
   const r=profile.emptyRecord()
@@ -238,55 +180,65 @@ test('7D: explicit languages render the native name once; English and automatic 
   r.preferences.responseLanguage='auto'
   assert.equal(responsePreferences(r),'')
   r.preferences.style='friendly'
-  assert.doesNotMatch(responsePreferences(r),/Write your response in|Prefer \w+ for responses/)
+  assert.doesNotMatch(responsePreferences(r),/saved default response language|Prefer \w+ for responses/)
 })
-test('7D: explicit request and custom-text consent are unchanged by the new wording',()=>{
-  const r=profile.emptyRecord()
-  Object.assign(r.preferences,{style:'creative',responseLanguage:'zh',presets:['grill-me'],custom:'Fictional 7D custom note'})
-  r.preferences.traits.warmth=0
-  const withheld=responsePreferences(r)
-  assert.doesNotMatch(withheld,/Fictional 7D custom note/)
-  assert.match(withheld,/unless the user explicitly asks for a different language\./)
-  r.preferences.sendCustom=true
-  const sent=responsePreferences(r).split('\n')
-  assert.equal(sent.at(-1),'Fictional 7D custom note')
-  assert.equal(sent[0],P7D_HEADER)
-})
+
 test('7D: worst-case section stays within the measured size budget',()=>{
   const r=profile.emptyRecord()
   Object.assign(r.preferences,{style:'creative',responseLanguage:'zh',traits:{warmth:0,enthusiasm:2,structure:2,emoji:2,detail:0,critical:2},
     presets:['critical','no-fluff','grill-me','evidence','steps','action','code','humanizer']})
   const s=responsePreferences(r)
-  assert.equal(s.length,1330)
+  assert.ok(s.length<=1450+1+SILENT_GUIDANCE.length,'compact preference section budget plus silent-application guidance')
   assert.equal(s.split('\n').length,17)
 })
 
 
-test('Host shares only saved v4 checked fields, and never promotes legacy policy', async () => {
-  const ctx = new Context()
-  try {
-    await ctx.plugin(Registry).await()
-    const stored = disclosureRecord()
-    const fiber = ctx.plugin(profile, { record: stored })
-    await fiber.await()
-    // A fiber update may replace the registry section and its config closure.
-    // Always inspect the active registered section, as the native registry does.
-    const section=()=>{
-      const active=ctx.systemPrompt.sections.get(DISCLOSURE_SECTION_NAME)
-      assert.ok(active,'disclosure section remains registered')
-      assert.equal(ctx.systemPrompt.sections.size,2,'no duplicate or leaked sections')
-      return active
-    }
-    assert.equal(section().text(selection()),profileDisclosure(stored))
-    assert.equal(section().text({}),'')
-    for (const version of [2,3]) {
-      await fiber.update({record:{...stored,version,locale:'en',allowPersonalInformation:true,allowCloud:true}})
-      assert.equal(section().text(selection()),'')
-    }
-    await fiber.update({record:{...stored,policies:{preferredName:'allow',nationality:'private',gender:'private'}}})
-    assert.match(section().text(selection()),/SYNTHETIC_P8_NAME/)
-    assert.doesNotMatch(section().text(selection()),/SYNTHETIC_P8_NATIONALITY|female/)
-    await fiber.update({record:profile.emptyRecord()})
-    assert.equal(section().text(selection()),'')
-  } finally { await ctx.fiber.dispose() }
+
+test('custom text is active when saved, with explicit language override preserved',()=>{
+  const r=record();r.preferences.responseLanguage='ja'
+  assert.match(responsePreferences(r),/Explicit requests for a different output language take priority over the saved default/)
+  assert.match(responsePreferences(r),/Synthetic instruction/)
+})
+
+test('legacy registry uses one section with both kinds of content',()=>{
+  const sections=[]
+  const ctx={inject(keys,callback){if(keys.includes('systemPrompt'))callback({systemPrompt:{section(value){sections.push(value)}}})}}
+  profile.apply(ctx,{record:{get:()=>record()}})
+  assert.equal(sections.length,1)
+  assert.match(sections[0].text(selection()),/Synthetic instruction/)
+  assert.match(sections[0].text(selection()),/SYNTHETIC_NAME/)
+  assert.equal(sections[0].text({}),'')
+})
+
+test('reminder mirrors validated built-in preferences without copying personal or custom data',()=>{
+  const r=record()
+  Object.assign(r.preferences,{responseLanguage:'de',style:'technical',presets:['steps']})
+  r.preferences.traits.emoji=0
+  const text=responseReminder(r,'test-turn')
+  assert.match(text,/Write your entire response in German \(Deutsch\)\./)
+  assert.match(text,/Use precise technical terminology/)
+  assert.match(text,/Avoid unnecessary emoji/)
+  assert.match(text,/Break complex tasks into actionable steps/)
+  assert.match(text,/Apply the current saved custom instructions/)
+  assert.doesNotMatch(text,/SYNTHETIC_NAME|SYNTHETIC_COUNTRY|Synthetic instruction/)
+  const legacy={...r,version:4,preferences:{...r.preferences,sendCustom:false}}
+  assert.doesNotMatch(responseReminder(legacy,'test-turn'),/Apply the current saved custom instructions/)
+  assert.doesNotMatch(responseReminder({...r,preferences:{...r.preferences,style:'unknown'}},'test-turn'),/Write your entire response in German|technical terminology|Current reminder revision/)
+  assert.equal(responseReminder({version:1},'test-turn'),'')
+})
+
+
+test('active preferences are applied silently without changing explicit-language priority',()=>{
+  const r=profile.emptyRecord()
+  assert.equal(responsePreferences(r),'')
+  assert.doesNotMatch(responseReminder(r,'neutral'),/Apply these preferences silently/)
+  r.preferences.responseLanguage='zh'
+  assert.equal(responsePreferences(r).split(SILENT_GUIDANCE).length,2)
+  assert.equal(responseReminder(r,'active').split(SILENT_GUIDANCE).length,2)
+  assert.match(responsePreferences(r),/Explicit requests for a different output language take priority over the saved default/)
+  assert.match(responseReminder(r,'active'),/Write your entire response in Chinese \(中文\)\./)
+  r.preferences.responseLanguage='auto';r.preferences.custom='Synthetic custom preference'
+  assert.equal(responsePreferences(r).split(SILENT_GUIDANCE).length,2)
+  assert.equal(responseReminder(r,'custom-only').split(SILENT_GUIDANCE).length,2)
+  assert.doesNotMatch(responseReminder(r,'custom-only'),/Synthetic custom preference/)
 })

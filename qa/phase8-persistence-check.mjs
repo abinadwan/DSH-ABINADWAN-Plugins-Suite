@@ -18,7 +18,7 @@ import { withFileLock, writeFileAtomic } from '@deepseek-ai/dsh-atomic-write'
 import { Context, Service } from '@deepseek-ai/cordis'
 import { isVolatile } from '@deepseek-ai/cosmokit'
 import * as profile from '../plugins/personal-profile/index.js'
-import { SECTION_NAME, DISCLOSURE_SECTION_NAME } from '../plugins/personal-profile/preferences.js'
+import { SECTION_NAME } from '../plugins/personal-profile/preferences.js'
 
 const ID = 'abinadwan-personal-profile-qa'
 /** Synthetic record whose strings stress YAML quoting and scalars. */
@@ -26,10 +26,8 @@ function tricky() {
   const r = profile.emptyRecord()
   r.locale = 'en'
   r.information = { preferredName: 'SYNTHETIC: "Name" # not a comment', nationality: 'yes', gender: 'female' }
-  r.policies = { preferredName: 'allow', nationality: 'private', gender: 'allow' }
   r.preferences.style = 'technical'
   r.preferences.custom = 'null\n  indented: line\n\n- not a list\n{{literal}} 0x10 ~ اختبار'
-  r.preferences.sendCustom = true
   return r
 }
 async function save(path, record) {
@@ -68,7 +66,7 @@ test('the record survives the native atomic write, a reload and a Host restart u
   assert.deepEqual(reloaded, record, 'every value, permission and switch round-trips exactly')
   // Restart: a new Host context mounts the plugin from the reloaded configuration.
   for (let restart = 0; restart < 2; restart++) {
-    const stored=restart===0 ? { ...record, version: 2, allowPersonalInformation:true, allowCloud:true } : record
+    const stored=restart===0 ? { ...record, version: 2, policies:profile.emptyPolicies(),preferences:{...record.preferences,sendCustom:true},allowPersonalInformation:true,allowCloud:true } : record
     await save(path, stored)
     assert.deepEqual(await load(path), stored)
     const ctx = new Context()
@@ -76,15 +74,15 @@ test('the record survives the native atomic write, a reload and a Host restart u
       await ctx.plugin(Registry).await()
       await ctx.plugin(profile, { record: await load(path) }).await()
       assert.match(ctx.systemPrompt.sections.get(SECTION_NAME).text(eligible()), /\{\{literal\}\} 0x10/)
-      const disclosure=ctx.systemPrompt.sections.get(DISCLOSURE_SECTION_NAME).text(eligible())
-      if(restart===0)assert.equal(disclosure,'')
-      else assert.match(disclosure,/SYNTHETIC/)
+      const text=ctx.systemPrompt.sections.get(SECTION_NAME).text(eligible())
+      if(restart===0)assert.doesNotMatch(text,/SYNTHETIC/)
+      else assert.match(text,/SYNTHETIC/)
       assert.doesNotMatch(ctx.systemPrompt.sections.get(SECTION_NAME).text(eligible()), /SYNTHETIC/)
     } finally { await ctx.fiber.dispose() }
   }
   // A later save of a revoked record wins on reload.
-  await save(path, { ...record, policies: profile.emptyPolicies() })
-  assert.deepEqual((await load(path)).policies,profile.emptyPolicies())
+  await save(path, profile.emptyRecord())
+  assert.deepEqual(await load(path),profile.emptyRecord())
 })
 
 test('corrupted or tampered stored data is rejected and shares nothing', async t => {
@@ -97,7 +95,7 @@ test('corrupted or tampered stored data is rejected and shares nothing', async t
   await writeFile(path, good.slice(0, Math.floor(good.length / 2)) + '\n  - "unterminated')
   await assert.rejects(load(path))
   // Well-formed YAML with invalid values: the Host schema refuses the record.
-  for (const bad of [{ ...tricky(), version: 2, allowPersonalInformation:true, allowCloud: 'yes' }, { ...tricky(), policies: { ...tricky().policies, gender: 'always' } },
+  for (const bad of [{ ...tricky(), version: 2, allowPersonalInformation:true, allowCloud: 'yes' }, { ...tricky(), information: {...tricky().information,gender:'always'} },
     { ...tricky(), information: { ...tricky().information, preferredName: 'x'.repeat(129) } }]) {
     await writeFile(path, good)
     await save(path, bad)
