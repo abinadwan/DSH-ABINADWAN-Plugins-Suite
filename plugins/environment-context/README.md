@@ -16,7 +16,7 @@ The inspector opens once per visible session during each active Component lifeti
 
 The Host module is `@abinadwan/dsh-plugins-suite/environment-context`. Its locale and icon resolve through `/environment-context/locale/en.json` and `/environment-context/icon`. The package-root browser carrier mounts the inspector in a scoped Cordis fiber only while the access-checked Host inventory reports the Component enabled and active.
 
-Session state and `contextPressure`, `contextBreakdown` and `tokenUsage` projections supply the inspector. Inventory failure pauses its UI until a successful change-event or reconnect refresh. The suite reads summaries and registers zero filesystem, shell or credential tools for this Component.
+Session state and `contextPressure`, `contextBreakdown` and `tokenUsage` projections supply the inspector. The selected Session must be uniquely admitted in the ready native Session list, not merely retained by a local reference. Workspace titles and paths require an unambiguous current Workspace association. Connection changes invalidate previously observed snapshots; an existing seat uses refreshed list projections until remounted rather than trusting its old live binding. Error-state projections and out-of-range token values are not displayed. Native DSH authorization and snapshot correctness remain authoritative; this is not a separate access-control boundary. Inventory failure pauses its UI until a successful change-event or reconnect refresh. The suite reads summaries and registers zero filesystem, shell or credential tools for this Component.
 
 ## Verification
 
