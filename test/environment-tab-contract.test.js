@@ -203,22 +203,22 @@ test('Environment hides retained-only Session rows, live projections and ambiguo
   await act(async () => view.root.render(React.createElement(entry.component,
     { sessionId: 's1', useProjection: projectionHook(stores) })))
   assert.match(view.text(), /HomeBook/)
-  assert.match(view.text(), /Output tokens9\\.9k/)
+  assert.match(view.text(), /Output tokens9\.9k/)
   const retained = sessionSnapshot()
   retained.ids = ['s2']
   await act(async () => app.sessions.set(retained))
   assert.equal(view.q('[role=progressbar]'), null)
-  assert.doesNotMatch(view.text(), /HomeBook|Demo|9\\.9k/)
+  assert.doesNotMatch(view.text(), /HomeBook|Demo|9\.9k/)
   await act(async () => app.sessions.set(sessionSnapshot()))
   const workspace = app.workspaces.getSnapshot()
   await act(async () => app.workspaces.set({ ...workspace, items: [...workspace.items,
     { workspaceId: 'other', title: 'Ambiguous workspace', path: 'C:/Private', sessionIds: ['s1'] }] }))
-  assert.doesNotMatch(view.text(), /HomeBook|Ambiguous workspace|C:\\/Private/)
+  assert.doesNotMatch(view.text(), /HomeBook|Ambiguous workspace|C:\/Private/)
   assert.match(view.text(), /SessionDemo/)
   const denied = sessionSnapshot()
   denied.phase = 'pending'
   await act(async () => app.sessions.set(denied))
-  assert.doesNotMatch(view.text(), /Demo|9\\.9k/)
+  assert.doesNotMatch(view.text(), /Demo|9\.9k/)
 })
 
 test('Environment waits for refreshed snapshots after connection change and ignores an old seat projection', async t => {
@@ -233,22 +233,22 @@ test('Environment waits for refreshed snapshots after connection change and igno
   }
   await act(async () => view.root.render(React.createElement(entry.component,
     { sessionId: 's1', useProjection: projectionHook(stores) })))
-  assert.match(view.text(), /Output tokens8\\.8k/)
+  assert.match(view.text(), /Output tokens8\.8k/)
   await act(async () => app.host.set(undefined))
-  assert.doesNotMatch(view.text(), /Demo|HomeBook|8\\.8k/)
+  assert.doesNotMatch(view.text(), /Demo|HomeBook|8\.8k/)
   await act(async () => app.host.set({ id: 2, host: { home: 'C:/Fixture2' } }))
-  assert.doesNotMatch(view.text(), /Demo|HomeBook|8\\.8k/)
+  assert.doesNotMatch(view.text(), /Demo|HomeBook|8\.8k/)
   const fresh = sessionSnapshot()
   fresh.byId.s1 = { id: 's1', displayTitle: 'Current profile', running: false }
   fresh.projectionsBySession.s1.values.tokenUsage = { outputTokens: 321 }
   await act(async () => app.sessions.set(fresh))
   assert.match(view.text(), /Current profile/)
   assert.match(view.text(), /Output tokens321/)
-  assert.doesNotMatch(view.text(), /HomeBook|8\\.8k/)
+  assert.doesNotMatch(view.text(), /HomeBook|8\.8k/)
   await act(async () => app.workspaces.set({ ...app.workspaces.getSnapshot(), items: [
     { workspaceId: 'current', title: 'Current workspace', path: 'C:/Current', sessionIds: ['s1'] }] }))
   assert.match(view.text(), /Current workspace/)
-  assert.doesNotMatch(view.text(), /HomeBook|8\\.8k/)
+  assert.doesNotMatch(view.text(), /HomeBook|8\.8k/)
 })
 
 test('Environment rejects erroneous cached projections, invalid numbers and a zero context window', async t => {
@@ -259,11 +259,11 @@ test('Environment rejects erroneous cached projections, invalid numbers and a ze
   const invalid = sessionSnapshot()
   invalid.projectionsBySession.s1.state = 'error'
   app.sessions.set(invalid)
-  assert.doesNotMatch(render(), /aria-valuenow|1\\.2k/)
+  assert.doesNotMatch(render(), /aria-valuenow|1\.2k/)
   invalid.projectionsBySession.s1 = { state: 'ready', values: {
     contextPressure: { projectedTokens: 100, contextWindow: 0 },
     tokenUsage: { outputTokens: Number.MAX_VALUE },
   } }
   app.sessions.set(invalid)
-  assert.doesNotMatch(render(), /aria-valuenow|Infinity|e\\+30/)
+  assert.doesNotMatch(render(), /aria-valuenow|Infinity|e\+30/)
 })
