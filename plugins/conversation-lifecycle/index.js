@@ -5,6 +5,8 @@ const duration = Schema.union(['forever', '365', '180', '90', '30', '7'])
 const identity = Schema.string().min(1).max(256).required()
 export const Config = Schema.object({
   record: Schema.object({
+    // Retired retention/visibility values remain schema-compatible only.
+    // Protection updates preserve them; no cleanup or deletion is performed.
     retention: duration.default('forever'),
     hideArchived: Schema.boolean().default(true),
     overrides: Schema.array(Schema.object({ workspace: identity, retention: duration.required() })).max(1000).default([]),

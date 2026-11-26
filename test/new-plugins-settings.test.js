@@ -302,6 +302,43 @@ test('a background catalog refresh keeps the search focus and verifies native up
   assert.match(hub().textContent, /No archived conversations/)
 })
 
+test('an invalidated archive read cannot publish superseded results or enable mutations', async t => {
+  let wait = false
+  const pending = []
+  const { hub, fixture, settings } = await mountArchive(t, {
+    onUnarchive: () => assert.fail('A superseded archive cannot restore'),
+    readArchiveSessions: () => wait ? new Promise(resolve => pending.push(resolve)) : undefined,
+  })
+  const checkbox = () => protectionCheckbox(hub(), 'Protect Zulu report')
+  assert.ok(checkbox() && !checkbox().disabled)
+  wait = true
+  await act(async () => fixture.sessions.set({ ...fixture.sessions.getSnapshot() }))
+  assert.equal(pending.length, 1)
+  assert.equal(checkbox().disabled, true)
+  await act(async () => fixture.sessions.set({ ...fixture.sessions.getSnapshot() }))
+  await act(async () => pending.shift()(ok({ items: [{ sessionId: 's1', blank: false, running: false,
+    projections: { values: { title: 'Superseded title' } } }] })))
+  assert.equal(pending.length, 1)
+  assert.doesNotMatch(hub().textContent, /Superseded title/)
+  assert.equal(checkbox().disabled, true)
+  assert.equal(archiveButton(hub(), 'Restore').disabled, true)
+  assert.deepEqual(settings.writes, [])
+  wait = false
+  await act(async () => pending.shift()(ok({ items: [] })))
+  assert.match(hub().textContent, /No archived conversations/)
+  assert.doesNotMatch(hub().textContent, /Zulu report|Superseded title/)
+})
+
+test('malformed protection records do not expose archive controls or permit writes', async t => {
+  const settings = settingsFixture('conversation-lifecycle', { ...archiveRecord, protectedIds: 's1' })
+  const { hub } = await mountArchive(t, { settings: settings.service,
+    onUnarchive: () => assert.fail('Malformed protection cannot restore') })
+  assert.match(hub().textContent, /Archive catalog unavailable/)
+  assert.equal(hub().querySelector('input[type=checkbox]'), null)
+  assert.equal(archiveButton(hub(), 'Restore'), undefined)
+  assert.deepEqual(settings.writes, [])
+})
+
 test('the archive reads the current native catalog even if the shared Session cache is still pending', async t => {
   const { hub } = await mountArchive(t, {
     sessions: { phase: 'pending', ids: [], byId: {} },
@@ -343,6 +380,25 @@ test('restore rereads protection saved during catalog verification even without 
   await act(async () => releaseCatalog())
   assert.deepEqual(calls, [])
   assert.match(hub().textContent, /conversation or your access changed/)
+})
+
+test('restore requires matching ready local membership and authorized Session inventory', async t => {
+  const calls = []
+  const { hub, fixture } = await mountArchive(t, {
+    onUnarchive: async id => calls.push(id),
+    readArchiveSessions: async () => ok({ items: [{ sessionId: 's1', blank: false, running: false,
+      projections: { values: { title: 'Zulu report' } } }] }),
+    sessions: { phase: 'pending', ids: [], byId: {} },
+  })
+  await act(async () => archiveButton(hub(), 'Restore').click())
+  await act(async () => archiveButton(hub(), 'Confirm restore').click())
+  assert.deepEqual(calls, [])
+  assert.match(hub().textContent, /conversation or your access changed/)
+  await act(async () => fixture.sessions.set({ phase: 'ready', ids: ['s1'],
+    byId: { s1: { id: 's1', blank: false, running: false, title: 'Zulu report' } } }))
+  await act(async () => archiveButton(hub(), 'Restore').click())
+  await act(async () => archiveButton(hub(), 'Confirm restore').click())
+  assert.deepEqual(calls, ['s1'])
 })
 
 test('native restore failure leaves the row and count intact and disable releases its lifecycle', async t => {

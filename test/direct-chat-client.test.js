@@ -126,8 +126,13 @@ test('Direct Chat rename rejects stale actions before reference acquisition and 
   const sessions = { phase: 'ready', ids: [id], byId: { [id]: { id, title: 'Original', blank: false } } }
   const acquired = [], renamed = []
   let duringAcquisition
+  let protection = { protectedIds: [], protectedWorkspaces: [] }
+  let revision = 1
   const app = await clientHarness({
     workspaceItems: [direct, ordinary], sessions,
+    settings: { describe: async () => ({ ok: true, value: { namespaces: [{
+      ns: 'abinadwan-conversation-lifecycle', revision, value: { record: protection },
+    }] } }) },
     async onSessionUsing(sessionId, options, operation) {
       acquired.push(sessionId)
       assert.equal(options.source, 'workspaceOperation')
@@ -163,6 +168,16 @@ test('Direct Chat rename rejects stale actions before reference acquisition and 
   app.sessions.set(sessions)
   assert.deepEqual(acquired, [], 'already-stale actions never request a Session reference')
 
+  const protectedError = { message: 'Direct Chat protection policy unavailable or protected' }
+  protection = { protectedIds: [id], protectedWorkspaces: [] }
+  await assert.rejects(rename(), protectedError)
+  protection = { protectedIds: [], protectedWorkspaces: ['direct'] }
+  await assert.rejects(rename(), protectedError)
+  protection = { protectedIds: null, protectedWorkspaces: [] }
+  await assert.rejects(rename(), protectedError)
+  assert.deepEqual(acquired, [], 'saved or unavailable protection prevents reference acquisition')
+  protection = { protectedIds: [], protectedWorkspaces: [] }
+
   duringAcquisition = () => setMembership([{ ...direct, sessionIds: [] }, ordinary])
   await assert.rejects(rename(), denied)
   setMembership([direct, ordinary])
@@ -171,13 +186,23 @@ test('Direct Chat rename rejects stale actions before reference acquisition and 
   assert.deepEqual(acquired, [id, id], 'only initially valid actions begin acquisition')
   assert.deepEqual(renamed, [], 'membership or generation changes during acquisition prevent mutation')
 
+  duringAcquisition = () => {
+    protection = { protectedIds: [id], protectedWorkspaces: [] }
+    revision++
+  }
+  await assert.rejects(rename(), protectedError)
+  protection = { protectedIds: [], protectedWorkspaces: [] }
+  revision++
+  duringAcquisition = () => { revision++ }
+  await assert.rejects(rename(), { message: 'Direct Chat protection changed' })
+  assert.deepEqual(renamed, [], 'fresh policy or revision changes prevent rename after acquisition')
   duringAcquisition = undefined
   await rename()
-  assert.deepEqual(acquired, [id, id, id])
+  assert.deepEqual(acquired, [id, id, id, id, id])
   assert.deepEqual(renamed, [[id, 'Updated']], 'authorized rename still works')
   app.setRows(app.rows().map(row => row.moduleName === base + '/direct-chat'
     ? { ...row, enabled: false, fiberPhase: null } : row))
   await app.changed()
   await assert.rejects(rename(), denied)
-  assert.deepEqual(acquired, [id, id, id], 'disposed plugin never acquires a reference')
+  assert.deepEqual(acquired, [id, id, id, id, id], 'disposed plugin never acquires a reference')
 })

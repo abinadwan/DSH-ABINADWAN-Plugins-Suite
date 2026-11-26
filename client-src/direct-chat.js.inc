@@ -112,14 +112,14 @@
         [inventory, search, order, creationReady, createdAt])
       const limit = 25
       const activePage = Math.min(page, Math.max(0, Math.ceil(rows.length / limit) - 1))
-      const record = settings.record
+      const record = validArchiveProtectionRecord(settings.record) ? settings.record : undefined
       const protectedIds = new Set(record?.protectedIds)
       const protectedWorkspace = record?.protectedWorkspaces?.includes(selected?.workspaceId)
       const archived = new Set(workspace?.archivedSessionIds)
       const error = current?.error || workspace?.state === 'error' || ready && current?.value?.workspaceId && !selected
       const loaded = ready && current?.value && !error
       const shown = rows.slice(activePage * limit, (activePage + 1) * limit)
-      const editing = edit && edit.generation === generation && shown.some(item => item.id === edit.id) &&
+      const editing = record && edit && edit.generation === generation && shown.some(item => item.id === edit.id) &&
         !protectedWorkspace && !protectedIds.has(edit.id) ? edit : null
 
       function changeOrder(event) {
@@ -235,11 +235,25 @@
         }
         if (typeof ctx.sessions.using === 'function') {
           services.rename = async (workspaceId, id, title, generation) => {
-            // Reject stale actions before obtaining a native Session reference.
-            if (!member(workspaceId, id, generation)) throw new Error('Direct Chat membership changed')
-            return ctx.sessions.using(id, { source: 'workspaceOperation', signal: lifetime.signal }, async reference => {
-              // Membership or connection generation may change while acquiring it.
+            const assertMember = () => {
               if (!member(workspaceId, id, generation)) throw new Error('Direct Chat membership changed')
+            }
+            const readProtection = async () => {
+              assertMember()
+              const view = archivePolicyView(await services.settings?.describe?.())
+              assertMember()
+              if (!view || view.value.record.protectedIds.includes(id) ||
+                  view.value.record.protectedWorkspaces.includes(workspaceId)) {
+                throw new Error('Direct Chat protection policy unavailable or protected')
+              }
+              return view.revision
+            }
+            // Check saved protection, not only the rendered history controls.
+            const revision = await readProtection()
+            assertMember()
+            return ctx.sessions.using(id, { source: 'workspaceOperation', signal: lifetime.signal }, async reference => {
+              if (await readProtection() !== revision) throw new Error('Direct Chat protection changed')
+              assertMember()
               const result = await reference.binding.session.rename(title)
               if (!result.ok) throw new Error('Direct Chat rename refused')
             })
