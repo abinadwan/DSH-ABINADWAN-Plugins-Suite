@@ -181,3 +181,74 @@ The Windows validation of source commit `eff59b69288f850190779ec25b2c6dc747c18ca
 DC-01 was accepted with documented limitations: reduced tool visibility and policy denial, not guaranteed complete hiding or universal isolation. See [Direct Chat policy](../plugins/direct-chat/README.md#dc-01--tool-visibility-and-execution-policy). The subsequent DC-02 implementation at `578a240abb2ad3798dd6ad229b9106c74676fecc` adds a best-effort profile-local identity fallback. All three new targeted unit tests passed in Windows and Ubuntu CI with Node 22 and 24; the full CI jobs stopped at the known documentation-layout assertion. Installed-Host validation of the new identity cache, native Desktop acceptance and Windows effective ACL verification remain outstanding. No claim of release or merge readiness is made.
 
 The full historical report and sanitized evidence are preserved at their immutable original Git revision, rather than in the active documentation tree, consistent with [documentation policy](README.md). [Validation report](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/3834346f96eb1b3745ee4fb42833736148300782/docs/research/DIRECT_CHAT_PHASE_3_2_MEDIUM_VALIDATION.md) · [Sanitized JSON evidence](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/3834346f96eb1b3745ee4fb42833736148300782/docs/research/evidence/direct-chat-phase-3-2-medium/results.json).
+
+## DC-02 — Native Host identity fallback validation
+
+Tested source `7dc7c420425031a582f623b30f8693e1c9cb7516` on `fix/v1.1.1-direct-chat-security-medium`. GitHub reported eight successful checks for this SHA on Windows and Ubuntu with Node.js 22 and 24. [PR #79 checks](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/79/checks)
+
+The test machine ran Windows x64 26H2, build `26300.10075`, with NTFS and an Intel Core i7-14700K. The installed DeepSeek Harness Desktop package, Cordis Host runner, Workspace service and native tool executor were `0.2.2-rc.5`. The installed Desktop build was `3f85d888b1297107937d9bd5b853f7e733e179a4`, with Electron `44.7.0` and embedded Node.js `24.21.0`. The source test suite used system Node.js `26.10.0`.
+
+The focused RunAsNode processes loaded the native services from the installed Windows application archive. The fixture used native JSONL Sessions and the native Workspace create, attach, detach and list APIs. Native attachment validates the stored Session cwd. For the mismatched-cwd case, the fixture supplied the resulting native membership to an isolated native Agent loop with an independently created in-memory Session header bearing the same synthetic ID. Registry faults were supplied through a fixture service. Inert tools returned text and incremented counters. The runs used disposable profiles, a local offline adapter and no Desktop GUI or production services. Storage fault and timing probes called the production cache module directly on the same Windows runtime.
+
+### Test matrix
+
+| # | Check | Result | Observed evidence |
+| ---: | --- | --- | --- |
+| 1 | Native Workspace membership with a different Agent cwd | PASS | The native registry attached seven synthetic Sessions. The focused Agent had a different cwd and both policy hooks denied the inert call. |
+| 2 | Hashed identity marker | PASS | Seven membership recognitions produced seven regular, single-link, zero-byte files. Each basename matched the independently calculated 64-character SHA-256 digest. |
+| 3 | Registry unavailable | PASS | With the registry provider absent, a fresh Agent for a verified ID received both denials and zero executions. |
+| 4 | Registry exception | PASS | A fixture provider threw on lookup. A fresh Agent for a verified ID received both denials and zero executions. |
+| 5 | Malformed registry response | PASS | A non-array response, invalid `sessionIds` and a relative Workspace path each preserved denial for a verified ID, with zero executions. |
+| 6 | Valid empty response and temporarily missing membership | FAIL | A valid empty list and a native list after temporary detachment each removed a verified marker when a fresh Agent was evaluated. Native reattachment and fresh recognition recreated it. The continuity check was limited to marker state. |
+| 7 | Fallback for previously verified Session IDs | PASS | Five fresh Agents recovered known identity across absent, throwing and three malformed registry modes. These are the same samples as rows 3–5. |
+| 8 | Persistent recovery after Host restart | PASS | A new installed-runtime process reopened the same synthetic profile with the registry absent. The on-disk marker yielded both denials and zero executions. |
+| 9 | Pre-execute and native dispatch guards | PASS | The native pre-execute waterfall and `tools.checkGuards` each returned `DIRECT_CHAT_TOOL_DENIED` independently. The installed executor returned the same denial for complete dispatch. |
+| 10 | Unintended inert-tool executions | PASS | Eight protected native dispatch attempts were denied with **0** actual executions. Three ordinary controls each executed once. |
+| 11 | Ordinary Workspace access during registry outage | PASS | An ordinary control with no prior identity and the registry provider absent executed the inert tool once. |
+| 12 | Authoritative ordinary membership revokes a fresh Agent's identity | PASS | A native ordinary Workspace record supplied the authoritative membership. A fresh Agent had normal access, executed once and the corresponding marker was removed. |
+| 13 | Revocation persists across restart | PASS | In another installed-runtime process, the marker and cache hit remained absent. With the registry provider absent, the ordinary control executed once. |
+| 14 | Previously recognized live Agent after membership changes | PASS | The original live Agent remained restricted after native detachment and after the fixture switched to authoritative ordinary membership. Its inert call had zero executions. |
+| 15 | Unknown Direct Chat identity during an outage with mismatched cwd | PARTIAL | Source review confirms an unknown ID supplies no positive fallback. No dispatch result was collected for this combined condition. |
+| 16 | Storage failures, invalid markers and links | PARTIAL | Cache probes rejected a file at the cache-directory path, non-empty and directory markers, a cache-directory junction, a marker junction and a hard-linked marker. The file collision and directory junction retained in-memory recognition with no durable hit. Each case emitted one sanitized warning. File and directory symlink creation returned `EPERM`. Permission-denied removal and concurrent reparse-point changes were outside these probes. |
+| 17 | Profile separation | PASS | The same synthetic ID had a marker and positive cache entry in the first profile. The second profile had neither during a registry outage. |
+| 18 | Marker data minimization | PASS | All seven initial filenames matched expected digests and every payload was empty. No raw Session IDs, titles, messages or absolute paths were recorded in the markers. |
+| 19 | Windows cache ACLs | PASS | Read-only ACL inspection covered the cache directory and one marker. Both inherited their DACLs. Effective access by an unrelated account remains unverified. |
+| 20 | Identity lookup and storage overhead | PASS | Timed create, in-memory hit, disk-backed hit and disk-backed miss at 100, 1,000 and 10,000 synthetic identities. |
+| 21 | Automated and native Host regression tests | PASS | Source suite passed 296 of 298, with two Windows ACL-related skips. All 26 installed Host regression tests passed. Client, package and regression checks also passed. |
+
+**Totals:** 18 PASS, 1 FAIL, 2 PARTIAL and 0 BLOCKED at the row level. Two symlink probes within row 16 were blocked. PASS applies to the stated check and fixture scope.
+
+### Supporting evidence and counters
+
+| Native dispatch group | Attempts | Policy denials | Actual executions |
+| --- | ---: | ---: | ---: |
+| Initial verified membership with different cwd | 1 | 1 | 0 |
+| Verified identity with absent, throwing or malformed registry | 5 | 5 | 0 |
+| Previously recognized live Agent after membership change | 1 | 1 | 0 |
+| Verified identity after process restart | 1 | 1 | 0 |
+| Ordinary during outage, fresh after revocation and ordinary after restart | 3 | 0 | 3 |
+| **Total** | **11** | **8** | **3** |
+
+The pre-execute and dispatch-guard probes returned matching decisions for all eight protected cases. They are additional policy checks on the same cases. The existing native Direct Chat retry regression separately asserted zero executions across one tool-call attempt and its subsequent empty-completion sequence. The fixture terminated and recreated the Host in separate operating-system processes while preserving the synthetic profile on disk.
+
+The directory and sampled file ACLs identified the test account as owner. Both had inherited Allow entries granting Full Control to the test account, SYSTEM and Administrators, plus two inherited Allow entries for other principals granting Modify and Synchronize. The check made no permission changes. The result describes these synthetic objects on this test machine. No unrelated-user access attempt was performed.
+
+The initial sandboxed `npm test` failed at junction creation with `EPERM`. The same test passed outside that sandbox without changing security settings. The passing source run included the existing documentation-integrity checks. `npm run check:client` verified the deterministic browser carrier, `npm run check:package` verified 100 packed files, and `npm run check:regression` passed its four tests and classifier benchmark. Installed Host regression counts were Direct Chat 2, new plugins 13, My Profile 1 and Adaptive Reasoning 10.
+
+### Identity cache performance
+
+One sequential Windows/NTFS run per size, using the installed embedded Node.js process and a separate empty synthetic profile per size. Times are elapsed milliseconds for one operation per ID and include the SHA-256 lookup. A fresh cache instance measured disk-backed lookups after marker creation, with the OS filesystem cache left as-is. Timing excludes synthetic Agent and registry overhead.
+
+| Synthetic Sessions | Marker creation, ms | In-memory hits, ms | Disk-backed hits, ms | Disk-backed misses, ms | Marker files | Logical payload bytes |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 100 | 27.19 | 0.19 | 11.75 | 11.35 | 100 | 0 |
+| 1,000 | 242.17 | 0.85 | 102.33 | 111.30 | 1,000 | 0 |
+| 10,000 | 2,691.23 | 9.50 | 998.60 | 1,075.25 | 10,000 | 0 |
+
+At 10,000 entries the sample averaged 269 µs to create a marker, 100 µs for a disk-backed hit and 0.95 µs for a hit on an ID already observed in memory. NTFS metadata allocation and cold OS cache latency were outside this measurement.
+
+### Closure recommendation
+
+**Keep DC-02 open for the valid-empty and temporary-membership case.** The fallback protected previously verified IDs across unavailable, throwing and malformed registry responses and recovered them across process restart. Authoritative ordinary membership restored normal access for a fresh Agent, while the original live Agent retained denial. A fresh Agent observed during a valid but incomplete snapshot can lose its marker. The source treats successful non-Direct results as authoritative and the native fixture observed marker removal in both snapshot cases. Closure needs an explicit disposition of that continuity gap.
+
+The unknown-ID combined condition remains an acknowledged limit of the available identity signals. Effective unrelated-user Windows ACL access, symlink-specific behavior and full Desktop acceptance remain unverified. These results support improved protection for verified IDs in the tested conditions. DC-01 retains its previously documented closure and visibility limitations.
