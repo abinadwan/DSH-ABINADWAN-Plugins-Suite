@@ -651,7 +651,7 @@ test('Direct Chat history filters authorized metadata, pages it, and keeps nativ
   const ids = Array.from({ length: 60 }, (_, index) => 'chat-' + index)
   const entries = ids.map((id, index) => [id, { id, title: 'Chat ' + index, displayTitle: 'Chat ' + index,
     running: false, updatedAt: index + 1 }])
-  const settings = settingsFixture('conversation-lifecycle', { retention: 'forever', overrides: [], protectedIds: ['chat-59'] })
+  const settings = settingsFixture('conversation-lifecycle', { ...archiveRecord, protectedIds: ['chat-59'] })
   const opened = [], renames = []
   const { div, window } = await mount(t, {
     settings: settings.service, hostLocale: 'en',
@@ -714,6 +714,26 @@ test('Direct Chat history filters authorized metadata, pages it, and keeps nativ
   await act(async () => button('Chat 41').click())
   assert.deepEqual(opened, ['chat-41'])
   assert.equal(dialog(), null)
+})
+
+test('Direct Chat incomplete protection retains known protected labels and disables rename', async t => {
+  const ids = ['protected-chat', 'ordinary-chat']
+  const settings = settingsFixture('conversation-lifecycle', { protectedIds: [ids[0]] })
+  const { div } = await mount(t, {
+    settings: settings.service, hostLocale: 'en',
+    workspaceItems: [{ workspaceId: 'direct', title: 'Direct Chat', sessionIds: ids }],
+    sessions: { phase: 'ready', ids, byId: {
+      [ids[0]]: { id: ids[0], title: 'Protected example', blank: false },
+      [ids[1]]: { id: ids[1], title: 'Ordinary example', blank: false },
+    } },
+    onSessionUsing: () => assert.fail('Incomplete protection must not acquire a reference'),
+    fetch: async () => Response.json({ workspaceId: 'direct' }),
+  }, 'direct-chat', 'sidebar.session.action')
+  await act(async () => div.querySelector('button[aria-label="Direct Chat history"]').click())
+  const dialog = div.querySelector('[role=dialog]')
+  assert.match(dialog.textContent, /Protected example.*Protected/)
+  assert.match(dialog.textContent, /Ordinary example/)
+  assert.equal(dialog.querySelector('button[aria-label^="Rename "]'), null)
 })
 
 test('Direct Chat title search reacts when the Host supplies previously unavailable metadata', async t => {

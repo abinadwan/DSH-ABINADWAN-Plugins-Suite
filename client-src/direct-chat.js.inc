@@ -113,8 +113,10 @@
       const limit = 25
       const activePage = Math.min(page, Math.max(0, Math.ceil(rows.length / limit) - 1))
       const record = validArchiveProtectionRecord(settings.record) ? settings.record : undefined
-      const protectedIds = new Set(record?.protectedIds)
-      const protectedWorkspace = record?.protectedWorkspaces?.includes(selected?.workspaceId)
+      // An incomplete policy must disable rename, not hide known protection.
+      const protectedIds = new Set(validArchiveSet(settings.record?.protectedIds) ? settings.record.protectedIds : [])
+      const protectedWorkspace = validArchiveSet(settings.record?.protectedWorkspaces) &&
+        settings.record.protectedWorkspaces.includes(selected?.workspaceId)
       const archived = new Set(workspace?.archivedSessionIds)
       const error = current?.error || workspace?.state === 'error' || ready && current?.value?.workspaceId && !selected
       const loaded = ready && current?.value && !error

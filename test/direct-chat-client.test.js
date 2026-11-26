@@ -175,6 +175,8 @@ test('Direct Chat rename rejects stale actions before reference acquisition and 
   await assert.rejects(rename(), protectedError)
   protection = { protectedIds: null, protectedWorkspaces: [] }
   await assert.rejects(rename(), protectedError)
+  protection = { protectedIds: [] }
+  await assert.rejects(rename(), protectedError)
   assert.deepEqual(acquired, [], 'saved or unavailable protection prevents reference acquisition')
   protection = { protectedIds: [], protectedWorkspaces: [] }
 
