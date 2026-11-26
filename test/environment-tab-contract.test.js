@@ -188,3 +188,82 @@ test('disabling Environment removes its tab type, seats and Session subscription
   assert.equal(app.entries('conversation.session.header.utilities').length, 1)
   assert.equal(app.mountedListeners.size, 1)
 })
+
+
+test('Environment hides retained-only Session rows, live projections and ambiguous Workspace metadata', async t => {
+  const app = await clientHarness({ React, hostLocale: 'en' })
+  t.after(() => app.dispose())
+  const view = await dom(t)
+  const entry = app.slots.records.get(base + '/environment-context')
+  const stores = {
+    tokenUsage: observable({ outputTokens: 9876 }),
+    contextPressure: observable({ projectedTokens: 3000, contextWindow: 8000 }),
+    contextBreakdown: observable(undefined),
+  }
+  await act(async () => view.root.render(React.createElement(entry.component,
+    { sessionId: 's1', useProjection: projectionHook(stores) })))
+  assert.match(view.text(), /HomeBook/)
+  assert.match(view.text(), /Output tokens9\.9k/)
+  const retained = sessionSnapshot()
+  retained.ids = ['s2']
+  await act(async () => app.sessions.set(retained))
+  assert.equal(view.q('[role=progressbar]'), null)
+  assert.doesNotMatch(view.text(), /HomeBook|Demo|9\.9k/)
+  await act(async () => app.sessions.set(sessionSnapshot()))
+  const workspace = app.workspaces.getSnapshot()
+  await act(async () => app.workspaces.set({ ...workspace, items: [...workspace.items,
+    { workspaceId: 'other', title: 'Ambiguous workspace', path: 'C:/Private', sessionIds: ['s1'] }] }))
+  assert.doesNotMatch(view.text(), /HomeBook|Ambiguous workspace|C:\/Private/)
+  assert.match(view.text(), /SessionDemo/)
+  const denied = sessionSnapshot()
+  denied.phase = 'pending'
+  await act(async () => app.sessions.set(denied))
+  assert.doesNotMatch(view.text(), /Demo|9\.9k/)
+})
+
+test('Environment waits for refreshed snapshots after connection change and ignores an old seat projection', async t => {
+  const app = await clientHarness({ React, hostLocale: 'en' })
+  t.after(() => app.dispose())
+  const view = await dom(t)
+  const entry = app.slots.records.get(base + '/environment-context')
+  const stores = {
+    tokenUsage: observable({ outputTokens: 8765 }),
+    contextPressure: observable({ projectedTokens: 3000, contextWindow: 8000 }),
+    contextBreakdown: observable(undefined),
+  }
+  await act(async () => view.root.render(React.createElement(entry.component,
+    { sessionId: 's1', useProjection: projectionHook(stores) })))
+  assert.match(view.text(), /Output tokens8\.8k/)
+  await act(async () => app.host.set(undefined))
+  assert.doesNotMatch(view.text(), /Demo|HomeBook|8\.8k/)
+  await act(async () => app.host.set({ id: 2, host: { home: 'C:/Fixture2' } }))
+  assert.doesNotMatch(view.text(), /Demo|HomeBook|8\.8k/)
+  const fresh = sessionSnapshot()
+  fresh.byId.s1 = { id: 's1', displayTitle: 'Current profile', running: false }
+  fresh.projectionsBySession.s1.values.tokenUsage = { outputTokens: 321 }
+  await act(async () => app.sessions.set(fresh))
+  assert.match(view.text(), /Current profile/)
+  assert.match(view.text(), /Output tokens321/)
+  assert.doesNotMatch(view.text(), /HomeBook|8\.8k/)
+  await act(async () => app.workspaces.set({ ...app.workspaces.getSnapshot(), items: [
+    { workspaceId: 'current', title: 'Current workspace', path: 'C:/Current', sessionIds: ['s1'] }] }))
+  assert.match(view.text(), /Current workspace/)
+  assert.doesNotMatch(view.text(), /HomeBook|8\.8k/)
+})
+
+test('Environment rejects erroneous cached projections, invalid numbers and a zero context window', async t => {
+  const app = await clientHarness({ React, hostLocale: 'en' })
+  t.after(() => app.dispose())
+  const entry = app.slots.records.get(base + '/environment-context')
+  const render = () => renderToStaticMarkup(React.createElement(entry.component, entry.options.inject('s1')))
+  const invalid = sessionSnapshot()
+  invalid.projectionsBySession.s1.state = 'error'
+  app.sessions.set(invalid)
+  assert.doesNotMatch(render(), /aria-valuenow|1\.2k/)
+  invalid.projectionsBySession.s1 = { state: 'ready', values: {
+    contextPressure: { projectedTokens: 100, contextWindow: 0 },
+    tokenUsage: { outputTokens: Number.MAX_VALUE },
+  } }
+  app.sessions.set(invalid)
+  assert.doesNotMatch(render(), /aria-valuenow|Infinity|e\+30/)
+})

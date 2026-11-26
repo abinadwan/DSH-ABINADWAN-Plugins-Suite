@@ -2,7 +2,7 @@
 
 **Latest published release [v1.1.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.1.0).** One community-maintained DSH bundle exposes six independently switchable components. The package's public identity remains `@abinadwan/dsh-plugins-suite`.
 
-> **Development source:** `1.1.2` (unreleased candidate). See the [changelog](../CHANGELOG.md) for versioned changes.
+> **Development source:** `1.1.3` (unreleased candidate). See the [changelog](../CHANGELOG.md) for versioned changes.
 >
 > **Release boundary:** A version bump, development branch merge, or successful CI run does not publish a GitHub Release or validate every Desktop security path. See [the releases page](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases) for actually published artifacts.
 
@@ -23,7 +23,7 @@ Enabled components preserve their existing internal IDs and saved settings names
 
 <img src="../plugins/environment-context/icon.png" width="64" alt="Teal monitor"/>
 
-**What works:** a native, read-only inspector of the currently selected session and associated Workspace. It displays browser/environment facts, reported context pressure, approximate message/tool/system token categories, output-token summaries and recent session activity. It opens from the conversation header/right sidebar and tracks the current DSH session.
+**What works:** a native, read-only inspector of the currently selected session and associated Workspace. It displays browser/environment facts, reported context pressure, approximate message/tool/system token categories, output-token summaries and recent session activity. It opens from the conversation header/right sidebar and tracks the current DSH session. The inspector requires current native Session-list admission, suppresses ambiguous Workspace metadata and invalidates previously observed snapshots on connection changes. Existing seats use refreshed list projections until remounted; if a ready list has not refreshed yet, private metadata remains unavailable. It does not create a separate authorization boundary.
 
 **What it does not do:** it cannot grant model context, edit files, change a model's token limit, repair memory, or produce authoritative billing. Token-category numbers are estimates; use provider billing data for chargeable totals. Connectors and file-change views may be represented by availability notes when DSH does not provide an authorized source.
 

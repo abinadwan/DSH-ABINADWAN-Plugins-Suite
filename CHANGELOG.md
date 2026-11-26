@@ -2,10 +2,15 @@
 
 All notable changes are documented here.
 
+## [1.1.3] — development candidate (unreleased)
+
+- **Environment & Context — phase 3.5:** require ready native Session-list admission before displaying summaries or projections; exclude ambiguous Workspace associations; invalidate previously observed snapshots and old-seat live projection bindings on connection changes; reject error-state projections and invalid token values; fence pending auto-open timers by connection generation. Preserve read-only behavior, native DSH authorization and the independently controlled Component lifecycle.
+- Branch `fix/v1.1.3-environment-context-privacy`, baseline `11a7b486383ffaea72e06cd062153699e7e88154`. Align package, lockfile, client and documentation; add regression fixtures for admission, Workspace ambiguity, connection changes and malformed projections. CI and Desktop acceptance pending. No new filesystem access, external requests or native permissions. Existing seats depend on refreshed native list metadata after a connection change; no guarantee beyond the native DSH authorization and snapshot contracts is claimed.
+
 ## [1.1.2] — development candidate (unreleased)
 
 - **Adaptive Reasoning — phase 3.4:** refuse non-private or foreign-owned existing statistics files on POSIX without changing permissions; retain inherited Windows ACLs and native atomic writes. Set no-store on all plugin-owned responses, limit transient usage/route metadata to required fields, omit new URL-like or control-character route identifiers, saturate counters within safe numeric bounds, and discard previous-connection statistics replies. Native owner authorization remains authoritative; add owner/viewer, persistence, counter and reconnect regression coverage.
-- Branch `fix/v1.1.2-adaptive-reasoning-security`, baseline `9a92daba6d32246cb5d60c23eae7fc085397864b`. Align package, lockfile, client and documentation. CI and local Desktop acceptance pending. Existing valid historical route labels are retained; custom identifiers may contain personal information, and no general secret detection, Windows ACL isolation or atomic cancellation of an already-started native action is claimed. No release is published.
+- Branch `fix/v1.1.2-adaptive-reasoning-security`, baseline `9a92daba6d32246cb5d60c23eae7fc085397864b`. Align package, lockfile, client and documentation. CI passed 8/8 at `8ae57d3420acf4c41504b373a56f5e5f2eab0058`; [PR #83](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/83) merged into develop. Local Desktop acceptance remains pending. Existing valid historical route labels are retained; custom identifiers may contain personal information, and no general secret detection, Windows ACL isolation or atomic cancellation of an already-started native action is claimed. No release is published.
 
 ## [1.1.1] — development candidate (unreleased)
 
