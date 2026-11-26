@@ -175,6 +175,7 @@
       const [action, setAction] = React.useState({phase:'idle'})
       const [mode, setMode] = React.useState({kind:'unknown'})
       const mounted = useMounted()
+      const updateInFlight = React.useRef(false)
       const canList = useAccess(useRemoteAccess, 'pluginManager/listBundles')
       const canUpdate = useAccess(useRemoteAccess, 'pluginManager/updateBundle')
       const hostVersion = versionParts(installedVersion) ? installedVersion : undefined
@@ -223,7 +224,8 @@
           }
           if (current.commit === sha) throw new Error('The installed commit already matches this release')
           if (!canUpdate) throw new Error('This window may not update plugins; use the owner session')
-          if (mounted.current) setAction({phase:'confirm',latest:update.latest,sha,spec:current.location + '#' + sha})
+          if (mounted.current) setAction({phase:'confirm',latest:update.latest,tag:update.tag,sha,spec:current.location + '#' + sha,
+            installedSource:current.source,installedVersion:bundle.version})
         } catch (error) {
           if (mounted.current) setAction({phase:'error',message:String(error?.message || error)})
         }
@@ -232,10 +234,30 @@
         if (action.phase !== 'confirm' || !FULL_COMMIT.test(action.sha) ||
           typeof action.spec !== 'string' || !action.spec.endsWith('#' + action.sha) ||
           gitLocation(action.spec) !== REPOSITORY_LOCATION ||
-          isNewerVersion(action.latest,currentVersion) !== true || !canUpdate) return
-        const {latest,spec} = action
+          isNewerVersion(action.latest,currentVersion) !== true || !canUpdate || !canList ||
+          !pluginManager || updateInFlight.current || !mounted.current || versionDisposed) return
+        const {latest,spec,tag,sha,installedSource,installedVersion} = action
+        updateInFlight.current = true
         setAction({phase:'installing',latest})
         try {
+          // The confirmation binds both the release commit and the installed source.
+          // Recheck them after the user's confirmation, not only when preparing it.
+          const release = await githubJSON(RELEASE_SOURCE)
+          if (getReleaseVersion(release) !== latest || release.tag_name !== tag) {
+            throw new Error('Published release changed; check again and reconfirm')
+          }
+          const commit = await githubJSON(COMMIT_SOURCE + encodeURIComponent(tag))
+          if (typeof commit?.sha !== 'string' || commit.sha.toLowerCase() !== sha) {
+            throw new Error('Release commit changed; check again and reconfirm')
+          }
+          const bundles = remoteValue(await pluginManager.listBundles(), 'Plugin list')
+          const bundle = Array.isArray(bundles) ? bundles.find(item => item?.name === PACKAGE_NAME) : undefined
+          const current = installMode(bundle)
+          if (current.kind !== 'pinned' || current.source !== installedSource ||
+            bundle.version !== installedVersion || installedVersion !== currentVersion) {
+            throw new Error('Installed bundle changed; reopen Plugins and reconfirm')
+          }
+          if (!mounted.current || versionDisposed) return
           // The Host owns package management, permissions, compatibility,
           // removal, reinstallation on failure and restart reporting.
           const result = remoteValue(await pluginManager.updateBundle(PACKAGE_NAME, latest, {spec}), 'Host update')
@@ -259,6 +281,8 @@
           if (mounted.current) setAction({phase:'done',latest,restart:state === 'restart-required'})
         } catch (error) {
           if (mounted.current) setAction({phase:'error',message:String(error?.message || error)})
+        } finally {
+          updateInFlight.current = false
         }
       }
       const soft = 'rgba(127,127,127,.16)'

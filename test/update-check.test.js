@@ -253,3 +253,49 @@ test('unmounting during an update and disposing the suite leave no timers or lat
   await view.app.dispose()
   assert.equal(view.app.intervals.size, 0)
 })
+
+test('confirmation revalidates installed source and version before updating', async t => {
+  for (const [label, changed] of [
+    ['different commit at same version', bundle('github:abinadwan/DSH-ABINADWAN-Plugins-Suite#' + 'c'.repeat(40), { update: 'git' })],
+    ['different version', bundle(PINNED_SOURCE, { version: newerVersion })],
+    ['foreign source', bundle('github:someone/fork#' + OLD, { update: 'git' })],
+    ['removed installation', null],
+  ]) {
+    await t.test(label, async t => {
+      let installed = bundle(PINNED_SOURCE)
+      const updates = []
+      const view = await mount(t, {
+        fetch: releaseFetch(), listBundles: () => installed ? [installed] : [],
+        updateBundle: (...args) => updates.push(args),
+      })
+      await view.click('[data-update-now]')
+      assert.ok(view.q('[data-confirm-update]'))
+      installed = changed
+      await view.click('[data-confirm-update]')
+      assert.match(view.q('[role="alert"]').textContent, /Installed bundle changed/)
+      assert.deepEqual(updates, [])
+    })
+  }
+})
+
+test('confirmation refuses a moved tag or withdrawn stable release', async t => {
+  for (const [label, overrides, expected] of [
+    ['tag moved', { commit: { sha: 'c'.repeat(40) } }, /Release commit changed/],
+    ['release withdrawn', { release: { tag_name: newerTag, draft: true, prerelease: false } }, /Untrusted or unsupported release/],
+    ['latest changed', { release: { tag_name: 'v99.0.0', draft: false, prerelease: false } }, /Published release changed/],
+  ]) {
+    await t.test(label, async t => {
+      let fetcher = releaseFetch()
+      const updates = []
+      const view = await mount(t, {
+        fetch: (...args) => fetcher(...args), listBundles: () => [bundle(PINNED_SOURCE)],
+        updateBundle: (...args) => updates.push(args),
+      })
+      await view.click('[data-update-now]')
+      fetcher = releaseFetch(overrides)
+      await view.click('[data-confirm-update]')
+      assert.match(view.q('[role="alert"]').textContent, expected)
+      assert.deepEqual(updates, [])
+    })
+  }
+})
