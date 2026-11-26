@@ -58,10 +58,17 @@ function directChatPolicy(roots, getRegistry, identities) {
           !Array.isArray(workspace?.sessionIds) || pathKey(workspace.path) === undefined)) {
           throw new Error('membership-unavailable')
         }
-        direct = workspaces.some(workspace => workspace.sessionIds.includes(header.id) &&
-          isDirectChatCwd(workspace.path, roots))
+        const memberships = workspaces.filter(workspace => workspace.sessionIds.includes(header.id))
+        direct = memberships.some(workspace => isDirectChatCwd(workspace.path, roots))
         if (direct) identities.remember(header.id)
-        else identities.forget(header.id)
+        else if (memberships.length === 1 &&
+          memberships[0].sessionIds.filter(id => id === header.id).length === 1) {
+          // Only explicit, unambiguous ordinary membership revokes a marker.
+          identities.forget(header.id)
+        } else {
+          // Empty or incomplete snapshots are not evidence of a transfer.
+          direct = identities.has(header.id)
+        }
       } catch {
         // Missing or invalid native membership must not discard verified IDs.
         direct = identities.has(header.id)
