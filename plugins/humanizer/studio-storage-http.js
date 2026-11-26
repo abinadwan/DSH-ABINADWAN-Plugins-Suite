@@ -5,7 +5,7 @@ const reply=(body,status=200)=>Response.json(body,{status,headers:{'cache-contro
 export function registerStudioStorage(ctx){
   const lifetime=new AbortController()
   const profileDir=ctx.profileContext.dir
-  let busy=false
+  let busy=false, storage
   ctx.effect(()=>()=>lifetime.abort())
   const handle=async(request,write)=>{
     if(lifetime.signal.aborted)return reply({error:'STUDIO_STORAGE_UNAVAILABLE'},503)
@@ -20,7 +20,9 @@ export function registerStudioStorage(ctx){
         command=read.data
       }
       signal.throwIfAborted()
-      const storage=await openStudioStorage(profileDir)
+      // Pin the canonical Profile directory identity at the first explicit access.
+      // Never silently reopen a different directory during this fiber's lifetime.
+      storage ??= await openStudioStorage(profileDir)
       const state=write?await storage.change(command,signal):await storage.load(signal)
       signal.throwIfAborted()
       return reply(state)

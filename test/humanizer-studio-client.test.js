@@ -26,13 +26,14 @@ test('Studio uses live native catalog, sends only explicit text, supports RTL an
   dom.window.document.body.append(container)
   const sent=[]
   const storageCalls=[]
+  let delayedEdit=null, delayedLoad=null, catalogUnavailable=false
   let saved={version:1,revision:'initial',draft:null,history:[]}
-  const app=await clientHarness({React,document:dom.window.document,modelCatalog:()=>({groups:[{id:'p',name:'Provider',models:[{id:'m',name:'Model'}]}]}),
+  const app=await clientHarness({React,document:dom.window.document,modelCatalog:()=>catalogUnavailable?{ok:false,error:{code:'unavailable',message:'fixture'}}:({groups:[{id:'p',name:'Provider',models:[{id:'m',name:'Model'}]}]}),
     fetch:async(url,options)=>{
       const path=new URL(url).pathname
       if(path.endsWith('/status'))return {ok:true,json:async()=>({available:true,protocol:1})}
-      if(path.endsWith('/edit')){sent.push(JSON.parse(options.body));return {ok:true,json:async()=>({text:'نتيجة 123'})}}
-      if(path.endsWith('/storage')){storageCalls.push('load');return {ok:true,json:async()=>saved}}
+      if(path.endsWith('/edit')){sent.push(JSON.parse(options.body));if(delayedEdit)return delayedEdit.promise;return {ok:true,json:async()=>({text:'نتيجة 123'})}}
+      if(path.endsWith('/storage')){storageCalls.push('load');if(delayedLoad)return delayedLoad.promise;return {ok:true,json:async()=>saved}}
       if(path.endsWith('/storage/change')){
         const command=JSON.parse(options.body);storageCalls.push(command)
         assert.equal(command.revision,saved.revision)
@@ -94,4 +95,40 @@ test('Studio uses live native catalog, sends only explicit text, supports RTL an
   assert.equal(sent.length,1)
   assert.equal(dom.window.localStorage.length,0)
   assert.equal(dom.window.sessionStorage.length,0)
+  function defer(){let resolve;const promise=new Promise(fn=>{resolve=fn});return {promise,resolve}}
+  // The old owner response must not reappear in a new Host generation,
+  // including when a transport ignores the abort signal.
+  await change('[data-studio-model]',JSON.stringify(['p','m']))
+  await change('[data-studio-editor="source"]','OLD_HOST_SENTINEL')
+  delayedEdit=defer()
+  await act(async()=>q('[data-studio-process]').click())
+  assert.ok(q('[data-studio-cancel]'))
+  await act(async()=>app.ctx.emit('connection/reset'))
+  for(let i=0;i<4;i++)await act(async()=>{await tick()})
+  await act(async()=>delayedEdit.resolve({ok:true,json:async()=>({text:'OLD_HOST_RESULT'})}))
+  assert.equal(q('[data-studio-editor="source"]').value,'')
+  assert.equal(q('[data-studio-editor="result"]').value,'')
+  delayedEdit=null
+  delayedLoad=defer()
+  await act(async()=>q('[data-studio-storage-open]').click())
+  await act(async()=>app.ctx.emit('connection/reset'))
+  for(let i=0;i<4;i++)await act(async()=>{await tick()})
+  await act(async()=>delayedLoad.resolve({ok:true,json:async()=>({version:1,revision:'old',draft:null,history:[{id:'old',entry:{sourceText:'OLD_SAVED_SENTINEL'}}]})}))
+  assert.ok(!container.textContent.includes('OLD_SAVED_SENTINEL'))
+  assert.equal(q('[data-studio-save-draft]'),null)
+  delayedLoad=null
+  // An unavailable catalog cannot trap saved text or block explicit deletion.
+  catalogUnavailable=true
+  saved={version:1,revision:'r1',draft:{service:'humanize',provider:'p',model:'m',inputLanguage:'auto',outputLanguage:'ar',sourceText:'saved sentinel',result:'saved result',editingBrief:''},history:[]}
+  await act(async()=>app.ctx.emit('connection/reset'))
+  for(let i=0;i<4;i++)await act(async()=>{await tick()})
+  assert.equal(q('[data-studio-process]').disabled,true)
+  assert.equal(q('[data-studio-storage-open]').disabled,false)
+  await act(async()=>q('[data-studio-storage-open]').click())
+  for(let i=0;i<3;i++)await act(async()=>{await tick()})
+  assert.ok(q('[data-studio-restore-draft]'))
+  await act(async()=>q('[data-studio-clear-saved]').click())
+  await act(async()=>q('[data-studio-confirm-clear]').click())
+  for(let i=0;i<3;i++)await act(async()=>{await tick()})
+  assert.equal(saved.draft,null)
 })

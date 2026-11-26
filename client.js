@@ -3866,16 +3866,17 @@ window.__ModuleLoader__.load({
         setSaved(null);setStorageBusy(false);setStorageNotice('');setConfirmClear(false)
       }
       async function storageOperation(command){
-        if(!current()||storagePending.current||busy||catalog.phase!=='ready'||services.catalogRevision.getSnapshot()!==revision)return
+        if(!current()||storagePending.current||pending.current||busy)return
         if(command&&(!saved||command.revision!==saved.revision))return
         const controller=new AbortController()
         storagePending.current=controller
         const signal=AbortSignal.any([controller.signal,services.lifetime,AbortSignal.timeout(12000)])
         const valid=()=>current()&&storagePending.current===controller
-        setStorageBusy(true);setStorageNotice('');setConfirmClear(false)
+        setStorageBusy(true);setSaved(null);setStorageNotice('');setConfirmClear(false)
         try{
           const state=await studioFetch(command?'storage/change':'storage',signal,command)
-          if(!valid()||signal.aborted)return
+          if(!valid())return
+          if(signal.aborted)throw Error('STUDIO_STORAGE_UNAVAILABLE')
           if(state?.version!==1||typeof state.revision!=='string'||!Array.isArray(state.history)||state.history.length>10||
             (state.draft!==null&&typeof state.draft!=='object'))throw Error('STUDIO_STORAGE_UNAVAILABLE')
           setSaved(state)
@@ -3890,7 +3891,7 @@ window.__ModuleLoader__.load({
           sourceText:source,result,editingBrief:service==='custom'?brief:''}
       }
       function restore(entry){
-        if(!current()||busy||storageBusy||!entry)return
+        if(!current()||pending.current||storagePending.current||busy||storageBusy||!entry)return
         if(!studioTools.some(row=>row[0]===entry.service)||typeof entry.sourceText!=='string'||entry.sourceText.length>12000||
           typeof entry.result!=='string'||entry.result.length>24000||typeof entry.editingBrief!=='string'||entry.editingBrief.length>2000)return
         setService(entry.service);setSource(entry.sourceText);setResult(entry.result);setBrief(entry.editingBrief)
@@ -3910,7 +3911,6 @@ window.__ModuleLoader__.load({
         const signal = AbortSignal.any([controller.signal,services.lifetime,AbortSignal.timeout(15000)])
         const valid = () => current() && !signal.aborted && services.catalogRevision.getSnapshot() === revision
         stop()
-        closeStorage()
         setSelection('')
         setCatalog({phase:'loading',groups:[]})
         void (async () => {
@@ -3918,7 +3918,8 @@ window.__ModuleLoader__.load({
             const status = await studioFetch('status',signal)
             if (!valid() || status?.available !== true || status?.protocol !== 1) throw Error('STUDIO_UNAVAILABLE')
             const response = remoteValue(await services.sessionRemote.modelCatalog(),'Studio catalog')
-            if (!valid()) return
+            if (!current() || controller.signal.aborted || services.catalogRevision.getSnapshot() !== revision) return
+            if (signal.aborted) throw Error('STUDIO_UNAVAILABLE')
             if (!Array.isArray(response?.groups)) throw Error('STUDIO_UNAVAILABLE')
             const groups = response.groups.flatMap(group => {
               if (typeof group?.id !== 'string' || typeof group.name !== 'string' || !Array.isArray(group.models)) return []
@@ -3942,7 +3943,7 @@ window.__ModuleLoader__.load({
         pending.current=controller
         const signal=AbortSignal.any([controller.signal,services.lifetime,AbortSignal.timeout(125000)])
         const valid=()=>current()&&pending.current===controller&&services.catalogRevision.getSnapshot()===revision
-        setBusy(true);setNotice('')
+        setBusy(true);setResult('');setNotice('')
         try {
           const reply=await studioFetch('edit',signal,{service,provider:chosen.provider,model:chosen.model,sourceText:source,
             inputLanguage:from,outputLanguage:to,...(service==='custom'?{editingBrief:brief}:{})})
@@ -3958,17 +3959,17 @@ window.__ModuleLoader__.load({
       }
       function clear() {stop();setSource('');setResult('');setBrief('');setNotice('')}
       const choice=(label,value,onChange,children,extra={})=>h('label',{style:studioLabel},label,
-        h('select',{style:studioTextStyle,value,onChange:event=>onChange(event.target.value),disabled:busy,...extra},children))
+        h('select',{style:studioTextStyle,value,onChange:event=>onChange(event.target.value),disabled:busy||storageBusy,...extra},children))
       const editor=(label,value,onChange,maxLength,dir,id)=>h('label',{style:studioLabel},label,
         h('textarea',{'data-studio-editor':id,style:{...studioTextStyle,minHeight:250,resize:'vertical',lineHeight:1.65},
-          value,maxLength,dir,disabled:busy,spellCheck:false,autoComplete:'off',onChange:event=>onChange(event.target.value)}),
+          value,maxLength,dir,disabled:busy||storageBusy,spellCheck:false,autoComplete:'off',onChange:event=>onChange(event.target.value)}),
         h('span',{style:lifecycleMuted},value.length+' / '+maxLength))
       return h('main',{'data-humanizer-studio':'',dir:language==='ar'?'rtl':'ltr',style:{padding:20,display:'grid',gap:14,overflow:'auto',alignContent:'start',height:'100%'}},
         h('h2',{style:{margin:0,fontSize:20}},tr('Humanizer Studio','استوديو Humanizer')),
         h('p',{style:{...lifecycleMuted,margin:0}},tr('Independent text editing. Results depend on the selected model. Review facts and citations.','تحرير نصوص مستقل. تعتمد جودة النتائج على الموديل المختار؛ راجع الحقائق والمصادر.')),
         h('p',{role:'note',style:{...lifecycleMuted,margin:0}},tr('Text is not saved automatically. Processing sends it through the selected provider and Host middleware, which may retain it. Avoid sensitive text.','لا تُحفظ النصوص تلقائيًا. تُرسل المعالجة عبر المزوّد المختار ووسائط Host التي قد تحتفظ بها. تجنب النصوص الحساسة.')),
-        catalog.phase!=='ready'?h('div',{role:'status'},catalog.phase==='loading'?tr('Checking Studio availability…','جارٍ التحقق من توفر الاستوديو…'):tr('Studio unavailable or access denied.','الاستوديو غير متاح أو الوصول مرفوض.'),
-          h('button',{type:'button',style:studioButton,onClick:()=>setRefresh(value=>value+1)},tr('Retry','إعادة المحاولة'))):
+        catalog.phase!=='ready'?h('div',{role:'status'},catalog.phase==='loading'?tr('Checking Studio availability…','جارٍ التحقق من توفر الاستوديو…'):tr('Processing unavailable or access denied. Saved items can be managed separately.','المعالجة غير متاحة أو الوصول مرفوض. يمكن إدارة المحفوظات بشكل مستقل.'),
+          h('button',{type:'button',style:studioButton,onClick:()=>setRefresh(value=>value+1)},tr('Retry','إعادة المحاولة'))):null,
         h('div',{style:{display:'grid',gap:12}},
           h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,180px),1fr))',gap:10}},
             choice(tr('Model','الموديل'),selection,setSelection,[h('option',{key:'none',value:''},tr('Select model','اختر الموديل')),
@@ -3977,9 +3978,9 @@ window.__ModuleLoader__.load({
             choice(tr('Output language','لغة النتيجة'),to,setTo,[h('option',{key:'preserve',value:'preserve'},tr('Preserve source','لغة المصدر')),...locales.map(item=>h('option',{key:item.id,value:item.id},item.label))],{'data-studio-output-language':''})),
           h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,260px),1fr))',gap:12}},
             h('nav',{'aria-label':tr('Editing services','خدمات التحرير'),style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(112px,1fr))',gap:6,alignContent:'start'}},
-              studioTools.map(([id,en,ar])=>h('button',{key:id,type:'button',disabled:busy,'aria-pressed':service===id,'data-studio-service':id,style:{...studioButton,background:service===id?'#8060c526':'transparent'},onClick:()=>setService(id)},tr(en,ar)))),
+              studioTools.map(([id,en,ar])=>h('button',{key:id,type:'button',disabled:busy||storageBusy,'aria-pressed':service===id,'data-studio-service':id,style:{...studioButton,background:service===id?'#8060c526':'transparent'},onClick:()=>setService(id)},tr(en,ar)))),
             h('div',{style:{display:'grid',gap:8}},
-              service==='custom'?h('label',{style:studioLabel},tr('Editing brief','تعليمات التحرير'),h('textarea',{style:studioTextStyle,value:brief,maxLength:2000,disabled:busy,dir:'auto','data-studio-brief':'',onChange:event=>setBrief(event.target.value)})):null,
+              service==='custom'?h('label',{style:studioLabel},tr('Editing brief','تعليمات التحرير'),h('textarea',{style:studioTextStyle,value:brief,maxLength:2000,disabled:busy||storageBusy,dir:'auto','data-studio-brief':'',onChange:event=>setBrief(event.target.value)})):null,
               editor(tr('Source text','النص الأصلي'),source,setSource,12000,studioDirection(from),'source')),
             editor(tr('Result','النتيجة'),result,setResult,24000,studioDirection(to==='preserve'?from:to),'result')),
           !languageValid?h('p',{role:'status',style:lifecycleMuted},tr('Choose a valid language; translation requires an output language.','اختر لغة صالحة؛ الترجمة تتطلب لغة للنتيجة.')):null,
@@ -3987,13 +3988,13 @@ window.__ModuleLoader__.load({
             h('button',{type:'button','data-studio-process':'',disabled:!ready||busy||storageBusy,style:studioButton,onClick:processText},tr('Process text','معالجة النص')),
             busy?h('button',{type:'button','data-studio-cancel':'',style:studioButton,onClick:()=>{stop();setNotice(tr('Cancelled.','أُلغيت المعالجة.'))}},tr('Cancel','إلغاء')):null,
             h('button',{type:'button','data-studio-clear':'',style:studioButton,onClick:clear},tr('Clear text','مسح النصوص')),
-            h('button',{type:'button',disabled:busy,style:studioButton,onClick:()=>setRefresh(value=>value+1)},tr('Refresh models','تحديث الموديلات'))),
+            h('button',{type:'button',disabled:busy||storageBusy,style:studioButton,onClick:()=>setRefresh(value=>value+1)},tr('Refresh models','تحديث الموديلات'))),
           h('p',{role:'status','aria-live':'polite',style:lifecycleMuted},busy?tr('Processing…','جارٍ المعالجة…'):notice)),
         h('section',{'aria-label':tr('Optional local storage','التخزين المحلي الاختياري'),style:{...studioTextStyle,display:'grid',gap:9}},
           h('h3',{style:{margin:0,fontSize:15}},tr('Draft and history','المسودة والسجل')),
-          h('p',{style:lifecycleMuted},tr('Optional, manual saving in this Host Profile. Saved text is not encrypted. One draft, up to 10 history items; deleting here does not erase backups or provider copies.','حفظ يدوي اختياري داخل Profile لهذا المضيف. النص المحفوظ غير مشفر. مسودة واحدة وحتى 10 عناصر بالسجل؛ الحذف هنا لا يمحو النسخ الاحتياطية أو نسخ المزوّد.')),
+          h('p',{style:lifecycleMuted},tr('Optional, manual saving of the current editor snapshot in this Host Profile, not a verified record of model execution. Saved text is not encrypted. One draft, up to 10 history items; deleting here does not erase backups or provider copies.','حفظ يدوي اختياري لحالة المحرر الحالية داخل Profile لهذا المضيف، وليس سجلًا موثقًا لتنفيذ الموديل. النص المحفوظ غير مشفر. مسودة واحدة وحتى 10 عناصر بالسجل؛ الحذف هنا لا يمحو النسخ الاحتياطية أو نسخ المزوّد.')),
           h('div',{style:{display:'flex',flexWrap:'wrap',gap:8}},
-            h('button',{type:'button','data-studio-storage-open':'',style:studioButton,disabled:busy||storageBusy||catalog.phase!=='ready',onClick:()=>storageOperation()},saved?tr('Reload saved items','تحديث المحفوظات'):tr('Open saved items (opt in)','فتح المحفوظات (اختياري)')),
+            h('button',{type:'button','data-studio-storage-open':'',style:studioButton,disabled:busy||storageBusy,onClick:()=>storageOperation()},saved?tr('Reload saved items','تحديث المحفوظات'):tr('Open saved items (opt in)','فتح المحفوظات (اختياري)')),
             saved||storageBusy?h('button',{type:'button','data-studio-storage-close':'',style:studioButton,onClick:closeStorage},tr('Close saved items','إغلاق المحفوظات')):null),
           saved?h('div',{style:{display:'grid',gap:8}},
             h('div',{style:{display:'flex',flexWrap:'wrap',gap:8}},
@@ -4027,6 +4028,9 @@ window.__ModuleLoader__.load({
         ctx.effect(()=>host.subscribe(changeHost))
         ctx.effect(()=>ctx.remote.$on('llm/adapters-updated',changeCatalog))
         ctx.effect(()=>ctx.remote.$on('llm/models-updated',changeCatalog))
+        ctx.effect(()=>ctx.remote.$on('settings/document-updated',changeCatalog))
+        ctx.effect(()=>ctx.remote.$on('credentials/record-updated',changeCatalog))
+        ctx.effect(()=>ctx.remote.$on('credentials/reference-updated',changeCatalog))
         const services={locale:ctx.locale,sessionRemote:ctx.remote.session,lifetime:lifetime.signal,
           generation:{getSnapshot:()=>generation,subscribe:notify=>{generationListeners.add(notify);return()=>generationListeners.delete(notify)}},
           catalogRevision:{getSnapshot:()=>revision,subscribe:notify=>{catalogListeners.add(notify);return()=>catalogListeners.delete(notify)}}}

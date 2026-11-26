@@ -64,17 +64,27 @@ async function readState(filename) {
 export async function openStudioStorage(profileDir) {
   if(typeof profileDir!=='string'||!isAbsolute(profileDir))fail('STUDIO_STORAGE_UNAVAILABLE')
   const root=await realpath(profileDir)
+  const rootStat=await lstat(root)
+  const safeRoot=stat=>stat.isDirectory()&&!stat.isSymbolicLink()&&(typeof process.geteuid!=='function'||(stat.uid===process.geteuid()&&(stat.mode&0o022)===0))
+  if(!safeRoot(rootStat))fail('STUDIO_STORAGE_UNAVAILABLE')
   const filename=join(root,STUDIO_STORAGE_FILE)
+  async function checkRoot(){
+    if(await realpath(profileDir)!==root)fail('STUDIO_STORAGE_UNAVAILABLE')
+    const actual=await lstat(root)
+    if(!safeRoot(actual)||actual.dev!==rootStat.dev||actual.ino!==rootStat.ino)fail('STUDIO_STORAGE_UNAVAILABLE')
+  }
   async function locked(operation,signal){
     signal.throwIfAborted()
-    if(await realpath(profileDir)!==root)fail('STUDIO_STORAGE_UNAVAILABLE')
+    await checkRoot()
     const lock=await lstat(filename+'.lock').catch(e=>{if(e.code==='ENOENT')return null;throw e})
     if(lock&&(!lock.isFile()||lock.isSymbolicLink()||lock.nlink!==1||lock.size>32||
       (typeof process.geteuid==='function'&&lock.uid!==process.geteuid())))fail('STUDIO_STORAGE_INVALID')
     return withFileLock(filename,async()=>{
       signal.throwIfAborted()
-      if(await realpath(profileDir)!==root)fail('STUDIO_STORAGE_UNAVAILABLE')
-      return operation()
+      await checkRoot()
+      const result=await operation()
+      await checkRoot()
+      return result
     },{waitMs:2000})
   }
   return {
@@ -104,6 +114,7 @@ export async function openStudioStorage(profileDir) {
       state.revision=randomUUID()
       const data=JSON.stringify(state)
       if(Buffer.byteLength(data)>STUDIO_STORAGE_LIMIT)fail('STUDIO_STORAGE_FULL')
+      await checkRoot()
       signal.throwIfAborted()
       // No replay after ambiguous writes. The empty revision tombstone prevents stale resurrection.
       await writeFileAtomic(filename,data,{mode:0o600,dirMode:0o700})

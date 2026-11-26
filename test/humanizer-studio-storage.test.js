@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import {mkdtemp,rm,readdir,readFile,writeFile,symlink,stat} from 'node:fs/promises'
+import {mkdtemp,rm,readdir,readFile,writeFile,symlink,stat,rename,mkdir,chmod} from 'node:fs/promises'
 import {tmpdir} from 'node:os'
 import {join} from 'node:path'
 import {openStudioStorage,STUDIO_STORAGE_FILE,STUDIO_HISTORY_LIMIT} from '../plugins/humanizer/studio-storage.js'
@@ -64,5 +64,25 @@ test('invalid storage and symlink are rejected rather than overwritten',async t=
     await symlink(target,file)
     await assert.rejects(store.load(signal()),/STUDIO_STORAGE_INVALID/)
     assert.equal(await readFile(target,'utf8'),'foreign')
+  }
+})
+
+test('a replaced Profile directory cannot be silently adopted by an existing storage instance',async t=>{
+  const parent=await mkdtemp(join(tmpdir(),'studio-profile-identity-'))
+  t.after(()=>rm(parent,{recursive:true,force:true}))
+  const dir=join(parent,'profile'),old=join(parent,'original')
+  await mkdir(dir,{mode:0o700})
+  const store=await openStudioStorage(dir)
+  const initial=await store.load(signal())
+  const saved=await store.change({action:'save-draft',revision:initial.revision,entry},signal())
+  await rename(dir,old)
+  await mkdir(dir,{mode:0o700})
+  await assert.rejects(store.load(signal()),/STUDIO_STORAGE_UNAVAILABLE/)
+  await assert.rejects(store.change({action:'clear-all',revision:saved.revision},signal()),/STUDIO_STORAGE_UNAVAILABLE/)
+  assert.deepEqual(await readdir(dir),[])
+  assert.ok((await readFile(join(old,STUDIO_STORAGE_FILE),'utf8')).includes(entry.sourceText))
+  if(process.platform!=='win32'){
+    await chmod(dir,0o777)
+    await assert.rejects(openStudioStorage(dir),/STUDIO_STORAGE_UNAVAILABLE/)
   }
 })
