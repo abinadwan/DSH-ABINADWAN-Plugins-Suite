@@ -4,6 +4,7 @@ import { realpathSync } from 'node:fs'
 import { mkdir, realpath } from 'node:fs/promises'
 import { basename, dirname, isAbsolute, join, sep } from 'node:path'
 import { registerCatalog } from './catalog.js'
+import { identityCache } from './identity-cache.js'
 import { checkedDirectory, directoryName, pathKey, workspaceName } from './workspace-path.js'
 
 export const name = 'abinadwan-direct-chat'
@@ -41,10 +42,48 @@ function isDirectChatCwd(cwd, roots) {
   }
   return false
 }
-function denyTools(roots) {
-  return ({ agent }) => isDirectChatCwd(agent?.session?.header.cwd, roots)
-    ? { reason: 'Direct chats do not run tools.', info: { name: 'DirectChatPolicy', code: 'DIRECT_CHAT_TOOL_DENIED' } }
-    : undefined
+// Live native membership takes precedence over the profile-local fallback.
+// Keep cwd recognition for old Sessions and the interval before attachment.
+function directChatPolicy(roots, getRegistry, identities) {
+  const restrictedAgents = new WeakSet()
+  function owns(agent) {
+    if (!agent || typeof agent !== 'object') return false
+    if (restrictedAgents.has(agent)) return true
+    const header = agent.session?.header
+    let direct = false
+    if (typeof header?.id === 'string' && header.id.length > 0) {
+      try {
+        const workspaces = getRegistry()?.list()
+        if (!Array.isArray(workspaces) || workspaces.some(workspace =>
+          !Array.isArray(workspace?.sessionIds) || pathKey(workspace.path) === undefined)) {
+          throw new Error('membership-unavailable')
+        }
+        const memberships = workspaces.filter(workspace => workspace.sessionIds.includes(header.id))
+        direct = memberships.some(workspace => isDirectChatCwd(workspace.path, roots))
+        if (direct) identities.remember(header.id)
+        else if (memberships.length === 1 &&
+          memberships[0].sessionIds.filter(id => id === header.id).length === 1) {
+          // Only explicit, unambiguous ordinary membership revokes a marker.
+          identities.forget(header.id)
+        } else {
+          // Empty or incomplete snapshots are not evidence of a transfer.
+          direct = identities.has(header.id)
+        }
+      } catch {
+        // Missing or invalid native membership must not discard verified IDs.
+        direct = identities.has(header.id)
+      }
+    }
+    direct ||= isDirectChatCwd(header?.cwd, roots)
+    if (direct) restrictedAgents.add(agent)
+    return direct
+  }
+  return {
+    owns,
+    deny: ({ agent }) => owns(agent)
+      ? { reason: 'Direct chats do not run tools.', info: { name: 'DirectChatPolicy', code: 'DIRECT_CHAT_TOOL_DENIED' } }
+      : undefined,
+  }
 }
 async function ensureDirectory(path) {
   // Restrict new POSIX directories and validate existing ones without changing their permissions.
@@ -70,7 +109,19 @@ export function apply(ctx) {
   } catch {
     // The prepare route separately verifies the canonical Profile directory.
   }
-  const deny = denyTools(roots)
+  let registry
+  ctx.inject(['workspaceRegistry'], child => {
+    const current = child.workspaceRegistry
+    registry = current
+    child.effect(() => () => { if (registry === current) registry = undefined })
+  })
+  const identities = identityCache(profileDir, message => ctx.logger.warn(message))
+  const { owns, deny } = directChatPolicy(roots, () => registry, identities)
+  // Native agent-scoped restriction filters inherited tool definitions before
+  // requests. It is not a replacement for the two dispatch guards.
+  ctx.on('agent/created', ({ agent }) => {
+    if (owns(agent)) agent.ctx.tools.restrict({ allow: [] })
+  })
   ctx.on('tools/pre-execute', (exec, next) => {
     const denial = deny(exec)
     return denial === undefined ? next() : Promise.resolve({ kind: 'deny', ...denial })

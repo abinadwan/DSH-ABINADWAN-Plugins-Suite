@@ -173,3 +173,196 @@ node qa/profile-ollama-check.mjs --suite auto-context --mode first --variants 14
 ~~~
 
 Use a new output path for repeated runs. These are matched API simulations, not full Desktop request traces. Native placement and precedence remain constrained by the pinned Harness assembly API; the plugin does not reorder host message history or bypass optional context suppression.
+
+## Direct Chat — security policy verification
+
+The Windows validation of source commit `eff59b69288f850190779ec25b2c6dc747c18cae` used installed Host 0.2.2-rc.5 services in isolated fixtures, not the packaged Desktop GUI. The original matrix recorded 84 passes, 3 failures, 19 partial results, 25 blocked cases and 1 not tested (132 total). The installed-Host integration checks passed 26/26; 20 local Ollama requests returned text with zero visible tools, attempted calls or executions in that tested configuration. Two visibility failures involved an already-live agent and agent-local registration; one documentation failure involved a historical report directory disallowed by the active-documentation policy. Original test classifications are unchanged.
+
+DC-01 was accepted with documented limitations: reduced tool visibility and policy denial, not guaranteed complete hiding or universal isolation. See [Direct Chat policy](../plugins/direct-chat/README.md#dc-01--tool-visibility-and-execution-policy). The subsequent DC-02 implementation at `578a240abb2ad3798dd6ad229b9106c74676fecc` adds a best-effort profile-local identity fallback. All three new targeted unit tests passed in Windows and Ubuntu CI with Node 22 and 24; the full CI jobs stopped at the known documentation-layout assertion. Installed-Host validation of the new identity cache, native Desktop acceptance and Windows effective ACL verification remain outstanding. No claim of release or merge readiness is made.
+
+The full historical report and sanitized evidence are preserved at their immutable original Git revision, rather than in the active documentation tree, consistent with [documentation policy](README.md). [Validation report](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/3834346f96eb1b3745ee4fb42833736148300782/docs/research/DIRECT_CHAT_PHASE_3_2_MEDIUM_VALIDATION.md) · [Sanitized JSON evidence](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/3834346f96eb1b3745ee4fb42833736148300782/docs/research/evidence/direct-chat-phase-3-2-medium/results.json).
+
+## DC-02 — Native Host identity fallback validation
+
+Tested source `7dc7c420425031a582f623b30f8693e1c9cb7516` on `fix/v1.1.1-direct-chat-security-medium`. GitHub reported eight successful checks for this SHA on Windows and Ubuntu with Node.js 22 and 24. [PR #79 checks](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/79/checks)
+
+The test machine ran Windows x64 26H2, build `26300.10075`, with NTFS and an Intel Core i7-14700K. The installed DeepSeek Harness Desktop package, Cordis Host runner, Workspace service and native tool executor were `0.2.2-rc.5`. The installed Desktop build was `3f85d888b1297107937d9bd5b853f7e733e179a4`, with Electron `44.7.0` and embedded Node.js `24.21.0`. The source test suite used system Node.js `26.10.0`.
+
+The focused RunAsNode processes loaded the native services from the installed Windows application archive. The fixture used native JSONL Sessions and the native Workspace create, attach, detach and list APIs. Native attachment validates the stored Session cwd. For the mismatched-cwd case, the fixture supplied the resulting native membership to an isolated native Agent loop with an independently created in-memory Session header bearing the same synthetic ID. Registry faults were supplied through a fixture service. Inert tools returned text and incremented counters. The runs used disposable profiles, a local offline adapter and no Desktop GUI or production services. Storage fault and timing probes called the production cache module directly on the same Windows runtime.
+
+### Test matrix
+
+| # | Check | Result | Observed evidence |
+| ---: | --- | --- | --- |
+| 1 | Native Workspace membership with a different Agent cwd | PASS | The native registry attached seven synthetic Sessions. The focused Agent had a different cwd and both policy hooks denied the inert call. |
+| 2 | Hashed identity marker | PASS | Seven membership recognitions produced seven regular, single-link, zero-byte files. Each basename matched the independently calculated 64-character SHA-256 digest. |
+| 3 | Registry unavailable | PASS | With the registry provider absent, a fresh Agent for a verified ID received both denials and zero executions. |
+| 4 | Registry exception | PASS | A fixture provider threw on lookup. A fresh Agent for a verified ID received both denials and zero executions. |
+| 5 | Malformed registry response | PASS | A non-array response, invalid `sessionIds` and a relative Workspace path each preserved denial for a verified ID, with zero executions. |
+| 6 | Valid empty response and temporarily missing membership | FAIL | A valid empty list and a native list after temporary detachment each removed a verified marker when a fresh Agent was evaluated. Native reattachment and fresh recognition recreated it. The continuity check was limited to marker state. |
+| 7 | Fallback for previously verified Session IDs | PASS | Five fresh Agents recovered known identity across absent, throwing and three malformed registry modes. These are the same samples as rows 3–5. |
+| 8 | Persistent recovery after Host restart | PASS | A new installed-runtime process reopened the same synthetic profile with the registry absent. The on-disk marker yielded both denials and zero executions. |
+| 9 | Pre-execute and native dispatch guards | PASS | The native pre-execute waterfall and `tools.checkGuards` each returned `DIRECT_CHAT_TOOL_DENIED` independently. The installed executor returned the same denial for complete dispatch. |
+| 10 | Unintended inert-tool executions | PASS | Eight protected native dispatch attempts were denied with **0** actual executions. Three ordinary controls each executed once. |
+| 11 | Ordinary Workspace access during registry outage | PASS | An ordinary control with no prior identity and the registry provider absent executed the inert tool once. |
+| 12 | Authoritative ordinary membership revokes a fresh Agent's identity | PASS | A native ordinary Workspace record supplied the authoritative membership. A fresh Agent had normal access, executed once and the corresponding marker was removed. |
+| 13 | Revocation persists across restart | PASS | In another installed-runtime process, the marker and cache hit remained absent. With the registry provider absent, the ordinary control executed once. |
+| 14 | Previously recognized live Agent after membership changes | PASS | The original live Agent remained restricted after native detachment and after the fixture switched to authoritative ordinary membership. Its inert call had zero executions. |
+| 15 | Unknown Direct Chat identity during an outage with mismatched cwd | PARTIAL | Source review confirms an unknown ID supplies no positive fallback. No dispatch result was collected for this combined condition. |
+| 16 | Storage failures, invalid markers and links | PARTIAL | Cache probes rejected a file at the cache-directory path, non-empty and directory markers, a cache-directory junction, a marker junction and a hard-linked marker. The file collision and directory junction retained in-memory recognition with no durable hit. Each case emitted one sanitized warning. File and directory symlink creation returned `EPERM`. Permission-denied removal and concurrent reparse-point changes were outside these probes. |
+| 17 | Profile separation | PASS | The same synthetic ID had a marker and positive cache entry in the first profile. The second profile had neither during a registry outage. |
+| 18 | Marker data minimization | PASS | All seven initial filenames matched expected digests and every payload was empty. No raw Session IDs, titles, messages or absolute paths were recorded in the markers. |
+| 19 | Windows cache ACLs | PASS | Read-only ACL inspection covered the cache directory and one marker. Both inherited their DACLs. Effective access by an unrelated account remains unverified. |
+| 20 | Identity lookup and storage overhead | PASS | Timed create, in-memory hit, disk-backed hit and disk-backed miss at 100, 1,000 and 10,000 synthetic identities. |
+| 21 | Automated and native Host regression tests | PASS | Source suite passed 296 of 298, with two Windows ACL-related skips. All 26 installed Host regression tests passed. Client, package and regression checks also passed. |
+
+**Totals:** 18 PASS, 1 FAIL, 2 PARTIAL and 0 BLOCKED at the row level. Two symlink probes within row 16 were blocked. PASS applies to the stated check and fixture scope.
+
+### Supporting evidence and counters
+
+| Native dispatch group | Attempts | Policy denials | Actual executions |
+| --- | ---: | ---: | ---: |
+| Initial verified membership with different cwd | 1 | 1 | 0 |
+| Verified identity with absent, throwing or malformed registry | 5 | 5 | 0 |
+| Previously recognized live Agent after membership change | 1 | 1 | 0 |
+| Verified identity after process restart | 1 | 1 | 0 |
+| Ordinary during outage, fresh after revocation and ordinary after restart | 3 | 0 | 3 |
+| **Total** | **11** | **8** | **3** |
+
+The pre-execute and dispatch-guard probes returned matching decisions for all eight protected cases. They are additional policy checks on the same cases. The existing native Direct Chat retry regression separately asserted zero executions across one tool-call attempt and its subsequent empty-completion sequence. The fixture terminated and recreated the Host in separate operating-system processes while preserving the synthetic profile on disk.
+
+The directory and sampled file ACLs identified the test account as owner. Both had inherited Allow entries granting Full Control to the test account, SYSTEM and Administrators, plus two inherited Allow entries for other principals granting Modify and Synchronize. The check made no permission changes. The result describes these synthetic objects on this test machine. No unrelated-user access attempt was performed.
+
+The initial sandboxed `npm test` failed at junction creation with `EPERM`. The same test passed outside that sandbox without changing security settings. The passing source run included the existing documentation-integrity checks. `npm run check:client` verified the deterministic browser carrier, `npm run check:package` verified 100 packed files, and `npm run check:regression` passed its four tests and classifier benchmark. Installed Host regression counts were Direct Chat 2, new plugins 13, My Profile 1 and Adaptive Reasoning 10.
+
+### Identity cache performance
+
+One sequential Windows/NTFS run per size, using the installed embedded Node.js process and a separate empty synthetic profile per size. Times are elapsed milliseconds for one operation per ID and include the SHA-256 lookup. A fresh cache instance measured disk-backed lookups after marker creation, with the OS filesystem cache left as-is. Timing excludes synthetic Agent and registry overhead.
+
+| Synthetic Sessions | Marker creation, ms | In-memory hits, ms | Disk-backed hits, ms | Disk-backed misses, ms | Marker files | Logical payload bytes |
+| ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 100 | 27.19 | 0.19 | 11.75 | 11.35 | 100 | 0 |
+| 1,000 | 242.17 | 0.85 | 102.33 | 111.30 | 1,000 | 0 |
+| 10,000 | 2,691.23 | 9.50 | 998.60 | 1,075.25 | 10,000 | 0 |
+
+At 10,000 entries the sample averaged 269 µs to create a marker, 100 µs for a disk-backed hit and 0.95 µs for a hit on an ID already observed in memory. NTFS metadata allocation and cold OS cache latency were outside this measurement.
+
+### Closure recommendation
+
+**Keep DC-02 open for the valid-empty and temporary-membership case.** The fallback protected previously verified IDs across unavailable, throwing and malformed registry responses and recovered them across process restart. Authoritative ordinary membership restored normal access for a fresh Agent, while the original live Agent retained denial. A fresh Agent observed during a valid but incomplete snapshot can lose its marker. The source treats successful non-Direct results as authoritative and the native fixture observed marker removal in both snapshot cases. Closure needs an explicit disposition of that continuity gap.
+
+The unknown-ID combined condition remains an acknowledged limit of the available identity signals. Effective unrelated-user Windows ACL access, symlink-specific behavior and full Desktop acceptance remain unverified. These results support improved protection for verified IDs in the tested conditions. DC-01 retains its previously documented closure and visibility limitations.
+
+## DC-02 — Final native Host continuity retest
+
+Tested source `b20079d258b7ad8ff71b21b249799413004dbc0b` on `fix/v1.1.1-direct-chat-security-medium`. GitHub reported eight successful Windows and Linux checks for Node.js 22 and 24 on this SHA. [PR #79 checks](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/79/checks)
+
+The installed Windows x64 Harness Desktop, Cordis Host runner, Workspace service and native executor were `0.2.2-rc.5`. RunAsNode loaded services from installed Desktop build `3f85d888b1297107937d9bd5b853f7e733e179a4`, with Electron `44.7.0` and embedded Node.js `24.21.0`. The OS was Windows 26H2 build `26300.10075`. Repository checks used system Node.js `26.10.0`.
+
+The fixture used three successive operating-system processes with the same isolated synthetic profile. Native JSONL persistence and Workspace create, attach, detach and list APIs produced authoritative membership records. The mismatch case used an independently created in-memory Agent Session header with the same synthetic ID and a different cwd, because native attachment validates the stored Session cwd. The fixture supplied empty, unavailable, throwing and ambiguous registry conditions through its service boundary. For the ordinary transfer it supplied the single record from a separate native ordinary Workspace fixture with the same synthetic ID. This exercises installed Host services and production policy with synthetic membership inputs and an offline counter tool.
+
+### Focused continuity matrix
+
+For each row, the marker state refers to that row's Session ID. The two policy probes used the native pre-execute waterfall and the native guard API. The subsequent dispatch went through the installed executor. Every protected denial carried `DIRECT_CHAT_TOOL_DENIED`. Call counts are **attempted / denied / executed**.
+
+| Test | Registry state | Classification and Agent | Marker before → after | Pre-execute / guard / dispatch | Calls | Result |
+| --- | --- | --- | --- | --- | ---: | --- |
+| T01 | Native Direct Chat membership, Agent cwd differs | Direct Chat via membership, fresh | Absent → one zero-byte SHA-256 marker | Deny / deny / deny | 1 / 1 / 0 | PASS |
+| T02 | Valid empty list | Direct Chat via verified identity, fresh | Present → same marker | Deny / deny / deny | 1 / 1 / 0 | PASS |
+| T03 | Native Workspace temporarily omits its detached Session | Direct Chat via verified identity, fresh | Present → same marker | Deny / deny / deny | 1 / 1 / 0 | PASS |
+| T04 | Native Workspace reattaches the Session | Direct Chat via membership, fresh | Present → same single marker | Deny / deny / deny | 1 / 1 / 0 | PASS |
+| T05 | Registry absent immediately after the empty and incomplete snapshots | Direct Chat via verified identity, fresh | Present → same marker | Deny / deny / deny | 1 / 1 / 0 | PASS |
+| T06 | Registry absent in a new process | Direct Chat via persisted identity, fresh | Present → same marker | Deny / deny / deny | 1 / 1 / 0 | PASS |
+| T07a | Fixture repeats the ID within one ordinary Workspace | Direct Chat via verified identity, fresh | Present → same marker | Deny / deny / deny | 1 / 1 / 0 | PASS |
+| T07b | Fixture repeats the ID across two ordinary Workspaces | Direct Chat via verified identity, fresh | Present → same marker | Deny / deny / deny | 1 / 1 / 0 | PASS |
+| T08 | Native Direct Chat record plus conflicting ordinary fixture record | Direct Chat via membership, fresh | Present → same marker | Deny / deny / deny | 1 / 1 / 0 | PASS |
+| T09 | One native ordinary Workspace contains the ID exactly once | Ordinary after explicit revocation, fresh | Present → absent | Allow / allow / allow | 1 / 0 / 1 | PASS |
+| T10 | Confirmed ordinary membership after T09 removes the marker | Direct Chat via prior recognition, already live | Absent → absent | Deny / deny / deny | 1 / 1 / 0 | PASS |
+| T11 | Registry absent in a new process after revocation | Ordinary after revocation, fresh | Absent → absent | Allow / allow / allow | 1 / 0 / 1 | PASS |
+| T12a | Native ordinary membership | Ordinary control, fresh | Absent → absent | Allow / allow / allow | 1 / 0 / 1 | PASS |
+| T12b | Valid empty list | Ordinary control, fresh | Absent → absent | Allow / allow / allow | 1 / 0 / 1 | PASS |
+| T12c | Registry absent | Ordinary control, fresh | Absent → absent | Allow / allow / allow | 1 / 0 / 1 | PASS |
+| T12d | Registry throws | Ordinary control, fresh | Absent → absent | Allow / allow / allow | 1 / 0 / 1 | PASS |
+| T13 | Registry unavailable, unknown identity, mismatched cwd | Source review only. The verified-identity fallback supplies no classification and the cwd check still applies. | No verified marker by definition | No runtime decision collected | — | PARTIAL |
+
+**Numbered totals (T01–T13): 12 PASS, 0 FAIL, 1 PARTIAL, 0 BLOCKED, 0 NOT TESTED.** T07 and T12 contain separate subcases, giving 16 successful native dispatch observations. T13's combined dispatch was not run and contributes no call counts.
+
+| Dispatch observations | Attempts | Denials | Actual executions |
+| --- | ---: | ---: | ---: |
+| Protected Direct Chat scenarios | 10 | 10 | 0 |
+| Sanctioned ordinary Workspace controls | 6 | 0 | 6 |
+| **Total** | **16** | **10** | **6** |
+
+The previous validation observed marker removal for a valid empty list and a temporarily omitted Session. T02 and T03 now retain the exact same marker and deny dispatch. T05 checked recovery with the provider absent immediately after those snapshots and before reattachment. T04 then confirmed native reattachment and a single unchanged marker. T06 recovered the marker in a new process. T07 and T08 preserved protection under ambiguous membership. T09 and T11 confirmed durable revocation, and T10 independently verified the previously recognized live Agent's denial after the marker had been removed.
+
+### Regression checks
+
+| Check | Executed result |
+| --- | --- |
+| `npm test`, before and after the documentation update | 299 tests per run. 297 passed, 0 failed, 2 POSIX-permission cases skipped on Windows. The new continuity test and source documentation-integrity tests passed. |
+| `npm run check:client` | Exit 0. Deterministic browser carrier verified. |
+| `npm run check:package` | 100 packed files verified. 293 tests, 290 passed, 0 failed, 3 skipped. The package run skipped the two POSIX-permission checks and the source-only documentation-tree check. |
+| `npm run check:regression` | 4 tests passed, 0 failed, 0 skipped. Classifier benchmark passed with 56/57 correct. |
+| `qa/direct-chat-catalog-host-check.mjs` | 2 passed, including a separate zero-execution denial assertion. |
+| `qa/new-plugins-host-check.mjs` | 13 passed. |
+| `qa/profile-host-check.mjs` | 1 passed, using installed rc.5 despite the historical rc.3 test label. |
+| `qa/adaptive-reasoning-host-check.mjs` | 10 passed. |
+
+The four installed Host suites ran together with 26 passes, zero failures, zero skips and no runtime warnings in the output. The focused fixture emitted no warnings. The npm source and packed suites emitted the existing component-inventory messages from their induced-unavailability checks, two per run. The installed executable and application archive matched their pre-run SHA-256 fingerprints. The retest changed only this documentation in the repository.
+
+### Final closure recommendation
+
+**Close DC-02 for verified-identity continuity.** The retest resolves the two marker-loss conditions underlying the previous FAIL. Empty, incomplete and ambiguous snapshots retained protection. Explicit, unambiguous ordinary membership revoked the identity for a fresh Agent, and all tested ordinary controls kept tool access. There were zero unintended executions in the protected cases.
+
+An unknown identity can still go unclassified when the registry is unavailable and the cwd signal does not identify Direct Chat. This remains a source-reviewed limitation for this retest. Full Desktop acceptance and effective Windows ACL validation remain separate outstanding items. DC-01 retains its existing closure and documented visibility limitations.
+
+## DC-06 — Final catalog and conversation authorization validation
+
+Tested source `5170fb5bde299dd6ccb151ea06972d14679df6a9` on `fix/v1.1.1-direct-chat-security-medium`, PR #79. The installed Windows x64 Harness Desktop, Host runner, Connection service and Session controller were `0.2.2-rc.5`. RunAsNode used installed Desktop build `3f85d888b1297107937d9bd5b853f7e733e179a4`, Electron `44.7.0` and embedded Node.js `24.21.0`. The OS was Windows 26H2 build `26300.10075`. Repository regressions used system Node.js `26.10.0`.
+
+The retest covers the six partial cases from the original 24-case DC-06 matrix and selected authorization controls. Native fixtures used isolated credentials and profiles, synthetic JSONL Session histories, the installed Workspace registry, and supported Peer and RemoteAccess contracts. Admission without valid credentials and one authenticated owner control used the installed loopback HTTP server. Owner/viewer route checks and Session RPCs used the installed shared Fetch transport. Session follow used the installed Gateway wire adapter without a Desktop window or WebSocket client. Client race tests ran the delivered `client.js` carrier with React and a DOM fixture, controlled catalog replies, and synthetic Workspace, Session and connection stores.
+
+### Focused authorization matrix
+
+| Test | Method and state | Expected and observed outcome | Status, reads and Cache-Control | Result |
+| --- | --- | --- | --- | --- |
+| T01 · Admission | Native shared Fetch with owner and viewer Peers. Loopback with valid, absent and invalid synthetic credentials. Disposed the original Host scope and tried preparation and creation on the replacement as viewer. Two Sessions were registered initially. | Owner preparation returned the synthetic path, discovery returned Workspace identity, and creation returned the two authorized timestamps. The viewer received plain-text refusals, including on the replacement Host. Missing and invalid credentials returned plain-text admission refusals. No denied request reached registry or metadata reads. | Owner 200 with `no-store`. Preparation and discovery 0 reads. Each of two creation controls 2 reads. Viewer 403 (5), absent or invalid credentials 401 (6), all 0 reads and no native cache header. | PASS |
+| T02 · Removal during metadata access | Owner creation request against native Workspace membership. Paused a metadata read, detached a Session using the native API and released the read. Repeated once with unavailable headers. | Both requests revalidated membership and returned only `DIRECT_CHAT_CATALOG_CHANGED`. No removed ID, timestamp or conversation data was returned. | 409 and `no-store` in both cases. Two registry snapshots and 2 header reads per request, including the already-started batch. | PASS |
+| T03 · Stale carrier responses and actions | Delivered carrier in a DOM fixture with delayed Fetch replies. Superseded request, connection generation change, disposal and membership removal were exercised. Stale action callbacks used the carrier's injected services. | Zero stale rows. Four stale open calls reached zero navigation calls. Three rename calls after staleness or during a membership transition reached zero rename callbacks. The fixture still recorded two attempts to acquire references after the state was stale and one acquisition begun before membership changed. Native acquisition from those stale carrier calls remains unverified. | Controlled 200 replies and aborts. No direct persistence reads by the carrier fixture. Fixture results are separate from Host HTTP measurements. | PARTIAL |
+| T04 · Reconnection | Replacement native Host scope with a fresh viewer or owner Peer. Separately, the delivered carrier handled a connection reset and authorization failure, then retried against new membership. | Old reply ignored. No prior rows during reset or after refusal. Replacement owner recovered only the still-registered Session. The carrier displayed one authorized row on retry. Ordinary controls stayed functional. Full Desktop reconnect was outside the run. | Replacement viewer 403 with 0 reads and no native cache header. Replacement owner 200 with 1 read and `no-store`. Carrier fixture observed 403 then 200. | PARTIAL |
+| T05 · Cache and response confidentiality | Inspected successful preparation, discovery and creation, membership conflicts, registry fault, timeout, in-flight disposal and upstream refusal. | All 12 plugin-owned responses used `no-store`. Timeout returned null creation metadata. In-flight disposal and registry failure returned only `DIRECT_CHAT_CATALOG_UNAVAILABLE`. Native 401/403 and the post-disposal route 404 lacked a cache directive and returned plain text without Session data. | Plugin 200/409/503. Registry fault 0 reads, timeout 2, in-flight disposal 2, subsequent native 404 0. Other counts are in T01, T02 and the regression controls. | PASS |
+| T06 · Native Session permissions | Installed Session controller through shared Fetch RPC and Gateway follow wire adapter. Owner, ungranted viewer, scoped viewer grant, same viewer after revocation, and failing permission provider. Included known synthetic IDs inside and outside Direct Chat. | Owner read and followed independently scoped Sessions and renamed the authorized Session. Normal ordinary history and follow worked. Ungranted viewer history and passive state were refused, including history outside the selected Workspace. Viewer follow and rename were refused. A scoped grant admitted follow, then removal of that grant after catalog discovery denied further follow and history. The failing policy provider also denied history. Native permission checks ran through the transport or wire adapter. | Unary HTTP 200 RPC envelopes with success or `remote-access/denied`; denied wire openings produced an error and zero frames. Native RPC responses sampled had no cache directive. Native persistence read counts were outside the probe. | PASS |
+
+**Focused totals:** 4 PASS, 0 FAIL, 2 PARTIAL, 0 BLOCKED and 0 NOT TESTED at the six-row level. The prior 18 PASS, 6 PARTIAL and 0 FAIL classifications remain historical results.
+
+### Disclosure and Session action counters
+
+| Evidence group | Observed attempts or responses | Unauthorized metadata or Session actions admitted |
+| --- | --- | --- |
+| Catalog and preparation | 24 HTTP-shaped responses. Eleven native credential or role denials, zero registry and header reads for those denials. Two removal conflicts and two initial membership-conflict controls. | 0 unauthorized metadata payloads. No removed Session identifiers or timestamps in the two removal responses. |
+| Installed native Session boundary | 17 RPC or wire operations. Eight refusals, including two follow openings and one rename. Denied RPCs carried an error envelope without a value. Denied follows yielded no frames. | 0 unauthorized history, state, follow or rename results. Each of the three owner history controls returned only its own synthetic message. |
+| Delivered carrier with fixture services | 0 stale rows, 4 stale open attempts, 3 rename attempts involving stale state or a membership transition. One authorized open and one authorized rename control succeeded. | 0 stale navigation calls and 0 stale rename mutations. 3 fixture reference acquisition requests were observed, 2 initiated after staleness. Their native binding effects were outside the carrier fixture. |
+
+The plugin open guard checks current generation, authorized inventory and Workspace membership before invoking navigation. The rename path checks those conditions inside the callback passed to `sessions.using`. Source inspection of the installed client shows that `using` obtains a reference and waits for readiness before invoking that callback. Native Gateway denial was separately demonstrated for peers without permission. The carrier fixture established that stale rename mutations did not proceed and exposed the earlier reference-acquisition step. It did not establish the effect of that step for a natively authorized peer whose Direct Chat membership has changed.
+
+Native admission and Session RPC reply headers are owned by DSH. The upstream 401, 403 and route 404 results contain no Session data. Plugin catalog responses had `no-store` in all sampled paths, including timeout and disposal. Live Desktop reconnect and the Desktop integration of Session reference acquisition remain unverified.
+
+### Regression results
+
+| Check | Result |
+| --- | --- |
+| Authorized catalog and creation metadata | Owner discovery and two creation controls returned authorized data. Replacement owner recovery read only the remaining member. |
+| Duplicate and cross-Workspace membership | Both 409 with `no-store`, zero header reads and no Session metadata. |
+| Independent conversation histories and ordinary Workspace | Two Direct Chat histories and one ordinary history each returned only their own message through the installed Gateway. Owner follow succeeded in Direct Chat and the ordinary Workspace. |
+| Direct Chat tool denial | The existing installed native retry check denied its synthetic tool call and asserted zero executions. |
+| `npm test` before and after the documentation update | 299 tests per run, 297 passed, 0 failed and 2 POSIX-permission tests skipped on Windows. Source documentation integrity passed. The existing synthetic component-inventory case emitted two expected messages per run. |
+| `npm run check:client` | Exit 0. Deterministic browser carrier verified. |
+| `npm run check:package` | 100 packed files. 293 tests, 290 passed, 0 failed and 3 skipped. The additional skip was the source-only docs-tree check. |
+| `npm run check:regression` | 4 passed, 0 failed, 0 skipped. Classifier benchmark passed at 56/57. |
+| Four installed Host suites | 26 passed, 0 failed and 0 skipped. Direct Chat catalog 2, new plugins 13, My Profile 1 and Adaptive Reasoning 10. |
+
+The installed executable and application archive matched their pre-run SHA-256 fingerprints. The retest's repository change is confined to this documentation section.
+
+### Closure recommendation
+
+**Keep DC-06 open for the stale Session-reference boundary.** The retest demonstrated catalog admission, removal-only revalidation, plugin cache handling, stale-row suppression, native Session authorization, and normal authorized access in scope. It observed zero unauthorized metadata disclosures and zero admitted stale navigation or rename mutations. A stale rename path could still request a Session reference before the plugin rechecked current membership or generation. Determine whether that request can open a native binding for a natively authorized peer after Direct Chat membership or connection changes, and record its disposition before closure. Desktop reconnect remains a separate outstanding validation. DC-01 and DC-02 retain their documented closures.

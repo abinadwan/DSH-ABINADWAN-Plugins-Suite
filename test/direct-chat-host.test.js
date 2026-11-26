@@ -1,17 +1,20 @@
 import assert from 'node:assert/strict'
-import { chmod, lstat, mkdir, mkdtemp, realpath, rm, symlink, writeFile } from 'node:fs/promises'
+import { chmod, lstat, mkdir, mkdtemp, readdir, realpath, rm, symlink, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import { tmpdir } from 'node:os'
 import test from 'node:test'
 import * as plugin from '../plugins/direct-chat/index.js'
 
 function fixture(profile, catalogServices) {
-  let guard, preExecute
+  let guard, preExecute, agentCreated
   const routes = new Map()
   const warnings = []
   const ctx = {
     profileContext: { dir: profile },
-    on(name, fn) { if (name === 'tools/pre-execute') preExecute = fn },
+    on(name, fn) {
+      if (name === 'tools/pre-execute') preExecute = fn
+      if (name === 'agent/created') agentCreated = fn
+    },
     inject(_services, mount) { if (catalogServices) mount({ ...this, ...catalogServices }) },
     effect(fn) { fn() },
     tools: { guard(fn) { guard = fn; return () => {} } },
@@ -23,7 +26,7 @@ function fixture(profile, catalogServices) {
     logger: { warn(...args) { warnings.push(args) } },
   }
   plugin.apply(ctx)
-  return { handler: routes.get('/api/abinadwan-direct-chat/prepare'), routes, guard: () => guard, preExecute: () => preExecute, warnings }
+  return { handler: routes.get('/api/abinadwan-direct-chat/prepare'), routes, guard: () => guard, preExecute: () => preExecute, agentCreated: () => agentCreated, warnings }
 }
 const request = (body = '{}') => new Request('http://localhost/api/abinadwan-direct-chat/prepare', {
   method: 'POST', headers: { 'content-type': 'application/json' }, body,
@@ -267,4 +270,165 @@ test('prepare and catalog refuse insecure existing POSIX directories without mod
     assert.equal((await fx.handler.fetch(request())).status, 200)
     assert.equal((await catalog()).status, 200)
   }
+})
+
+test('native Session membership denies tools even if the agent cwd is different; restrictions are agent scoped', async t => {
+  const profile = await mkdtemp(join(tmpdir(), 'suite-direct-chat-identity-'))
+  t.after(() => rm(profile, { recursive: true, force: true }))
+  const direct = join(profile, 'abinadwan-direct-chat-data', 'Direct Chat')
+  const other = join(profile, 'Project')
+  const workspaces = [
+    { id: 'direct', path: direct, sessionIds: ['direct-id'] },
+    { id: 'ordinary', path: other, sessionIds: ['ordinary-id'] },
+  ]
+  const fx = fixture(profile, { workspaceRegistry: { list: () => workspaces } })
+  const restrictions = []
+  const agentFor = id => ({
+    session: { header: { id, cwd: other } },
+    ctx: { tools: { restrict(value) { restrictions.push([id, value]) } } },
+  })
+  const directAgent = agentFor('direct-id')
+  const ordinary = agentFor('ordinary-id')
+  fx.agentCreated()({ agent: directAgent })
+  fx.agentCreated()({ agent: ordinary })
+  assert.deepEqual(restrictions, [['direct-id', { allow: [] }]])
+  assert.equal(fx.guard()({ agent: directAgent })?.info.code, 'DIRECT_CHAT_TOOL_DENIED')
+  assert.equal((await fx.preExecute()({ agent: directAgent },
+    () => assert.fail('identity-based denial bypassed'))).kind, 'deny')
+  assert.equal(fx.guard()({ agent: ordinary }), undefined)
+  workspaces[0].sessionIds = []
+  assert.equal(fx.guard()({ agent: directAgent })?.info.code, 'DIRECT_CHAT_TOOL_DENIED',
+    'a recognized live Direct Chat Agent stays denied after membership changes')
+  workspaces[0].sessionIds = ['late-id']
+  assert.equal(fx.guard()({ agent: agentFor('late-id') })?.info.code, 'DIRECT_CHAT_TOOL_DENIED')
+})
+
+test('verified Direct Chat identities survive registry loss and a fresh Host activation', async t => {
+  const profile = await mkdtemp(join(tmpdir(), 'suite-direct-chat-cache-'))
+  t.after(() => rm(profile, { recursive: true, force: true }))
+  const cwd = join(profile, 'Project')
+  const direct = join(profile, 'abinadwan-direct-chat-data', 'Direct Chat')
+  const agent = id => ({ session: { header: { id, cwd } } })
+  const execution = id => ({ agent: agent(id) })
+  const known = 'synthetic-private-id'
+  const service = { workspaceRegistry: { list: () => [{path: direct, sessionIds: [known]}] } }
+  let fx = fixture(profile, service)
+  assert.equal(fx.guard()(execution(known))?.info.code, 'DIRECT_CHAT_TOOL_DENIED')
+  const directory = join(profile, 'abinadwan-direct-chat-identities')
+  const files = await readdir(directory)
+  assert.equal(files.length, 1)
+  assert.match(files[0], /^[0-9a-f]{64}$/)
+  assert.equal((await lstat(join(directory, files[0]))).size, 0)
+  if (process.platform !== 'win32') {
+    assert.equal((await lstat(directory)).mode & 0o077, 0)
+    assert.equal((await lstat(join(directory, files[0]))).mode & 0o077, 0)
+  }
+  service.workspaceRegistry.list = () => { throw Error('synthetic registry outage') }
+  assert.equal(fx.guard()(execution(known))?.info.code, 'DIRECT_CHAT_TOOL_DENIED')
+  fx = fixture(profile, service)
+  assert.equal(fx.guard()(execution(known))?.info.code, 'DIRECT_CHAT_TOOL_DENIED')
+  assert.equal((await fx.preExecute()(execution(known),
+    () => assert.fail('cached identity admitted a tool'))).kind, 'deny')
+  assert.equal(fx.guard()(execution('unknown-ordinary')), undefined)
+  assert.equal(await fx.preExecute()(execution('unknown-ordinary'), () => 'allowed'), 'allowed')
+  const noRegistry = fixture(profile)
+  assert.equal(noRegistry.guard()(execution(known))?.info.code, 'DIRECT_CHAT_TOOL_DENIED')
+  const malformed = fixture(profile, {workspaceRegistry: {list: () => [{path: direct, sessionIds: null}]}})
+  assert.equal(malformed.guard()(execution(known))?.info.code, 'DIRECT_CHAT_TOOL_DENIED')
+  service.workspaceRegistry.list = () => [{path: cwd, sessionIds: [known]}]
+  assert.equal(fx.guard()(execution(known)), undefined, 'authoritative ordinary membership wins for a fresh agent')
+  assert.deepEqual(await readdir(directory), [])
+  service.workspaceRegistry.list = () => { throw Error('synthetic registry outage') }
+  assert.equal(fixture(profile, service).guard()(execution(known)), undefined, 'revoked cache is not restored on restart')
+})
+
+test('identity cache never learns from cwd alone or unknown registry failures', async t => {
+  const profile = await mkdtemp(join(tmpdir(), 'suite-direct-chat-cache-'))
+  t.after(() => rm(profile, { recursive: true, force: true }))
+  const cwd = join(profile, 'abinadwan-direct-chat-data', 'Direct Chat')
+  const fx = fixture(profile)
+  assert.equal(fx.guard()({agent: {session: {header: {id: 'path-only', cwd}}}})?.info.code,
+    'DIRECT_CHAT_TOOL_DENIED')
+  assert.equal(fixture(profile).guard()({agent: {session: {header: {id: 'path-only', cwd: join(profile, 'Project')}}}}), undefined)
+  await assert.rejects(lstat(join(profile, 'abinadwan-direct-chat-identities')), {code: 'ENOENT'})
+})
+
+test('identity storage failures preserve live policy without following a redirected cache directory', async t => {
+  const profile = await mkdtemp(join(tmpdir(), 'suite-direct-chat-cache-'))
+  t.after(() => rm(profile, { recursive: true, force: true }))
+  const target = join(profile, 'unrelated')
+  await mkdir(target)
+  const cache = join(profile, 'abinadwan-direct-chat-identities')
+  try { await symlink(target, cache, process.platform === 'win32' ? 'junction' : 'dir') }
+  catch (error) {
+    if (['EPERM', 'EACCES', 'ENOTSUP'].includes(error.code)) return t.skip('directory alias unavailable')
+    throw error
+  }
+  const direct = join(profile, 'abinadwan-direct-chat-data', 'Direct Chat')
+  const cwd = join(profile, 'Project')
+  const execution = id => ({agent: {session: {header: {id, cwd}}}})
+  const service = {workspaceRegistry: {list: () => [{path: direct, sessionIds: ['known']}]}}
+  const fx = fixture(profile, service)
+  assert.equal(fx.guard()(execution('known'))?.info.code, 'DIRECT_CHAT_TOOL_DENIED')
+  assert.deepEqual(await readdir(target), [], 'no marker written through alias')
+  service.workspaceRegistry.list = () => { throw Error('synthetic outage') }
+  assert.equal(fx.guard()(execution('known'))?.info.code, 'DIRECT_CHAT_TOOL_DENIED', 'memory fallback remains')
+  assert.equal(fixture(profile, service).guard()(execution('known')), undefined, 'unsafe disk cache is ignored')
+  assert.equal(fx.guard()(execution('ordinary')), undefined)
+  assert.equal(fx.warnings.length, 1)
+  assert.doesNotMatch(fx.warnings.flat().join(' '), /suite-direct-chat-cache-|known/)
+})
+
+test('empty and incomplete native membership snapshots retain verified identities until explicit ordinary membership', async t => {
+  const profile = await mkdtemp(join(tmpdir(), 'suite-direct-chat-continuity-'))
+  t.after(() => rm(profile, { recursive: true, force: true }))
+  const cwd = join(profile, 'Project')
+  const direct = join(profile, 'abinadwan-direct-chat-data', 'Direct Chat')
+  const known = 'verified-session'
+  const other = 'ordinary-session'
+  const execution = id => ({ agent: { session: { header: { id, cwd } } } })
+  let workspaces = [{ path: direct, sessionIds: [known] }]
+  const service = { workspaceRegistry: { list: () => workspaces } }
+  const first = fixture(profile, service)
+  assert.equal(first.guard()(execution(known))?.info.code, 'DIRECT_CHAT_TOOL_DENIED')
+  const directory = join(profile, 'abinadwan-direct-chat-identities')
+  const markers = await readdir(directory)
+  assert.equal(markers.length, 1)
+
+  const ordinary = { path: cwd, sessionIds: [other] }
+  for (const snapshot of [
+    [],
+    [{ path: direct, sessionIds: [] }, ordinary],
+    [ordinary],
+    [{ path: cwd, sessionIds: [known, known] }],
+    [{ path: cwd, sessionIds: [known] }, { path: join(profile, 'Other'), sessionIds: [known] }],
+  ]) {
+    workspaces = snapshot
+    // Fresh agents and Host activations exercise the persisted marker rather
+    // than the original agent's sticky WeakSet classification.
+    const fresh = fixture(profile, service)
+    assert.equal(fresh.guard()(execution(known))?.info.code, 'DIRECT_CHAT_TOOL_DENIED')
+    assert.equal((await fresh.preExecute()(execution(known),
+      () => assert.fail('incomplete membership admitted a cached identity'))).kind, 'deny')
+    assert.deepEqual(await readdir(directory), markers)
+    assert.equal(fresh.guard()(execution(other)), undefined)
+    assert.equal(await fresh.preExecute()(execution(other), () => 'allowed'), 'allowed')
+  }
+
+  const unavailable = fixture(profile, { workspaceRegistry: { list() { throw Error('outage') } } })
+  assert.equal(unavailable.guard()(execution(known))?.info.code, 'DIRECT_CHAT_TOOL_DENIED')
+
+  // Positive Direct Chat membership remains protective even in a conflict.
+  workspaces = [{ path: direct, sessionIds: [known] }, { path: cwd, sessionIds: [known] }]
+  assert.equal(fixture(profile, service).guard()(execution(known))?.info.code, 'DIRECT_CHAT_TOOL_DENIED')
+  assert.deepEqual(await readdir(directory), markers)
+
+  workspaces = [{ path: cwd, sessionIds: [known, other] }]
+  const transferred = fixture(profile, service)
+  assert.equal(transferred.guard()(execution(known)), undefined)
+  assert.equal(await transferred.preExecute()(execution(known), () => 'allowed'), 'allowed')
+  assert.deepEqual(await readdir(directory), [])
+  workspaces = []
+  assert.equal(fixture(profile, service).guard()(execution(known)), undefined)
+  assert.equal(fixture(profile).guard()(execution(known)), undefined)
 })
