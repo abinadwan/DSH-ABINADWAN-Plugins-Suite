@@ -26,7 +26,7 @@ Automatic response interception, persistent style settings and background rewrit
 
 ## Unreleased Studio development (v1.2.0)
 
-The internal nine-service engine is not registered as an endpoint or UI. It builds a bounded one-shot native LLM request with no Session identity or tools and keeps source and custom brief out of the fixed system prompt. The native LLM waterfall and selected provider can still observe model-visible inputs; lack of a Session does not establish universal no-retention. Model behavior, Host admission and Desktop retention require separate verification. The existing Skill remains available under its original identity.
+The internal nine-service engine and candidate owner-only HTTP module are not mounted by the production component or UI. It builds a bounded one-shot native LLM request with no Session identity or tools and keeps source and custom brief out of the fixed system prompt. The native LLM waterfall and selected provider can still observe model-visible inputs; lack of a Session does not establish universal no-retention. Model behavior, Host admission and Desktop retention require separate verification. The existing Skill remains available under its original identity.
 
 ## Licensing
 

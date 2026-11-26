@@ -9,6 +9,7 @@ import { HostConnectionService } from '@deepseek-ai/dsh-client-connection'
 import Sessions from '@deepseek-ai/dsh-session'
 import { streamStudioRequest } from '../plugins/humanizer/studio-request.js'
 import { runStudioEdit, STUDIO_SERVICES } from '../plugins/humanizer/studio-engine.js'
+import { registerStudioRoutes, STUDIO_PATH } from '../plugins/humanizer/studio-http.js'
 
 const provider = 'studio-fixture'
 const model = 'synthetic-text'
@@ -134,7 +135,7 @@ test('Studio nine-service engine uses real native catalog and synthetic adapter 
   } finally { await ctx.fiber.dispose() }
 })
 
-test('native connection owner admission and observable LLM waterfall: fixture only, no Studio route registered by production', async () => {
+test('native connection owner admission and observable LLM waterfall: candidate HTTP module', async () => {
   const ctx = new Context()
   try {
     await ctx.plugin(LlmRuntime).await()
@@ -151,23 +152,18 @@ test('native connection owner admission and observable LLM waterfall: fixture on
       assert.equal(Reflect.set(options.messages[0].content[0], 'text', 'replacement'), false)
       return next()
     })
-    const path = '/api/abinadwan-studio-feasibility-fixture'
-    const fixture = ctx.plugin({name:'studio-feasibility-owner-probe', apply(child) {
-      child.effect(() => child.connection.fetch.register({
-        path, methods: ['POST'], requestBody: 'streaming',
-        async fetch(request) {
-          // Fixed synthetic input; this is an admission probe, not production body parsing.
-          const text = await runStudioEdit(child.llm, {
-            provider, model, service:'humanize', sourceText:source,
-            inputLanguage:'auto', outputLanguage:'preserve',
-          }, [], request.signal)
-          return Response.json({text}, {headers:{'cache-control':'no-store'}})
-        },
-      }))
-    }})
+    const fixture = ctx.plugin({name:'studio-feasibility-owner-probe', inject:['connection','llm'], apply:registerStudioRoutes})
     await fixture.await()
     const transport = ctx.connection.createSharedFetchHandler('/api')
-    const send = peer => transport.fetch(new Request('http://localhost' + path, {method:'POST'}), peer)
+    const url = 'http://localhost' + STUDIO_PATH
+    const input = {provider,model,service:'humanize',sourceText:source,inputLanguage:'auto',outputLanguage:'preserve'}
+    const send = (peer, body=input) => transport.fetch(new Request(url + '/edit', {
+      method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify(body),
+    }), peer)
+    const status = peer => transport.fetch(new Request(url + '/status'),peer)
+    assert.equal((await status({principal:{kind:'viewer'}})).status,403)
+    assert.deepEqual(await (await status(ctx.connection.browserPeer)).json(),{available:true,protocol:1})
+    assert.equal((await send(ctx.connection.browserPeer,{...input,tools:[]})).status,400)
     assert.equal((await send({principal:{kind:'viewer'}})).status, 403)
     assert.equal(adapter.requests.length, 0)
     const reply = await send(ctx.connection.browserPeer)
@@ -180,5 +176,6 @@ test('native connection owner admission and observable LLM waterfall: fixture on
     assert.equal(sessionEvents, 0)
     await fixture.dispose()
     assert.equal((await send(ctx.connection.browserPeer)).status, 404)
+    assert.equal((await status(ctx.connection.browserPeer)).status,404)
   } finally { await ctx.fiber.dispose() }
 })
