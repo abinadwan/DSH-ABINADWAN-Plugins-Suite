@@ -78,7 +78,7 @@ window.__ModuleLoader__.load({
 
     // Only stable published GitHub Releases may trigger an in-app update offer.
     // This browser-side checker never installs anything without a separate click.
-    const INSTALLED_VERSION = '1.1.1'
+    const INSTALLED_VERSION = '1.1.2'
     const PACKAGE_NAME = '@abinadwan/dsh-plugins-suite'
     const RELEASE_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/latest'
     const COMMIT_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/commits/'
@@ -3066,24 +3066,39 @@ window.__ModuleLoader__.load({
     async function reasoningPost(path, body, signal) {
       const endpoint = new URL(`api/abinadwan-reasoning/${path}`, document.baseURI)
       if (endpoint.origin !== document.location.origin) throw new Error('Cross-origin reasoning endpoint')
-      const result = await fetch(endpoint, { method: 'POST', credentials: 'same-origin', redirect: 'error', signal,
+      const result = await fetch(endpoint, { method: 'POST', credentials: 'same-origin', redirect: 'error', cache: 'no-store', signal,
         headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
       return { ok: result.ok, status: result.status, body: await result.json().catch(() => null) }
     }
 
-    function ReasoningStatistics({ open, onClose, nameOf, language }) {
+    function ReasoningStatistics({ open, onClose, nameOf, language, connection }) {
       const t = value => uiCopy(value, language)
-      const [state, setState] = React.useState({ status: 'loading' })
-      const request = React.useRef(0)
+      suiteWatch(connection)
+      const generation = connection.getResetGeneration()
+      const [result, setResult] = React.useState({ status: 'loading' })
+      const pending = React.useRef(null)
+      const state = result.generation === generation ? result : { status: 'loading' }
       function load(path) {
-        const id = ++request.current
-        setState({ status: 'loading' })
-        const failure = { status: 'failed', reset: path === 'stats/reset' }
-        reasoningPost(path, {}).then(result => {
-          if (id === request.current) setState(result.ok && result.body ? { status: 'ready', stats: result.body } : failure)
-        }).catch(() => { if (id === request.current) setState(failure) })
+        if (connection.getResetGeneration() !== generation || (path === 'stats/reset' && pending.current)) return
+        pending.current?.abort()
+        const controller = new AbortController()
+        pending.current = controller
+        const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(12000)])
+        const current = () => pending.current === controller && !controller.signal.aborted &&
+          connection.getResetGeneration() === generation
+        setResult({ status: 'loading', generation })
+        const failure = { status: 'failed', reset: path === 'stats/reset', generation }
+        reasoningPost(path, {}, signal).then(response => {
+          if (current()) setResult(!signal.aborted && response.ok && response.body
+            ? { status: 'ready', stats: response.body, generation } : failure)
+        }).catch(() => { if (current()) setResult(failure) }).finally(() => {
+          if (pending.current === controller) pending.current = null
+        })
       }
-      React.useEffect(() => { if (open) load('stats'); return () => { request.current++ } }, [open])
+      React.useEffect(() => {
+        if (open) load('stats')
+        return () => { pending.current?.abort(); pending.current = null }
+      }, [open, generation])
       const stats = state.stats
       const formatLocale = language === 'ar' ? 'ar' : 'en-US'
       const count = value => Number(value || 0).toLocaleString(formatLocale)
@@ -3214,6 +3229,7 @@ window.__ModuleLoader__.load({
       const settings = useSuiteRecord(settingsService, 'adaptive-reasoning', useRemoteAccess, connection)
       const directoryState = suiteWatch(directory.store)
       const canSelect = useAccess?.('session/selectModel') === true
+      const canViewStats = useRemoteAccess?.('settings/describe') === true
       const [open, setOpen] = React.useState(false)
       const [working, setWorking] = React.useState(false)
       const [notice, setNotice] = React.useState(null)
@@ -3280,7 +3296,7 @@ window.__ModuleLoader__.load({
         if (busy.current) return
         setOpen(false)
         if (id === 'reload') { settings.reload(); return }
-        if (id === 'stats') { setStatsOpen(true); return }
+        if (id === 'stats') { if (canViewStats) setStatsOpen(true); return }
         if (id === 'recommend') { setRecommendOpen(true); return }
         const latest = directory.store.getSnapshot()
         const current = latest.current
@@ -3330,7 +3346,8 @@ window.__ModuleLoader__.load({
           { id: 'apply', label: t('Apply saved effort'), disabled: !level(saved.effort) || saved.effort === selection.reasoningEffort },
           { id: 'remove', label: t('Remove saved preference'), disabled: !settings.writable },
         ] : []),
-        ...(Modal ? [{ type: 'separator', id: 'more-divider' }, { id: 'stats', label: t('Reasoning statistics…') },
+        ...(Modal ? [{ type: 'separator', id: 'more-divider' },
+          ...(canViewStats ? [{ id: 'stats', label: t('Reasoning statistics…') }] : []),
           { id: 'recommend', label: t('Effort recommendation…') }] : []),
         ...(['conflict', 'unavailable'].includes(settings.status)
           ? [{ id: 'reload', label: t('Reload preferences') }] : []),
@@ -3345,7 +3362,7 @@ window.__ModuleLoader__.load({
         h(Menu, { open, anchor: trigger, items, selectedIds,
           portal: true, side: 'top', align: 'end', compact: true, autoFocus: true,
           onClose: () => setOpen(false), onSelect: id => void selectItem(id) }),
-        Modal && statsOpen ? h(ReasoningStatistics, { open: statsOpen, onClose: () => setStatsOpen(false), nameOf, language }) : null,
+        Modal && statsOpen && canViewStats ? h(ReasoningStatistics, { open: statsOpen, onClose: () => setStatsOpen(false), nameOf, language, connection }) : null,
         Modal && recommendOpen ? h(ReasoningRecommendation, { key: JSON.stringify([sessionId, selection.provider, selection.model,
           selection.reasoningEffort]), sessionId, selection, settings, connection, language, onClose: () => setRecommendOpen(false), nameOf }) : null,
         notice ? h(Toast, { key: notice.id, text: notice.text, tone: notice.success ? 'success' : undefined,

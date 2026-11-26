@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
+import { chmod, mkdtemp, readFile, rm, stat, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import test from 'node:test'
@@ -67,10 +67,29 @@ test('large or invalid persisted aggregates fail closed without truncating the o
   const dir = await profile(t)
   const path = join(dir, 'abinadwan-reasoning-stats.json')
   const oversized = 'x'.repeat(1024 * 1024 + 1)
-  await writeFile(path, oversized)
+  await writeFile(path, oversized, { mode: 0o600 })
   await assert.rejects(openReasoningStats(dir), /invalid-stats/)
   assert.equal((await readFile(path, 'utf8')).length, oversized.length)
   await writeFile(path, '{"version":2,"epoch":"newer","counters":{}}')
   await assert.rejects(openReasoningStats(dir), /unsupported-stats/)
   assert.match(await readFile(path, 'utf8'), /"version":2/)
+})
+
+test('POSIX statistics refuse broad permissions without modifying existing data', async t => {
+  if (typeof process.geteuid !== 'function') return t.skip('Windows mode bits do not establish ACL privacy')
+  const dir = await profile(t)
+  const file = join(dir, 'abinadwan-reasoning-stats.json')
+  const store = await openReasoningStats(dir)
+  const stats = new ReasoningStats()
+  stats.request('session', 'high', { inputTokens: 1 })
+  await store.save(stats.takeCounters())
+  assert.equal((await stat(file)).mode & 0o077, 0)
+  const original = await readFile(file, 'utf8')
+  await chmod(file, 0o644)
+  await assert.rejects(openReasoningStats(dir), /invalid-stats/)
+  await assert.rejects(store.reset(), error => error.mayHaveWritten === false)
+  assert.equal(await readFile(file, 'utf8'), original)
+  assert.equal((await stat(file)).mode & 0o777, 0o644)
+  await chmod(file, 0o600)
+  assert.equal((await store.save(stats.takeCounters())).requests.session.high.requests, 1)
 })

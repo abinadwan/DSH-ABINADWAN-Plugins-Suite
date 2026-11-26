@@ -537,17 +537,17 @@ function reasoningFixture({ record = { preferences: [] }, handlers = {} } = {}) 
       const path = url.pathname.replace('/api/abinadwan-reasoning/', '')
       const body = JSON.parse(options.body)
       calls.push({ path, body })
-      return handlers[path]?.(body) ?? Response.json({ error: 'unexpected' }, { status: 500 })
+      return handlers[path]?.(body, options) ?? Response.json({ error: 'unexpected' }, { status: 500 })
     },
   } }
 }
 
 async function openReasoning(t, fixture) {
-  const { div } = await mount(t, fixture.options, 'adaptive-reasoning', 'conversation.input.right')
+  const { div, fixture: browser } = await mount(t, fixture.options, 'adaptive-reasoning', 'conversation.input.right')
   const trigger = () => div.querySelector('button[aria-haspopup=menu]')
   const open = () => act(async () => trigger().click())
   const item = label => [...div.querySelectorAll('[role=menuitem]')].find(button => button.textContent === label)
-  return { div, trigger, open, item }
+  return { div, trigger, open, item, browser }
 }
 
 test('legacy policy settings leave the composer on explicit session effort', async t => {
@@ -1080,4 +1080,24 @@ test('a delayed effort acknowledgement cannot appear on a different route', asyn
   await act(async () => acknowledge())
   assert.equal(div.querySelector('button[aria-haspopup=menu]').textContent, 'Balanced')
   assert.doesNotMatch(div.textContent, /Effort changed\.|Harness could not change the effort/)
+})
+
+test('statistics discard replies from a previous connection generation', async t => {
+  const counts = { since: '2026-11-20T08:00:00.000Z', persistent: true, messages: 0,
+    requests: { session: {}, subagent: {} } }
+  const requests = []
+  const fixture = reasoningFixture({ handlers: { stats: (_body, options) =>
+    new Promise(resolve => requests.push({ resolve, signal: options.signal })) } })
+  const view = await openReasoning(t, fixture)
+  await view.open()
+  await act(async () => view.item('Reasoning statistics…').click())
+  assert.equal(requests.length, 1)
+  await act(async () => view.browser.ctx.emit('connection/reset'))
+  assert.equal(requests[0].signal.aborted, true)
+  assert.equal(requests.length, 2)
+  await act(async () => requests[1].resolve(Response.json({ ...counts, messages: 7 })))
+  await act(async () => requests[0].resolve(Response.json({ ...counts, messages: 99 })))
+  const dialog = view.div.querySelector('[role=dialog]')
+  assert.match(dialog.textContent, /Total7/)
+  assert.doesNotMatch(dialog.textContent, /Total99/)
 })

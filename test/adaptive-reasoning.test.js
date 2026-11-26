@@ -104,3 +104,19 @@ test('fixed Arabic/MSA/Gulf and bilingual prompt corpus uses the intended tiers'
   assert.equal(classify('Design a distributed system in detail, باختصار').tier, 3,
     'brevity preference must not downgrade advanced analysis')
 })
+
+test('live aggregates saturate safe counts and exclude URL-like or control-character labels', () => {
+  const stats = new ReasoningStats()
+  const max = Number.MAX_SAFE_INTEGER
+  const usage = { inputTokens: max, cacheReadTokens: max, outputTokens: max, totalTokens: max, reasoningTokens: max }
+  stats.request('session', 'high', usage, Number.MAX_VALUE, { provider: 'local', model: 'model' })
+  stats.request('session', 'high', usage, 500, { provider: 'local', model: 'model' })
+  stats.request('session', 'bad\nlabel', {}, 1, { provider: 'https://fixture.invalid/path?secret=example', model: 'model' })
+  const result = stats.snapshot()
+  const row = result.requests.session.high
+  for (const key of ['inputTokens', 'outputTokens', 'totalTokens', 'reasoningTokens', 'durationMs']) assert.equal(row[key], max)
+  assert.equal(row.requests, 2)
+  assert.equal(result.routes.length, 1)
+  assert.equal(result.requests.session.other.requests, 1)
+  assert.doesNotMatch(JSON.stringify(result), /fixture.invalid|secret=example|bad\\nlabel/)
+})

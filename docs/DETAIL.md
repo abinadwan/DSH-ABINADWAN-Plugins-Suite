@@ -2,7 +2,7 @@
 
 **Latest published release [v1.1.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.1.0).** One community-maintained DSH bundle exposes six independently switchable components. The package's public identity remains `@abinadwan/dsh-plugins-suite`.
 
-> **Development source:** `1.1.1` (unreleased candidate). See the [changelog](../CHANGELOG.md) for versioned changes.
+> **Development source:** `1.1.2` (unreleased candidate). See the [changelog](../CHANGELOG.md) for versioned changes.
 >
 > **Release boundary:** A version bump, development branch merge, or successful CI run does not publish a GitHub Release or validate every Desktop security path. See [the releases page](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases) for actually published artifacts.
 
@@ -90,7 +90,7 @@ Select **Restore**, then **Confirm restore** to return an eligible conversation 
 
 **Implemented:** for models supporting reasoning-effort selection, the UI can apply a **manual** eligible effort to the resident root agent/Session using the current model/provider route. The Host validates route identity and capability before changing the session model selection. Use **Effort recommendation** to opt in and analyze text with a deterministic classifier on the Harness Host. It considers only the model’s advertised effort levels, preserves an explicit Session selection and returns reason labels without recording the sample. Edit the Session effort using the existing manual control.
 
-**Statistics:** The owner can view and reset aggregate counts. Hosts with a launcher Profile save bounded provider/model/effort aggregates there. Unsupported Hosts keep counts in memory. Token fields use adapter-reported usage and can be incomplete. Recent buffered counts may be lost during abrupt exit, and the file is independent of the saved effort settings.
+**Statistics:** The owner can view and reset aggregate counts. Hosts with a launcher Profile save bounded provider/model/effort aggregates there. Unsupported Hosts keep counts in memory. Token fields use adapter-reported usage and can be incomplete. Counts saturate at the largest safe integer. Transient request correlation retains only required usage and route fields; new URL-like or control-character identifiers are not collected as route labels. Existing valid historical labels remain readable; custom provider/model identifiers may still contain personal information. The statistics file is refused on POSIX if not owned by the effective user or if group/other mode bits are set, without changing existing permissions. Windows ACLs remain inherited and effective access is not independently verified. All plugin-owned responses are non-cacheable, and previous-connection statistics replies are discarded. Native owner authorization controls both read and reset. Reset cancellation cannot undo a transaction already started. Recent buffered counts may be lost during abrupt exit, and the file is independent of the saved effort settings.
 
 **Not implemented:** automatic application, message-only temporary effort, and plugin-managed subagent effort policies. Those request paths are explicitly rejected rather than silently persisting a misleading selection. Some models do not expose effort options.
 
