@@ -102,3 +102,19 @@ test('Direct Chat top action is not duplicated in the bottom footer', async t =>
   assert.equal(app.entries('sidebar.footer.action').filter(row => row.options.id === 'abinadwan-direct-chat').length, 0)
   assert.equal(app.entries('sidebar.session.action').filter(row => row.options.id === 'abinadwan-direct-chat').length, 1)
 })
+
+test('Direct Chat creation button fails closed without the permission hook or grant', async t => {
+  const app = await clientHarness()
+  t.after(() => app.dispose())
+  active(app)
+  await app.changed()
+  const entry = app.entries('sidebar.session.action').find(row => row.options.id === 'abinadwan-direct-chat')
+  const native = { type: 'button', props: { 'aria-label': 'New Session' }, children: [] }
+  for (const access of [undefined, () => false, () => undefined, permission => permission === 'session/create']) {
+    const container = entry.component({ ...entry.options.inject(), wide: true, useRemoteAccess: access, children: native })
+    assert.equal(container.children[0], native)
+    const action = container.children[1]
+    const result = action.type(action.props)
+    assert.equal(Boolean(result), typeof access === 'function' && access('session/create') === true)
+  }
+})

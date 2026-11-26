@@ -13,7 +13,7 @@ test('Direct Chat catalog uses the canonical registration, never names or create
   const decoy = { id: 'project', title: 'Direct Chat', path: join(root, 'elsewhere') }
   assert.equal(await findWorkspace(root, () => [decoy]), null)
   await assert.rejects(lstat(data), { code: 'ENOENT' })
-  await mkdir(path, { recursive: true })
+  await mkdir(path, { recursive: true, mode: 0o700 })
   // Workspace Registry canonicalizes this exact directory with fs.realpath.
   const matching = { id: 'authorized', title: 'Renamed', path: await realpath(path) }
   assert.equal(await findWorkspace(root, () => [decoy, matching]), matching.id)

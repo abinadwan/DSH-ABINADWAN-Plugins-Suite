@@ -10,7 +10,7 @@ test('phase 03: 100/1000/10000 Session inventories bound native metadata reads',
   const profile = await mkdtemp(join(tmpdir(), 'dsh-phase-03-catalog-'))
   t.after(() => rm(profile, { recursive: true, force: true }))
   const path = join(profile, 'abinadwan-direct-chat-data', 'Direct Chat')
-  await mkdir(path, { recursive: true })
+  await mkdir(path, { recursive: true, mode: 0o700 })
   const canonical = await realpath(path)
   const workspaces = []
   const counters = { reads: 0 }
@@ -64,7 +64,7 @@ test('creation lookup fails closed when Workspace membership changes despite una
   const profile = await mkdtemp(join(tmpdir(), 'dsh-catalog-changed-null-'))
   t.after(() => rm(profile, { recursive: true, force: true }))
   const path = join(profile, 'abinadwan-direct-chat-data', 'Direct Chat')
-  await mkdir(path, { recursive: true })
+  await mkdir(path, { recursive: true, mode: 0o700 })
   const canonical = await realpath(path)
 
   for (const scenario of [
