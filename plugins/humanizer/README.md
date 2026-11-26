@@ -24,6 +24,10 @@ The instructions preserve facts, uncertainty, citations, source language and aut
 
 Automatic response interception, persistent style settings and background rewriting remain future work. The selected model produces revisions. The plugin provides guidance and adds zero dedicated model or external rewriting calls. Supplied text follows the user's existing DSH model/provider configuration.
 
+## Unreleased Studio development (v1.2.0)
+
+The internal nine-service engine is not registered as an endpoint or UI. It builds a bounded one-shot native LLM request with no Session identity or tools and keeps source and custom brief out of the fixed system prompt. The native LLM waterfall and selected provider can still observe model-visible inputs; lack of a Session does not establish universal no-retention. Model behavior, Host admission and Desktop retention require separate verification. The existing Skill remains available under its original identity.
+
 ## Licensing
 
 The instruction body was written for this project and is distributed under the suite's MIT License. No third-party Humanizer implementation or prompt was copied or adapted. Future reuse must preserve the source's applicable license and attribution. [Instruction body](SKILL.md) · [MIT License](../../LICENSE)

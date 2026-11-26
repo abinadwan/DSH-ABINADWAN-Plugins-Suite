@@ -6,6 +6,7 @@ import assert from 'node:assert/strict'
 import { Context } from '@deepseek-ai/cordis'
 import LlmRuntime, { LlmAdapter } from '@deepseek-ai/dsh-llm'
 import { streamStudioRequest } from '../plugins/humanizer/studio-request.js'
+import { runStudioEdit, STUDIO_SERVICES } from '../plugins/humanizer/studio-engine.js'
 
 const provider = 'studio-fixture'
 const model = 'synthetic-text'
@@ -104,5 +105,29 @@ test('Studio cancellation suppresses remaining native stream chunks after the fi
     assert.equal(adapter.requests.length, 1)
     controller.abort()
     await assert.rejects(stream.next(), { name: 'AbortError' })
+  } finally { await ctx.fiber.dispose() }
+})
+
+test('Studio nine-service engine uses real native catalog and synthetic adapter without Session/Agent', async () => {
+  const ctx = new Context()
+  try {
+    await ctx.plugin(LlmRuntime).await()
+    const adapter = new Capture()
+    ctx.llm.registerAdapter([provider], adapter)
+    for (const service of STUDIO_SERVICES) {
+      const result = await runStudioEdit(ctx.llm, {
+        provider, model, service, sourceText: source, inputLanguage: 'auto', outputLanguage: 'ar',
+        ...(service === 'custom' ? { editingBrief: 'Make it concise' } : {}),
+      }, [{ id: 'ar', label: 'العربية' }], new AbortController().signal)
+      assert.equal(result, 'Synthetic revision 123.')
+    }
+    assert.equal(adapter.requests.length, 9)
+    assert.equal(new Set(adapter.requests.map(request => request.system)).size, 9)
+    for (const request of adapter.requests) {
+      assert.equal(JSON.parse(request.messages[0].content[0].text).sourceText, source)
+      assert.ok(!request.system.includes(source))
+      assert.deepEqual(request.tools ?? [], [])
+      assert.equal(request.sessionId, undefined)
+    }
   } finally { await ctx.fiber.dispose() }
 })
