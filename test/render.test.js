@@ -27,11 +27,8 @@ test('real React renders the Environment and the My Profile settings summary', a
   // No misleading encryption claim: only the explicit disclaimer is allowed.
   assert.match(html, /without plugin-level encryption/)
   assert.doesNotMatch(html.replace('without plugin-level encryption', ''), /encrypt|DPAPI|Argon|protected|secure storage/i)
-  // Default-private access policies.
-  assert.match(html, /All access is Private by default/)
-  assert.match(html, /Only saved personal details you explicitly allow can be included in supported native agent requests/)
-  assert.match(html, /including requests to cloud providers/)
-  assert.match(html, /Revoking access does not erase information already sent/)
+  assert.match(html, /Saved nonempty details and instructions are available to local and cloud models/)
+  assert.match(html, /Earlier copies can remain in history/)
   assert.doesNotMatch(html, /design draft|preview only|synthetic/i)
   assert.doesNotMatch(html, /<(?:form|input|textarea|select)\b/)
   // The summary follows the Host row state and never renders for unrelated subjects.

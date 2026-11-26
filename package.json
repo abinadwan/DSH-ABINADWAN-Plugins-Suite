@@ -43,24 +43,29 @@
     "icon.svg",
     "locale/*.json",
     "docs/DETAIL.md",
-    "docs/research/v1.1.0/CHAT_CONTROL_NATIVE_API_RESEARCH.md",
-    "docs/research/v1.1.0/CHAT_CONTROL_ARCHIVE_IMPLEMENTATION_REPORT.md",
-    "docs/BRANDING.md",
-    "docs/PERSONAL_PROFILE_LOCAL_SETTINGS.md",
-    "docs/PERSONAL_PROFILE_WINDOWS_ACCEPTANCE.md",
-    "docs/PERSONAL_PROFILE_V072_CHANGE_RECORD.md",
+    "docs/design/BRANDING.md",
+    "docs/plugins/my-profile.md",
     "docs/assets/environment-*.webp",
     "plugins",
     "README.md",
     "LICENSE",
     "CHANGELOG.md",
     "SECURITY.md",
-    "THIRD_PARTY_NOTICES.md"
+    "THIRD_PARTY_NOTICES.md",
+    "docs/README.md",
+    "docs/assets/abinadwan-plugins-suite-banner.webp",
+    "docs/assets/new-plugins/contact-sheet-*.png",
+    "docs/architecture/development.md",
+    "CONTRIBUTING.md",
+    "ACCESSIBILITY.md",
+    "CODE_OF_CONDUCT.md"
   ],
   "scripts": {
     "test": "node --test",
     "check:package": "node scripts/check-package.mjs",
-    "check:regression": "node --test test/phase08-regression.test.js && node qa/adaptive-reasoning-benchmark.mjs --json"
+    "check:regression": "node --test test/phase08-regression.test.js && node qa/adaptive-reasoning-benchmark.mjs --json",
+    "build:client": "node scripts/build-client.mjs",
+    "check:client": "node scripts/build-client.mjs --check"
   },
   "dsh": {
     "bundle": {
@@ -124,6 +129,7 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "@deepseek-ai/cordis": "4.1.0",
     "@deepseek-ai/cordis-plugin-loader": "1.1.0",
     "@deepseek-ai/dsh-app-boot": "0.2.2-rc.3",
     "@deepseek-ai/dsh-skill": "0.2.2-rc.3",

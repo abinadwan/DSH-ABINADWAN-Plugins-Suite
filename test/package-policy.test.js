@@ -4,7 +4,7 @@ import {execFileSync} from 'node:child_process'
 import {readFileSync} from 'node:fs'
 import {validatePackageFiles} from '../test-support/package-policy.js'
 test('package rejects all development scripts, fixtures, retired DPAPI code and QA',()=>{
-  for(const path of ['scripts/personal-profile-windows-probe.mjs','scripts/preview-personal-profile.mjs','test-support/client.js','test/example.js','qa/report.md']){
+  for(const path of ['scripts/personal-profile-windows-probe.mjs','scripts/preview-personal-profile.mjs','test-support/client.js','test/example.js','qa/report.md','client-src/preamble.js.inc']){
     assert.throws(()=>validatePackageFiles([{path}]),/Development preview or tooling/)
   }
 })
@@ -18,9 +18,9 @@ test('package ships only active documentation, no superseded designs, prototype 
   const [packed] = JSON.parse(execFileSync(process.execPath, [process.env.npm_execpath, 'pack', '--dry-run', '--json', '--ignore-scripts'], { encoding: 'utf8' }))
   const paths = packed.files.map(file => file.path)
   for (const path of paths) {
-    assert.doesNotMatch(path, /PERSONAL_PROFILE_PHASE|docs\/superpowers\/|personal-profile-phase4|probe|dpapi|\.env|\.pem$|\.key$/i, path)
+    assert.doesNotMatch(path, /PERSONAL_PROFILE_PHASE|docs\/(?:archive|research|superpowers)\/|personal-profile-phase4|probe|dpapi|\.env|\.pem$|\.key$/i, path)
   }
-  for (const required of ['docs/DETAIL.md', 'docs/PERSONAL_PROFILE_LOCAL_SETTINGS.md', 'docs/PERSONAL_PROFILE_V072_CHANGE_RECORD.md', 'docs/BRANDING.md',
+  for (const required of ['docs/DETAIL.md', 'docs/plugins/my-profile.md', 'docs/README.md', 'docs/design/BRANDING.md',
     'docs/assets/environment-project.webp', 'docs/assets/environment-session.webp']) assert.ok(paths.includes(required), required)
   const manifest = JSON.parse(readFileSync(new URL('../package.json', import.meta.url), 'utf8'))
   assert.deepEqual(manifest.dependencies, {

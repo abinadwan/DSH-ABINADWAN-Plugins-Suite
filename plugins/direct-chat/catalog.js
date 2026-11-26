@@ -19,15 +19,28 @@ export async function findWorkspace(profileDir, list) {
   return (await registeredWorkspace(profileDir, list))?.id ?? null
 }
 
-async function registeredWorkspace(profileDir, list) {
+async function registeredWorkspace(profileDir, list, verifyMembership = false) {
   const profile = await realpath(profileDir)
   const root = await existingDirectory(join(profile, directoryName))
   if (!root) return null
   const path = await existingDirectory(join(root, workspaceName))
   if (!path) return null
-  const matches = list().filter(workspace => workspace.path === path)
+  const workspaces = list()
+  const matches = workspaces.filter(workspace => workspace.path === path)
   if (matches.length > 1) throw new Error('direct-chat-registration-ambiguous')
-  return matches[0] ?? null
+  const selected = matches[0]
+  if (selected && verifyMembership) {
+    const ids = selected.sessionIds
+    const members = new Set(ids)
+    if (!Array.isArray(ids) || members.size !== ids.length ||
+        workspaces.some(workspace => workspace !== selected &&
+          (!Array.isArray(workspace.sessionIds) || workspace.sessionIds.some(id => members.has(id))))) {
+      const error = new Error('direct-chat-membership-ambiguous')
+      error.code = 'DIRECT_CHAT_CATALOG_CHANGED'
+      throw error
+    }
+  }
+  return selected ?? null
 }
 
 async function creationMetadata(workspace, persistence, signal) {
@@ -61,7 +74,7 @@ export function registerCatalog(ctx, profileDir) {
         try {
           request.signal.throwIfAborted()
           const list = () => child.workspaceRegistry.list()
-          const workspace = await registeredWorkspace(profileDir, list)
+          const workspace = await registeredWorkspace(profileDir, list, true)
           let createdAt
           if (workspace && new URL(request.url).searchParams.get('order') === 'creation') {
             if (sorting) return Response.json({ code: 'DIRECT_CHAT_CATALOG_BUSY' }, { status: 409, headers })
@@ -80,7 +93,7 @@ export function registerCatalog(ctx, profileDir) {
             } finally {
               sorting = false
             }
-            const latest = await registeredWorkspace(profileDir, list)
+            const latest = await registeredWorkspace(profileDir, list, true)
             const latestMembers = new Set(latest?.sessionIds)
             if (latest?.id !== workspace.id || originalMembers.size !== originalCount ||
                 latest?.sessionIds?.length !== originalCount || latestMembers.size !== originalCount ||
@@ -92,7 +105,10 @@ export function registerCatalog(ctx, profileDir) {
           }
           request.signal.throwIfAborted()
           return Response.json({ workspaceId: workspace?.id ?? null, createdAt }, { headers })
-        } catch {
+        } catch (error) {
+          if (error?.code === 'DIRECT_CHAT_CATALOG_CHANGED') {
+            return Response.json({ code: 'DIRECT_CHAT_CATALOG_CHANGED' }, { status: 409, headers })
+          }
           return Response.json({ code: 'DIRECT_CHAT_CATALOG_UNAVAILABLE' }, { status: 503, headers })
         }
       },

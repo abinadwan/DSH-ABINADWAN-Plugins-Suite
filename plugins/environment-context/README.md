@@ -1,10 +1,10 @@
 # Environment & Context
 
-**Available in suite 0.5.0. Enabled by default.**
+**Enabled by default.**
 
 <img src="icon.png" width="96" alt="Teal Environment & Context monitor"/>
 
-The read-only right-hand sidebar in active Harness conversation sessions displays browser environment, workspace associations, context pressure, estimated token categories, model output-token totals and last recorded activity. Connector inventories and Git changes await separate authorized providers. Estimated categories should be treated as approximate accounting.
+The read-only right-hand sidebar in active Harness conversation sessions displays browser environment, workspace associations, context pressure, estimated token categories, model output-token totals and last recorded activity. Connector and file-change data is unavailable when DSH provides no authorized source. Estimated categories should be treated as approximate accounting.
 
 ## Controls
 

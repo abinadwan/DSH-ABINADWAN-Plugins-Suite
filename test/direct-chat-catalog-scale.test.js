@@ -10,7 +10,7 @@ test('phase 03: 100/1000/10000 Session inventories bound native metadata reads',
   const profile = await mkdtemp(join(tmpdir(), 'dsh-phase-03-catalog-'))
   t.after(() => rm(profile, { recursive: true, force: true }))
   const path = join(profile, 'abinadwan-direct-chat-data', 'Direct Chat')
-  await mkdir(path, { recursive: true })
+  await mkdir(path, { recursive: true, mode: 0o700 })
   const canonical = await realpath(path)
   const workspaces = []
   const counters = { reads: 0 }
@@ -64,7 +64,7 @@ test('creation lookup fails closed when Workspace membership changes despite una
   const profile = await mkdtemp(join(tmpdir(), 'dsh-catalog-changed-null-'))
   t.after(() => rm(profile, { recursive: true, force: true }))
   const path = join(profile, 'abinadwan-direct-chat-data', 'Direct Chat')
-  await mkdir(path, { recursive: true })
+  await mkdir(path, { recursive: true, mode: 0o700 })
   const canonical = await realpath(path)
 
   for (const scenario of [
@@ -93,4 +93,38 @@ test('creation lookup fails closed when Workspace membership changes despite una
       ? { workspaceId: 'direct', createdAt: null }
       : { code: 'DIRECT_CHAT_CATALOG_CHANGED' }, scenario.label)
   }
+})
+
+test('conflicting Workspace membership is rejected before metadata is read or returned', async t => {
+  const profile = await mkdtemp(join(tmpdir(), 'dsh-catalog-membership-'))
+  t.after(() => rm(profile, { recursive: true, force: true }))
+  const path = join(profile, 'abinadwan-direct-chat-data', 'Direct Chat')
+  await mkdir(path, { recursive: true, mode: 0o700 })
+  const canonical = await realpath(path)
+  const direct = { id: 'direct', path: canonical, sessionIds: ['conflicting'] }
+  const other = { id: 'other', path: join(profile, 'Other'), sessionIds: ['conflicting'] }
+  let route, reads = 0
+  const ctx = {
+    inject(_requirements, mount) { mount({
+      workspaceRegistry: { list: () => [direct, other] },
+      sessionPersistence: { async stat(id) {
+        reads++
+        return { header: { id, createdAt: 1000 } }
+      } },
+      effect(fn) { fn() },
+      connection: { fetch: { register(handler) { route = handler; return () => {} } } },
+    }) },
+  }
+  registerCatalog(ctx, profile)
+  const lookup = query => route.fetch(new Request('http://localhost/api/abinadwan-direct-chat/catalog' + query))
+  for (const query of ['', '?order=creation']) {
+    const response = await lookup(query)
+    assert.equal(response.status, 409)
+    assert.equal(response.headers.get('cache-control'), 'no-store')
+    assert.deepEqual(await response.json(), { code: 'DIRECT_CHAT_CATALOG_CHANGED' })
+  }
+  assert.equal(reads, 0)
+  other.sessionIds = []
+  assert.equal((await lookup('?order=creation')).status, 200)
+  assert.equal(reads, 1)
 })

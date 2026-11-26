@@ -18,7 +18,7 @@ We aim to improve keyboard access, readable labels and feedback, focus behavior,
 - **Languages and direction:** English is used across the repository. The bundle includes an Arabic DSH interface locale; some component interfaces provide Arabic and RTL support, while others still use English or fall back to English. Locale availability does not establish full RTL or screen-reader support.
 - **Other operating systems:** accessibility on macOS and other DSH Desktop environments has not been independently verified by this project. Consult the host application's own support information.
 
-The [rc.5 Windows Desktop acceptance report](docs/DSH_DESKTOP_PROVIDER_ACCESSIBILITY_FINAL_ACCEPTANCE_V1.0.2_RC5.md) records the scoped installed keyboard, Arabic, theme and Chromium accessibility results.
+The [rc.5 Windows Desktop acceptance report](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/98c27e87e216f11000ab92adcb79d51388031a28/docs/DSH_DESKTOP_PROVIDER_ACCESSIBILITY_FINAL_ACCEPTANCE_V1.0.2_RC5.md) records the scoped installed keyboard, Arabic, theme and Chromium accessibility results.
 
 ## Known limitations and unfinished verification
 

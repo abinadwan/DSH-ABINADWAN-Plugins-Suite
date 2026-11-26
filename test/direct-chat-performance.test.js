@@ -1,22 +1,10 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { readFileSync } from 'node:fs'
 import { performance } from 'node:perf_hooks'
-import { runInNewContext } from 'node:vm'
+import { browserSource as source, browserSection, catalogReady, conversationInventory } from '../test-support/client-source.js'
 
-// Read production predicates, not an independent implementation of catalog authorization.
-const source = readFileSync(new URL('../client.js', import.meta.url), 'utf8')
-const start = source.indexOf('    const catalogReady =')
-const end = source.indexOf('    function retentionRows(', start)
-assert.ok(start > 0 && end > start)
-const { catalogReady, conversationInventory } = runInNewContext(
-  "const lifecycleDurations = ['365', '180', '90', '30', '7'];\n" +
-    source.slice(start, end) + '\n({ catalogReady, conversationInventory })')
-
-const searchBegin = source.indexOf('    function filterAndSortDirectChat(')
-const searchEnd = source.indexOf('    function DirectChatHistory(', searchBegin)
-const sorter = searchBegin < 0 ? null : runInNewContext(
-  source.slice(searchBegin, searchEnd) + '\nfilterAndSortDirectChat')
+// Exercise the delivered browser carrier, not a second implementation of its predicates.
+const sorter = browserSection('    function filterAndSortDirectChat(', '    function DirectChatHistory(', 'filterAndSortDirectChat')
 
 function build(count) {
   const ids = Array.from({ length: count }, (_, i) => 'direct-' + String(i).padStart(5, '0'))
