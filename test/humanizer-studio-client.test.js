@@ -13,10 +13,15 @@ test('Studio native keyed main and sidebar registration follows Humanizer lifecy
   const sidebar=app.entries('sidebar.panellist').find(row=>row.options.id===id)
   assert.equal(sidebar.options.order,11)
   assert.ok(app.entries('main').some(row=>row.options.key===id))
+  const unsubscribe=app.ctx.remote.$on('settings/document-updated',()=>{})
+  assert.equal(app.events.get('settings/document-updated').listeners.size,2)
   app.setRows(app.rows().map(row=>row.moduleName===base+'/humanizer'?{...row,enabled:false}:row))
   await app.changed()
   assert.ok(!app.entries('main').some(row=>row.options.key===id))
   assert.ok(!app.entries('sidebar.panellist').some(row=>row.options.id===id))
+  assert.equal(app.events.get('settings/document-updated').listeners.size,1,'disabling Studio must not remove another listener')
+  unsubscribe()
+  assert.equal(app.events.has('settings/document-updated'),false)
 })
 test('Studio uses live native catalog, sends only explicit text, supports RTL and clear',async t=>{
   const dom={window:globalThis.window}
