@@ -1,6 +1,6 @@
 # Documentation — ABINADWAN Plugins Suite
 
-Current source baseline: package 1.1.3 (unreleased), six independently switchable components. [Published releases](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases) determine publication.
+Current source baseline: package 1.1.3 (release source), six independently switchable components. [Published releases](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases) determine publication.
 
 - [Installation and technology stack](../README.md)
 - [Six-component behavior and limitations](DETAIL.md)
