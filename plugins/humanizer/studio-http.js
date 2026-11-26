@@ -10,7 +10,7 @@ const json = (body, status = 200) => Response.json(body, {
 })
 const error = (code, status) => json({ error: code }, status)
 
-async function readBody(request, signal) {
+export async function readStudioBody(request, signal, byteLimit = STUDIO_BODY_LIMIT) {
   if (request.headers.get('content-type')?.split(';',1)[0].trim().toLowerCase() !== 'application/json' || !request.body)
     return { error: 'STUDIO_INVALID_REQUEST', status: 400 }
   if (signal.aborted) return { error:'STUDIO_CANCELLED', status:409 }
@@ -26,7 +26,7 @@ async function readBody(request, signal) {
       if (signal.aborted) return { error:'STUDIO_CANCELLED', status:409 }
       if (done) { ended = true; break }
       size += value.byteLength
-      if (size > STUDIO_BODY_LIMIT) return { error:'STUDIO_BODY_LIMIT', status:413 }
+      if (size > byteLimit) return { error:'STUDIO_BODY_LIMIT', status:413 }
       text += decoder.decode(value,{stream:true})
     }
     const data = JSON.parse(text + decoder.decode())
@@ -55,7 +55,7 @@ export function createStudioHandlers(llm, lifetime, deadlineMs = DEADLINE_MS) {
       const deadline = AbortSignal.timeout(deadlineMs)
       const signal = AbortSignal.any([request.signal,lifetime,deadline])
       try {
-        const read = await readBody(request,signal)
+        const read = await readStudioBody(request,signal)
         if (read.error) return error(read.error,read.status)
         if (signal.aborted) return error('STUDIO_CANCELLED',409)
         const input = read.data
