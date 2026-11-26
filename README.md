@@ -31,7 +31,9 @@
   <a href="https://github.com/deepseek-ai/deepseek-harness"><img alt="DeepSeek Harness DSH" src="https://img.shields.io/badge/DeepSeek%20Harness-DSH-0F172A" /></a>
 </p>
 
-> **Release source [v1.1.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.1.0).** The [GitHub Releases page](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases) is authoritative for publication. Install only a published stable release using its full commit SHA. Archive Manager replaces Chat Control in this version.
+> **Latest published release [v1.1.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.1.0).** The [GitHub Releases page](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases) is authoritative for publication. Install only a published stable release using its full commit SHA. Archive Manager replaces Chat Control in this version.
+>
+> **Development source:** `1.1.3` (unreleased candidate). See [CHANGELOG.md](CHANGELOG.md) for its improvements and verification status.
 
 ## Overview
 

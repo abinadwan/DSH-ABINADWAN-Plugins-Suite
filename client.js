@@ -78,7 +78,7 @@ window.__ModuleLoader__.load({
 
     // Only stable published GitHub Releases may trigger an in-app update offer.
     // This browser-side checker never installs anything without a separate click.
-    const INSTALLED_VERSION = '1.1.0'
+    const INSTALLED_VERSION = '1.1.3'
     const PACKAGE_NAME = '@abinadwan/dsh-plugins-suite'
     const RELEASE_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/latest'
     const COMMIT_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/commits/'
@@ -414,25 +414,42 @@ window.__ModuleLoader__.load({
             textDecoration:'underline'}},'View published releases'))
     }
 
-    function Details({ sessionId, projections, projectionState, sessions, workspaces, language }) {
+    function environmentSession(sessions, id) {
+      if (typeof id !== 'string' || !id.trim() || sessions?.phase !== 'ready' || sessions.state === 'error' ||
+          !Array.isArray(sessions.ids) || sessions.ids.filter(value => value === id).length !== 1 ||
+          !sessions.byId || !Object.hasOwn(sessions.byId, id)) return undefined
+      const session = sessions.byId[id]
+      return session?.id === id && session.blank !== true && session.origin !== 'subagent' ? session : undefined
+    }
+
+    function environmentWorkspace(workspaces, id) {
+      if (workspaces?.phase !== 'ready' || workspaces.state === 'error' || !Array.isArray(workspaces.items) ||
+          !workspaces.items.every(item => item && typeof item.workspaceId === 'string' && item.workspaceId.trim() &&
+            Array.isArray(item.sessionIds) && item.sessionIds.every(value => typeof value === 'string' && value.trim()))) return []
+      const linked = workspaces.items.filter(item => item.sessionIds.includes(id))
+      return linked.length === 1 && workspaces.items.filter(item => item.workspaceId === linked[0].workspaceId).length === 1
+        ? linked : []
+    }
+
+    const environmentText = value => typeof value === 'string' ? value : undefined
+    const environmentTokens = value => good(value) !== undefined && value <= Number.MAX_SAFE_INTEGER ? value : undefined
+
+    function Details({ session, linked, projections, projectionState, language }) {
       const t = value => uiCopy(value, language)
       // Values come from the tab seat's Session-scoped `useProjection` hook when
       // the Host supplies it, else from this Session's list projection snapshot.
       const pressure = projections?.contextPressure
       const breakdown = projections?.contextBreakdown
       const tokenUsage = projections?.tokenUsage
-      const session = sessions?.byId?.[sessionId]
-      const folders = Array.isArray(workspaces?.items) ? workspaces.items : []
-      const linked = folders.filter(w => Array.isArray(w.sessionIds) && w.sessionIds.includes(sessionId))
-      const used = good(pressure?.projectedTokens ?? pressure?.pressureTokens)
-      const max = good(pressure?.contextWindow)
-      const pct = max && used !== undefined ? Math.min(100, Math.round(100 * used / max)) : undefined
+      const used = environmentTokens(pressure?.projectedTokens ?? pressure?.pressureTokens)
+      const max = environmentTokens(pressure?.contextWindow)
+      const pct = max > 0 && used !== undefined ? Math.round(100 * Math.min(1, used / max)) : undefined
       const platform = typeof navigator === 'object' ?
         (navigator.userAgentData?.platform || navigator.platform) : undefined
       const environment = [
         line(t('Browser'), platform || t('Unavailable')),
         line(t('Workspaces'), linked.length),
-        ...linked.map(w => line(h('bdi', null, '▣ ' + (w.title || t('Workspace'))), w.path || '')),
+        ...linked.map(w => line(h('bdi', null, '▣ ' + (environmentText(w.title) || t('Workspace'))), environmentText(w.path) || '')),
       ]
       const context = []
       if (pct === undefined) {
@@ -448,16 +465,16 @@ window.__ModuleLoader__.load({
           style: { background: 'rgba(127,127,127,.25)', borderRadius: 8,
             height: 6, overflow: 'hidden', margin: '7px 0' } },
           h('div', { style: { width: pct + '%', height: '100%', background: '#378fdb' } })))
-        context.push(line(t('Messages (estimated)'), compact(breakdown?.messageTokens)))
-        context.push(line(t('Tool schemas (estimated)'), compact(breakdown?.toolsTokens)))
-        context.push(line(t('System prompt (estimated)'), compact(breakdown?.systemTokens)))
+        context.push(line(t('Messages (estimated)'), compact(environmentTokens(breakdown?.messageTokens))))
+        context.push(line(t('Tool schemas (estimated)'), compact(environmentTokens(breakdown?.toolsTokens))))
+        context.push(line(t('System prompt (estimated)'), compact(environmentTokens(breakdown?.systemTokens))))
         context.push(line(t('Free space'), compact(Math.max(0, max - used))))
       }
-      context.push(line(t('Session'), session?.displayTitle || t('Unavailable')))
-      context.push(line(t('Status'), t(session ? (session.running ? 'Running' : 'Idle') : 'Unavailable')))
+      context.push(line(t('Session'), environmentText(session?.displayTitle) || t('Unavailable')))
+      context.push(line(t('Status'), t(session?.running === true ? 'Running' : session?.running === false ? 'Idle' : 'Unavailable')))
       const outputs = [
-        line(t('Output tokens'), compact(tokenUsage?.outputTokens)),
-        line(t('Last activity'), good(session?.updatedAt) === undefined ?
+        line(t('Output tokens'), compact(environmentTokens(tokenUsage?.outputTokens))),
+        line(t('Last activity'), good(session?.updatedAt) === undefined || session.updatedAt > 8640000000000000 ?
           t('Unavailable') : new Date(session.updatedAt).toLocaleString(language)),
         h('p', { key: 'output-note', style: muted },
           t('Output file lists require a separate, permission-checked files service.')),
@@ -488,7 +505,7 @@ window.__ModuleLoader__.load({
         h(Icon, { size: 17 }))
     }
     const environmentPlugin = {
-      inject: ['slots', 'sidebarRight', 'sidebarRightTabs', 'sessions', 'workspaces'],
+      inject: ['slots', 'sidebarRight', 'sidebarRightTabs', 'sessions', 'workspaces', 'connection'],
       apply(ctx) {
         const s = ctx.sessions.list
         const w = ctx.workspaces.list
@@ -498,7 +515,30 @@ window.__ModuleLoader__.load({
         const subW = l => w.subscribe(l)
         const getS = () => s.getSnapshot()
         const getW = () => w.getSnapshot()
-        const open = () => ctx.sidebarRight.openTab(KIND)
+        const host = ctx.connection.generation
+        const listeners = new Set()
+        let scope = { active: true, host: host.getSnapshot(), revision: 0 }
+        const invalidate = () => {
+          scope = { active: true, host: host.getSnapshot(), revision: scope.revision + 1,
+            previousSessions: getS(), previousWorkspaces: getW() }
+          for (const notify of [...listeners]) notify()
+        }
+        ctx.effect(() => {
+          const unsubscribe = host.subscribe(invalidate)
+          const off = ctx.on('connection/reset', invalidate)
+          return () => {
+            unsubscribe()
+            off()
+            scope = { ...scope, active: false }
+            for (const notify of [...listeners]) notify()
+            listeners.clear()
+          }
+        }, 'environment-sidebar: connection scope')
+        const connectionScope = {
+          subscribe(notify) { listeners.add(notify); return () => listeners.delete(notify) },
+          getSnapshot: () => scope,
+        }
+        const open = () => { if (scope.active && host.getSnapshot()) ctx.sidebarRight.openTab(KIND) }
         // `sidebar.right.pane.tab` is a strict Session-scope seat: the Harness
         // standard kit passes `sessionId` and the Session-bound `useProjection`
         // hook (ui-session SessionStandardProps). The hook re-renders this body
@@ -516,13 +556,24 @@ window.__ModuleLoader__.load({
           const language = useUiLanguage(localeSource)
           const sessions = React.useSyncExternalStore(subS, getS, getS)
           const workspaces = React.useSyncExternalStore(subW, getW, getW)
+          const current = suiteWatch(connectionScope)
+          const seatRevision = React.useRef(current.revision)
           const live = useLiveProjections(props.useProjection)
           const sessionId = props.sessionId
-          const listed = sessions?.projectionsBySession?.[sessionId]
-          const fallback = listed?.values ?? sessions?.byId?.[sessionId]?.projectionValues
-          const projections = live && (live.contextPressure || live.contextBreakdown || live.tokenUsage)
-            ? live : fallback
-          return h(Details, { sessionId, projections, projectionState: listed?.state, sessions, workspaces, language })
+          const connected = current.active && Boolean(current.host) && host.getSnapshot() === current.host
+          const session = connected && sessions !== current.previousSessions ? environmentSession(sessions, sessionId) : undefined
+          const linked = session && workspaces !== current.previousWorkspaces ? environmentWorkspace(workspaces, sessionId) : []
+          const listed = session && Object.hasOwn(sessions.projectionsBySession ?? {}, sessionId)
+            ? sessions.projectionsBySession[sessionId] : undefined
+          const failed = ['error', 'migration-required'].includes(listed?.state)
+          const fallback = listed ? (listed.state === 'ready' ? listed.values : undefined) : session?.projectionValues
+          // An existing seat can retain its old binding after a connection reset.
+          // Until that seat is remounted, use only the refreshed authorized list.
+          const currentLive = session && !failed && seatRevision.current === current.revision && live &&
+            (live.contextPressure || live.contextBreakdown || live.tokenUsage) ? live : undefined
+          const projections = session && !failed ? currentLive ?? fallback : undefined
+          return h(Details, { session, linked, projections,
+            projectionState: !session ? 'error' : listed?.state, language })
         }
         ctx.effect(() => ctx.sidebarRightTabs.register({
           id: TYPE + '/environment-context', kind: KIND, title: translate('Environment & Context'),
@@ -548,15 +599,21 @@ window.__ModuleLoader__.load({
         }, HeaderButton))
         ctx.effect(() => {
           const visited = new Set()
+          let visitedRevision = scope.revision
           const timers = new Set()
           let done = false
           const onSession = () => {
+            if (visitedRevision !== scope.revision) {
+              visited.clear()
+              visitedRevision = scope.revision
+            }
             const id = ctx.sidebarRight.mounted.getSnapshot()
-            if (!id || visited.has(id)) return
+            if (!scope.active || !host.getSnapshot() || !id || visited.has(id)) return
+            const revision = scope.revision
             visited.add(id)
             const timeout = setTimeout(() => {
               timers.delete(timeout)
-              if (done || ctx.sidebarRight.mounted.getSnapshot() !== id) return
+              if (done || revision !== scope.revision || !scope.active || ctx.sidebarRight.mounted.getSnapshot() !== id) return
               try { open() } catch {
                 visited.delete(id)
                 // Host errors can include private Session IDs, paths or provider data.
@@ -2681,6 +2738,16 @@ window.__ModuleLoader__.load({
     const archivePageSize = 25
     const validArchiveId = id => typeof id === 'string' && id.trim().length > 0
     const validArchiveSet = ids => Array.isArray(ids) && ids.every(validArchiveId)
+    const validArchiveProtectionRecord = record => Boolean(record && typeof record === 'object' &&
+      !Array.isArray(record) && validArchiveSet(record.protectedIds) && record.protectedIds.length <= 10000 &&
+      validArchiveSet(record.protectedWorkspaces) && record.protectedWorkspaces.length <= 1000 &&
+      [...record.protectedIds, ...record.protectedWorkspaces].every(id => id.length <= 256))
+    function archivePolicyView(response) {
+      if (!response?.ok || !Array.isArray(response.value?.namespaces)) return null
+      const matches = response.value.namespaces.filter(view => view?.ns === 'abinadwan-conversation-lifecycle')
+      const view = matches.length === 1 ? suiteSettingsView(matches[0]) : null
+      return validArchiveProtectionRecord(view?.value?.record) ? view : null
+    }
     const titleOrEmpty = value => typeof value === 'string' ? value : ''
 
     async function readArchiveWorkspaceBaseline(workspaceRemote, signal) {
@@ -2724,6 +2791,7 @@ window.__ModuleLoader__.load({
     function useArchiveCatalog(services, generation, authorized) {
       const [result, setResult] = React.useState(null)
       const [attempt, setAttempt] = React.useState(0)
+      const revision = React.useRef(0)
       React.useEffect(() => {
         if (!generation || !authorized) { setResult(null); return }
         const request = new AbortController()
@@ -2731,11 +2799,17 @@ window.__ModuleLoader__.load({
         let dirty = false
         let reading = false
         async function refresh() {
+          if (active.aborted || services.host.getSnapshot() !== generation) return
           dirty = true
+          revision.current++
+          // Preserve the last authorized view and search focus during refresh,
+          // but invalidate every action based on its now superseded snapshot.
+          setResult(previous => previous ? { ...previous } : previous)
           if (reading) return
           reading = true
           while (dirty && !active.aborted && services.host.getSnapshot() === generation) {
             dirty = false
+            const readVersion = revision.current
             const read = new AbortController()
             const deadline = AbortSignal.any([active, read.signal, AbortSignal.timeout(12000)])
             let catalog
@@ -2744,7 +2818,8 @@ window.__ModuleLoader__.load({
             } catch (error) {
               catalog = { status: error?.code === 'remote-access/denied' ? 'unauthorized' : 'error' }
             } finally { read.abort() }
-            if (!active.aborted && services.host.getSnapshot() === generation) setResult({ generation, attempt, catalog })
+            if (!dirty && revision.current === readVersion && !active.aborted &&
+                services.host.getSnapshot() === generation) setResult({ generation, attempt, catalog, revision: readVersion })
           }
           reading = false
         }
@@ -2753,11 +2828,13 @@ window.__ModuleLoader__.load({
         const unsubscribeWorkspaces = services.workspaces.subscribe(() => { void refresh() })
         const unsubscribeSessions = services.sessions.subscribe(() => { void refresh() })
         void refresh()
-        return () => { request.abort(); unsubscribeWorkspaces(); unsubscribeSessions() }
+        return () => { revision.current++; request.abort(); unsubscribeWorkspaces(); unsubscribeSessions() }
       }, [services, generation, authorized, attempt])
       const current = authorized && result && result.generation === generation && result.attempt === attempt
-      return { ...(current ? result.catalog : { status: 'loading' }),
-        reload: () => setAttempt(value => value + 1) }
+      const isCurrent = () => Boolean(current && result.catalog.status === 'ready' &&
+        result.revision === revision.current && !services.lifetime.aborted && services.host.getSnapshot() === generation)
+      return { ...(current ? result.catalog : { status: 'loading' }), isCurrent,
+        reload: () => { revision.current++; setAttempt(value => value + 1) } }
     }
 
     function archiveInventory(workspaces, sessions, record) {
@@ -2849,16 +2926,22 @@ window.__ModuleLoader__.load({
       const summary = React.useRef(null)
       const pending = React.useRef(null)
       const mounted = React.useRef(false)
+      const latest = React.useRef(null)
       const settingsEpoch = services.connection.getSnapshot()
       const policyCurrent = ['ready', 'saved'].includes(settings.status)
       const resultState = !authorized ? 'unauthorized' : !generation ? 'disconnected'
         : catalog.status !== 'ready' ? catalog.status : settings.status === 'loading' ? 'loading'
-        : !settings.record ? 'unavailable' : 'ready'
+        : !validArchiveProtectionRecord(settings.record) ? 'unavailable' : 'ready'
+      latest.current = { authorized, generation, source: settings.source }
+      const actionCurrent = () => mounted.current && !services.lifetime.aborted &&
+        latest.current.authorized && latest.current.generation === generation &&
+        latest.current.source === settings.source && catalog.isCurrent() &&
+        services.host.getSnapshot() === generation && services.connection.getSnapshot() === settingsEpoch
       const visible = resultState === 'ready' ? catalog.rows : []
       const matching = filterArchive(visible, filters, language)
       const workspaces = [...new Map(visible.map(row => [row.owner.workspaceId, row.workspaceTitle])).entries()]
         .sort((a, b) => a[1].localeCompare(b[1], language))
-      const confirming = resultState === 'ready' && policyCurrent && proposal?.generation === generation && proposal.source === settings.source &&
+      const confirming = resultState === 'ready' && catalog.isCurrent() && policyCurrent && proposal?.generation === generation && proposal.source === settings.source &&
         matching.some(row => row.id === proposal.id && row.owner.workspaceId === proposal.workspaceId && archiveRestorable(row)) ? proposal : null
       const busy = status?.generation === generation && status?.value === 'working'
       const message = resultState === 'ready' && status?.generation === generation ? status?.value : null
@@ -2874,10 +2957,9 @@ window.__ModuleLoader__.load({
         else if (proposal) setProposal(null)
       }, [confirming, proposal])
 
-      const canProtect = resultState === 'ready' && Boolean(settings.writable) && !busy
+      const canProtect = resultState === 'ready' && catalog.isCurrent() && Boolean(settings.writable) && !busy
       function changeProtection(field, id, checked) {
-        if (!canProtect || pending.current || services.host.getSnapshot() !== generation ||
-            services.connection.getSnapshot() !== settingsEpoch) return
+        if (!canProtect || pending.current || !actionCurrent()) return
         const admitted = field === 'protectedIds'
           ? visible.some(row => row.id === id) || catalog.savedRows.some(row => row.id === id)
           : field === 'protectedWorkspaces' && catalog.protectionWorkspaces.some(row => row.workspaceId === id)
@@ -2886,7 +2968,9 @@ window.__ModuleLoader__.load({
         if (checked) next.add(id)
         else next.delete(id)
         setProposal(null)
-        void settings.save({ ...settings.record, [field]: [...next] })
+        // Keep every retired compatibility field and all other protection flags.
+        const record = { ...settings.record, [field]: [...next] }
+        if (validArchiveProtectionRecord(record)) void settings.save(record)
       }
 
       function updateFilter(key, value) {
@@ -2895,7 +2979,7 @@ window.__ModuleLoader__.load({
       }
 
       async function restore() {
-        if (!mounted.current || !confirming || pending.current || !services.unarchive || !services.whenRestoreAccess) return
+        if (!actionCurrent() || !confirming || pending.current || !services.unarchive || !services.whenRestoreAccess) return
         const currentGeneration = () => services.host.getSnapshot() === generation
         const request = new AbortController()
         pending.current = request
@@ -2904,33 +2988,30 @@ window.__ModuleLoader__.load({
         setStatus({ generation, value: 'working' })
         let outcome = 'changed'
         try {
-          if (!currentGeneration() || services.connection.getSnapshot() !== settingsEpoch) return
+          if (!actionCurrent()) return
           const signal = AbortSignal.any([request.signal, services.lifetime, AbortSignal.timeout(12000)])
           signal.throwIfAborted()
           const aborted = new Promise((_, reject) => signal.addEventListener('abort', () => reject(signal.reason), { once: true }))
           const catalog = await Promise.race([readArchiveCatalog(services, services.sessions.getSnapshot(), signal), aborted])
-          if (signal.aborted || !currentGeneration() || services.connection.getSnapshot() !== settingsEpoch || catalog.status !== 'ready') return
+          if (signal.aborted || !actionCurrent() || catalog.status !== 'ready') return
           // A protection update can land during the catalog read before its
           // document notification arrives. Read the policy after that lookup.
           const policy = await Promise.race([services.settings.describe(), aborted])
-          if (signal.aborted || !currentGeneration() || services.connection.getSnapshot() !== settingsEpoch) return
-          const view = policy?.ok && policy.value?.namespaces?.find(view => view.ns === 'abinadwan-conversation-lifecycle')
-          if (view?.revision !== confirming.source.revision) { settings.reload(); return }
-          if (!view.value?.record) return
-          const candidate = archiveInventory(catalog.workspace, catalog.sessions, view.value.record).find(row =>
-            row.id === confirming.id && row.owner.workspaceId === confirming.workspaceId)
-          const currentSession = services.sessions.getSnapshot().byId?.[confirming.id]
+          if (signal.aborted || !actionCurrent()) return
+          const view = archivePolicyView(policy)
+          if (!view || view.revision !== confirming.source.revision) { settings.reload(); return }
+          const target = row => row.id === confirming.id && row.owner.workspaceId === confirming.workspaceId
+          const candidate = archiveInventory(catalog.workspace, catalog.sessions, view.value.record).find(target)
+          const currentSessions = services.sessions.getSnapshot()
           const currentWorkspace = services.workspaces.getSnapshot()
-          if (!Array.isArray(currentWorkspace?.items) || !validArchiveSet(currentWorkspace.archivedSessionIds) ||
+          if (!catalogReady(currentWorkspace, currentSessions) || !validArchiveSet(currentWorkspace.archivedSessionIds) ||
               !validArchiveSet(currentWorkspace.pinnedSessionIds)) return
-          const owners = currentWorkspace.items.filter(item => Array.isArray(item?.sessionIds) && item.sessionIds.includes(confirming.id))
-          if (!archiveRestorable(candidate) || owners.length !== 1 || owners[0].workspaceId !== confirming.workspaceId ||
-              currentSession?.running === true || currentWorkspace.pinnedSessionIds.includes(confirming.id) ||
-              Object.values(currentSession?.retainedBy ?? {}).some(count => count > 0) || !currentWorkspace.archivedSessionIds.includes(confirming.id)) return
+          const currentCandidate = archiveInventory(currentWorkspace, currentSessions, view.value.record).find(target)
+          if (!archiveRestorable(candidate) || !archiveRestorable(currentCandidate)) return
           let allowed = false
           const dispose = services.whenRestoreAccess(confirming.id, () => { allowed = true; return [] })
           dispose()
-          if (!allowed) return
+          if (!allowed || signal.aborted || !actionCurrent()) return
           await services.unarchive(confirming.id)
           outcome = 'restored'
         } catch {
@@ -2976,9 +3057,10 @@ window.__ModuleLoader__.load({
                   h('input', { type: 'date', style: lifecycleSelect, value: filters.after,
                     onChange: event => updateFilter('after', event.target.value) })) : null),
               matching.length ? h('ul', { style: { margin: 0, padding: 0, listStyle: 'none' } },
-                ...matching.slice(0, limit).map(row => h(ArchiveRow, { key: row.id, row, copy, date, services, busy: busy || !policyCurrent,
+                ...matching.slice(0, limit).map(row => h(ArchiveRow, { key: row.id, row, copy, date, services, busy: busy || !policyCurrent || !catalog.isCurrent(),
                   canProtect, onProtect: (id, checked) => changeProtection('protectedIds', id, checked),
                   onRestore: (item, trigger) => {
+                    if (!actionCurrent()) return
                     setStatus(null)
                     setProposal({ generation, source: settings.source, id: item.id, workspaceId: item.owner.workspaceId, trigger })
                   } }))) : h('p', { role: 'status' }, copy.noResults),
@@ -3009,7 +3091,7 @@ window.__ModuleLoader__.load({
       const { workspace, sessions } = catalog
       const ready = authorized && Boolean(settings.source) && Boolean(generation) && catalog.status === 'ready'
       const inventory = React.useMemo(() => {
-        if (!ready || !settings.record) return { rows: [], savedRows: [], protectionWorkspaces: [] }
+        if (!ready || !validArchiveProtectionRecord(settings.record)) return { rows: [], savedRows: [], protectionWorkspaces: [] }
         const record = settings.record
         const rows = archiveInventory(workspace, sessions, record)
         const archivedIds = new Set(rows.map(row => row.id))
@@ -3028,7 +3110,7 @@ window.__ModuleLoader__.load({
         return { rows, savedRows, protectionWorkspaces }
       }, [ready, workspace, sessions, settings.record])
       return h(ArchiveHub, { key: generation?.id ?? 'disconnected', services, generation, authorized, settings,
-        catalog: { status: catalog.status, ...inventory, reload: catalog.reload }, language })
+        catalog: { status: catalog.status, ...inventory, isCurrent: catalog.isCurrent, reload: catalog.reload }, language })
     }
 
     const reasoningCell = { padding: '4px 8px', textAlign: 'end', fontVariantNumeric: 'tabular-nums', whiteSpace: 'nowrap' }
@@ -3041,24 +3123,39 @@ window.__ModuleLoader__.load({
     async function reasoningPost(path, body, signal) {
       const endpoint = new URL(`api/abinadwan-reasoning/${path}`, document.baseURI)
       if (endpoint.origin !== document.location.origin) throw new Error('Cross-origin reasoning endpoint')
-      const result = await fetch(endpoint, { method: 'POST', credentials: 'same-origin', redirect: 'error', signal,
+      const result = await fetch(endpoint, { method: 'POST', credentials: 'same-origin', redirect: 'error', cache: 'no-store', signal,
         headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) })
       return { ok: result.ok, status: result.status, body: await result.json().catch(() => null) }
     }
 
-    function ReasoningStatistics({ open, onClose, nameOf, language }) {
+    function ReasoningStatistics({ open, onClose, nameOf, language, connection }) {
       const t = value => uiCopy(value, language)
-      const [state, setState] = React.useState({ status: 'loading' })
-      const request = React.useRef(0)
+      suiteWatch(connection)
+      const generation = connection.getResetGeneration()
+      const [result, setResult] = React.useState({ status: 'loading' })
+      const pending = React.useRef(null)
+      const state = result.generation === generation ? result : { status: 'loading' }
       function load(path) {
-        const id = ++request.current
-        setState({ status: 'loading' })
-        const failure = { status: 'failed', reset: path === 'stats/reset' }
-        reasoningPost(path, {}).then(result => {
-          if (id === request.current) setState(result.ok && result.body ? { status: 'ready', stats: result.body } : failure)
-        }).catch(() => { if (id === request.current) setState(failure) })
+        if (connection.getResetGeneration() !== generation || (path === 'stats/reset' && pending.current)) return
+        pending.current?.abort()
+        const controller = new AbortController()
+        pending.current = controller
+        const signal = AbortSignal.any([controller.signal, AbortSignal.timeout(12000)])
+        const current = () => pending.current === controller && !controller.signal.aborted &&
+          connection.getResetGeneration() === generation
+        setResult({ status: 'loading', generation })
+        const failure = { status: 'failed', reset: path === 'stats/reset', generation }
+        reasoningPost(path, {}, signal).then(response => {
+          if (current()) setResult(!signal.aborted && response.ok && response.body
+            ? { status: 'ready', stats: response.body, generation } : failure)
+        }).catch(() => { if (current()) setResult(failure) }).finally(() => {
+          if (pending.current === controller) pending.current = null
+        })
       }
-      React.useEffect(() => { if (open) load('stats'); return () => { request.current++ } }, [open])
+      React.useEffect(() => {
+        if (open) load('stats')
+        return () => { pending.current?.abort(); pending.current = null }
+      }, [open, generation])
       const stats = state.stats
       const formatLocale = language === 'ar' ? 'ar' : 'en-US'
       const count = value => Number(value || 0).toLocaleString(formatLocale)
@@ -3189,6 +3286,7 @@ window.__ModuleLoader__.load({
       const settings = useSuiteRecord(settingsService, 'adaptive-reasoning', useRemoteAccess, connection)
       const directoryState = suiteWatch(directory.store)
       const canSelect = useAccess?.('session/selectModel') === true
+      const canViewStats = useRemoteAccess?.('settings/describe') === true
       const [open, setOpen] = React.useState(false)
       const [working, setWorking] = React.useState(false)
       const [notice, setNotice] = React.useState(null)
@@ -3255,7 +3353,7 @@ window.__ModuleLoader__.load({
         if (busy.current) return
         setOpen(false)
         if (id === 'reload') { settings.reload(); return }
-        if (id === 'stats') { setStatsOpen(true); return }
+        if (id === 'stats') { if (canViewStats) setStatsOpen(true); return }
         if (id === 'recommend') { setRecommendOpen(true); return }
         const latest = directory.store.getSnapshot()
         const current = latest.current
@@ -3305,7 +3403,8 @@ window.__ModuleLoader__.load({
           { id: 'apply', label: t('Apply saved effort'), disabled: !level(saved.effort) || saved.effort === selection.reasoningEffort },
           { id: 'remove', label: t('Remove saved preference'), disabled: !settings.writable },
         ] : []),
-        ...(Modal ? [{ type: 'separator', id: 'more-divider' }, { id: 'stats', label: t('Reasoning statistics…') },
+        ...(Modal ? [{ type: 'separator', id: 'more-divider' },
+          ...(canViewStats ? [{ id: 'stats', label: t('Reasoning statistics…') }] : []),
           { id: 'recommend', label: t('Effort recommendation…') }] : []),
         ...(['conflict', 'unavailable'].includes(settings.status)
           ? [{ id: 'reload', label: t('Reload preferences') }] : []),
@@ -3320,7 +3419,7 @@ window.__ModuleLoader__.load({
         h(Menu, { open, anchor: trigger, items, selectedIds,
           portal: true, side: 'top', align: 'end', compact: true, autoFocus: true,
           onClose: () => setOpen(false), onSelect: id => void selectItem(id) }),
-        Modal && statsOpen ? h(ReasoningStatistics, { open: statsOpen, onClose: () => setStatsOpen(false), nameOf, language }) : null,
+        Modal && statsOpen && canViewStats ? h(ReasoningStatistics, { open: statsOpen, onClose: () => setStatsOpen(false), nameOf, language, connection }) : null,
         Modal && recommendOpen ? h(ReasoningRecommendation, { key: JSON.stringify([sessionId, selection.provider, selection.model,
           selection.reasoningEffort]), sessionId, selection, settings, connection, language, onClose: () => setRecommendOpen(false), nameOf }) : null,
         notice ? h(Toast, { key: notice.id, text: notice.text, tone: notice.success ? 'success' : undefined,
@@ -3441,14 +3540,16 @@ window.__ModuleLoader__.load({
         [inventory, search, order, creationReady, createdAt])
       const limit = 25
       const activePage = Math.min(page, Math.max(0, Math.ceil(rows.length / limit) - 1))
-      const record = settings.record
-      const protectedIds = new Set(record?.protectedIds)
-      const protectedWorkspace = record?.protectedWorkspaces?.includes(selected?.workspaceId)
+      const record = validArchiveProtectionRecord(settings.record) ? settings.record : undefined
+      // An incomplete policy must disable rename, not hide known protection.
+      const protectedIds = new Set(validArchiveSet(settings.record?.protectedIds) ? settings.record.protectedIds : [])
+      const protectedWorkspace = validArchiveSet(settings.record?.protectedWorkspaces) &&
+        settings.record.protectedWorkspaces.includes(selected?.workspaceId)
       const archived = new Set(workspace?.archivedSessionIds)
       const error = current?.error || workspace?.state === 'error' || ready && current?.value?.workspaceId && !selected
       const loaded = ready && current?.value && !error
       const shown = rows.slice(activePage * limit, (activePage + 1) * limit)
-      const editing = edit && edit.generation === generation && shown.some(item => item.id === edit.id) &&
+      const editing = record && edit && edit.generation === generation && shown.some(item => item.id === edit.id) &&
         !protectedWorkspace && !protectedIds.has(edit.id) ? edit : null
 
       function changeOrder(event) {
@@ -3564,11 +3665,25 @@ window.__ModuleLoader__.load({
         }
         if (typeof ctx.sessions.using === 'function') {
           services.rename = async (workspaceId, id, title, generation) => {
-            // Reject stale actions before obtaining a native Session reference.
-            if (!member(workspaceId, id, generation)) throw new Error('Direct Chat membership changed')
-            return ctx.sessions.using(id, { source: 'workspaceOperation', signal: lifetime.signal }, async reference => {
-              // Membership or connection generation may change while acquiring it.
+            const assertMember = () => {
               if (!member(workspaceId, id, generation)) throw new Error('Direct Chat membership changed')
+            }
+            const readProtection = async () => {
+              assertMember()
+              const view = archivePolicyView(await services.settings?.describe?.())
+              assertMember()
+              if (!view || view.value.record.protectedIds.includes(id) ||
+                  view.value.record.protectedWorkspaces.includes(workspaceId)) {
+                throw new Error('Direct Chat protection policy unavailable or protected')
+              }
+              return view.revision
+            }
+            // Check saved protection, not only the rendered history controls.
+            const revision = await readProtection()
+            assertMember()
+            return ctx.sessions.using(id, { source: 'workspaceOperation', signal: lifetime.signal }, async reference => {
+              if (await readProtection() !== revision) throw new Error('Direct Chat protection changed')
+              assertMember()
               const result = await reference.binding.session.rename(title)
               if (!result.ok) throw new Error('Direct Chat rename refused')
             })

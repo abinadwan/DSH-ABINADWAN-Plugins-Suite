@@ -85,11 +85,12 @@ async function host(t, record = {}, profileDir) {
   const feature = ctx.plugin(Reasoning, { record: { preferences: [], mode: 'manual', subagents: 'inherit', ...record } })
   await feature.await()
   const transport = ctx.connection.createSharedFetchHandler('/api')
-  const call = async (path, body, peer = ctx.connection.browserPeer) => {
+  const call = async (path, body, peer = ctx.connection.browserPeer, inspectHeaders = false) => {
     const response = await transport.fetch(new Request(`http://localhost/api/abinadwan-reasoning/${path}`, {
       method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body),
     }), peer)
-    return { status: response.status, body: response.headers.get('content-type')?.includes('json') ? await response.json() : undefined }
+    return { status: response.status, body: response.headers.get('content-type')?.includes('json') ? await response.json() : undefined,
+      ...(inspectHeaders ? { cacheControl: response.headers.get('cache-control') } : {}) }
   }
   const bind = (agent, requestId, reasoningEffort, extra = {}) =>
     call('next', { sessionId: agent.id, requestId, ...route, reasoningEffort, ...extra })
@@ -312,4 +313,29 @@ test('failed persisted reset retains unsaved statistics for a safe retry', async
   assert.equal(after.status, 200)
   assert.equal(after.body.requests.session['balanced-v2'].requests, 2,
     'failed reset must never discard already accumulated requests')
+})
+
+test('statistics remain owner-only and plugin-owned success and failure replies are non-cacheable', async t => {
+  const h = await host(t)
+  const agent = await h.create('ar-private-statistics')
+  agent.followup(prompt(ids[0]))
+  await agent.whenIdle()
+  const viewer = { principal: { kind: 'viewer' } }
+  for (const path of ['stats', 'stats/reset']) {
+    assert.equal((await h.call(path, {}, viewer)).status, 403)
+    const invalid = await h.call(path, { unexpected: 'fixture' }, undefined, true)
+    assert.equal(invalid.status, 400)
+    assert.equal(invalid.cacheControl, 'no-store')
+  }
+  const before = await h.call('stats', {}, undefined, true)
+  assert.equal(before.status, 200)
+  assert.equal(before.cacheControl, 'no-store')
+  assert.equal(before.body.messages, 1)
+  const reset = await h.call('stats/reset', {}, undefined, true)
+  assert.equal(reset.status, 200)
+  assert.equal(reset.cacheControl, 'no-store')
+  assert.equal(reset.body.messages, 0)
+  const invalid = await h.call('effort', {}, undefined, true)
+  assert.equal(invalid.status, 400)
+  assert.equal(invalid.cacheControl, 'no-store')
 })

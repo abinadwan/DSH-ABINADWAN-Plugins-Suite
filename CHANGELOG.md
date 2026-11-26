@@ -2,6 +2,24 @@
 
 All notable changes are documented here.
 
+## [1.1.3] — development candidate (unreleased)
+
+- **Environment & Context — phase 3.5:** require ready native Session-list admission before displaying summaries or projections; exclude ambiguous Workspace associations; invalidate previously observed snapshots and old-seat live projection bindings on connection changes; reject error-state projections and invalid token values; fence pending auto-open timers by connection generation. Preserve read-only behavior, native DSH authorization and the independently controlled Component lifecycle.
+- Branch `fix/v1.1.3-environment-context-privacy`, baseline `11a7b486383ffaea72e06cd062153699e7e88154`. Align package, lockfile, client and documentation; add regression fixtures for admission, Workspace ambiguity, connection changes and malformed projections. CI and Desktop acceptance pending. No new filesystem access, external requests or native permissions. Existing seats depend on refreshed native list metadata after a connection change; no guarantee beyond the native DSH authorization and snapshot contracts is claimed.
+
+## [1.1.2] — development candidate (unreleased)
+
+- **Adaptive Reasoning — phase 3.4:** refuse non-private or foreign-owned existing statistics files on POSIX without changing permissions; retain inherited Windows ACLs and native atomic writes. Set no-store on all plugin-owned responses, limit transient usage/route metadata to required fields, omit new URL-like or control-character route identifiers, saturate counters within safe numeric bounds, and discard previous-connection statistics replies. Native owner authorization remains authoritative; add owner/viewer, persistence, counter and reconnect regression coverage.
+- Branch `fix/v1.1.2-adaptive-reasoning-security`, baseline `9a92daba6d32246cb5d60c23eae7fc085397864b`. Align package, lockfile, client and documentation. CI passed 8/8 at `8ae57d3420acf4c41504b373a56f5e5f2eab0058`; [PR #83](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/83) merged into develop. Local Desktop acceptance remains pending. Existing valid historical route labels are retained; custom identifiers may contain personal information, and no general secret detection, Windows ACL isolation or atomic cancellation of an already-started native action is claimed. No release is published.
+
+## [1.1.1] — development candidate (unreleased)
+
+- **My Profile — phase 3.1:** improve saved response-preference wording and context handling, with synthetic request and local-model regression evidence; preserve explicit sharing and native Settings contracts. Model adherence remains sample-specific. [Integrated changes (PR #80)](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/80).
+- **Direct Chat — phase 3.2:** reduce inherited tool visibility where supported; retain execution-denial guards; use native Workspace membership, canonical paths and persistent hashed identity markers; reject conflicting catalog membership and stale Session actions; validate existing POSIX directories and redact preparation failures. Windows ACL inheritance, incomplete tool-definition hiding and unverified final local retest remain documented limitations. [PR #78](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/78) · [PR #79](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/79).
+- **Archive Manager — phase 3.3:** validate bounded protection records, reject superseded catalog replies, disable mutations during refresh, require fresh native and ready local membership before restore, and reread saved protection before and after Direct Chat rename reference acquisition. Retain revision-checked writes and inert legacy fields. No native atomic protection boundary or deletion is introduced. [PR #82](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/82), branch `fix/v1.1.1-archive-manager-security`.
+- **Maintenance:** split browser sources into deterministic fragments, consolidate current documentation and expand regression coverage.
+- Align source package, lockfile, generated client version and documentation at `1.1.1`. Archive Manager functional changes passed 8/8 CI checks at `b394466296f8576667635ba230ebc6b9c94cb89b`; version-alignment checks passed 8/8 at `73d6e94f4b323bc3ac234d1215a4bbfdd6923204` and PR #82 was merged into develop. Local Desktop acceptance is not established. The latest published release remains v1.1.0; publishing v1.1.1 requires separate owner approval.
+
 ## [1.1.0] — release source (2026-11-25)
 
 - Align package, lockfile and browser update metadata at `1.1.0`. Publication is a separate GitHub Release action; the owner approved the release scope on 2026-11-25.

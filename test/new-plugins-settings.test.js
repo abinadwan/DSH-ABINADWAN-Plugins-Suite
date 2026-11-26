@@ -302,6 +302,43 @@ test('a background catalog refresh keeps the search focus and verifies native up
   assert.match(hub().textContent, /No archived conversations/)
 })
 
+test('an invalidated archive read cannot publish superseded results or enable mutations', async t => {
+  let wait = false
+  const pending = []
+  const { hub, fixture, settings } = await mountArchive(t, {
+    onUnarchive: () => assert.fail('A superseded archive cannot restore'),
+    readArchiveSessions: () => wait ? new Promise(resolve => pending.push(resolve)) : undefined,
+  })
+  const checkbox = () => protectionCheckbox(hub(), 'Protect Zulu report')
+  assert.ok(checkbox() && !checkbox().disabled)
+  wait = true
+  await act(async () => fixture.sessions.set({ ...fixture.sessions.getSnapshot() }))
+  assert.equal(pending.length, 1)
+  assert.equal(checkbox().disabled, true)
+  await act(async () => fixture.sessions.set({ ...fixture.sessions.getSnapshot() }))
+  await act(async () => pending.shift()(ok({ items: [{ sessionId: 's1', blank: false, running: false,
+    projections: { values: { title: 'Superseded title' } } }] })))
+  assert.equal(pending.length, 1)
+  assert.doesNotMatch(hub().textContent, /Superseded title/)
+  assert.equal(checkbox().disabled, true)
+  assert.equal(archiveButton(hub(), 'Restore').disabled, true)
+  assert.deepEqual(settings.writes, [])
+  wait = false
+  await act(async () => pending.shift()(ok({ items: [] })))
+  assert.match(hub().textContent, /No archived conversations/)
+  assert.doesNotMatch(hub().textContent, /Zulu report|Superseded title/)
+})
+
+test('malformed protection records do not expose archive controls or permit writes', async t => {
+  const settings = settingsFixture('conversation-lifecycle', { ...archiveRecord, protectedIds: 's1' })
+  const { hub } = await mountArchive(t, { settings: settings.service,
+    onUnarchive: () => assert.fail('Malformed protection cannot restore') })
+  assert.match(hub().textContent, /Archive catalog unavailable/)
+  assert.equal(hub().querySelector('input[type=checkbox]'), null)
+  assert.equal(archiveButton(hub(), 'Restore'), undefined)
+  assert.deepEqual(settings.writes, [])
+})
+
 test('the archive reads the current native catalog even if the shared Session cache is still pending', async t => {
   const { hub } = await mountArchive(t, {
     sessions: { phase: 'pending', ids: [], byId: {} },
@@ -343,6 +380,25 @@ test('restore rereads protection saved during catalog verification even without 
   await act(async () => releaseCatalog())
   assert.deepEqual(calls, [])
   assert.match(hub().textContent, /conversation or your access changed/)
+})
+
+test('restore requires matching ready local membership and authorized Session inventory', async t => {
+  const calls = []
+  const { hub, fixture } = await mountArchive(t, {
+    onUnarchive: async id => calls.push(id),
+    readArchiveSessions: async () => ok({ items: [{ sessionId: 's1', blank: false, running: false,
+      projections: { values: { title: 'Zulu report' } } }] }),
+    sessions: { phase: 'pending', ids: [], byId: {} },
+  })
+  await act(async () => archiveButton(hub(), 'Restore').click())
+  await act(async () => archiveButton(hub(), 'Confirm restore').click())
+  assert.deepEqual(calls, [])
+  assert.match(hub().textContent, /conversation or your access changed/)
+  await act(async () => fixture.sessions.set({ phase: 'ready', ids: ['s1'],
+    byId: { s1: { id: 's1', blank: false, running: false, title: 'Zulu report' } } }))
+  await act(async () => archiveButton(hub(), 'Restore').click())
+  await act(async () => archiveButton(hub(), 'Confirm restore').click())
+  assert.deepEqual(calls, ['s1'])
 })
 
 test('native restore failure leaves the row and count intact and disable releases its lifecycle', async t => {
@@ -481,17 +537,17 @@ function reasoningFixture({ record = { preferences: [] }, handlers = {} } = {}) 
       const path = url.pathname.replace('/api/abinadwan-reasoning/', '')
       const body = JSON.parse(options.body)
       calls.push({ path, body })
-      return handlers[path]?.(body) ?? Response.json({ error: 'unexpected' }, { status: 500 })
+      return handlers[path]?.(body, options) ?? Response.json({ error: 'unexpected' }, { status: 500 })
     },
   } }
 }
 
 async function openReasoning(t, fixture) {
-  const { div } = await mount(t, fixture.options, 'adaptive-reasoning', 'conversation.input.right')
+  const { div, fixture: browser } = await mount(t, fixture.options, 'adaptive-reasoning', 'conversation.input.right')
   const trigger = () => div.querySelector('button[aria-haspopup=menu]')
   const open = () => act(async () => trigger().click())
   const item = label => [...div.querySelectorAll('[role=menuitem]')].find(button => button.textContent === label)
-  return { div, trigger, open, item }
+  return { div, trigger, open, item, browser }
 }
 
 test('legacy policy settings leave the composer on explicit session effort', async t => {
@@ -595,7 +651,7 @@ test('Direct Chat history filters authorized metadata, pages it, and keeps nativ
   const ids = Array.from({ length: 60 }, (_, index) => 'chat-' + index)
   const entries = ids.map((id, index) => [id, { id, title: 'Chat ' + index, displayTitle: 'Chat ' + index,
     running: false, updatedAt: index + 1 }])
-  const settings = settingsFixture('conversation-lifecycle', { retention: 'forever', overrides: [], protectedIds: ['chat-59'] })
+  const settings = settingsFixture('conversation-lifecycle', { ...archiveRecord, protectedIds: ['chat-59'] })
   const opened = [], renames = []
   const { div, window } = await mount(t, {
     settings: settings.service, hostLocale: 'en',
@@ -658,6 +714,26 @@ test('Direct Chat history filters authorized metadata, pages it, and keeps nativ
   await act(async () => button('Chat 41').click())
   assert.deepEqual(opened, ['chat-41'])
   assert.equal(dialog(), null)
+})
+
+test('Direct Chat incomplete protection retains known protected labels and disables rename', async t => {
+  const ids = ['protected-chat', 'ordinary-chat']
+  const settings = settingsFixture('conversation-lifecycle', { protectedIds: [ids[0]] })
+  const { div } = await mount(t, {
+    settings: settings.service, hostLocale: 'en',
+    workspaceItems: [{ workspaceId: 'direct', title: 'Direct Chat', sessionIds: ids }],
+    sessions: { phase: 'ready', ids, byId: {
+      [ids[0]]: { id: ids[0], title: 'Protected example', blank: false },
+      [ids[1]]: { id: ids[1], title: 'Ordinary example', blank: false },
+    } },
+    onSessionUsing: () => assert.fail('Incomplete protection must not acquire a reference'),
+    fetch: async () => Response.json({ workspaceId: 'direct' }),
+  }, 'direct-chat', 'sidebar.session.action')
+  await act(async () => div.querySelector('button[aria-label="Direct Chat history"]').click())
+  const dialog = div.querySelector('[role=dialog]')
+  assert.match(dialog.textContent, /Protected example.*Protected/)
+  assert.match(dialog.textContent, /Ordinary example/)
+  assert.equal(dialog.querySelector('button[aria-label^="Rename "]'), null)
 })
 
 test('Direct Chat title search reacts when the Host supplies previously unavailable metadata', async t => {
@@ -1004,4 +1080,24 @@ test('a delayed effort acknowledgement cannot appear on a different route', asyn
   await act(async () => acknowledge())
   assert.equal(div.querySelector('button[aria-haspopup=menu]').textContent, 'Balanced')
   assert.doesNotMatch(div.textContent, /Effort changed\.|Harness could not change the effort/)
+})
+
+test('statistics discard replies from a previous connection generation', async t => {
+  const counts = { since: '2026-11-20T08:00:00.000Z', persistent: true, messages: 0,
+    requests: { session: {}, subagent: {} } }
+  const requests = []
+  const fixture = reasoningFixture({ handlers: { stats: (_body, options) =>
+    new Promise(resolve => requests.push({ resolve, signal: options.signal })) } })
+  const view = await openReasoning(t, fixture)
+  await view.open()
+  await act(async () => view.item('Reasoning statistics…').click())
+  assert.equal(requests.length, 1)
+  await act(async () => view.browser.ctx.emit('connection/reset'))
+  assert.equal(requests[0].signal.aborted, true)
+  assert.equal(requests.length, 2)
+  await act(async () => requests[1].resolve(Response.json({ ...counts, messages: 7 })))
+  await act(async () => requests[0].resolve(Response.json({ ...counts, messages: 99 })))
+  const dialog = view.div.querySelector('[role=dialog]')
+  assert.match(dialog.textContent, /Total7/)
+  assert.doesNotMatch(dialog.textContent, /Total99/)
 })

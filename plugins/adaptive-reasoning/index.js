@@ -4,6 +4,11 @@ import { ReasoningStats } from './stats.js'
 import { classify, effortForTier, TIERS } from './classify.js'
 import { mergeCounters, openReasoningStats } from './storage.js'
 
+// Every plugin-owned response is non-cacheable, including refusals.
+const jsonResponse = (body, init = {}) => Response.json(body, {
+  ...init, headers: { ...init.headers, 'cache-control': 'no-store' },
+})
+
 export const name = 'abinadwan-adaptive-reasoning'
 const identifier = Schema.string().min(1).max(256).required()
 export const Config = Schema.object({
@@ -51,13 +56,16 @@ export function apply(ctx, config) {
     // the file is temporarily unavailable.
     if (profile) void disk().catch(() => {})
 
-    function snapshot(reset = false) {
+    function snapshot(reset = false, signal) {
+      signal?.throwIfAborted()
       if (!profile) {
         if (reset) stats.reset()
         return Promise.resolve(stats.snapshot())
       }
       const operation = operations.then(async () => {
+        signal?.throwIfAborted()
         const target = await disk()
+        signal?.throwIfAborted()
         // A failed reset must not discard unsaved in-memory counters. Reset
         // local state only after the protected Profile transaction succeeds.
         if (reset) {
@@ -91,11 +99,12 @@ export function apply(ctx, config) {
       timer.unref()
     }
     async function statsResponse(request, reset) {
-      if (!await readObject(request, [])) return Response.json({ error: 'invalid-request' }, { status: 400 })
+      if (!await readObject(request, [])) return jsonResponse({ error: 'invalid-request' }, { status: 400 })
       try {
-        return Response.json(await snapshot(reset), { headers: { 'cache-control': 'no-store' } })
+        if (!revisions.active || request.signal.aborted) return jsonResponse({ error: 'statistics-unavailable' }, { status: 409 })
+        return jsonResponse(await snapshot(reset, request.signal))
       } catch {
-        return Response.json({ error: 'statistics-storage-unavailable' }, { status: 503 })
+        return jsonResponse({ error: 'statistics-storage-unavailable' }, { status: 503 })
       }
     }
     route('/api/abinadwan-reasoning/stats', request => statsResponse(request, false))
@@ -127,12 +136,12 @@ export function apply(ctx, config) {
 async function recommend(request, agents, llm, record, revisions) {
   const input = await readObject(request, ['sessionId', 'provider', 'model', 'sample'], {},
     { bytes: 32768, fields: { sample: 4000 } })
-  if (!input || !input.sample.trim()) return Response.json({ error: 'invalid-request' }, { status: 400 })
-  if (record().mode !== 'adaptive') return Response.json({ error: 'recommendations-disabled' }, { status: 409 })
+  if (!input || !input.sample.trim()) return jsonResponse({ error: 'invalid-request' }, { status: 400 })
+  if (record().mode !== 'adaptive') return jsonResponse({ error: 'recommendations-disabled' }, { status: 409 })
   const agent = agents.get(input.sessionId)
   const current = agent?.model.current()
   if (!agent || isSubagent(agent) || !sameRoute(current, input)) {
-    return Response.json({ error: 'session-unavailable' }, { status: 409 })
+    return jsonResponse({ error: 'session-unavailable' }, { status: 409 })
   }
   const adapterRevision = revisions.adapters
   const selectionRevision = revisions.selections.get(agent.session)
@@ -143,18 +152,18 @@ async function recommend(request, agents, llm, record, revisions) {
     if (!revisions.active || agents.get(input.sessionId) !== agent || revisions.adapters !== adapterRevision ||
         revisions.selections.get(agent.session) !== selectionRevision || record().mode !== 'adaptive' ||
         !sameRoute(latest, current) || latest.reasoningEffort !== current.reasoningEffort) {
-      return Response.json({ error: 'route-changed' }, { status: 409 })
+      return jsonResponse({ error: 'route-changed' }, { status: 409 })
     }
     const efforts = model?.reasoning?.efforts.map(row => row.id) ?? []
-    if (!efforts.length || latest.reasoningEffort !== undefined && !efforts.includes(latest.reasoningEffort)) return Response.json({ error: 'unsupported-effort' }, { status: 422 })
+    if (!efforts.length || latest.reasoningEffort !== undefined && !efforts.includes(latest.reasoningEffort)) return jsonResponse({ error: 'unsupported-effort' }, { status: 422 })
     const { tier, signals } = classify(input.sample)
-    return Response.json({
+    return jsonResponse({
       tier: TIERS[tier], signals,
       recommendation: latest.reasoningEffort ?? effortForTier(tier, efforts),
       source: latest.reasoningEffort === undefined ? 'classifier' : 'manual',
     }, { headers: { 'cache-control': 'no-store' } })
   } catch {
-    return Response.json({ error: 'selection-unavailable' }, { status: 422 })
+    return jsonResponse({ error: 'selection-unavailable' }, { status: 422 })
   }
 }
 
@@ -162,40 +171,40 @@ async function recommend(request, agents, llm, record, revisions) {
 // message-bound effort requests before storing any state or touching a session.
 async function unavailable(request, keys) {
   const input = await readObject(request, keys)
-  if (!input || !uuid.test(input.requestId)) return Response.json({ error: 'invalid-request' }, { status: 400 })
-  return Response.json({ error: 'request-local-effort-unavailable' }, { status: 501 })
+  if (!input || !uuid.test(input.requestId)) return jsonResponse({ error: 'invalid-request' }, { status: 400 })
+  return jsonResponse({ error: 'request-local-effort-unavailable' }, { status: 501 })
 }
 
 /** Apply to a resident root Agent without changing the native default for other sessions. */
 async function applySessionEffort(request, agents, llm, readPreferences, revisions) {
   const input = await readObject(request, ['sessionId', 'provider', 'model', 'reasoningEffort'], { mode: 'manual' })
-  if (!input) return Response.json({ error: 'invalid-selection' }, { status: 400 })
+  if (!input) return jsonResponse({ error: 'invalid-selection' }, { status: 400 })
   const { sessionId, mode, ...selection } = input
   const agent = agents.get(sessionId)
-  if (!agent || isSubagent(agent)) return Response.json({ error: 'session-unavailable' }, { status: 409 })
+  if (!agent || isSubagent(agent)) return jsonResponse({ error: 'session-unavailable' }, { status: 409 })
   const current = agent.model.current()
-  if (!sameRoute(current, selection)) return Response.json({ error: 'route-changed' }, { status: 409 })
+  if (!sameRoute(current, selection)) return jsonResponse({ error: 'route-changed' }, { status: 409 })
   const adapterRevision = revisions.adapters
   const selectionRevision = revisions.selections.get(agent.session)
   try {
     await llm.resolveCallConfig(selection, request.signal)
     request.signal.throwIfAborted()
-    if (!revisions.active) return Response.json({ error: 'session-unavailable' }, { status: 409 })
-    if (revisions.adapters !== adapterRevision) return Response.json({ error: 'capability-changed' }, { status: 409 })
+    if (!revisions.active) return jsonResponse({ error: 'session-unavailable' }, { status: 409 })
+    if (revisions.adapters !== adapterRevision) return jsonResponse({ error: 'capability-changed' }, { status: 409 })
     const latest = agent.model.current()
     if (agents.get(sessionId) !== agent || revisions.selections.get(agent.session) !== selectionRevision ||
         !sameRoute(latest, selection) || latest.reasoningEffort !== current.reasoningEffort) {
-      return Response.json({ error: 'route-changed' }, { status: 409 })
+      return jsonResponse({ error: 'route-changed' }, { status: 409 })
     }
     if (mode !== 'manual') {
       const saved = readPreferences().filter(row => sameRoute(row, selection))
       if (saved.length !== 1 || saved[0].effort !== selection.reasoningEffort) {
-        return Response.json({ error: 'preference-changed' }, { status: 409 })
+        return jsonResponse({ error: 'preference-changed' }, { status: 409 })
       }
     }
     agent.model.select(selection)
-    return Response.json({ selected: selection })
+    return jsonResponse({ selected: selection })
   } catch {
-    return Response.json({ error: 'selection-unavailable' }, { status: 422 })
+    return jsonResponse({ error: 'selection-unavailable' }, { status: 422 })
   }
 }

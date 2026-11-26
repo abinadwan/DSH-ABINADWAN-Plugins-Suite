@@ -13,9 +13,14 @@ const count = value => Number.isSafeInteger(value) && value >= 0
 const label = value => typeof value === 'string' && value.length > 0 && value.length <= 256
 const routeKey = ({ scope, provider, model, effort }) => JSON.stringify([scope, provider, model, effort])
 
+// POSIX mode bits have no equivalent owner-only guarantee on Windows.
+function privateFile(stat) {
+  return typeof process.geteuid !== 'function' || (stat.uid === process.geteuid() && (stat.mode & 0o077) === 0)
+}
+
 function readBucket(value) {
   if (!object(value) || !fields.every(key => key === 'durationMs'
-    ? Number.isFinite(value[key]) && value[key] >= 0 : count(value[key]))) throw new Error('invalid-stats')
+    ? Number.isFinite(value[key]) && value[key] >= 0 && value[key] <= Number.MAX_SAFE_INTEGER : count(value[key]))) throw new Error('invalid-stats')
   return Object.fromEntries(fields.map(key => [key, value[key]]))
 }
 
@@ -49,11 +54,11 @@ async function readState(filename) {
     throw error
   })
   if (!stat) return { version: 1, epoch: 'initial', counters: readCounters(new ReasoningStats().snapshot()) }
-  if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1 || stat.size > MAX_BYTES) throw new Error('invalid-stats')
+  if (!stat.isFile() || stat.isSymbolicLink() || stat.nlink !== 1 || stat.size > MAX_BYTES || !privateFile(stat)) throw new Error('invalid-stats')
   const file = await open(filename, 'r')
   try {
     const actual = await file.stat()
-    if (stat.dev !== actual.dev || stat.ino !== actual.ino || actual.nlink !== 1 || actual.size !== stat.size) throw new Error('invalid-stats')
+    if (stat.dev !== actual.dev || stat.ino !== actual.ino || !actual.isFile() || actual.nlink !== 1 || actual.size !== stat.size || !privateFile(actual)) throw new Error('invalid-stats')
     const bytes = Buffer.alloc(stat.size + 1)
     const { bytesRead } = await file.read(bytes, 0, bytes.length, 0)
     if (bytesRead !== stat.size) throw new Error('invalid-stats')
@@ -98,7 +103,8 @@ export async function openReasoningStats(profileDir) {
     const lock = await lstat(filename + '.lock').catch(error => {
       if (error.code !== 'ENOENT') throw error
     })
-    if (lock && (!lock.isFile() || lock.isSymbolicLink() || lock.nlink !== 1 || lock.size > 32)) throw new Error('invalid-stats-lock')
+    if (lock && (!lock.isFile() || lock.isSymbolicLink() || lock.nlink !== 1 || lock.size > 32 ||
+      (typeof process.geteuid === 'function' && lock.uid !== process.geteuid()))) throw new Error('invalid-stats-lock')
     return withFileLock(filename, operation, { waitMs: 2000 })
   }
   let { epoch } = await locked(() => readState(filename))

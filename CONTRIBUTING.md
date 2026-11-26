@@ -21,6 +21,12 @@ npm run check:package
 
 The package ships JavaScript directly. CI exercises Windows/Linux on Node 22/24, real Cordis/DSH service integration, browser lifecycle fixtures, React rendering and the extracted npm artifact. Record the DSH version and profile for any additional Desktop verification.
 
+## Versioned branches and change records
+
+Every new work branch must include its assigned SemVer target, for example `fix/v1.1.1-archive-manager-security`. Use the next available version appropriate to the scope (patch for fixes, minor for backward-compatible features, major for incompatible changes). Coordinate parallel branches against the same planned release version rather than assigning conflicting versions; do not reuse a published version for changed release content.
+
+At branch creation, record its version, scope and baseline in the PR or change record. Before review/merge, align `package.json`, root package version entries in `package-lock.json`, `client-src/update.js.inc`, the generated `client.js` and current-source documentation. Run `npm run build:client` or regenerate the matching carrier and verify it with `npm run check:client`. Record the implemented improvements, tests and limitations under the corresponding version in `CHANGELOG.md`; link the branch/PR and retain verification evidence in `docs/IMPROVEMENTS.md` when appropriate. Documentation-only changes may use the current planned version without an artificial package bump. Keep published-release badges and install links tied to actual releases. A branch, version bump or merge does not authorize a new tag or GitHub Release.
+
 ## Licensing
 
 Contributions use the project's MIT License unless explicitly agreed otherwise. [License](LICENSE)
