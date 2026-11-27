@@ -32,7 +32,7 @@ test('phase 08: all six independent components remain exported and ship their ic
 
 test('phase 08: stable release badge and source package version remain consistent', () => {
   assert.match(pkg.version, /^\d+\.\d+\.\d+(?:-rc\.\d+)?$/)
-  assert.match(read('README.md'), /release-v1\.1\.3/)
+  assert.ok(read('README.md').includes('release-v' + pkg.version + '-'), 'release badge version mismatch')
   assert.doesNotMatch(read('README.md'), /release-v1\.0\.1/)
   if (sourceCheckout) {
     const lock = JSON.parse(read('package-lock.json'))
