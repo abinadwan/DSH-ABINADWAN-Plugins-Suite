@@ -22,6 +22,16 @@ npm run check:package
 
 CI also exercises pinned Harness Host contracts on Windows/Ubuntu and Node 22/24. Native Desktop acceptance is separate from automated CI. Record the exact artifact SHA, Host, OS, scope and observed outcomes. Use disposable Profiles and synthetic data.
 
+## Scope of responsibility — performance and subsequent phases
+
+The suite owns its plugin code, lifecycle, resource usage, request construction, storage, context additions, UI and its side of documented native integration. DSH internals, model inference, provider latency, Ollama, network, OS and hardware are external. Investigate an external symptom only far enough to isolate the suite's contribution; record external limits rather than repair upstream. Never weaken admission, privacy, cancellation, freshness or persistence checks merely to reduce work.
+
+Phase 04 (target v1.2.1) reviews each component once against applicable startup, memory/CPU, operations/requests, token/context and UI responsiveness criteria. Establish a reproducible baseline for each proposed optimization, compare the same workload after changes, and run only affected regression paths (mandatory repository CI still applies). Classify findings as healthy, improvement needed, not applicable, external or verification required. Reuse earlier accepted evidence; reserve native Desktop/model checks for affected behavior that cannot be verified in automation. Owner approval is required for material scope expansion, promotion or release.
+
+### Phase 04 — initial Archive Manager candidate
+
+The previous ArchivePage memo called the full authorized conversation inventory twice for the same workspace/session snapshot: once for archived rows and once for saved protection rows. The candidate shares that inventory within a single memo evaluation (two traversals to one; 50% fewer inventory builds, not a measured wall-clock or total CPU reduction). Action-time restore validation still builds fresh inventories; filtering, duplicate ownership exclusions, protection semantics and Host authorization are unchanged. The focused synthetic test counts traversals and verifies archived/protected membership. Native latency and CI results are not established by this source-level observation.
+
 ## Verification boundaries
 
 - Direct Chat: the owner accepted title-search scope up to 1,000 registered Sessions in v1.0.2. The 10,000-Session stress test failed (8,185 titles available), not a Host fix. [H04 evidence](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/98c27e87e216f11000ab92adcb79d51388031a28/docs/DSH_H04_SEARCH_SCOPE_AND_HIGH_LOAD_RESULT_V1.0.2.md). Tool denial is policy, not OS isolation.

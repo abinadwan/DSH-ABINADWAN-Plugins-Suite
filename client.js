@@ -2869,7 +2869,7 @@ window.__ModuleLoader__.load({
         reload: () => { revision.current++; setAttempt(value => value + 1) } }
     }
 
-    function archiveInventory(workspaces, sessions, record) {
+    function archiveInventory(workspaces, sessions, record, admittedRows = conversationInventory(workspaces, sessions, null).rows) {
       const archived = new Set(workspaces.archivedSessionIds)
       const pinned = new Set(workspaces.pinnedSessionIds)
       const protectedIds = new Set(record.protectedIds)
@@ -2880,7 +2880,7 @@ window.__ModuleLoader__.load({
         if (keys.has(workspaceId)) duplicateWorkspaces.add(workspaceId)
         keys.add(workspaceId)
       }
-      return conversationInventory(workspaces, sessions, null).rows
+      return admittedRows
         .filter(({ id, owner, legacyDirectChat }) => archived.has(id) && !legacyDirectChat && !duplicateWorkspaces.has(owner.workspaceId))
         .map(item => {
           const { id, row, owner, searchTitle } = item
@@ -3114,6 +3114,26 @@ window.__ModuleLoader__.load({
             message ? h('p', { role: message === 'failed' ? 'alert' : 'status' }, copy[message]) : null)))
     }
 
+    // Both lists derive from one authorized inventory snapshot; action-time validation stays independent.
+    function archivePageInventory(workspace, sessions, record) {
+      const admittedRows = conversationInventory(workspace, sessions, null).rows
+      const rows = archiveInventory(workspace, sessions, record, admittedRows)
+      const archivedIds = new Set(rows.map(row => row.id))
+      const flags = new Set(record.protectedIds)
+      const workspaceFlags = new Set(record.protectedWorkspaces)
+      const archivedWorkspaces = new Set(rows.map(row => row.owner.workspaceId))
+      const multiplicity = new Map()
+      for (const item of workspace.items) multiplicity.set(item.workspaceId, (multiplicity.get(item.workspaceId) ?? 0) + 1)
+      const unique = workspace.items.filter(item => multiplicity.get(item.workspaceId) === 1)
+      const uniqueIds = new Set(unique.map(item => item.workspaceId))
+      // Keep previous protection flags manageable even for non-archived
+      // sessions, but only with current authorized unique catalog membership.
+      const savedRows = admittedRows.filter(row =>
+        flags.has(row.id) && !archivedIds.has(row.id) && uniqueIds.has(row.owner.workspaceId))
+      const protectionWorkspaces = unique.filter(item => workspaceFlags.has(item.workspaceId) || archivedWorkspaces.has(item.workspaceId))
+      return { rows, savedRows, protectionWorkspaces }
+    }
+
     function ArchivePage({ services, useRemoteAccess }) {
       const language = useUiLanguage(services.locale)
       const settings = useSuiteRecord(services.settings, 'conversation-lifecycle', useRemoteAccess, services.connection)
@@ -3124,22 +3144,7 @@ window.__ModuleLoader__.load({
       const ready = authorized && Boolean(settings.source) && Boolean(generation) && catalog.status === 'ready'
       const inventory = React.useMemo(() => {
         if (!ready || !validArchiveProtectionRecord(settings.record)) return { rows: [], savedRows: [], protectionWorkspaces: [] }
-        const record = settings.record
-        const rows = archiveInventory(workspace, sessions, record)
-        const archivedIds = new Set(rows.map(row => row.id))
-        const flags = new Set(record.protectedIds)
-        const workspaceFlags = new Set(record.protectedWorkspaces)
-        const archivedWorkspaces = new Set(rows.map(row => row.owner.workspaceId))
-        const multiplicity = new Map()
-        for (const item of workspace.items) multiplicity.set(item.workspaceId, (multiplicity.get(item.workspaceId) ?? 0) + 1)
-        const unique = workspace.items.filter(item => multiplicity.get(item.workspaceId) === 1)
-        const uniqueIds = new Set(unique.map(item => item.workspaceId))
-        // Keep previous protection flags manageable even for non-archived
-        // sessions, but only with current authorized unique catalog membership.
-        const savedRows = conversationInventory(workspace, sessions, null).rows.filter(row =>
-          flags.has(row.id) && !archivedIds.has(row.id) && uniqueIds.has(row.owner.workspaceId))
-        const protectionWorkspaces = unique.filter(item => workspaceFlags.has(item.workspaceId) || archivedWorkspaces.has(item.workspaceId))
-        return { rows, savedRows, protectionWorkspaces }
+        return archivePageInventory(workspace, sessions, settings.record)
       }, [ready, workspace, sessions, settings.record])
       return h(ArchiveHub, { key: generation?.id ?? 'disconnected', services, generation, authorized, settings,
         catalog: { status: catalog.status, ...inventory, isCurrent: catalog.isCurrent, reload: catalog.reload }, language })

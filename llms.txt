@@ -33,6 +33,8 @@ My Profile settings and JSON backups are not encrypted by the suite. Data sent t
 
 ## Development and verification
 
+Performance scope: optimize the suite's own code, requests, context, lifecycle and UI; do not treat DSH internals, inference, provider latency, network or hardware as suite defects. Reuse verified evidence and run targeted affected regressions; preserve authorization, privacy and freshness. See the integration development guide for the Phase 04 scope.
+
 - [Integration branch README](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/develop/README.md): Current development workflow and build/test instructions.
 - [Integration component details](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/develop/docs/DETAIL.md): Current development contracts, including changes not yet released.
 - [Integration security policy](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/develop/SECURITY.md): Development revision security and privacy boundaries.
