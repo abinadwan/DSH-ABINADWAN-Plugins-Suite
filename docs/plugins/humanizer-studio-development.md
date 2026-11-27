@@ -17,7 +17,7 @@ Nine service templates, fixed system constraints, identity-free JSON user input,
 
 Native admission and observer fixtures use only synthetic text; no actual credentials or provider connection. Candidate HTTP module implements status/edit, strict streamed JSON cap of 96 KiB, non-cacheable replies, one active request per fiber, request/disposal/120-second deadline signal, and sanitized failures. The Host checks language ID syntax; live catalog membership is a Client UX check. A non-cooperative provider can hold the active slot after cancellation. Candidate Studio panel and routes are wired to the existing Humanizer component. Global catalog reads use native session.modelCatalog() without a Session identity; selection is transient and does not call session.selectModel. Page source/result are component memory only and clear on unmount or Host generation change. Explicit draft/history storage is implemented in a separate owner-only profile route, not invoked by processing. The UI exposes explicit Open saved items, Save/replace draft, Save to history, Restore, Delete and confirmed Delete all. No automatic load, write, restore or model request. A lost write reply closes saved items and requires explicit reload; no replay. Saved-item management does not depend on model-catalog success. History is an explicit editable snapshot, not verified model provenance. The storage fiber pins canonical Profile directory identity on first explicit access and rejects replacement or unsafe POSIX directory permissions. Checks reduce path races but do not constitute a filesystem sandbox. Old Host replies are fenced by connection generation. The candidate uses one draft, at most ten history items, 1 MiB file cap, revision-checked atomic updates, no automatic eviction, and an empty revision tombstone after clear-all. File contents are not encrypted; Windows ACLs are inherited and not independently enforced. Clear is logical deletion, not secure erasure of backups or filesystem remnants. Invalid/corrupt storage fails closed and requires manual recovery. CI evidence must be evaluated against its exact commit.
 
-## Remaining gates
+## Original remaining gates (historical plan; see owner closure below)
 
 - Validate wired owner-only route and page in native CI; verify connection lifetime in Desktop. No text in logs; no silent retry, hidden Session or direct provider fallback.
 - Installed DSH Desktop tests using synthetic sentinels, inspect session store, app diagnostics, browser storage, network/provider behavior, disable/reload/cancel and actual navigation placement. Provider-side retention cannot be guaranteed by this suite; present accurate warning before submit.
@@ -118,7 +118,7 @@ The round covers **9/9 services with at least one successful manual sample per s
 
 | ID | Disposition |
 | --- | --- |
-| HS-BUG-001 | Theme dropdown fix implemented earlier; owner continued testing; full Windows light/dark native popup retest not documented here. |
+| HS-BUG-001 | CLOSED by owner acceptance: light-mode test passed; prior theme-fix evidence retained. |
 | HS-BUG-002 | Timer fix exercised in Desktop: live display 3.50 s during Rewrite and completed duration 29.00 s; other terminal timings reported. Full cancellation/reconnect acceptance remains open. |
 | HS-09–11 | Copy controls, native conditional effort and requested effort/timing display implemented at 8ae827a. Visible effort and timing observed across models; native provider application and OS clipboard exactness/denial still require final verification. |
 | HS-OBS-001 | Closed by owner as model limitation; keep failed quality result in record. No change to Shorten instructions. |
@@ -127,7 +127,7 @@ The round covers **9/9 services with at least one successful manual sample per s
 
 Do not claim read-only prevents DevTools modification, tampering outside Studio or verifies provenance of saved history/externally published text. Explicit draft/history save and restore remain opt-in; old snapshots may contain user-edited result text from earlier candidates. No new persistent storage introduced by this fix. Do not store live user input automatically or include private source text in public evidence.
 
-#### Remaining release gates (not yet accepted)
+#### Historical remaining release gates (before owner security-scope closure below)
 
 - HS-BUG-003 focused acceptance completed (8/8 owner-reported); reuse existing regression evidence for restore, counters and clear. Do not repeat passed cases unless affected by a later change.
 - Separate actual OS clipboard denial and independent exactness evidence if required; normal copy accepted by owner. Model switch supported/unsupported, effort reset and native adapter effective effort verification; empty/oversize inputs; cancellation, errors and retry.
@@ -148,3 +148,7 @@ The installed DSH Desktop 0.2.2-rc.5 opened with the isolated candidate carrying
 ### HS-BUG-003 closure — owner Desktop acceptance, 2026-11-27
 
 The owner reported all eight focused checks passed following installation instructions for `6afb0e2`: no typing before/after processing, no paste/delete/cut, selection and manual copy work, Copy Result works, source editing works and result replacement works. **HS-BUG-003 is CLOSED.** See the [acceptance report](humanizer-studio-acceptance-report.md#hs-bug-003-closure--owner-desktop-acceptance-2026-11-27) for scope and evidence limits. The earlier blocked retest is retained; no code changes or redundant service tests are necessary. No change to other gates, Draft PR or stable release.
+
+### Owner-approved security-scope closure — 2026-11-27
+
+The owner confirmed HS-BUG-001 light-mode success and accepted existing native owner-only authorization, stale Host response/Profile isolation, no-auto-persistence (117-file scoped inspection), and tool-free prompt-injection evidence. Separate paired nonowner Desktop testing and the unestablished same-window Profile-switch scenario are excluded from this scope. Keep existing safeguards. Provider/middleware retention, OS boundaries and semantic model fidelity are not guaranteed. HS-BUG-003 remains closed 8/8. The [acceptance report](humanizer-studio-acceptance-report.md#owner-approved-security-scope-closure--2026-11-27) supersedes historical NO-GO gates for these items; unexecuted cases are not marked passed. No duplicate tests or runtime changes. Final promotion review and explicit approval remain separate.
