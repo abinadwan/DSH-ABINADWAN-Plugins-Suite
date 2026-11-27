@@ -267,7 +267,8 @@ test('Direct Chat open history follows seven native locales without reloading th
     assert.equal(q('input[type="search"]'), input)
     assert.ok(input.parentElement.textContent.includes(search))
     assert.equal(input.closest('[lang]').lang, lang)
-    assert.equal(input.closest('[dir]').dir, lang === 'ar' ? 'rtl' : 'ltr')
+    assert.equal(input.closest('[lang][dir]').dir, lang === 'ar' ? 'rtl' : 'ltr')
+    assert.equal(input.dir, 'auto', 'user-entered search stays direction-auto')
     assert.equal(catalogReads, reads, 'locale switch does not replay catalog request')
   }
 })

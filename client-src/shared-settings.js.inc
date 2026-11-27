@@ -215,7 +215,54 @@
         "Start or resume this chat before changing its effort.": "ابدأ المحادثة أو استأنفها قبل تغيير مستوى الاستدلال.",
         "Start or resume this chat before applying the saved effort.": "ابدأ المحادثة أو استأنفها قبل تطبيق المستوى المحفوظ."
     }
-    const uiCopy = (value, language) => language === 'ar' ? uiArabicLabels[value] ?? value : value
+    const suiteSettingsTranslations = {
+      "zh": {
+        "Loading settings…": "正在加载设置…",
+        "Settings unavailable.": "设置不可用。",
+        "Saving…": "正在保存…",
+        "Saved.": "已保存。",
+        "Save failed.": "保存失败。",
+        "Settings changed in another window. Reload before saving again.": "设置已在其他窗口中更改。请重新加载后再保存。",
+        "Reload settings": "重新加载设置"
+      },
+      "es": {
+        "Loading settings…": "Cargando ajustes…",
+        "Settings unavailable.": "Ajustes no disponibles.",
+        "Saving…": "Guardando…",
+        "Saved.": "Guardado.",
+        "Save failed.": "Error al guardar.",
+        "Settings changed in another window. Reload before saving again.": "Los ajustes cambiaron en otra ventana. Vuelve a cargarlos antes de guardar.",
+        "Reload settings": "Recargar ajustes"
+      },
+      "fr": {
+        "Loading settings…": "Chargement des paramètres…",
+        "Settings unavailable.": "Paramètres indisponibles.",
+        "Saving…": "Enregistrement…",
+        "Saved.": "Enregistré.",
+        "Save failed.": "Échec de l’enregistrement.",
+        "Settings changed in another window. Reload before saving again.": "Les paramètres ont changé dans une autre fenêtre. Rechargez-les avant d’enregistrer.",
+        "Reload settings": "Recharger les paramètres"
+      },
+      "de": {
+        "Loading settings…": "Einstellungen werden geladen…",
+        "Settings unavailable.": "Einstellungen nicht verfügbar.",
+        "Saving…": "Wird gespeichert…",
+        "Saved.": "Gespeichert.",
+        "Save failed.": "Speichern fehlgeschlagen.",
+        "Settings changed in another window. Reload before saving again.": "Die Einstellungen wurden in einem anderen Fenster geändert. Laden Sie sie vor dem Speichern neu.",
+        "Reload settings": "Einstellungen neu laden"
+      },
+      "ja": {
+        "Loading settings…": "設定を読み込み中…",
+        "Settings unavailable.": "設定は利用できません。",
+        "Saving…": "保存中…",
+        "Saved.": "保存しました。",
+        "Save failed.": "保存に失敗しました。",
+        "Settings changed in another window. Reload before saving again.": "別のウィンドウで設定が変更されました。保存する前に再読み込みしてください。",
+        "Reload settings": "設定を再読み込み"
+      }
+    }
+    const uiCopy = (value, language) => language === 'ar' ? uiArabicLabels[value] ?? value : suiteSettingsTranslations[language]?.[value] ?? value
     // Only migrated components use the seven-language resolver until their catalogs are complete.
     const suiteNativeUiLanguage = snapshot => {
       const current = snapshot?.active ?? globalThis.document?.documentElement.lang

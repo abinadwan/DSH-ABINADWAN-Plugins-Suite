@@ -33,7 +33,7 @@
           props => h(ArchivePage, { ...props, services })))
         ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({ name: 'sidebar.panellist',
           id: archivePanel, order: 100,
-          label: () => archiveCopy[uiLanguage(services.locale?.getSnapshot?.())].navigation },
+          label: () => archiveCopy[suiteNativeUiLanguage(services.locale?.getSnapshot?.())].navigation },
           ({ size }) => h('svg', { width: size, height: size, viewBox: '0 0 24 24', fill: 'none',
             stroke: 'currentColor', strokeWidth: pluginGlyphStrokeWidth, strokeLinecap: 'round',
             strokeLinejoin: 'round', 'aria-hidden': true },

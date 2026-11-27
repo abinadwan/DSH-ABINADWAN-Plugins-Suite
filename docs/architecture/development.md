@@ -75,7 +75,11 @@ Initial review: shared uiLanguage collapses non-Arabic languages to English; Arc
 
 ### Phase 05 — Direct Chat candidate
 
-Translate all 25 Direct Chat action/history dictionary entries into the five additional known Host languages, keeping existing Arabic/English and switching through the migrated native locale resolver. Locale-aware pagination; preserve the canonical native Workspace title, opaque Session IDs, authorization and request behavior. Real React fixture switches all seven locales while history is open, checking translated labels, direction, stable search element and unchanged catalog request count. Plugin Manager metadata and Desktop acceptance remain separate.
+Translate all 26 Direct Chat action/history dictionary entries into the five additional known Host languages, keeping existing Arabic/English and switching through the migrated native locale resolver. Locale-aware pagination; preserve the canonical native Workspace title, opaque Session IDs, authorization and request behavior. Real React fixture switches all seven locales while history is open, checking translated labels, direction, stable search element and unchanged catalog request count. Plugin Manager metadata and Desktop acceptance remain separate.
+
+### Phase 05 — Archive Manager candidate
+
+Add five additional locale dictionaries to the existing English/Arabic Archive catalog (45 keys including locale-aware counts). Use the migrated locale resolver for mounted hub and native navigation title; translate shared settings status/feedback in five additional languages. Existing search filters, authorization, protection records, action-time restore checks and Host lifecycle are unchanged. Real React test switches all seven known languages with a filtered protected row and verifies stable search input, navigation title, disabled restore and no settings writes. Correct Direct Chat test selector to inspect its enclosing interface direction instead of the intentionally direction-auto search input; CI 46076121973 had failed only that assertion. Native Desktop acceptance and Plugin Manager metadata remain pending.
 
 ## Verification boundaries
 
