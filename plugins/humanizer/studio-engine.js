@@ -41,10 +41,11 @@ function selectLocale(value, sentinel, locales) {
 
 export function buildStudioRequest(input, locales, signal) {
   if (!input || typeof input !== 'object' || Array.isArray(input)) fail('STUDIO_INVALID_REQUEST')
-  const keys = ['service', 'provider', 'model', 'sourceText', 'inputLanguage', 'outputLanguage', 'editingBrief']
+  const keys = ['service', 'provider', 'model', 'sourceText', 'inputLanguage', 'outputLanguage', 'editingBrief', 'reasoningEffort']
   if (Object.keys(input).some(key => !keys.includes(key)) ||
     !keys.slice(0, 6).every(key => Object.hasOwn(input, key))) fail('STUDIO_INVALID_REQUEST')
-  const { service, provider, model, sourceText, inputLanguage, outputLanguage, editingBrief } = input
+  const { service, provider, model, sourceText, inputLanguage, outputLanguage, editingBrief, reasoningEffort } = input
+  if(Object.hasOwn(input,'reasoningEffort')&&!routeText(reasoningEffort))fail('STUDIO_INVALID_EFFORT')
   if (typeof service !== 'string' || !Object.hasOwn(operations, service) || !routeText(provider) || !routeText(model)) fail('STUDIO_INVALID_REQUEST')
   if (!validText(sourceText, STUDIO_LIMITS.source)) fail('STUDIO_INVALID_SOURCE')
   if (service === 'custom' ? !validText(editingBrief, STUDIO_LIMITS.brief) : editingBrief !== undefined) fail('STUDIO_INVALID_BRIEF')
@@ -59,7 +60,7 @@ export function buildStudioRequest(input, locales, signal) {
   const block = Object.freeze({ type: 'text', text: JSON.stringify(payload) })
   const message = Object.freeze({ role: 'user', content: Object.freeze([block]) })
   return Object.freeze({
-    provider, model, system: policy + '\nOperation: ' + operations[service],
+    provider, model, ...(reasoningEffort===undefined?{}:{reasoningEffort}), system: policy + '\nOperation: ' + operations[service],
     maxTokens: STUDIO_LIMITS.maxTokens, tools: Object.freeze([]), signal,
     messages: Object.freeze([message]),
   })
@@ -75,6 +76,16 @@ export async function runStudioEdit(llm, input, locales, signal) {
   catch { fail('STUDIO_CATALOG_FAILED') }
   if (signal.aborted) fail('STUDIO_CANCELLED')
   if (!Array.isArray(models) || !models.some(entry => entry.provider === request.provider && entry.id === request.model)) fail('STUDIO_MODEL_UNAVAILABLE')
+  // Recheck the opaque effort against the current exact native route.
+  // Native llm.stream also validates it against its prepared adapter metadata.
+  if(request.reasoningEffort!==undefined){
+    let info
+    try{info=await llm.resolveModelInfo(request.provider,request.model,signal)}
+    catch{if(signal.aborted)fail('STUDIO_CANCELLED');fail('STUDIO_CATALOG_FAILED')}
+    if(signal.aborted)fail('STUDIO_CANCELLED')
+    if(info?.provider!==request.provider||info?.id!==request.model||
+      !Array.isArray(info.reasoning?.efforts)||!info.reasoning.efforts.some(row=>row?.id===request.reasoningEffort))fail('STUDIO_UNSUPPORTED_EFFORT')
+  }
   let text = '', terminal = false
   try {
     for await (const chunk of streamStudioRequest(llm, request)) {

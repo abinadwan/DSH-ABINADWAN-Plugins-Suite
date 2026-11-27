@@ -62,3 +62,13 @@ test('provider errors and pre-abort never expose source or raw diagnostic',async
   await check(await h.edit(make(JSON.stringify(base),{signal:c.signal})),409,{error:'STUDIO_CANCELLED'})
   assert.equal(llm.calls.length,0)
 })
+
+test('HTTP effort selection rejects unsupported id without provider call',async()=>{
+  const llm=native(),h=createStudioHandlers(llm,new AbortController().signal)
+  llm.resolveModelInfo=async(provider,id)=>({provider,id,reasoning:{efforts:[{id:'native-tier'}]}})
+  await check(await h.edit(make(JSON.stringify({...base,reasoningEffort:'made-up'}))),422,{error:'STUDIO_UNSUPPORTED_EFFORT'})
+  await check(await h.edit(make(JSON.stringify({...base,reasoningEffort:null}))),400,{error:'STUDIO_INVALID_EFFORT'})
+  assert.equal(llm.calls.length,0)
+  await check(await h.edit(make(JSON.stringify({...base,reasoningEffort:'native-tier'}))),200,{text:'Edited 123'})
+  assert.equal(llm.calls[0].reasoningEffort,'native-tier')
+})

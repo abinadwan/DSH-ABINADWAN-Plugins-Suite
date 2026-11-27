@@ -41,7 +41,7 @@ export async function readStudioBody(request, signal, byteLimit = STUDIO_BODY_LI
   }
 }
 const validation = new Set(['STUDIO_INVALID_REQUEST','STUDIO_INVALID_SOURCE','STUDIO_INVALID_BRIEF',
-  'STUDIO_INVALID_LANGUAGE','STUDIO_TRANSLATION_TARGET_REQUIRED','STUDIO_INVALID_SIGNAL'])
+  'STUDIO_INVALID_LANGUAGE','STUDIO_TRANSLATION_TARGET_REQUIRED','STUDIO_INVALID_SIGNAL','STUDIO_INVALID_EFFORT'])
 export function createStudioHandlers(llm, lifetime, deadlineMs = DEADLINE_MS) {
   let busy = false
   return {
@@ -70,7 +70,7 @@ export function createStudioHandlers(llm, lifetime, deadlineMs = DEADLINE_MS) {
         if (signal.aborted) return error('STUDIO_CANCELLED',409)
         const code = failure?.message
         if (validation.has(code)) return error(code,400)
-        if (code === 'STUDIO_MODEL_UNAVAILABLE') return error(code,422)
+        if (code === 'STUDIO_MODEL_UNAVAILABLE' || code === 'STUDIO_UNSUPPORTED_EFFORT') return error(code,422)
         if (code === 'STUDIO_CATALOG_FAILED') return error(code,503)
         return error('STUDIO_PROCESSING_FAILED',502)
       } finally {

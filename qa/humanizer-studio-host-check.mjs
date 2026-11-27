@@ -226,3 +226,26 @@ test('native Humanizer storage routes are owner-only and processing never create
   await fiber.dispose()
   assert.equal((await call('/storage',owner)).status,404)
 })
+
+test('native Studio effort selection reaches adapter exactly, preserves default and refuses stale support',async()=>{
+  const ctx=new Context()
+  try{
+    await ctx.plugin(LlmRuntime).await()
+    const adapter=new Capture()
+    let efforts=[{id:'native-fast',name:'Native Fast'},{id:'native-deep',name:'Native Deep'}]
+    adapter.resolveModel=async(route,id)=>({provider:route,id,name:id,...(efforts.length?{reasoning:{efforts,defaultEffort:'native-fast'}}:{})})
+    ctx.llm.registerAdapter([provider],adapter)
+    const input={provider,model,service:'humanize',sourceText:source,inputLanguage:'auto',outputLanguage:'preserve'}
+    const run=patch=>runStudioEdit(ctx.llm,{...input,...patch},[],new AbortController().signal)
+    assert.equal(await run({}),'Synthetic revision 123.')
+    assert.equal(adapter.requests[0].reasoningEffort,'native-fast')
+    assert.equal(await run({reasoningEffort:'native-deep'}),'Synthetic revision 123.')
+    assert.equal(adapter.requests[1].reasoningEffort,'native-deep')
+    efforts=[]
+    await assert.rejects(run({reasoningEffort:'native-deep'}),/STUDIO_UNSUPPORTED_EFFORT/)
+    assert.equal(await run({}),'Synthetic revision 123.')
+    assert.equal(adapter.requests[2].reasoningEffort,undefined)
+    assert.equal(adapter.requests.length,3)
+    for(const request of adapter.requests){assert.equal(request.sessionId,undefined);assert.deepEqual(request.tools??[],[])}
+  }finally{await ctx.fiber.dispose()}
+})

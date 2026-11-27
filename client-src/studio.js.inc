@@ -11,6 +11,19 @@
     const studioSelectStyle = { ...studioTextStyle, colorScheme:'inherit', backgroundColor:'var(--dsw-alias-bg-layer-2, Canvas)', color:'var(--dsw-alias-label-primary, CanvasText)' }
     const studioOptionStyle = { backgroundColor:studioSelectStyle.backgroundColor, color:studioSelectStyle.color, colorScheme:'inherit' }
     function studioClock(){return performance.now()}
+    // The native catalog resolves exact-route capabilities. No local tier mapping.
+    function studioEfforts(reasoning){
+      if(!Array.isArray(reasoning?.efforts)||!reasoning.efforts.length)return studioEmpty
+      const seen=new Set()
+      const options=[]
+      for(const row of reasoning.efforts){
+        if(typeof row?.id!=='string'||!row.id.trim()||row.id.length>256||/[\u0000-\u001f\u007f]/.test(row.id)||
+          typeof row.name!=='string'||!row.name.trim()||row.name.length>256||seen.has(row.id))return studioEmpty
+        seen.add(row.id);options.push({id:row.id,name:row.name})
+      }
+      if(reasoning.defaultEffort!==undefined&&!seen.has(reasoning.defaultEffort))return studioEmpty
+      return options
+    }
     const studioLabel = { display:'grid', gap:6, minWidth:0, fontSize:13 }
     const studioButton = { ...studioTextStyle, cursor:'pointer', textAlign:'start' }
     const studioLocaleId = /^[a-zA-Z]{2,8}(?:-[a-zA-Z0-9]{1,8})*$/
@@ -57,6 +70,10 @@
       const [from,setFrom] = React.useState('auto')
       const [to,setTo] = React.useState('preserve')
       const [selection,setSelection] = React.useState('')
+      const [effort,setEffort] = React.useState('')
+      const [copyNotice,setCopyNotice] = React.useState('')
+      const copyRevision=React.useRef(0)
+      React.useEffect(()=>()=>{copyRevision.current++},[])
       const [busy,setBusy] = React.useState(false)
       const [notice,setNotice] = React.useState('')
       const pending = React.useRef(null)
@@ -122,7 +139,7 @@
         setFrom(entry.inputLanguage==='auto'||known(entry.inputLanguage)?entry.inputLanguage:'auto')
         setTo(entry.outputLanguage==='preserve'||known(entry.outputLanguage)?entry.outputLanguage:'preserve')
         const key=JSON.stringify([entry.provider,entry.model])
-        setSelection(models.some(model=>model.key===key)?key:'')
+        setSelection(models.some(model=>model.key===key)?key:'');setEffort('');setCopyNotice('');copyRevision.current++
         setTiming(null)
         setNotice(tr('Saved text restored. Nothing was sent to a model.','تمت استعادة النص المحفوظ دون إرساله إلى موديل.'))
       }
@@ -137,7 +154,7 @@
         const signal = AbortSignal.any([controller.signal,services.lifetime,AbortSignal.timeout(15000)])
         const valid = () => current() && !signal.aborted && services.catalogRevision.getSnapshot() === revision
         stop()
-        setSelection('')
+        setSelection('');setEffort('')
         setCatalog({phase:'loading',groups:[]})
         void (async () => {
           try {
@@ -157,11 +174,28 @@
         })()
         return () => { controller.abort(); pending.current?.abort(); pending.current = null }
       },[services,generation,revision,refresh])
-      const models = catalog.groups.flatMap(group=>group.models.map(model=>({provider:group.id,model:model.id,key:JSON.stringify([group.id,model.id])})))
+      const models = catalog.groups.flatMap(group=>group.models.map(model=>({provider:group.id,model:model.id,key:JSON.stringify([group.id,model.id]),efforts:studioEfforts(model.reasoning)})))
       const chosen = models.find(model=>model.key === selection)
+      const efforts=catalog.phase==='ready'&&services.catalogRevision.getSnapshot()===revision?(chosen?.efforts??studioEmpty):studioEmpty
+      const requestedEffort=efforts.find(row=>row.id===effort)
+      const effortValid=effort===''||!!requestedEffort
+      function selectModel(value){setSelection(value);setEffort('')}
+      async function copyText(value,id){
+        if(!current()||busy||pending.current||storageBusy||!value.trim())return
+        const attempt=++copyRevision.current
+        const valid=()=>current()&&copyRevision.current===attempt
+        setCopyNotice('')
+        try{
+          if(typeof navigator?.clipboard?.writeText!=='function')throw Error('clipboard unavailable')
+          await navigator.clipboard.writeText(value)
+          if(valid())setCopyNotice(id==='result'?tr('Result copied.','تم نسخ النتيجة.'):tr('Source copied.','تم نسخ النص الأصلي.'))
+        }catch{
+          if(valid())setCopyNotice(tr('Clipboard unavailable. Select the text and copy manually.','الحافظة غير متاحة. حدد النص وانسخه يدويًا.'))
+        }
+      }
       const known = id => locales.some(item=>item.id === id)
       const languageValid = (from==='auto'||known(from)) && (to==='preserve'||known(to)) && (service!=='translate'||to!=='preserve')
-      const ready = catalog.phase==='ready' && !!chosen && languageValid && source.trim().length>0 && source.length<=12000 &&
+      const ready = catalog.phase==='ready' && !!chosen && effortValid && languageValid && source.trim().length>0 && source.length<=12000 &&
         (service!=='custom'||(brief.trim().length>0&&brief.length<=2000))
       async function processText() {
         if (!ready || busy || storagePending.current || pending.current || !current() || services.catalogRevision.getSnapshot() !== revision) return
@@ -169,12 +203,12 @@
         pending.current=controller
         const signal=AbortSignal.any([controller.signal,services.lifetime,AbortSignal.timeout(125000)])
         const valid=()=>current()&&pending.current===controller&&services.catalogRevision.getSnapshot()===revision
-        const run={started:studioClock(),model:chosen.model,service,elapsed:0,phase:'waiting'}
+        const run={started:studioClock(),model:chosen.model,service,elapsed:0,phase:'waiting',effort:requestedEffort?.name??null,effortSupported:efforts.length>0}
         timingRef.current=run;setTiming(run)
-        setBusy(true);setResult('');setNotice('')
+        copyRevision.current++;setCopyNotice('');setBusy(true);setResult('');setNotice('')
         try {
           const reply=await studioFetch('edit',signal,{service,provider:chosen.provider,model:chosen.model,sourceText:source,
-            inputLanguage:from,outputLanguage:to,...(service==='custom'?{editingBrief:brief}:{})})
+            inputLanguage:from,outputLanguage:to,...(requestedEffort?{reasoningEffort:requestedEffort.id}:{}),...(service==='custom'?{editingBrief:brief}:{})})
           if (!valid()) return
           if(signal.aborted)throw Error('STUDIO_UNAVAILABLE')
           if(typeof reply?.text!=='string'||!reply.text.trim()||reply.text.length>24000)throw Error('STUDIO_UNAVAILABLE')
@@ -190,13 +224,17 @@
           if(valid()){pending.current=null;setBusy(false)}
         }
       }
-      function clear() {stop();setTiming(null);setSource('');setResult('');setBrief('');setNotice('')}
+      function clear() {stop();setTiming(null);setSource('');setResult('');setBrief('');setNotice('');copyRevision.current++;setCopyNotice('')}
       const choice=(label,value,onChange,children,extra={})=>h('label',{style:studioLabel},label,
         h('select',{style:studioSelectStyle,value,onChange:event=>onChange(event.target.value),disabled:busy||storageBusy,...extra},children))
-      const editor=(label,value,onChange,maxLength,dir,id)=>h('label',{style:studioLabel},label,
-        h('textarea',{'data-studio-editor':id,style:{...studioTextStyle,minHeight:250,resize:'vertical',lineHeight:1.65},
-          value,maxLength,dir,disabled:busy||storageBusy,spellCheck:false,autoComplete:'off',onChange:event=>onChange(event.target.value)}),
-        h('span',{style:lifecycleMuted},value.length+' / '+maxLength))
+      const editor=(label,value,onChange,maxLength,dir,id)=>h('div',{style:{display:'grid',gap:6,minWidth:0}},
+        h('label',{style:studioLabel},label,
+          h('textarea',{'data-studio-editor':id,style:{...studioTextStyle,minHeight:250,resize:'vertical',lineHeight:1.65},
+            value,maxLength,dir,disabled:busy||storageBusy,spellCheck:false,autoComplete:'off',onChange:event=>{copyRevision.current++;setCopyNotice('');onChange(event.target.value)}})),
+        h('div',{style:{display:'flex',alignItems:'center',justifyContent:'space-between',gap:8,flexWrap:'wrap'}},
+          h('span',{style:lifecycleMuted,dir:'ltr'},value.length+' / '+maxLength),
+          h('button',{type:'button','data-studio-copy':id,disabled:busy||storageBusy||!value.trim(),style:studioButton,onClick:()=>copyText(value,id)},
+            id==='result'?tr('Copy result','نسخ النتيجة'):tr('Copy source','نسخ النص الأصلي'))))
       return h('main',{'data-humanizer-studio':'',dir:language==='ar'?'rtl':'ltr',style:{padding:20,display:'grid',gap:14,overflow:'auto',alignContent:'start',height:'100%'}},
         h('h2',{style:{margin:0,fontSize:20}},tr('Humanizer Studio','استوديو Humanizer')),
         h('p',{style:{...lifecycleMuted,margin:0}},tr('Independent text editing. Results depend on the selected model. Review facts and citations.','تحرير نصوص مستقل. تعتمد جودة النتائج على الموديل المختار؛ راجع الحقائق والمصادر.')),
@@ -205,8 +243,12 @@
           h('button',{type:'button',style:studioButton,onClick:()=>setRefresh(value=>value+1)},tr('Retry','إعادة المحاولة'))):null,
         h('div',{style:{display:'grid',gap:12}},
           h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,180px),1fr))',gap:10}},
-            choice(tr('Model','الموديل'),selection,setSelection,[h('option',{style:studioOptionStyle,key:'none',value:''},tr('Select model','اختر الموديل')),
+            choice(tr('Model','الموديل'),selection,selectModel,[h('option',{style:studioOptionStyle,key:'none',value:''},tr('Select model','اختر الموديل')),
               ...catalog.groups.map(group=>h('optgroup',{style:studioOptionStyle,key:group.id,label:group.name},group.models.map(model=>h('option',{style:studioOptionStyle,key:model.id,value:JSON.stringify([group.id,model.id])},model.name))))],{'data-studio-model':''}),
+            efforts.length?choice(tr('Reasoning effort','جهد التفكير'),effort,setEffort,[
+              h('option',{style:studioOptionStyle,key:'default',value:''},tr('Model default','افتراضي الموديل')),
+              ...efforts.map(row=>h('option',{style:studioOptionStyle,key:'effort:'+row.id,value:row.id},row.name))
+            ],{'data-studio-effort':''}):null,
             choice(tr('Input language','لغة المصدر'),from,setFrom,[h('option',{style:studioOptionStyle,key:'auto',value:'auto'},tr('Auto detect','اكتشاف تلقائي')),...locales.map(item=>h('option',{style:studioOptionStyle,key:item.id,value:item.id},item.label))],{'data-studio-input-language':''}),
             choice(tr('Output language','لغة النتيجة'),to,setTo,[h('option',{style:studioOptionStyle,key:'preserve',value:'preserve'},tr('Preserve source','لغة المصدر')),...locales.map(item=>h('option',{style:studioOptionStyle,key:item.id,value:item.id},item.label))],{'data-studio-output-language':''})),
           h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,260px),1fr))',gap:12}},
@@ -216,6 +258,7 @@
               service==='custom'?h('label',{style:studioLabel},tr('Editing brief','تعليمات التحرير'),h('textarea',{style:studioTextStyle,value:brief,maxLength:2000,disabled:busy||storageBusy,dir:'auto','data-studio-brief':'',onChange:event=>setBrief(event.target.value)})):null,
               editor(tr('Source text','النص الأصلي'),source,setSource,12000,studioDirection(from),'source')),
             editor(tr('Result','النتيجة'),result,setResult,24000,studioDirection(to==='preserve'?from:to),'result')),
+          copyNotice?h('p',{role:'status','data-studio-copy-notice':'',style:lifecycleMuted},copyNotice):null,
           !languageValid?h('p',{role:'status',style:lifecycleMuted},tr('Choose a valid language; translation requires an output language.','اختر لغة صالحة؛ الترجمة تتطلب لغة للنتيجة.')):null,
           h('div',{style:{display:'flex',gap:8,flexWrap:'wrap'}},
             h('button',{type:'button','data-studio-process':'',disabled:!ready||busy||storageBusy,style:studioButton,onClick:processText},tr('Process text','معالجة النص')),
@@ -227,6 +270,7 @@
             h('div',{style:{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}},
               h('strong',null,tr('Model: ','الموديل: ')+timing.model),
               h('span',null,studioTools.find(row=>row[0]===timing.service)?.[language==='ar'?2:1]??timing.service),
+              timing.effortSupported?h('span',{'data-studio-run-effort':''},tr('Requested effort: ','الجهد المطلوب: ')+(timing.effort??tr('Model default','افتراضي الموديل'))):null,
               h('span',{'data-studio-elapsed':'',dir:'ltr',style:{fontVariantNumeric:'tabular-nums'}},(timing.elapsed/1000).toFixed(2)+' s'),
               h('span',{'data-studio-timing-phase':timing.phase},timing.phase==='waiting'?tr('In progress','قيد المعالجة'):timing.phase==='completed'?tr('Completed','مكتملة'):timing.phase==='cancelled'?tr('Cancelled locally','أُلغيت محليًا'):tr('Failed','فشلت'))),
             timing.phase==='waiting'?h('progress',{'aria-label':tr('Processing in progress','المعالجة جارية'),style:{width:'100%',accentColor:'var(--dsw-alias-label-primary, CanvasText)'}}):null,

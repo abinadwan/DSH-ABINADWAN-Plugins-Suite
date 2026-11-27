@@ -87,3 +87,25 @@ test('catalog errors are sanitized and do not reach a provider', async () => {
   await assert.rejects(runStudioEdit(llm,base,locales,signal()), {message:'STUDIO_CATALOG_FAILED'})
   assert.equal(llm.requests.length,0)
 })
+
+test('reasoning effort uses exact opaque DSH ids, omission stays native, stale and unsupported fail closed',async()=>{
+  const llm=native([{type:'text-delta',text:'ok'},finish])
+  let efforts=[{id:'opaque/vendor:deep-v3',name:'Vendor Deep'}]
+  llm.resolveModelInfo=async(provider,id)=>({provider,id,reasoning:{efforts}})
+  await runStudioEdit(llm,base,locales,signal())
+  assert.equal(Object.hasOwn(llm.requests[0],'reasoningEffort'),false)
+  const explicit={...base,reasoningEffort:'opaque/vendor:deep-v3'}
+  await runStudioEdit(llm,explicit,locales,signal())
+  assert.equal(llm.requests[1].reasoningEffort,explicit.reasoningEffort)
+  assert.ok(!llm.requests[1].system.includes(explicit.reasoningEffort))
+  assert.equal(payload(llm.requests[1]).reasoningEffort,undefined)
+  efforts=[]
+  await assert.rejects(runStudioEdit(llm,explicit,locales,signal()),/STUDIO_UNSUPPORTED_EFFORT/)
+  llm.resolveModelInfo=async()=>({provider:'foreign',id:'local',reasoning:{efforts:[{id:explicit.reasoningEffort}]}})
+  await assert.rejects(runStudioEdit(llm,explicit,locales,signal()),/STUDIO_UNSUPPORTED_EFFORT/)
+  llm.resolveModelInfo=async()=>{throw Error(sourceText)}
+  await assert.rejects(runStudioEdit(llm,explicit,locales,signal()),{message:'STUDIO_CATALOG_FAILED'})
+  for(const reasoningEffort of ['',null,'x'.repeat(257),'bad\nvalue',{}])
+    assert.throws(()=>buildStudioRequest({...base,reasoningEffort},locales,signal()),/STUDIO_INVALID_EFFORT/)
+  assert.equal(llm.requests.length,2)
+})

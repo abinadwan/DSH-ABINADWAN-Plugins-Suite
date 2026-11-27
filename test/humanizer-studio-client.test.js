@@ -30,11 +30,13 @@ test('Studio uses live native catalog, sends only explicit text, supports RTL an
   const container=dom.window.document.createElement('div')
   dom.window.document.body.append(container)
   const sent=[]
+  const copied=[]
+  let rejectCopy=false, exposeEffort=true
   let now=1000
   const storageCalls=[]
   let delayedEdit=null, delayedLoad=null, catalogUnavailable=false
   let saved={version:1,revision:'initial',draft:null,history:[]}
-  const app=await clientHarness({React,performance:{now:()=>now},document:dom.window.document,modelCatalog:()=>catalogUnavailable?{ok:false,error:{code:'unavailable',message:'fixture'}}:({groups:[{id:'p',name:'Provider',models:[{id:'m',name:'Model'}]}]}),
+  const app=await clientHarness({React,navigator:{clipboard:{writeText:async value=>{if(rejectCopy)throw Error('denied');copied.push(value)}}},performance:{now:()=>now},document:dom.window.document,modelCatalog:()=>catalogUnavailable?{ok:false,error:{code:'unavailable',message:'fixture'}}:({groups:[{id:'p',name:'Provider',models:[{id:'m',name:'Model',...(exposeEffort?{reasoning:{efforts:[{id:'vendor/x',name:'Native X'},{id:'vendor/y',name:'Native Y'}],defaultEffort:'vendor/x'}}:{})},{id:'plain',name:'Plain'}]}]}),
     fetch:async(url,options)=>{
       const path=new URL(url).pathname
       if(path.endsWith('/status'))return {ok:true,json:async()=>({available:true,protocol:1})}
@@ -58,7 +60,9 @@ test('Studio uses live native catalog, sends only explicit text, supports RTL an
   await act(async()=>root.render(React.createElement(panel.component)))
   for(let i=0;i<4;i++)await act(async()=>{await tick()})
   assert.equal(q('[data-humanizer-studio]').dir,'rtl')
-  assert.equal(q('[data-studio-model]').options.length,2)
+  assert.equal(q('[data-studio-model]').options.length,3)
+  assert.equal(q('[data-studio-effort]'),null)
+  assert.equal(q('[data-studio-copy="result"]').disabled,true)
   assert.equal(q('[data-studio-output-language]').options.length,4)
   assert.equal(sent.length,0)
   for(const selector of ['[data-studio-model]','[data-studio-input-language]','[data-studio-output-language]']){
@@ -73,14 +77,29 @@ test('Studio uses live native catalog, sends only explicit text, supports RTL an
     await act(async()=>{if(node.tagName==='SELECT')node.value=value;else Object.getOwnPropertyDescriptor(proto,'value').set.call(node,value);node.dispatchEvent(new dom.window.Event(node.tagName==='SELECT'?'change':'input',{bubbles:true}))})
   }
   await change('[data-studio-model]',JSON.stringify(['p','m']))
+  assert.deepEqual([...q('[data-studio-effort]').options].map(o=>o.value),['','vendor/x','vendor/y'])
+  await change('[data-studio-effort]','vendor/y')
+  await change('[data-studio-model]',JSON.stringify(['p','plain']))
+  assert.equal(q('[data-studio-effort]'),null)
+  await change('[data-studio-model]',JSON.stringify(['p','m']))
+  assert.equal(q('[data-studio-effort]').value,'')
+  await change('[data-studio-effort]','vendor/y')
   await change('[data-studio-editor="source"]','نص 123')
   await change('[data-studio-output-language]','ar')
   assert.equal(q('[data-studio-process]').disabled,false)
   await act(async()=>q('[data-studio-process]').click())
   for(let i=0;i<3;i++)await act(async()=>{await tick()})
-  assert.deepEqual(sent,[{service:'humanize',provider:'p',model:'m',sourceText:'نص 123',inputLanguage:'auto',outputLanguage:'ar'}])
+  assert.deepEqual(sent,[{service:'humanize',provider:'p',model:'m',sourceText:'نص 123',inputLanguage:'auto',outputLanguage:'ar',reasoningEffort:'vendor/y'}])
   assert.equal(q('[data-studio-editor="result"]').value,'نتيجة 123')
   assert.equal(q('[data-studio-editor="result"]').dir,'rtl')
+  assert.match(q('[data-studio-run-effort]').textContent,/Native Y/)
+  await act(async()=>q('[data-studio-copy="result"]').click())
+  await act(async()=>q('[data-studio-copy="source"]').click())
+  assert.deepEqual(copied,['نتيجة 123','نص 123'])
+  rejectCopy=true
+  await act(async()=>q('[data-studio-copy="result"]').click())
+  assert.match(q('[data-studio-copy-notice]').textContent,/الحافظة غير متاحة/)
+  assert.equal(copied.length,2)
   assert.ok(q('[data-studio-timing-phase="completed"]'))
   assert.equal(q('[data-studio-elapsed]').textContent,'0.00 s')
   assert.equal([...app.intervals.values()].some(i=>i.ms===250),false)
@@ -138,6 +157,11 @@ test('Studio uses live native catalog, sends only explicit text, supports RTL an
   assert.equal(q('[data-studio-timing]'),null)
   assert.equal([...app.intervals.values()].some(i=>i.ms===250),false)
   delayedEdit=null
+  exposeEffort=false
+  await act(async()=>app.ctx.emit('connection/reset'))
+  for(let i=0;i<4;i++)await act(async()=>{await tick()})
+  await change('[data-studio-model]',JSON.stringify(['p','m']))
+  assert.equal(q('[data-studio-effort]'),null)
   delayedLoad=defer()
   await act(async()=>q('[data-studio-storage-open]').click())
   await act(async()=>app.ctx.emit('connection/reset'))
