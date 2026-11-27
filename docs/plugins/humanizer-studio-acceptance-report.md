@@ -25,8 +25,8 @@ PASS applies to the evidence layer stated in the row. PARTIAL means a required s
 | DT-01a | Exact candidate install and sidebar placement | PASS | Desktop accessibility tree and Chromium document show Studio once, directly below Automation tasks in Global panels. |
 | DT-01b | Existing Humanizer Skill and bundle lifecycle | PARTIAL | Exact native Cordis fixture registers and unregisters `abinadwan-humanizer` with the Humanizer fiber and exercises Studio alongside it. All six components exported. Live Skill invocation and full Desktop enable/disable/reload round NOT RUN. |
 | DT-02a | English/Arabic, LTR/RTL, themes, navigation and resize | PARTIAL | Installed Desktop switched English LTR → Arabic RTL with localized labels. Native settings switched light/dark and computed foreground/background colors matched each option and select. Chromium widths 1280, 820, 500 and 360 px had zero Studio horizontal overflow. Native Windows popup and assistive-technology interaction BLOCKED by Windows lock. |
-| DT-02b | Result integrity before and after processing | PARTIAL | Chromium source editable and Result read-only. Chromium insert, Backspace, Delete, Ctrl+X/Ctrl+V, synthetic drop and paste left the empty and populated result unchanged. Forced-DOM-change regression shows no mutation of the authoritative state. Trusted Windows paste, cut, native drag and manual copy BLOCKED. |
-| DT-02c | Selection, copy, denial, counters, clear and replacement | PARTIAL | Chromium selected the whole result. A Clipboard API fixture captured exact source/result strings and produced the manual-copy notice on denial. Verified counters, replacement, Clear and restore in installed renderer. OS clipboard exactness and real denial BLOCKED. |
+| DT-02b | Result integrity before and after processing | PASS (focused owner acceptance) | Prior Chromium input, synthetic drop/paste and state regression passed. Owner subsequently reported all eight focused Desktop acceptance cases passed on the fix candidate, including typing before/after processing, paste, delete and cut. Native drag/drop was not separately reported by the owner. See closure record below. |
+| DT-02c | Selection, copy, denial, counters, clear and replacement | PARTIAL | Prior installed renderer verified counters, Clear, restore, replacement and exact-string Clipboard API fixture including denial. Owner confirmed manual selection/copy, Copy Result button, source editing and result replacement on Desktop. Actual OS clipboard denial and separate byte-for-byte OS clipboard capture were not reported. |
 | DT-03a | Native model metadata, supported and unsupported capability, reset, exact IDs | PARTIAL | Flash options were empty/default, `off`, `low`, `high`, `max`. Flash → Pro → Flash reset the selection. Studio request omitted the override for Default and sent exact `max` for an explicit choice. Native adapter wire used default `high` and explicit `max`. Pinned native fixture verifies opaque IDs and rejects stale support. Browser fixture hides selector for unsupported models. Installed unsupported model NOT RUN. |
 | DT-03b | Conversation settings and effective effort | PARTIAL | Studio uses native global catalog and its own edit route. No Session model mutation or identity in the candidate path. The installed conversation draft remained DeepSeek-V4.1-Flash / High before and after Studio explicitly requested Max. UI reports requested effort. Provider-confirmed effective effort is unavailable from the stub. |
 | DT-04a | All nine service routes | PASS | Humanize, Rewrite, Polish, Professional, Grammar, Shorten, Expand, Translate and Custom each completed with the expected distinct stub reply in installed Desktop. Translate selected Arabic output and Custom used a distinct brief. |
@@ -89,7 +89,7 @@ node --test qa/profile-host-check.mjs qa/adaptive-reasoning-host-check.mjs qa/di
 
 ### HS-BUG-003 focused Desktop retest — 2026-11-27
 
-**OPEN — BLOCKED.** DSH Desktop 0.2.2-rc.5 was launched with the existing isolated Profile. The installed client carrier matched fix commit `6afb0e28860eba13631cc870fecb481c3573873f`. Windows displayed its lock screen over the app and prevented trusted keyboard and clipboard interaction. The checks below show the outcome of this native retest. The prior installed Chromium evidence remains recorded in DT-02b and DT-02c.
+**Historical retest — BLOCKED (superseded for HS-BUG-003 by owner acceptance below).** DSH Desktop 0.2.2-rc.5 was launched with the existing isolated Profile. The installed client carrier matched fix commit `6afb0e28860eba13631cc870fecb481c3573873f`. Windows displayed its lock screen over the app and prevented trusted keyboard and clipboard interaction. The checks below show the outcome of this native retest. The prior installed Chromium evidence remains recorded in DT-02b and DT-02c.
 
 | Requested case | Native Desktop retest |
 | --- | --- |
@@ -100,7 +100,24 @@ node --test qa/profile-host-check.mjs qa/adaptive-reasoning-host-check.mjs qa/di
 | Continued editing of Source | BLOCKED |
 | Replacing Result on a new processing request | BLOCKED |
 
-**Required action:** Unlock the Windows session. The native Desktop checks can then be executed against the isolated candidate.
+**Historical required action:** Unlock the Windows session. The owner subsequently completed the focused acceptance cases described below.
+
+### HS-BUG-003 closure — owner Desktop acceptance, 2026-11-27
+
+**CLOSED — PASS (8/8).** The owner reported that all eight checklist cases passed after being given the exact fix installation reference `github:abinadwan/DSH-ABINADWAN-Plugins-Suite#6afb0e28860eba13631cc870fecb481c3573873f`. Evidence is the owner's explicit confirmation in the project conversation; the exact installed SHA, model, and individual screenshots or clipboard captures were not independently collected during this retest. The branch's generated client blob was read back and matches the fix commit. Prior CI and Chromium evidence remain valid for their stated scope.
+
+| Owner acceptance case | Result |
+| --- | --- |
+| Typing blocked before processing | PASS |
+| Typing blocked after processing | PASS |
+| Paste blocked | PASS |
+| Delete and cut blocked | PASS |
+| Select and manually copy Result | PASS |
+| Copy Result button works | PASS |
+| Source remains editable | PASS |
+| Result updates on a new processing request | PASS |
+
+Disposition: close HS-BUG-003; no product change or repeat of the nine service tests required. Normal UI integrity is accepted, not tamper-proof provenance. Native drag/drop and real clipboard denial were not separate owner checklist cases; do not claim they were manually verified. This targeted closure does not change the separate release recommendation or other outstanding acceptance gates.
 
 ## Findings and bug status
 
@@ -108,7 +125,7 @@ node --test qa/profile-host-check.mjs qa/adaptive-reasoning-host-check.mjs qa/di
 | --- | --- | --- | --- |
 | HS-BUG-001 | Plugin defect | Medium | Historical Windows native dropdown contrast defect. Theme-token fix present. Full native popup comparison in dark/light remains open. |
 | HS-BUG-002 | Plugin defect | Low | Historical absence of elapsed feedback. Installed renderer passed live feedback, completion, cancellation and late-reply timer behavior. Live Host reconnect verification remains open. |
-| HS-BUG-003 | Plugin defect | Medium | Historical editable Result. Exact candidate passed generated-client state regression and installed Chromium editor checks. Focused native Desktop retest blocked by the Windows lock screen. HS-BUG-003 remains open. |
+| HS-BUG-003 | Plugin defect | Medium | CLOSED. Historical editable Result fixed in `6afb0e2`; exact candidate CI and Chromium regression passed. Earlier locked-session retest retained as historical evidence; subsequent owner Desktop checklist passed 8/8. |
 | HS-OBS-001 | Model capability limitation | Low | Historical `qwen3.5:4b` completed Shorten and failed the shortening criterion. Owner disposition retained. Cause remains unconfirmed independently. |
 | HS-ERR-001 | External provider/API failure | Low | Historical K2 Horizon 375B A23B Proofread request failed. Owner attributed it to provider API; independent provider diagnosis unavailable. |
 | QA-01 | Environment limitation | Low | Restricted Sandbox source run failed due to junction `EPERM` with six skips. Same tests passed with three skips after authorized local rerun. |
@@ -121,7 +138,7 @@ node --test qa/profile-host-check.mjs qa/adaptive-reasoning-host-check.mjs qa/di
 
 ## Release blockers
 
-1. Finish unlocked Desktop interaction with both themes, trusted Result gestures and actual clipboard. Close the Windows portions of HS-BUG-001 and HS-BUG-003 on the reviewed code.
+1. Finish the outstanding HS-BUG-001 native popup checks in both themes and any separately required native drag/drop or real clipboard-denial evidence. HS-BUG-003 is closed on the owner-confirmed eight-case checklist; do not repeat those passed cases.
 2. Finish live Host/Profile and nonowner tests, including delayed processing and saved-item responses, and verify remaining diagnostics/egress across the live Host transition. Confirm effective Windows permissions if required by the owner acceptance matrix.
 3. Finish the installed unsupported-model check and remaining real local model/language and semantic instruction-isolation cases. Use the existing owner evidence within its recorded scope and retain unsuccessful results.
 4. Resolve applicable open findings and record explicit owner approval before promotion. PR #88 remains Draft. Retest any product correction at its new exact SHA.

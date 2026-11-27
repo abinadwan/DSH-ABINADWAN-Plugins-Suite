@@ -123,14 +123,14 @@ The round covers **9/9 services with at least one successful manual sample per s
 | HS-09–11 | Copy controls, native conditional effort and requested effort/timing display implemented at 8ae827a. Visible effort and timing observed across models; native provider application and OS clipboard exactness/denial still require final verification. |
 | HS-OBS-001 | Closed by owner as model limitation; keep failed quality result in record. No change to Shorten instructions. |
 | HS-ERR-001 | Closed by owner as external API failure; keep failed attempt in record. No independent API diagnosis. |
-| HS-BUG-003 | Owner demonstrated typing in empty Result editor, risking misleading test outputs. Root cause: shared textarea helper attached setResult to onChange. Fix makes Result native readOnly (not disabled), removes its user-edit state callback, retains selection/copy, count, model reply, explicit restore and clear. Added regression assertions for source editability, empty and completed result state, forced synthetic input, selection, clipboard state, saved snapshot and restore. jsdom synthetic events are not proof of actual Windows keyboard/paste behavior; manual verification and exact-SHA CI remain pending. |
+| HS-BUG-003 | CLOSED. Historical editable Result fixed in `6afb0e2` by native readOnly and removal of the user-edit state callback. Exact-candidate CI passed 5/5, installed Chromium regression passed and owner subsequently confirmed all eight focused Desktop acceptance cases passed. Normal UI integrity accepted; see [closure evidence](humanizer-studio-acceptance-report.md#hs-bug-003-closure--owner-desktop-acceptance-2026-11-27). |
 
 Do not claim read-only prevents DevTools modification, tampering outside Studio or verifies provenance of saved history/externally published text. Explicit draft/history save and restore remain opt-in; old snapshots may contain user-edited result text from earlier candidates. No new persistent storage introduced by this fix. Do not store live user input automatically or include private source text in public evidence.
 
 #### Remaining release gates (not yet accepted)
 
-- Install the corrected exact SHA; verify Result cannot be typed into, pasted into, cut or deleted, both empty and populated; selecting/copying, result replacement, explicit restore, character counter and clear still work. Retest source editing and existing controls.
-- Actual clipboard exactness and denied access; model switch supported/unsupported, effort reset and native adapter effective effort verification; empty/oversize inputs; cancellation, errors and retry.
+- HS-BUG-003 focused acceptance completed (8/8 owner-reported); reuse existing regression evidence for restore, counters and clear. Do not repeat passed cases unless affected by a later change.
+- Separate actual OS clipboard denial and independent exactness evidence if required; normal copy accepted by owner. Model switch supported/unsupported, effort reset and native adapter effective effort verification; empty/oversize inputs; cancellation, errors and retry.
 - Desktop privacy/no automatic storage, explicit storage/restore/delete, owner-only transport and Host generation fencing; hostile embedded instructions/tool isolation; remaining original DT matrix, both themes and supported languages/models; exact-SHA CI, documentation and owner approval. Preserve stable v1.1.3 until authorized promotion. No merge or release in this change.
 
 ## Exact-candidate local acceptance — 2026-11-27
@@ -143,4 +143,8 @@ Installed DSH Desktop `0.2.2-rc.5` opened the exact candidate in a fresh test Pr
 
 ### HS-BUG-003 focused Desktop retest — 2026-11-27
 
-The installed DSH Desktop 0.2.2-rc.5 opened with the isolated candidate carrying fix `6afb0e28860eba13631cc870fecb481c3573873f`. Windows remained locked, so native keyboard and clipboard interaction was blocked across the six requested cases. HS-BUG-003 remains open. The [acceptance report](humanizer-studio-acceptance-report.md#hs-bug-003-focused-desktop-retest--2026-11-27) records the case status and the scope of the prior Chromium evidence.
+The installed DSH Desktop 0.2.2-rc.5 opened with the isolated candidate carrying fix `6afb0e28860eba13631cc870fecb481c3573873f`. Windows remained locked, so native keyboard and clipboard interaction was blocked across the six requested cases at that historical checkpoint. The owner acceptance below supersedes the open status of HS-BUG-003. The [acceptance report](humanizer-studio-acceptance-report.md#hs-bug-003-focused-desktop-retest--2026-11-27) records the case status and the scope of the prior Chromium evidence.
+
+### HS-BUG-003 closure — owner Desktop acceptance, 2026-11-27
+
+The owner reported all eight focused checks passed following installation instructions for `6afb0e2`: no typing before/after processing, no paste/delete/cut, selection and manual copy work, Copy Result works, source editing works and result replacement works. **HS-BUG-003 is CLOSED.** See the [acceptance report](humanizer-studio-acceptance-report.md#hs-bug-003-closure--owner-desktop-acceptance-2026-11-27) for scope and evidence limits. The earlier blocked retest is retained; no code changes or redundant service tests are necessary. No change to other gates, Draft PR or stable release.
