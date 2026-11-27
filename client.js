@@ -3984,7 +3984,9 @@ window.__ModuleLoader__.load({
         })()
         return () => { controller.abort(); pending.current?.abort(); pending.current = null }
       },[services,generation,revision,refresh])
-      const models = catalog.groups.flatMap(group=>group.models.map(model=>({provider:group.id,model:model.id,key:JSON.stringify([group.id,model.id]),efforts:studioEfforts(model.reasoning)})))
+      // The native catalog is replaced on refresh, revision change and remount.
+      // Typing and elapsed-time ticks must not re-normalize every model capability.
+      const models = React.useMemo(() => catalog.groups.flatMap(group=>group.models.map(model=>({provider:group.id,model:model.id,key:JSON.stringify([group.id,model.id]),efforts:studioEfforts(model.reasoning)}))), [catalog.groups])
       const chosen = models.find(model=>model.key === selection)
       const efforts=catalog.phase==='ready'&&services.catalogRevision.getSnapshot()===revision?(chosen?.efforts??studioEmpty):studioEmpty
       const requestedEffort=efforts.find(row=>row.id===effort)

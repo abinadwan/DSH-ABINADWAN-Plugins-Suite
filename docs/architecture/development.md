@@ -32,6 +32,10 @@ Phase 04 (target v1.2.1) reviews each component once against applicable startup,
 
 The previous ArchivePage memo called the full authorized conversation inventory twice for the same workspace/session snapshot: once for archived rows and once for saved protection rows. The candidate shares that inventory within a single memo evaluation (two traversals to one; 50% fewer inventory builds, not a measured wall-clock or total CPU reduction). Action-time restore validation still builds fresh inventories; filtering, duplicate ownership exclusions, protection semantics and Host authorization are unchanged. The focused synthetic test counts traversals and verifies archived/protected membership. Native latency and CI results are not established by this source-level observation.
 
+### Phase 04 — Humanizer Studio candidate
+
+The Studio render previously normalized every model's reasoning capabilities on each render, including each 250 ms waiting-timer tick and editor input change. Memoize the derived model list against the current catalog groups; a catalog replacement or Host remount rebuilds it. The native catalog revision and exact request-time admission checks remain unchanged. Baseline per normal render with M models: M capability normalizations; after a stable catalog render: zero on subsequent ordinary input/clock renders (React may discard a memo). The existing synthetic React/DOM test now counts native capability reads and exercises editor changes, timing, capability refresh and Host replacement. No reduction in provider calls or measured real Desktop latency is claimed.
+
 ## Verification boundaries
 
 - Direct Chat: the owner accepted title-search scope up to 1,000 registered Sessions in v1.0.2. The 10,000-Session stress test failed (8,185 titles available), not a Host fix. [H04 evidence](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/98c27e87e216f11000ab92adcb79d51388031a28/docs/DSH_H04_SEARCH_SCOPE_AND_HIGH_LOAD_RESULT_V1.0.2.md). Tool denial is policy, not OS isolation.
