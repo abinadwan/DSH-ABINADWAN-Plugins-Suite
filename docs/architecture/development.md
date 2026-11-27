@@ -73,6 +73,10 @@ Owner requirement: all suite-owned UI must follow the current DSH interface lang
 
 Initial review: shared uiLanguage collapses non-Arabic languages to English; Archive and Direct Chat use bilingual dictionaries; Studio uses paired English/Arabic text; Reasoning uses shared copy and bilingual branches; My Profile has seven-language dictionaries and a UI override. Update/detail text and Plugin Manager metadata also require review. First candidate migrates Environment inspector, native tab/guide and header to seven known languages, localized numeric formatting and stable section keys. A React regression switches all seven in an open view. Metadata and remaining components are open; native Desktop and full-suite acceptance not claimed.
 
+### Phase 05 — Direct Chat candidate
+
+Translate all 25 Direct Chat action/history dictionary entries into the five additional known Host languages, keeping existing Arabic/English and switching through the migrated native locale resolver. Locale-aware pagination; preserve the canonical native Workspace title, opaque Session IDs, authorization and request behavior. Real React fixture switches all seven locales while history is open, checking translated labels, direction, stable search element and unchanged catalog request count. Plugin Manager metadata and Desktop acceptance remain separate.
+
 ## Verification boundaries
 
 - Direct Chat: the owner accepted title-search scope up to 1,000 registered Sessions in v1.0.2. The 10,000-Session stress test failed (8,185 titles available), not a Host fix. [H04 evidence](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/98c27e87e216f11000ab92adcb79d51388031a28/docs/DSH_H04_SEARCH_SCOPE_AND_HIGH_LOAD_RESULT_V1.0.2.md). Tool denial is policy, not OS isolation.

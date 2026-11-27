@@ -208,3 +208,66 @@ test('Direct Chat rename rejects stale actions before reference acquisition and 
   await assert.rejects(rename(), denied)
   assert.deepEqual(acquired, [id, id, id, id, id], 'disposed plugin never acquires a reference')
 })
+
+
+test('Direct Chat open history follows seven native locales without reloading the catalog or remounting search', async t => {
+  const React = await import('react')
+  const { JSDOM } = await import('jsdom')
+  const page = new JSDOM('<!doctype html><div id="root"></div>', { url: 'http://localhost/' })
+  const previous = { document: globalThis.document, window: globalThis.window, act: globalThis.IS_REACT_ACT_ENVIRONMENT }
+  globalThis.document = page.window.document
+  globalThis.window = page.window
+  globalThis.IS_REACT_ACT_ENVIRONMENT = true
+  const { createRoot } = await import('react-dom/client')
+  const root = createRoot(page.window.document.getElementById('root'))
+  const q = selector => page.window.document.querySelector(selector)
+  let catalogReads = 0
+  const app = await clientHarness({
+    React, hostLocale: 'en', document: page.window.document,
+    workspaceItems: [{ workspaceId: 'direct', title: 'Direct Chat', sessionIds: ['s1'] }],
+    fetch: async url => {
+      assert.match(String(url), /abinadwan-direct-chat\/catalog/)
+      catalogReads++
+      return Response.json({ workspaceId: 'direct' })
+    },
+  })
+  t.after(async () => {
+    try { await React.act(async () => root.unmount()); await app.dispose() }
+    finally {
+      globalThis.document = previous.document
+      globalThis.window = previous.window
+      globalThis.IS_REACT_ACT_ENVIRONMENT = previous.act
+      page.window.close()
+    }
+  })
+  active(app)
+  await app.changed()
+  const entry = app.entries('sidebar.session.action').find(row => row.options.id === 'abinadwan-direct-chat')
+  await React.act(async () => root.render(React.createElement(entry.component, {
+    ...entry.options.inject(), wide: true, useRemoteAccess: () => true,
+  })))
+  await React.act(async () => q('[aria-label="Direct Chat history"]').click())
+  const input = q('input[type="search"]')
+  assert.ok(input)
+  const reads = catalogReads
+  assert.equal(reads, 1)
+  const cases = [
+    ['zh','直接聊天','直接聊天记录','搜索直接聊天'],
+    ['es','Chat directo','Historial del chat directo','Buscar en chat directo'],
+    ['fr','Chat direct','Historique du chat direct','Rechercher dans le chat direct'],
+    ['de','Direktchat','Direktchat-Verlauf','Direktchat durchsuchen'],
+    ['ja','ダイレクトチャット','ダイレクトチャット履歴','ダイレクトチャットを検索'],
+    ['ar','الدردشة المباشرة','سجل الدردشة المباشرة','البحث في الدردشة المباشرة'],
+    ['en','Direct Chat','Direct Chat history','Search Direct Chat'],
+  ]
+  for (const [revision, [lang, open, history, search]] of cases.entries()) {
+    await React.act(async () => app.hostLocale.set({ active: lang, revision: revision + 1 }))
+    assert.equal(q('[data-abinadwan-direct-chat] button').getAttribute('aria-label'), open)
+    assert.equal(q('[role="dialog"]').getAttribute('aria-label'), history)
+    assert.equal(q('input[type="search"]'), input)
+    assert.ok(input.parentElement.textContent.includes(search))
+    assert.equal(input.closest('[lang]').lang, lang)
+    assert.equal(input.closest('[dir]').dir, lang === 'ar' ? 'rtl' : 'ltr')
+    assert.equal(catalogReads, reads, 'locale switch does not replay catalog request')
+  }
+})
