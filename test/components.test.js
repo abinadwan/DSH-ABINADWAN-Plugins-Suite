@@ -34,6 +34,7 @@ test('Humanizer contributes the packaged skill and releases it on disable', asyn
       return () => registered.splice(registered.indexOf(skill), 1)
     } },
     effect(start) { effects.push(start()) },
+    inject(keys, callback) { assert.ok([['connection','llm'],['connection','profileContext']].some(expected=>JSON.stringify(keys)===JSON.stringify(expected))); assert.equal(typeof callback,'function') },
   }
   humanizer.apply(ctx)
   assert.equal(registered.length, 1)

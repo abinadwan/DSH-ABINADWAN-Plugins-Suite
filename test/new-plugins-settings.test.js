@@ -88,7 +88,9 @@ async function mount(t, options, active, slot) {
   const fixture = await clientHarness({ React, document, hostLocale: options.hostLocale ?? 'en', ...options })
   fixture.setRows([...fixture.rows(), { moduleName: `${base}/${active}`, enabled: true, fiberPhase: 'active' }])
   await fixture.changed()
-  const entry = fixture.entries(slot)[0]
+  const entries = fixture.entries(slot)
+  const entry = slot === 'main' && active === 'conversation-lifecycle'
+    ? entries.find(row => row.options.key === 'abinadwan-chat-control-archive') : entries[0]
   assert.ok(entry)
   const root = createRoot(div)
   t.after(async () => {

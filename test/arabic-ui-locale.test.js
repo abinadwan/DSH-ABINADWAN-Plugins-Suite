@@ -84,7 +84,7 @@ test('Arabic translations and MIT attribution are included in packed artifact', 
   const manifest = JSON.parse(read('package.json'))
   assert.ok(manifest.dsh.client.inject.includes('@deepseek-ai/dsh-client-locale'))
   assert.ok(manifest.files.includes('THIRD_PARTY_NOTICES.md'))
-  assert.ok(manifest.files.includes('locale/*.json'))
+  for (const path of ['locale/ar.json','locale/en.json','locale/dsh-ui-ar.json']) assert.ok(manifest.files.includes(path),path)
   assert.match(read('THIRD_PARTY_NOTICES.md'), /Copyright \(c\) 2026 SMSMy/)
   assert.match(read('THIRD_PARTY_NOTICES.md'), /MIT License/)
   assert.ok(Object.keys(source).length >= 59)

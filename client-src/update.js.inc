@@ -1,6 +1,6 @@
     // Only stable published GitHub Releases may trigger an in-app update offer.
     // This browser-side checker never installs anything without a separate click.
-    const INSTALLED_VERSION = '1.1.3'
+    const INSTALLED_VERSION = '1.2.0'
     const PACKAGE_NAME = '@abinadwan/dsh-plugins-suite'
     const RELEASE_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/latest'
     const COMMIT_SOURCE = 'https://api.github.com/repos/abinadwan/DSH-ABINADWAN-Plugins-Suite/commits/'
@@ -81,7 +81,7 @@
       let response
       try {
         response = await fetch(url, {
-          method:'GET', credentials:'omit', cache:'no-store', referrerPolicy:'no-referrer',
+          method:'GET', credentials:'omit', cache:'no-store', redirect:'error', referrerPolicy:'no-referrer',
           headers:{Accept:'application/vnd.github+json'},
           ...signal ? {signal} : {},
         })
@@ -170,13 +170,19 @@
       'My Profile settings are stored in this Harness Profile\'s configuration and uninstalling may remove them. If you use My Profile, first export a JSON backup from My Profile → Backup & Restore (it includes your saved access permissions and is not encrypted). If the pinned install fails, reinstall from the same spec or from the original source.',
     ]
     // Installed-plugin detail page only; never run an installer in a React effect.
-    function VersionUpdates({ installedVersion, pluginManager, useRemoteAccess }) {
+    function VersionUpdates({ installedVersion, pluginManager, useRemoteAccess, seat, generation }) {
       const update = React.useSyncExternalStore(subscribeVersion,getVersionSnapshot,getVersionSnapshot)
       const [action, setAction] = React.useState({phase:'idle'})
       const [mode, setMode] = React.useState({kind:'unknown'})
       const mounted = useMounted()
+      const updateInFlight = React.useRef(false)
+      const seatCurrent = () => mounted.current && !versionDisposed && !seat.lifetime.aborted && seat.getSnapshot() === generation
+      const permission = React.useRef(null)
       const canList = useAccess(useRemoteAccess, 'pluginManager/listBundles')
       const canUpdate = useAccess(useRemoteAccess, 'pluginManager/updateBundle')
+      React.useLayoutEffect(()=>{permission.current={canList,canUpdate};return()=>{permission.current=null}},[canList,canUpdate])
+      const mayList=()=>seatCurrent()&&permission.current?.canList===true
+      const mayUpdate=()=>mayList()&&permission.current?.canUpdate===true
       const hostVersion = versionParts(installedVersion) ? installedVersion : undefined
       const currentVersion = hostVersion || INSTALLED_VERSION
       const newer = update.phase === 'ready' ? isNewerVersion(update.latest,currentVersion) : false
@@ -189,11 +195,12 @@
         Promise.resolve().then(() => pluginManager.listBundles()).then(answer => {
           const bundles = remoteValue(answer, 'Plugin list')
           const bundle = Array.isArray(bundles) ? bundles.find(item => item?.name === PACKAGE_NAME) : undefined
-          if (live) setMode(installMode(bundle))
-        }).catch(error => { if (live) setMode({kind:'error',message:String(error?.message || error)}) })
+          if (live && seatCurrent()) setMode(installMode(bundle))
+        }).catch(error => { if (live && seatCurrent()) setMode({kind:'error',message:String(error?.message || error)}) })
         return () => { live = false }
       }, [canList, pluginManager, update.checked])
       async function prepare() {
+        if (!mayList() || updateInFlight.current) return
         setAction({phase:'checking'})
         try {
           if (phase !== 'available' || typeof update.tag !== 'string') throw new Error('No approved newer release')
@@ -206,36 +213,59 @@
           if (manifest?.name !== PACKAGE_NAME || manifest?.version !== update.latest) {
             throw new Error('Release manifest does not match the expected package')
           }
-          if (!canList || !pluginManager) throw new Error('Plugin management access is not available in this window')
+          if (!mayList() || !pluginManager) throw new Error('Plugin management access is not available in this window')
           const bundles = remoteValue(await pluginManager.listBundles(), 'Plugin list')
           const bundle = Array.isArray(bundles) ? bundles.find(item => item?.name === PACKAGE_NAME) : undefined
           const current = installMode(bundle)
-          if (mounted.current) setMode(current)
+          if (seatCurrent()) setMode(current)
           if (current.kind === 'missing') throw new Error('This bundle is not listed as installed by the Host')
           if (current.kind === 'foreign') throw new Error('This bundle was installed from another repository; it will not be updated from here')
           if (current.kind === 'registry') throw new Error('This copy is managed from a registry; use the native Versions section')
           if (current.kind !== 'pinned') {
-            if (mounted.current) setAction({phase:'manual',latest:update.latest,sha,spec:PINNED_SPEC_PREFIX + sha})
+            if (seatCurrent()) setAction({phase:'manual',latest:update.latest,sha,spec:PINNED_SPEC_PREFIX + sha})
             return
           }
           if (bundle.version !== currentVersion) {
             throw new Error('Installed bundle version changed; reopen Plugins and check again')
           }
           if (current.commit === sha) throw new Error('The installed commit already matches this release')
-          if (!canUpdate) throw new Error('This window may not update plugins; use the owner session')
-          if (mounted.current) setAction({phase:'confirm',latest:update.latest,sha,spec:current.location + '#' + sha})
+          if (!mayUpdate()) throw new Error('This window may not update plugins; use the owner session')
+          if (seatCurrent()) setAction({phase:'confirm',latest:update.latest,tag:update.tag,sha,spec:current.location + '#' + sha,
+            installedSource:current.source,installedVersion:bundle.version})
         } catch (error) {
-          if (mounted.current) setAction({phase:'error',message:String(error?.message || error)})
+          if (seatCurrent()) setAction({phase:'error',message:String(error?.message || error)})
         }
       }
       async function applyUpdate() {
         if (action.phase !== 'confirm' || !FULL_COMMIT.test(action.sha) ||
           typeof action.spec !== 'string' || !action.spec.endsWith('#' + action.sha) ||
           gitLocation(action.spec) !== REPOSITORY_LOCATION ||
-          isNewerVersion(action.latest,currentVersion) !== true || !canUpdate) return
-        const {latest,spec} = action
+          isNewerVersion(action.latest,currentVersion) !== true || !canUpdate || !canList ||
+          !pluginManager || updateInFlight.current || !mayUpdate()) return
+        const {latest,spec,tag,sha,installedSource,installedVersion} = action
+        updateInFlight.current = true
         setAction({phase:'installing',latest})
         try {
+          // The confirmation binds both the release commit and the installed source.
+          // Recheck them after the user's confirmation, not only when preparing it.
+          const release = await githubJSON(RELEASE_SOURCE)
+          if (getReleaseVersion(release) !== latest || release.tag_name !== tag) {
+            throw new Error('Published release changed; check again and reconfirm')
+          }
+          const commit = await githubJSON(COMMIT_SOURCE + encodeURIComponent(tag))
+          if (typeof commit?.sha !== 'string' || commit.sha.toLowerCase() !== sha) {
+            throw new Error('Release commit changed; check again and reconfirm')
+          }
+          if (!mayUpdate()) return
+          const bundles = remoteValue(await pluginManager.listBundles(), 'Plugin list')
+          const matches = Array.isArray(bundles) ? bundles.filter(item => item?.name === PACKAGE_NAME) : []
+          const bundle = matches.length === 1 ? matches[0] : undefined
+          const current = installMode(bundle)
+          if (current.kind !== 'pinned' || current.source !== installedSource ||
+            bundle.version !== installedVersion || installedVersion !== currentVersion) {
+            throw new Error('Installed bundle changed; reopen Plugins and reconfirm')
+          }
+          if (!mayUpdate()) return
           // The Host owns package management, permissions, compatibility,
           // removal, reinstallation on failure and restart reporting.
           const result = remoteValue(await pluginManager.updateBundle(PACKAGE_NAME, latest, {spec}), 'Host update')
@@ -256,9 +286,11 @@
           if (state !== 'applied' && state !== 'restart-required' && state !== 'overridden') {
             throw new Error('Update outcome not confirmed. Check the native Plugins page')
           }
-          if (mounted.current) setAction({phase:'done',latest,restart:state === 'restart-required'})
+          if (seatCurrent()) setAction({phase:'done',latest,restart:state === 'restart-required'})
         } catch (error) {
-          if (mounted.current) setAction({phase:'error',message:String(error?.message || error)})
+          if (seatCurrent()) setAction({phase:'error',message:String(error?.message || error)})
+        } finally {
+          updateInFlight.current = false
         }
       }
       const soft = 'rgba(127,127,127,.16)'

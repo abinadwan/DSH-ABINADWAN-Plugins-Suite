@@ -1,4 +1,6 @@
 import { readFileSync } from 'node:fs'
+import { registerStudioRoutes } from './studio-http.js'
+import { registerStudioStorage } from './studio-storage-http.js'
 
 export const name = 'abinadwan-humanizer'
 export const inject = ['skills']
@@ -12,4 +14,7 @@ export function apply(ctx) {
     invocation: { userInvocable: true, modelInvocable: true },
     content,
   }), 'abinadwan-humanizer: runtime skill')
+  // The Skill remains usable in Hosts without Connection or LLM.
+  ctx.inject(['connection', 'llm'], registerStudioRoutes)
+  ctx.inject(['connection', 'profileContext'], registerStudioStorage)
 }

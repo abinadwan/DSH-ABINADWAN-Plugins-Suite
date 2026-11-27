@@ -107,8 +107,20 @@ class Remote extends Service {
   events = new Map()
   constructor(ctx) { super(ctx, 'remote') }
   $on(name, callback) {
-    this.events.set(name, callback)
-    return () => this.events.delete(name)
+    // Native forwarded Host events support independent subscriptions.
+    // Preserve the test driver's events.get(name)(...args) interface.
+    let dispatch = this.events.get(name)
+    if (!dispatch) {
+      const listeners = new Set()
+      dispatch = (...args) => { for (const listener of [...listeners]) listener(...args) }
+      dispatch.listeners = listeners
+      this.events.set(name, dispatch)
+    }
+    dispatch.listeners.add(callback)
+    return () => {
+      dispatch.listeners.delete(callback)
+      if (!dispatch.listeners.size && this.events.get(name) === dispatch) this.events.delete(name)
+    }
   }
 }
 class SettingsRemote extends Service {
@@ -273,6 +285,7 @@ export async function clientHarness(options = {}) {
   }
   class SessionRemote extends Service {
     constructor(ctx) { super(ctx, 'remote.session') }
+    async modelCatalog() { return wrap(options.modelCatalog || (() => ({groups:[]}))) }
     async list(_request, signal) {
       if (options.readArchiveSessions) {
         const result = await options.readArchiveSessions(signal)
@@ -322,6 +335,7 @@ export async function clientHarness(options = {}) {
     fetch: options.fetch || (() => { throw new Error('unexpected network request') }),
     navigator: options.navigator,
     document: options.document,
+    performance: options.performance || performance,
     AbortController, AbortSignal, URL, TextDecoder, Blob, crypto: globalThis.crypto,
   })
   const plugin = loaded.factory(name => {
