@@ -1,0 +1,208 @@
+import test from 'node:test'
+import assert from 'node:assert/strict'
+import '../test-support/dom-global.js'
+import React, {act} from 'react'
+import {createRoot} from 'react-dom/client'
+import {clientHarness,base,tick} from '../test-support/client.js'
+
+const id='abinadwan-humanizer-studio'
+const locale={active:'ar',revision:1,locales:[{id:'en',label:'English'},{id:'ar',label:'العربية'},{id:'fr',label:'Français'}]}
+test('Studio native keyed main and sidebar registration follows Humanizer lifecycle',async t=>{
+  const app=await clientHarness()
+  t.after(()=>app.dispose())
+  const sidebar=app.entries('sidebar.panellist').find(row=>row.options.id===id)
+  assert.equal(sidebar.options.order,11)
+  assert.ok(app.entries('main').some(row=>row.options.key===id))
+  const unsubscribe=app.ctx.remote.$on('settings/document-updated',()=>{})
+  assert.equal(app.events.get('settings/document-updated').listeners.size,2)
+  app.setRows(app.rows().map(row=>row.moduleName===base+'/humanizer'?{...row,enabled:false}:row))
+  await app.changed()
+  assert.ok(!app.entries('main').some(row=>row.options.key===id))
+  assert.ok(!app.entries('sidebar.panellist').some(row=>row.options.id===id))
+  assert.equal(app.events.get('settings/document-updated').listeners.size,1,'disabling Studio must not remove another listener')
+  unsubscribe()
+  assert.equal(app.events.has('settings/document-updated'),false)
+})
+test('Studio uses live native catalog, sends only explicit text, supports RTL and clear',async t=>{
+  const dom={window:globalThis.window}
+  const oldAct=globalThis.IS_REACT_ACT_ENVIRONMENT
+  globalThis.IS_REACT_ACT_ENVIRONMENT=true
+  const container=dom.window.document.createElement('div')
+  dom.window.document.body.append(container)
+  const sent=[]
+  const copied=[]
+  let rejectCopy=false, exposeEffort=true
+  let now=1000
+  const storageCalls=[]
+  let delayedEdit=null, delayedLoad=null, catalogUnavailable=false
+  let saved={version:1,revision:'initial',draft:null,history:[]}
+  const app=await clientHarness({React,navigator:{clipboard:{writeText:async value=>{if(rejectCopy)throw Error('denied');copied.push(value)}}},performance:{now:()=>now},document:dom.window.document,modelCatalog:()=>catalogUnavailable?{ok:false,error:{code:'unavailable',message:'fixture'}}:({groups:[{id:'p',name:'Provider',models:[{id:'m',name:'Model',...(exposeEffort?{reasoning:{efforts:[{id:'vendor/x',name:'Native X'},{id:'vendor/y',name:'Native Y'}],defaultEffort:'vendor/x'}}:{})},{id:'plain',name:'Plain'}]}]}),
+    fetch:async(url,options)=>{
+      const path=new URL(url).pathname
+      if(path.endsWith('/status'))return {ok:true,json:async()=>({available:true,protocol:1})}
+      if(path.endsWith('/edit')){sent.push(JSON.parse(options.body));if(delayedEdit)return delayedEdit.promise;return {ok:true,json:async()=>({text:'نتيجة 123'})}}
+      if(path.endsWith('/storage')){storageCalls.push('load');if(delayedLoad)return delayedLoad.promise;return {ok:true,json:async()=>saved}}
+      if(path.endsWith('/storage/change')){
+        const command=JSON.parse(options.body);storageCalls.push(command)
+        assert.equal(command.revision,saved.revision)
+        if(command.action==='save-draft')saved={...saved,revision:'r1',draft:command.entry}
+        if(command.action==='save-history')saved={...saved,revision:'r2',history:[{id:'h1',savedAt:1,entry:command.entry}]}
+        if(command.action==='clear-all')saved={version:1,revision:'r3',draft:null,history:[]}
+        return {ok:true,json:async()=>saved}
+      }
+      return {ok:false,status:404,json:async()=>({})}
+    }})
+  app.hostLocale.set(locale)
+  const root=createRoot(container)
+  t.after(async()=>{await act(async()=>root.unmount());await app.dispose();container.remove();globalThis.IS_REACT_ACT_ENVIRONMENT=oldAct})
+  const q=selector=>dom.window.document.querySelector(selector)
+  const panel=app.entries('main').find(row=>row.options.key===id)
+  await act(async()=>root.render(React.createElement(panel.component)))
+  for(let i=0;i<4;i++)await act(async()=>{await tick()})
+  assert.equal(q('[data-humanizer-studio]').dir,'rtl')
+  assert.equal(q('[data-studio-model]').options.length,3)
+  assert.equal(q('[data-studio-effort]'),null)
+  assert.equal(q('[data-studio-copy="result"]').disabled,true)
+  assert.equal(q('[data-studio-editor="source"]').readOnly,false)
+  assert.equal(q('[data-studio-editor="result"]').readOnly,true)
+  assert.equal(q('[data-studio-editor="result"]').disabled,false)
+  assert.equal(q('[data-studio-output-language]').options.length,4)
+  assert.equal(sent.length,0)
+  for(const selector of ['[data-studio-model]','[data-studio-input-language]','[data-studio-output-language]']){
+    const node=q(selector)
+    assert.equal(node.style.colorScheme,'inherit')
+    assert.match(node.style.backgroundColor,/--dsw-alias-bg-layer-2/)
+    for(const option of node.querySelectorAll('option,optgroup'))assert.match(option.style.backgroundColor,/--dsw-alias-bg-layer-2/)
+  }
+  const change=async(selector,value)=>{
+    const node=q(selector)
+    const proto=node.tagName==='SELECT'?dom.window.HTMLSelectElement.prototype:dom.window.HTMLTextAreaElement.prototype
+    await act(async()=>{if(node.tagName==='SELECT')node.value=value;else Object.getOwnPropertyDescriptor(proto,'value').set.call(node,value);node.dispatchEvent(new dom.window.Event(node.tagName==='SELECT'?'change':'input',{bubbles:true}))})
+  }
+  // jsdom does not implement native typing/paste. Force a DOM input event to
+  // check that even a synthetic edit cannot populate the result state.
+  await change('[data-studio-editor="result"]','FORGED_EMPTY_RESULT')
+  assert.equal(q('[data-studio-copy="result"]').disabled,true)
+  await change('[data-studio-model]',JSON.stringify(['p','m']))
+  assert.equal(q('[data-studio-editor="result"]').value,'')
+  assert.deepEqual([...q('[data-studio-effort]').options].map(o=>o.value),['','vendor/x','vendor/y'])
+  await change('[data-studio-effort]','vendor/y')
+  await change('[data-studio-model]',JSON.stringify(['p','plain']))
+  assert.equal(q('[data-studio-effort]'),null)
+  await change('[data-studio-model]',JSON.stringify(['p','m']))
+  assert.equal(q('[data-studio-effort]').value,'')
+  await change('[data-studio-effort]','vendor/y')
+  await change('[data-studio-editor="source"]','نص 123')
+  await change('[data-studio-output-language]','ar')
+  assert.equal(q('[data-studio-process]').disabled,false)
+  await act(async()=>q('[data-studio-process]').click())
+  for(let i=0;i<3;i++)await act(async()=>{await tick()})
+  assert.deepEqual(sent,[{service:'humanize',provider:'p',model:'m',sourceText:'نص 123',inputLanguage:'auto',outputLanguage:'ar',reasoningEffort:'vendor/y'}])
+  assert.equal(q('[data-studio-editor="result"]').value,'نتيجة 123')
+  assert.equal(q('[data-studio-editor="result"]').dir,'rtl')
+  assert.match(q('[data-studio-run-effort]').textContent,/Native Y/)
+  const resultEditor=q('[data-studio-editor="result"]')
+  assert.equal(resultEditor.readOnly,true)
+  assert.equal(resultEditor.disabled,false)
+  resultEditor.setSelectionRange(0,resultEditor.value.length)
+  assert.equal(resultEditor.selectionEnd,'نتيجة 123'.length)
+  // Simulate an attempted paste plus forced DOM input (not a native paste implementation).
+  await act(async()=>resultEditor.dispatchEvent(new dom.window.Event('paste',{bubbles:true,cancelable:true})))
+  await change('[data-studio-editor="result"]','FORGED_COMPLETED_RESULT')
+  // Copy uses the authoritative model result in state, not a mutated DOM value.
+  await act(async()=>q('[data-studio-copy="result"]').click())
+  await act(async()=>q('[data-studio-copy="source"]').click())
+  assert.deepEqual(copied,['نتيجة 123','نص 123'])
+  assert.equal(q('[data-studio-editor="result"]').value,'نتيجة 123')
+  rejectCopy=true
+  await act(async()=>q('[data-studio-copy="result"]').click())
+  assert.match(q('[data-studio-copy-notice]').textContent,/الحافظة غير متاحة/)
+  assert.equal(copied.length,2)
+  assert.ok(q('[data-studio-timing-phase="completed"]'))
+  assert.equal(q('[data-studio-elapsed]').textContent,'0.00 s')
+  assert.equal([...app.intervals.values()].some(i=>i.ms===250),false)
+  assert.deepEqual(storageCalls,[],'processing must not touch persistent storage')
+  await act(async()=>q('[data-studio-storage-open]').click())
+  for(let i=0;i<3;i++)await act(async()=>{await tick()})
+  await act(async()=>q('[data-studio-save-draft]').click())
+  for(let i=0;i<3;i++)await act(async()=>{await tick()})
+  assert.equal(saved.draft.sourceText,'نص 123')
+  assert.equal(saved.draft.result,'نتيجة 123')
+  await act(async()=>q('[data-studio-save-history]').click())
+  for(let i=0;i<3;i++)await act(async()=>{await tick()})
+  assert.equal(saved.history.length,1)
+  await act(async()=>q('[data-studio-clear]').click())
+  assert.equal(saved.draft.sourceText,'نص 123','editor clear does not silently delete saved items')
+  await act(async()=>q('[data-studio-restore-draft]').click())
+  assert.equal(q('[data-studio-editor="source"]').value,'نص 123')
+  assert.equal(q('[data-studio-editor="result"]').value,'نتيجة 123')
+  assert.equal(q('[data-studio-editor="result"]').readOnly,true)
+  await act(async()=>q('[data-studio-clear-saved]').click())
+  assert.equal(saved.history.length,1,'confirmation is required')
+  await act(async()=>q('[data-studio-confirm-clear]').click())
+  for(let i=0;i<3;i++)await act(async()=>{await tick()})
+  assert.equal(saved.draft,null)
+  assert.equal(saved.history.length,0)
+  await act(async()=>q('[data-studio-storage-close]').click())
+  await act(async()=>q('[data-studio-clear]').click())
+  assert.equal(q('[data-studio-editor="source"]').value,'')
+  assert.equal(q('[data-studio-editor="result"]').value,'')
+  assert.equal(sent.length,1)
+  assert.equal(dom.window.localStorage.length,0)
+  assert.equal(dom.window.sessionStorage.length,0)
+  function defer(){let resolve;const promise=new Promise(fn=>{resolve=fn});return {promise,resolve}}
+  // The old owner response must not reappear in a new Host generation,
+  // including when a transport ignores the abort signal.
+  await change('[data-studio-model]',JSON.stringify(['p','m']))
+  await change('[data-studio-editor="source"]','OLD_HOST_SENTINEL')
+  delayedEdit=defer()
+  await act(async()=>q('[data-studio-process]').click())
+  assert.ok(q('[data-studio-cancel]'))
+  assert.ok(q('progress'))
+  now+=3750
+  const timer=[...app.intervals.values()].find(i=>i.ms===250)
+  assert.ok(timer)
+  await act(async()=>timer.callback())
+  assert.equal(q('[data-studio-elapsed]').textContent,'3.75 s')
+  await act(async()=>q('[data-studio-cancel]').click())
+  assert.ok(q('[data-studio-timing-phase="cancelled"]'))
+  assert.equal(q('[data-studio-elapsed]').textContent,'3.75 s')
+  assert.equal(q('progress'),null)
+  assert.equal([...app.intervals.values()].some(i=>i.ms===250),false)
+  await act(async()=>q('[data-studio-process]').click())
+  await act(async()=>app.ctx.emit('connection/reset'))
+  for(let i=0;i<4;i++)await act(async()=>{await tick()})
+  await act(async()=>delayedEdit.resolve({ok:true,json:async()=>({text:'OLD_HOST_RESULT'})}))
+  assert.equal(q('[data-studio-editor="source"]').value,'')
+  assert.equal(q('[data-studio-editor="result"]').value,'')
+  assert.equal(q('[data-studio-timing]'),null)
+  assert.equal([...app.intervals.values()].some(i=>i.ms===250),false)
+  delayedEdit=null
+  exposeEffort=false
+  await act(async()=>app.ctx.emit('connection/reset'))
+  for(let i=0;i<4;i++)await act(async()=>{await tick()})
+  await change('[data-studio-model]',JSON.stringify(['p','m']))
+  assert.equal(q('[data-studio-effort]'),null)
+  delayedLoad=defer()
+  await act(async()=>q('[data-studio-storage-open]').click())
+  await act(async()=>app.ctx.emit('connection/reset'))
+  for(let i=0;i<4;i++)await act(async()=>{await tick()})
+  await act(async()=>delayedLoad.resolve({ok:true,json:async()=>({version:1,revision:'old',draft:null,history:[{id:'old',entry:{sourceText:'OLD_SAVED_SENTINEL'}}]})}))
+  assert.ok(!container.textContent.includes('OLD_SAVED_SENTINEL'))
+  assert.equal(q('[data-studio-save-draft]'),null)
+  delayedLoad=null
+  // An unavailable catalog cannot trap saved text or block explicit deletion.
+  catalogUnavailable=true
+  saved={version:1,revision:'r1',draft:{service:'humanize',provider:'p',model:'m',inputLanguage:'auto',outputLanguage:'ar',sourceText:'saved sentinel',result:'saved result',editingBrief:''},history:[]}
+  await act(async()=>app.ctx.emit('connection/reset'))
+  for(let i=0;i<4;i++)await act(async()=>{await tick()})
+  assert.equal(q('[data-studio-process]').disabled,true)
+  assert.equal(q('[data-studio-storage-open]').disabled,false)
+  await act(async()=>q('[data-studio-storage-open]').click())
+  for(let i=0;i<3;i++)await act(async()=>{await tick()})
+  assert.ok(q('[data-studio-restore-draft]'))
+  await act(async()=>q('[data-studio-clear-saved]').click())
+  await act(async()=>q('[data-studio-confirm-clear]').click())
+  for(let i=0;i<3;i++)await act(async()=>{await tick()})
+  assert.equal(saved.draft,null)
+})

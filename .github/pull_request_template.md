@@ -32,6 +32,8 @@ Mark only checks you actually completed; explain missing verification below.
 - [ ] No secrets, real personal data, or unredacted session logs are included.
 - [ ] Changes to data storage, permissions, instruction injection, network behavior, or public APIs are identified below (or marked none).
 - [ ] Documentation and release notes are updated if behavior changed (or not applicable).
+- [ ] `llms.txt` reviewed in the same change; updated or explicit no-impact recorded.
+- [ ] Exact-head `Suite release gate` and applicable native/manual acceptance evidence reviewed (not just an earlier green commit).
 - [ ] This PR targets the correct integration branch and does not assume approval to merge or release.
 
 **Risks / migration / rollback notes:**

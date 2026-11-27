@@ -2,7 +2,7 @@
 
 **Release source [v1.1.3](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.1.3).** One community-maintained DSH bundle exposes six independently switchable components. The package's public identity remains `@abinadwan/dsh-plugins-suite`.
 
-> **Source version:** `1.1.3`. See the [changelog](../CHANGELOG.md) for versioned changes.
+> **Development source:** `1.2.0` (unreleased candidate). See the [changelog](../CHANGELOG.md) for versioned changes.
 >
 > **Release boundary:** A version bump, development branch merge, or successful CI run does not publish a GitHub Release or validate every Desktop security path. See [the releases page](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases) for actually published artifacts.
 
@@ -11,7 +11,7 @@
 | Component | Default | Where to use it | Implemented boundary |
 | --- | --- | --- | --- |
 | <img src="../plugins/environment-context/icon.png" width="28" alt="Environment & Context icon"/> **Environment & Context** | On | Conversation header / right inspector | Read-only session summaries and estimated usage |
-| <img src="../plugins/humanizer/icon.png" width="28" alt="Humanizer icon"/> **Humanizer** | On | Skill registry / agent requests | Edits supplied prose when the Skill is loaded |
+| <img src="../plugins/humanizer/icon.png" width="28" alt="Humanizer icon"/> **Humanizer** | On | Skill registry / agent requests; Humanizer Studio sidebar (v1.2.0 candidate) | Runtime Skill and independent nine-operation editing workspace |
 | <img src="../plugins/personal-profile/icon.png" width="28" alt="My Profile icon"/> **My Profile** | Off | **Settings → My Profile** | Saved personal context and native system preferences |
 | <img src="../plugins/direct-chat/assets/png/icon-256.png" width="28" alt="Direct Chat icon"/> **Direct Chat** | Off | Below native **New Session** | One shared Workspace, independent native chat Sessions |
 | <img src="../plugins/conversation-lifecycle/assets/png/icon-256.png" width="28" alt="Archive Manager icon"/> **Archive Manager** | Off | **Archives** in the sidebar | Authorized archive browsing, search, protection and native restore |
@@ -37,7 +37,17 @@ Enabling the component registers the runtime Skill `abinadwan-humanizer` through
 
 **Scope:** the Skill is used only when loaded by the agent; it is **not** a background rewriter, universal interception layer or model-detector bypass. Its output follows the currently selected model/provider. After disabling, new Skill discovery is removed but an already loaded conversation may retain prior text in context.
 
-[Humanizer usage](../plugins/humanizer/README.md)
+### Humanizer Studio — v1.2.0 candidate
+
+The same component also exposes an independent editing workspace below Automation tasks in the native sidebar when Host services are available. The Skill remains unchanged in identity and activation. Studio supports Humanize, Rewrite, Improve Style, Professional, Proofread, Shorten, Expand, Translate and Custom. Select a configured local or cloud model independently of the conversation, source/result languages and an editing brief when using Custom.
+
+**Controls:** native advertised reasoning effort only when supported; default delegates to the model. Read-only selectable output, explicit source/result copying, character counts, clear, cancellation and window-local elapsed time including Host/provider overhead. Requested effort is not provider-confirmed effective effort.
+
+**Privacy:** no automatic saving or hidden Session/tool execution by Studio. Explicit Profile-local draft/history management supports one draft and up to ten history items; saved data is plaintext, restore does not invoke a model, and deletion is logical. Host middleware and selected providers may observe and retain submissions. Review model output; no guarantee of fidelity or detector evasion.
+
+**Verification:** nine of nine operations have at least one successful manual sample; HS-BUG-003 owner acceptance passed 8/8. These results do not establish complete release acceptance. Studio is not in published v1.1.3.
+
+[Humanizer Skill and Studio usage](../plugins/humanizer/README.md)
 
 ## My Profile
 

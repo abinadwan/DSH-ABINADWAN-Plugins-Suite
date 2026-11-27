@@ -4,7 +4,7 @@ import { Script } from 'node:vm'
 const root = new URL('../', import.meta.url)
 const read = async path => (await readFile(new URL(path, root), 'utf8')).replace(/\r\n/g, '\n')
 const fragment = name => read('client-src/' + name + '.js.inc')
-const order = ["preamble","@arabic","shared","update","environment","profile-header","@preferences","profile","shared-settings","catalog","archive","reasoning","direct-chat","registrations","entry"]
+const order = ["preamble","@arabic","shared","update","environment","profile-header","@preferences","profile","shared-settings","catalog","archive","reasoning","direct-chat","registrations","studio","entry"]
 const dictionary = JSON.parse(await read('locale/dsh-ui-ar.json'))
 const preferences = await read('plugins/personal-profile/preferences.js')
 const first = preferences.indexOf('const PROFILE_STYLES')
