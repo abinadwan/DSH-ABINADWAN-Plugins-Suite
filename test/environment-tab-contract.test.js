@@ -267,3 +267,58 @@ test('Environment rejects erroneous cached projections, invalid numbers and a ze
   app.sessions.set(invalid)
   assert.doesNotMatch(render(), /aria-valuenow|Infinity|e\+30/)
 })
+
+
+test('Environment projection-only renders reuse membership checks; new snapshots and connection changes revalidate', async t => {
+  const fixture = sessionSnapshot()
+  let sessionScans = 0, workspaceScans = 0
+  for (let i = 0; i < 1000; i++) {
+    const id = 'synthetic-' + i
+    fixture.ids.push(id)
+    fixture.byId[id] = { id, running: false }
+  }
+  fixture.ids.filter = function (...args) {
+    sessionScans++
+    return Array.prototype.filter.apply(this, args)
+  }
+  const app = await clientHarness({ React, hostLocale: 'en', sessions: fixture })
+  t.after(() => app.dispose())
+  const view = await dom(t)
+  const original = app.workspaces.getSnapshot()
+  const items = [...original.items]
+  items.every = function (...args) {
+    workspaceScans++
+    return Array.prototype.every.apply(this, args)
+  }
+  await act(async () => { app.workspaces.set({ ...original, items }); await tick() })
+  const entry = app.slots.records.get(base + '/environment-context')
+  const stores = {
+    tokenUsage: observable({ outputTokens: 40 }),
+    contextPressure: observable({ projectedTokens: 2000, contextWindow: 10000 }),
+    contextBreakdown: observable(undefined),
+  }
+  await act(async () => view.root.render(React.createElement(entry.component,
+    { sessionId: 's1', useProjection: projectionHook(stores) })))
+  assert.match(view.text(), /HomeBook/)
+  assert.ok(sessionScans > 0 && workspaceScans > 0)
+  const before = [sessionScans, workspaceScans]
+  for (let i = 1; i <= 5; i++) {
+    await act(async () => stores.tokenUsage.set({ outputTokens: 40 + i }))
+  }
+  assert.match(view.text(), /Output tokens45/)
+  assert.deepEqual([sessionScans, workspaceScans], before,
+    'live projections do not rescan unchanged authorized catalog snapshots')
+  await act(async () => app.workspaces.set({ ...original, items: [...items,
+    { workspaceId: 'ambiguous', title: 'Private', sessionIds: ['s1'] }] }))
+  assert.doesNotMatch(view.text(), /HomeBook|Private/)
+  await act(async () => app.sessions.set({ ...fixture, ids: ['s2'] }))
+  assert.doesNotMatch(view.text(), /Demo|Output tokens45/)
+  await act(async () => app.host.set(undefined))
+  await act(async () => app.host.set({ id: 2, host: { home: 'C:/Synthetic' } }))
+  assert.doesNotMatch(view.text(), /Demo|HomeBook|Output tokens45/)
+  const fresh = sessionSnapshot()
+  fresh.byId.s1 = { id: 's1', displayTitle: 'New host', running: false }
+  await act(async () => app.sessions.set(fresh))
+  assert.match(view.text(), /New host/)
+  assert.doesNotMatch(view.text(), /HomeBook|Output tokens45/)
+})

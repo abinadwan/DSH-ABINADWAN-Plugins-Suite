@@ -2,6 +2,11 @@
 
 All notable changes are documented here.
 
+## [1.2.1] — target development release (unreleased)
+
+- Phase 04: reuse authorized Archive inventory within the page memo; memoize Studio model capability normalization against native catalog groups; reuse Environment membership checks across unchanged external-store snapshots and live projection updates. Preserve action-time authorization, native request guards and connection freshness. Direct Chat, Adaptive Reasoning and My Profile retained after evidence-based review.
+- Exact candidate `b71cc93395a7868078cb4037c8c1f5d27b1ed901` passed [CI 46070478086](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/46070478086) and push CI. The old stateless React double was corrected to support useMemo; no runtime behavior changed by that fix. Owner-approved scoped Desktop acceptance 3/3 on DSH 0.2.2-rc.5, isolated Windows Profile: Archive Manager, Humanizer Studio and Environment & Context. Studio initial timeout did not recur; Grammar retry with qwen3.5:4b / native Off completed in 90.36 s with one request and the expected result. Cause of prior timeout unproven; no deadline change or measured overall speedup. Full evidence and limitations: [development guide](docs/architecture/development.md#phase-04--acceptance-and-owner-disposition-2026-11-28) and [PR #92](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/92). Owner approved integration into develop on 2026-11-28; package version and publication remain unchanged until separately approved release preparation.
+
 ## [1.2.0] — release source (2026-11-27)
 
 - Start owner-approved Humanizer Studio (HS-01 through HS-08) and additional security reviews 3.6 (Humanizer instruction integrity and privacy) and 3.7 (suite package, dependencies, updates and repository). Branch `feature/v1.2.0-humanizer-studio`, baseline `b883fe41f27fae0c89d6a4bda3d55f2f9bb65e54` (same source tree as published v1.1.3). No Studio runtime/UI is shipped by this initial commit.

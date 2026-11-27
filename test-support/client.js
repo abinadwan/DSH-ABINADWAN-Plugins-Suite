@@ -27,6 +27,8 @@ export const ReactStub = {
   createElement: (type, props, ...children) => ({ type, props: props ?? {}, children }),
   useState: initial => [initial, () => {}],
   useEffect: () => {},
+  // This stateless render double evaluates the factory; real React tests verify memoization.
+  useMemo: factory => factory(),
   useRef: initial => ({ current: initial }),
   useSyncExternalStore: (_, get) => get(),
 }

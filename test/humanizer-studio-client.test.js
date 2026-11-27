@@ -31,12 +31,12 @@ test('Studio uses live native catalog, sends only explicit text, supports RTL an
   dom.window.document.body.append(container)
   const sent=[]
   const copied=[]
-  let rejectCopy=false, exposeEffort=true
+  let rejectCopy=false, exposeEffort=true, effortReads=0
   let now=1000
   const storageCalls=[]
   let delayedEdit=null, delayedLoad=null, catalogUnavailable=false
   let saved={version:1,revision:'initial',draft:null,history:[]}
-  const app=await clientHarness({React,navigator:{clipboard:{writeText:async value=>{if(rejectCopy)throw Error('denied');copied.push(value)}}},performance:{now:()=>now},document:dom.window.document,modelCatalog:()=>catalogUnavailable?{ok:false,error:{code:'unavailable',message:'fixture'}}:({groups:[{id:'p',name:'Provider',models:[{id:'m',name:'Model',...(exposeEffort?{reasoning:{efforts:[{id:'vendor/x',name:'Native X'},{id:'vendor/y',name:'Native Y'}],defaultEffort:'vendor/x'}}:{})},{id:'plain',name:'Plain'}]}]}),
+  const app=await clientHarness({React,navigator:{clipboard:{writeText:async value=>{if(rejectCopy)throw Error('denied');copied.push(value)}}},performance:{now:()=>now},document:dom.window.document,modelCatalog:()=>catalogUnavailable?{ok:false,error:{code:'unavailable',message:'fixture'}}:({groups:[{id:'p',name:'Provider',models:[{id:'m',name:'Model',...(exposeEffort?{reasoning:{get efforts(){effortReads++;return [{id:'vendor/x',name:'Native X'},{id:'vendor/y',name:'Native Y'}]},defaultEffort:'vendor/x'}}:{})},{id:'plain',name:'Plain'}]}]}),
     fetch:async(url,options)=>{
       const path=new URL(url).pathname
       if(path.endsWith('/status'))return {ok:true,json:async()=>({available:true,protocol:1})}
@@ -61,6 +61,8 @@ test('Studio uses live native catalog, sends only explicit text, supports RTL an
   for(let i=0;i<4;i++)await act(async()=>{await tick()})
   assert.equal(q('[data-humanizer-studio]').dir,'rtl')
   assert.equal(q('[data-studio-model]').options.length,3)
+  assert.ok(effortReads > 0, 'native capability catalog was normalized')
+  const initialEffortReads=effortReads
   assert.equal(q('[data-studio-effort]'),null)
   assert.equal(q('[data-studio-copy="result"]').disabled,true)
   assert.equal(q('[data-studio-editor="source"]').readOnly,false)
@@ -94,6 +96,7 @@ test('Studio uses live native catalog, sends only explicit text, supports RTL an
   await change('[data-studio-effort]','vendor/y')
   await change('[data-studio-editor="source"]','نص 123')
   await change('[data-studio-output-language]','ar')
+  assert.equal(effortReads,initialEffortReads,'editor and model selection changes must not rebuild unchanged catalog capabilities')
   assert.equal(q('[data-studio-process]').disabled,false)
   await act(async()=>q('[data-studio-process]').click())
   for(let i=0;i<3;i++)await act(async()=>{await tick()})
@@ -162,7 +165,9 @@ test('Studio uses live native catalog, sends only explicit text, supports RTL an
   now+=3750
   const timer=[...app.intervals.values()].find(i=>i.ms===250)
   assert.ok(timer)
+  const beforeTick=effortReads
   await act(async()=>timer.callback())
+  assert.equal(effortReads,beforeTick,'elapsed-time ticks must not rebuild unchanged catalog capabilities')
   assert.equal(q('[data-studio-elapsed]').textContent,'3.75 s')
   await act(async()=>q('[data-studio-cancel]').click())
   assert.ok(q('[data-studio-timing-phase="cancelled"]'))

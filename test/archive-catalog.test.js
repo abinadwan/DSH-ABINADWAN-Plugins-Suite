@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
+import { runInNewContext } from 'node:vm'
 import { browserSource, catalogReady, conversationInventory } from '../test-support/client-source.js'
 
 const DAY = 86400000
@@ -64,4 +65,47 @@ test('retired retention evaluation and destructive cleanup are not present in th
   assert.doesNotMatch(browserSource, /function (?:retentionRows|CleanupPreview|WorkspaceLifecycle|RetentionField)\(/)
   assert.doesNotMatch(browserSource, /Past retention cutoff/)
   assert.match(browserSource, /function ArchivePage\(/)
+})
+
+
+test('Archive page builds both lists with one authorized catalog traversal', () => {
+  let traversals = 0
+  const section = (start, end) => {
+    const a = browserSource.indexOf(start)
+    const b = browserSource.indexOf(end, a + start.length)
+    assert.ok(a >= 0 && b > a)
+    return browserSource.slice(a, b)
+  }
+  const { archivePageInventory, archiveInventory } = runInNewContext(
+    section('    function archiveInventory(', '    function filterArchive(') +
+    section('    function archivePageInventory(', '    function ArchivePage(') +
+    '\n({ archivePageInventory, archiveInventory })',
+    { conversationInventory: (...args) => { traversals++; return conversationInventory(...args) },
+      titleOrEmpty: value => typeof value === 'string' ? value : '' })
+  const { workspaces, sessions } = fixture()
+  for (let i = 0; i < 1000; i++) {
+    const id = 'synthetic-' + i
+    workspaces.items[0].sessionIds.push(id)
+    sessions.ids.push(id)
+    sessions.byId[id] = { id, running: false, displayTitle: id }
+    if (i % 2 === 0) workspaces.archivedSessionIds.push(id)
+  }
+  workspaces.items.push({ workspaceId: 'foreign', title: 'Foreign', sessionIds: ['synthetic-0', 'unauthorized'] })
+  workspaces.items.push({ workspaceId: 'dup', title: 'Duplicate', sessionIds: ['duplicate'] },
+    { workspaceId: 'dup', title: 'Duplicate', sessionIds: [] })
+  sessions.ids.push('duplicate')
+  sessions.byId.duplicate = { id: 'duplicate', running: false }
+  workspaces.archivedSessionIds.push('unauthorized', 'duplicate')
+  const record = { protectedIds: ['synthetic-0', 'synthetic-1', 'synthetic-2', 'unauthorized', 'duplicate'],
+    protectedWorkspaces: ['w', 'dup'] }
+  const result = archivePageInventory(workspaces, sessions, record)
+  assert.equal(traversals, 1)
+  assert.equal(result.rows.length, 499)
+  assert.deepEqual(Array.from(result.savedRows, row => row.id), ['synthetic-1'])
+  assert.deepEqual(Array.from(result.protectionWorkspaces, row => row.workspaceId), ['w'])
+  assert.equal(result.rows.find(row => row.id === 'synthetic-2').individuallyProtected, true)
+  assert.equal(result.rows.every(row => row.workspaceProtected), true)
+  const fresh = archiveInventory(workspaces, sessions, record)
+  assert.equal(traversals, 2, 'action-time inventory still independently validates current membership')
+  assert.deepEqual(Array.from(result.rows, row => row.id), Array.from(fresh, row => row.id))
 })
