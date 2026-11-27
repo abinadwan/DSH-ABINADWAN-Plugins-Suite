@@ -19,3 +19,7 @@ The owner supplied the original suite artwork for distribution with this MIT-lic
 ## Artwork verification
 
 All six components use the same 24 × 24 glyph grid and native `currentColor`. The [light contact sheet](../assets/new-plugins/contact-sheet-light.png) and [dark contact sheet](../assets/new-plugins/contact-sheet-dark.png) show simulated themes. The source [renderer](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/develop/scripts/render-plugin-icons.mjs) generates SVGs, PNGs, contact sheets and native glyph geometry. Byte-for-byte contact sheets use Windows/Segoe UI, Sharp 0.35.5 and librsvg 2.63.2 from a matching installed Harness runtime. Extract it with `node qa/extract-new-plugins-runtime.mjs <app.asar>`, run `node scripts/render-plugin-icons.mjs <scratch>` and repeat with `--check`. These are development-only tools.
+
+## Phase 05 — interface standard
+
+Preserve existing component badges and native currentColor glyphs. Prefer DSH theme aliases and controls, logical spacing, consistent label/action hierarchy, visible focus and accessible names. Keep stable element keys independent of translated text. Use the active native interface locale for suite-owned text and formatting; do not translate user content, opaque IDs or model names. Verify light/dark and RTL/LTR in affected views only.

@@ -60,8 +60,8 @@ window.__ModuleLoader__.load({
         h('span', { style: { opacity: .75, textAlign: 'end' } },
           h('bdi', null, value == null ? '—' : String(value))))
     }
-    function section(name, rows) {
-      return h('details', { open: true, key: name, style: {
+    function section(name, rows, id = name) {
+      return h('details', { open: true, key: id, style: {
         padding: '12px 0', borderBottom: '1px solid rgba(127,127,127,.24)' } },
         h('summary', { style: { cursor: 'pointer', fontWeight: 650, marginBottom: 9,
           fontSize: 12 } }, name),
@@ -446,6 +446,182 @@ window.__ModuleLoader__.load({
             textDecoration:'underline'}},'View published releases'))
     }
 
+    // English source keys and existing Arabic copy are retained.
+    const environmentTranslations = {
+      "zh": {
+        "Environment & Context": "环境与上下文",
+        "Current context and workspace details": "当前上下文和工作区详情",
+        "Open Environment sidebar": "打开环境侧边栏",
+        "Environment": "环境",
+        "Browser": "浏览器",
+        "Workspaces": "工作区",
+        "Context": "上下文",
+        "Loading context usage for this Session…": "正在加载此会话的上下文用量…",
+        "Context usage is unavailable for this Session.": "无法获取此会话的上下文用量。",
+        "Context use is available after the model reports usage.": "模型报告用量后即可查看上下文用量。",
+        "{percent}% used": "已使用 {percent}%",
+        "Context occupancy": "上下文占用率",
+        "Messages (estimated)": "消息（估算）",
+        "Tool schemas (estimated)": "工具定义（估算）",
+        "System prompt (estimated)": "系统提示词（估算）",
+        "Free space": "剩余空间",
+        "Session": "会话",
+        "Status": "状态",
+        "Running": "运行中",
+        "Idle": "空闲",
+        "Outputs": "输出",
+        "Output tokens": "输出令牌数",
+        "Last activity": "最后活动",
+        "Output file lists require a separate, permission-checked files service.": "列出输出文件需要单独的、经过权限检查的文件服务。",
+        "Connectors": "连接器",
+        "Connector inventory is not available via the documented Client APIs used here.": "当前使用的已记录客户端 API 无法提供连接器列表。",
+        "Changes": "更改",
+        "Git changes require the Workspace changes integration.": "Git 更改需要工作区更改集成。",
+        "Read-only · No external requests from this Session panel.": "只读 · 此会话面板不会发出外部请求。",
+        "Workspace": "工作区",
+        "Unavailable": "不可用"
+      },
+      "es": {
+        "Environment & Context": "Entorno y contexto",
+        "Current context and workspace details": "Contexto actual y detalles del espacio de trabajo",
+        "Open Environment sidebar": "Abrir la barra lateral de entorno",
+        "Environment": "Entorno",
+        "Browser": "Navegador",
+        "Workspaces": "Espacios de trabajo",
+        "Context": "Contexto",
+        "Loading context usage for this Session…": "Cargando el uso del contexto de esta sesión…",
+        "Context usage is unavailable for this Session.": "El uso del contexto no está disponible para esta sesión.",
+        "Context use is available after the model reports usage.": "El uso del contexto estará disponible cuando el modelo informe del uso.",
+        "{percent}% used": "{percent}% utilizado",
+        "Context occupancy": "Ocupación del contexto",
+        "Messages (estimated)": "Mensajes (estimación)",
+        "Tool schemas (estimated)": "Esquemas de herramientas (estimación)",
+        "System prompt (estimated)": "Instrucciones del sistema (estimación)",
+        "Free space": "Espacio disponible",
+        "Session": "Sesión",
+        "Status": "Estado",
+        "Running": "En ejecución",
+        "Idle": "Inactiva",
+        "Outputs": "Resultados",
+        "Output tokens": "Tokens de salida",
+        "Last activity": "Última actividad",
+        "Output file lists require a separate, permission-checked files service.": "La lista de archivos de salida requiere un servicio de archivos independiente con control de permisos.",
+        "Connectors": "Conectores",
+        "Connector inventory is not available via the documented Client APIs used here.": "El inventario de conectores no está disponible mediante las API de cliente documentadas que se usan aquí.",
+        "Changes": "Cambios",
+        "Git changes require the Workspace changes integration.": "Los cambios de Git requieren la integración de cambios del espacio de trabajo.",
+        "Read-only · No external requests from this Session panel.": "Solo lectura · Este panel de sesión no realiza solicitudes externas.",
+        "Workspace": "Espacio de trabajo",
+        "Unavailable": "No disponible"
+      },
+      "fr": {
+        "Environment & Context": "Environnement et contexte",
+        "Current context and workspace details": "Contexte actuel et détails de l’espace de travail",
+        "Open Environment sidebar": "Ouvrir le panneau latéral Environnement",
+        "Environment": "Environnement",
+        "Browser": "Navigateur",
+        "Workspaces": "Espaces de travail",
+        "Context": "Contexte",
+        "Loading context usage for this Session…": "Chargement de l’utilisation du contexte de cette session…",
+        "Context usage is unavailable for this Session.": "L’utilisation du contexte n’est pas disponible pour cette session.",
+        "Context use is available after the model reports usage.": "L’utilisation du contexte est disponible lorsque le modèle communique ses données d’utilisation.",
+        "{percent}% used": "{percent} % utilisé",
+        "Context occupancy": "Occupation du contexte",
+        "Messages (estimated)": "Messages (estimation)",
+        "Tool schemas (estimated)": "Schémas d’outils (estimation)",
+        "System prompt (estimated)": "Instructions système (estimation)",
+        "Free space": "Espace disponible",
+        "Session": "Session",
+        "Status": "État",
+        "Running": "En cours",
+        "Idle": "Inactive",
+        "Outputs": "Sorties",
+        "Output tokens": "Jetons de sortie",
+        "Last activity": "Dernière activité",
+        "Output file lists require a separate, permission-checked files service.": "La liste des fichiers de sortie nécessite un service de fichiers distinct avec vérification des autorisations.",
+        "Connectors": "Connecteurs",
+        "Connector inventory is not available via the documented Client APIs used here.": "L’inventaire des connecteurs n’est pas accessible via les API client documentées utilisées ici.",
+        "Changes": "Modifications",
+        "Git changes require the Workspace changes integration.": "Les modifications Git nécessitent l’intégration des modifications de l’espace de travail.",
+        "Read-only · No external requests from this Session panel.": "Lecture seule · Ce panneau de session n’envoie aucune requête externe.",
+        "Workspace": "Espace de travail",
+        "Unavailable": "Indisponible"
+      },
+      "de": {
+        "Environment & Context": "Umgebung und Kontext",
+        "Current context and workspace details": "Aktueller Kontext und Arbeitsbereichsdetails",
+        "Open Environment sidebar": "Seitenleiste Umgebung öffnen",
+        "Environment": "Umgebung",
+        "Browser": "Browser",
+        "Workspaces": "Arbeitsbereiche",
+        "Context": "Kontext",
+        "Loading context usage for this Session…": "Kontextnutzung dieser Sitzung wird geladen…",
+        "Context usage is unavailable for this Session.": "Die Kontextnutzung ist für diese Sitzung nicht verfügbar.",
+        "Context use is available after the model reports usage.": "Die Kontextnutzung ist verfügbar, sobald das Modell Nutzungsdaten meldet.",
+        "{percent}% used": "{percent} % belegt",
+        "Context occupancy": "Kontextbelegung",
+        "Messages (estimated)": "Nachrichten (geschätzt)",
+        "Tool schemas (estimated)": "Werkzeugschemata (geschätzt)",
+        "System prompt (estimated)": "Systemanweisung (geschätzt)",
+        "Free space": "Freier Speicherplatz",
+        "Session": "Sitzung",
+        "Status": "Status",
+        "Running": "Aktiv",
+        "Idle": "Inaktiv",
+        "Outputs": "Ausgaben",
+        "Output tokens": "Ausgabetokens",
+        "Last activity": "Letzte Aktivität",
+        "Output file lists require a separate, permission-checked files service.": "Ausgabedateilisten erfordern einen separaten Dateidienst mit Berechtigungsprüfung.",
+        "Connectors": "Konnektoren",
+        "Connector inventory is not available via the documented Client APIs used here.": "Die Konnektorliste ist über die hier verwendeten dokumentierten Client-APIs nicht verfügbar.",
+        "Changes": "Änderungen",
+        "Git changes require the Workspace changes integration.": "Git-Änderungen erfordern die Integration für Arbeitsbereichsänderungen.",
+        "Read-only · No external requests from this Session panel.": "Schreibgeschützt · Dieses Sitzungsfenster sendet keine externen Anfragen.",
+        "Workspace": "Arbeitsbereich",
+        "Unavailable": "Nicht verfügbar"
+      },
+      "ja": {
+        "Environment & Context": "環境とコンテキスト",
+        "Current context and workspace details": "現在のコンテキストとワークスペースの詳細",
+        "Open Environment sidebar": "環境サイドバーを開く",
+        "Environment": "環境",
+        "Browser": "ブラウザー",
+        "Workspaces": "ワークスペース",
+        "Context": "コンテキスト",
+        "Loading context usage for this Session…": "このセッションのコンテキスト使用量を読み込み中…",
+        "Context usage is unavailable for this Session.": "このセッションのコンテキスト使用量は利用できません。",
+        "Context use is available after the model reports usage.": "モデルが使用量を報告するとコンテキスト使用量を確認できます。",
+        "{percent}% used": "{percent}% 使用済み",
+        "Context occupancy": "コンテキスト占有率",
+        "Messages (estimated)": "メッセージ（推定）",
+        "Tool schemas (estimated)": "ツールスキーマ（推定）",
+        "System prompt (estimated)": "システムプロンプト（推定）",
+        "Free space": "空き容量",
+        "Session": "セッション",
+        "Status": "状態",
+        "Running": "実行中",
+        "Idle": "待機中",
+        "Outputs": "出力",
+        "Output tokens": "出力トークン",
+        "Last activity": "最終アクティビティ",
+        "Output file lists require a separate, permission-checked files service.": "出力ファイル一覧には権限を確認する別のファイルサービスが必要です。",
+        "Connectors": "コネクター",
+        "Connector inventory is not available via the documented Client APIs used here.": "ここで使用する文書化されたクライアント API ではコネクター一覧を取得できません。",
+        "Changes": "変更",
+        "Git changes require the Workspace changes integration.": "Git の変更を表示するにはワークスペース変更の連携が必要です。",
+        "Read-only · No external requests from this Session panel.": "読み取り専用 · このセッションパネルは外部リクエストを送信しません。",
+        "Workspace": "ワークスペース",
+        "Unavailable": "利用不可"
+      }
+    }
+    const environmentCopy = (value, language) => environmentTranslations[language]?.[value] ?? uiCopy(value, language)
+    const environmentNumber = (value, language) => new Intl.NumberFormat(language).format(value)
+    const environmentCompact = (value, language) => {
+      if (good(value) === undefined) return '—'
+      return language === 'en' ? compact(value) : new Intl.NumberFormat(language, {
+        notation: 'compact', maximumFractionDigits: 1,
+      }).format(value)
+    }
     function environmentSession(sessions, id) {
       if (typeof id !== 'string' || !id.trim() || sessions?.phase !== 'ready' || sessions.state === 'error' ||
           !Array.isArray(sessions.ids) || sessions.ids.filter(value => value === id).length !== 1 ||
@@ -467,7 +643,9 @@ window.__ModuleLoader__.load({
     const environmentTokens = value => good(value) !== undefined && value <= Number.MAX_SAFE_INTEGER ? value : undefined
 
     function Details({ session, linked, projections, projectionState, language }) {
-      const t = value => uiCopy(value, language)
+      const t = value => environmentCopy(value, language)
+      const number = value => environmentNumber(value, language)
+      const formatCompact = value => environmentCompact(value, language)
       // Values come from the tab seat's Session-scoped `useProjection` hook when
       // the Host supplies it, else from this Session's list projection snapshot.
       const pressure = projections?.contextPressure
@@ -480,7 +658,7 @@ window.__ModuleLoader__.load({
         (navigator.userAgentData?.platform || navigator.platform) : undefined
       const environment = [
         line(t('Browser'), platform || t('Unavailable')),
-        line(t('Workspaces'), linked.length),
+        line(t('Workspaces'), number(linked.length)),
         ...linked.map(w => line(h('bdi', null, '▣ ' + (environmentText(w.title) || t('Workspace'))), environmentText(w.path) || '')),
       ]
       const context = []
@@ -491,34 +669,34 @@ window.__ModuleLoader__.load({
               ? t('Context usage is unavailable for this Session.')
               : t('Context use is available after the model reports usage.')))
       } else {
-        context.push(line(t('{percent}% used').replace('{percent}', pct), '~' + compact(used) + ' / ' + compact(max)))
+        context.push(line(t('{percent}% used').replace('{percent}', number(pct)), '~' + formatCompact(used) + ' / ' + formatCompact(max)))
         context.push(h('div', { role: 'progressbar', 'aria-label': t('Context occupancy'),
           'aria-valuenow': pct, 'aria-valuemin': 0, 'aria-valuemax': 100,
           style: { background: 'rgba(127,127,127,.25)', borderRadius: 8,
             height: 6, overflow: 'hidden', margin: '7px 0' } },
           h('div', { style: { width: pct + '%', height: '100%', background: '#378fdb' } })))
-        context.push(line(t('Messages (estimated)'), compact(environmentTokens(breakdown?.messageTokens))))
-        context.push(line(t('Tool schemas (estimated)'), compact(environmentTokens(breakdown?.toolsTokens))))
-        context.push(line(t('System prompt (estimated)'), compact(environmentTokens(breakdown?.systemTokens))))
-        context.push(line(t('Free space'), compact(Math.max(0, max - used))))
+        context.push(line(t('Messages (estimated)'), formatCompact(environmentTokens(breakdown?.messageTokens))))
+        context.push(line(t('Tool schemas (estimated)'), formatCompact(environmentTokens(breakdown?.toolsTokens))))
+        context.push(line(t('System prompt (estimated)'), formatCompact(environmentTokens(breakdown?.systemTokens))))
+        context.push(line(t('Free space'), formatCompact(Math.max(0, max - used))))
       }
       context.push(line(t('Session'), environmentText(session?.displayTitle) || t('Unavailable')))
       context.push(line(t('Status'), t(session?.running === true ? 'Running' : session?.running === false ? 'Idle' : 'Unavailable')))
       const outputs = [
-        line(t('Output tokens'), compact(environmentTokens(tokenUsage?.outputTokens))),
+        line(t('Output tokens'), formatCompact(environmentTokens(tokenUsage?.outputTokens))),
         line(t('Last activity'), good(session?.updatedAt) === undefined || session.updatedAt > 8640000000000000 ?
           t('Unavailable') : new Date(session.updatedAt).toLocaleString(language)),
         h('p', { key: 'output-note', style: muted },
           t('Output file lists require a separate, permission-checked files service.')),
       ]
       const cards = [
-        section(t('Environment'), environment),
-        section(t('Context'), context),
+        section(t('Environment'), environment, 'environment'),
+        section(t('Context'), context, 'context'),
         section(t('Connectors'), [h('p', { key: 'conn', style: muted },
-          t('Connector inventory is not available via the documented Client APIs used here.'))]),
-        section(t('Outputs'), outputs),
+          t('Connector inventory is not available via the documented Client APIs used here.'))], 'connectors'),
+        section(t('Outputs'), outputs, 'outputs'),
         section(t('Changes'), [h('p', { key: 'diff', style: muted },
-          t('Git changes require the Workspace changes integration.'))]),
+          t('Git changes require the Workspace changes integration.'))], 'changes'),
       ]
       return h('aside', { 'data-environment-right-sidebar': '', lang: language, dir: language === 'ar' ? 'rtl' : 'ltr',
         style: { height: '100%', overflowY: 'auto', boxSizing: 'border-box',
@@ -527,9 +705,9 @@ window.__ModuleLoader__.load({
         h('p', { style: muted }, t('Read-only · No external requests from this Session panel.')))
     }
     function HeaderButton({ openInspector, localeSource }) {
-      const language = useUiLanguage(localeSource)
+      const language = useSuiteNativeUiLanguage(localeSource)
       return h('button', { type: 'button', onClick: openInspector,
-        'aria-label': uiCopy('Open Environment sidebar', language), title: uiCopy('Environment', language),
+        'aria-label': environmentCopy('Open Environment sidebar', language), title: environmentCopy('Environment', language),
         'data-environment-header-action': '',
         style: { background: 'transparent', border: 0, color: 'inherit',
           display: 'inline-flex', justifyContent: 'center', alignItems: 'center',
@@ -542,7 +720,7 @@ window.__ModuleLoader__.load({
         const s = ctx.sessions.list
         const w = ctx.workspaces.list
         const localeSource = ctx.get?.('locale')
-        const translate = value => () => uiCopy(value, uiLanguage(localeSource?.getSnapshot?.()))
+        const translate = value => () => environmentCopy(value, suiteNativeUiLanguage(localeSource?.getSnapshot?.()))
         const subS = l => s.subscribe(l)
         const subW = l => w.subscribe(l)
         const getS = () => s.getSnapshot()
@@ -585,7 +763,7 @@ window.__ModuleLoader__.load({
           }
         }
         function Body(props) {
-          const language = useUiLanguage(localeSource)
+          const language = useSuiteNativeUiLanguage(localeSource)
           const sessions = React.useSyncExternalStore(subS, getS, getS)
           const workspaces = React.useSyncExternalStore(subW, getW, getW)
           const current = suiteWatch(connectionScope)
@@ -628,8 +806,8 @@ window.__ModuleLoader__.load({
         ctx.slots.inject('sidebar.right.pane.tab.title', () => ctx.slots.register({
           name: 'sidebar.right.pane.tab.title', key: TYPE + '/environment-context',
         }, function EnvironmentTitle() {
-          const language = useUiLanguage(localeSource)
-          return h('span', { lang: language }, uiCopy('Environment & Context', language))
+          const language = useSuiteNativeUiLanguage(localeSource)
+          return h('span', { lang: language }, environmentCopy('Environment & Context', language))
         }))
         ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({
           name: 'conversation.session.header.utilities',
@@ -2671,7 +2849,63 @@ window.__ModuleLoader__.load({
         "Start or resume this chat before changing its effort.": "ابدأ المحادثة أو استأنفها قبل تغيير مستوى الاستدلال.",
         "Start or resume this chat before applying the saved effort.": "ابدأ المحادثة أو استأنفها قبل تطبيق المستوى المحفوظ."
     }
-    const uiCopy = (value, language) => language === 'ar' ? uiArabicLabels[value] ?? value : value
+    const suiteSettingsTranslations = {
+      "zh": {
+        "Loading settings…": "正在加载设置…",
+        "Settings unavailable.": "设置不可用。",
+        "Saving…": "正在保存…",
+        "Saved.": "已保存。",
+        "Save failed.": "保存失败。",
+        "Settings changed in another window. Reload before saving again.": "设置已在其他窗口中更改。请重新加载后再保存。",
+        "Reload settings": "重新加载设置"
+      },
+      "es": {
+        "Loading settings…": "Cargando ajustes…",
+        "Settings unavailable.": "Ajustes no disponibles.",
+        "Saving…": "Guardando…",
+        "Saved.": "Guardado.",
+        "Save failed.": "Error al guardar.",
+        "Settings changed in another window. Reload before saving again.": "Los ajustes cambiaron en otra ventana. Vuelve a cargarlos antes de guardar.",
+        "Reload settings": "Recargar ajustes"
+      },
+      "fr": {
+        "Loading settings…": "Chargement des paramètres…",
+        "Settings unavailable.": "Paramètres indisponibles.",
+        "Saving…": "Enregistrement…",
+        "Saved.": "Enregistré.",
+        "Save failed.": "Échec de l’enregistrement.",
+        "Settings changed in another window. Reload before saving again.": "Les paramètres ont changé dans une autre fenêtre. Rechargez-les avant d’enregistrer.",
+        "Reload settings": "Recharger les paramètres"
+      },
+      "de": {
+        "Loading settings…": "Einstellungen werden geladen…",
+        "Settings unavailable.": "Einstellungen nicht verfügbar.",
+        "Saving…": "Wird gespeichert…",
+        "Saved.": "Gespeichert.",
+        "Save failed.": "Speichern fehlgeschlagen.",
+        "Settings changed in another window. Reload before saving again.": "Die Einstellungen wurden in einem anderen Fenster geändert. Laden Sie sie vor dem Speichern neu.",
+        "Reload settings": "Einstellungen neu laden"
+      },
+      "ja": {
+        "Loading settings…": "設定を読み込み中…",
+        "Settings unavailable.": "設定は利用できません。",
+        "Saving…": "保存中…",
+        "Saved.": "保存しました。",
+        "Save failed.": "保存に失敗しました。",
+        "Settings changed in another window. Reload before saving again.": "別のウィンドウで設定が変更されました。保存する前に再読み込みしてください。",
+        "Reload settings": "設定を再読み込み"
+      }
+    }
+    const uiCopy = (value, language) => language === 'ar' ? uiArabicLabels[value] ?? value : suiteSettingsTranslations[language]?.[value] ?? value
+    // Only migrated components use the seven-language resolver until their catalogs are complete.
+    const suiteNativeUiLanguage = snapshot => {
+      const current = snapshot?.active ?? globalThis.document?.documentElement.lang
+      const id = typeof current === 'string' ? current.toLowerCase().split('-')[0] : 'en'
+      return ['en','ar','zh','es','fr','de','ja'].includes(id) ? id : 'en'
+    }
+    const useSuiteNativeUiLanguage = source => suiteNativeUiLanguage(React.useSyncExternalStore(
+      notify => source?.subscribe?.(notify) ?? (() => {}),
+      () => source?.getSnapshot?.(), () => source?.getSnapshot?.()))
     const uiLanguage = snapshot => {
       const current = snapshot?.active ?? globalThis.document?.documentElement.lang
       return typeof current === 'string' && current.toLowerCase().startsWith('ar') ? 'ar' : 'en'
@@ -2770,6 +3004,241 @@ window.__ModuleLoader__.load({
         prompt: 'تبي تستعيد هالمحادثة لقائمة المحادثات في DSH؟', working: 'جارٍ استعادة المحادثة…',
         restored: 'تمت استعادة المحادثة.', failed: 'تعذّرت استعادة المحادثة.',
         changed: 'تغيّرت المحادثة أو صلاحيتك. راجع القائمة وحاول مرة ثانية.',
+      },
+      zh: {
+        title: "已归档的会话",
+        navigation: "归档",
+        protect: "保护",
+        protectWorkspace: "保护工作区",
+        manageProtection: "管理已保存的保护设置",
+        protectionScope: "保护仅适用于归档管理器的恢复和直接聊天支持的重命名操作，不适用于 DSH 原生操作。",
+        inherited: "由工作区保护",
+        protectedCount: n => "受保护：{n}".replace('{n}', n.toLocaleString('zh')),
+        sidebar: "在 DSH 侧边栏中，使用显示选项 → 隐藏已归档。",
+        history: "请先恢复会话，再在 DSH 中打开。",
+        count: n => "已归档会话：{n}".replace('{n}', n.toLocaleString('zh')),
+        loading: "正在加载已归档会话…",
+        empty: "没有已归档的会话。",
+        noResults: "没有匹配的已归档会话。",
+        unauthorized: "您无权访问已归档会话。",
+        disconnected: "主机已断开连接。",
+        unavailable: "归档目录不可用。",
+        error: "无法加载归档目录。",
+        search: "搜索已归档会话",
+        workspace: "工作区",
+        workspaces: "所有工作区",
+        sort: "排序依据",
+        newest: "最新",
+        oldest: "最早",
+        name: "名称",
+        protection: "保护",
+        pinned: "置顶",
+        any: "不限",
+        yes: "是",
+        no: "否",
+        after: "更新日期不早于",
+        updated: "最后更新",
+        protected: "受保护",
+        untitled: "无标题会话",
+        close: "关闭",
+        more: "显示更多",
+        refresh: "刷新归档",
+        restore: "恢复",
+        confirm: "确认恢复",
+        cancel: "取消",
+        prompt: "将此会话恢复到 DSH 会话列表？",
+        working: "正在恢复会话…",
+        restored: "会话已恢复。",
+        failed: "无法恢复会话。",
+        changed: "会话或访问权限已变更。请检查列表后重试。",
+      },
+      es: {
+        title: "Conversaciones archivadas",
+        navigation: "Archivo",
+        protect: "Proteger",
+        protectWorkspace: "Proteger espacio de trabajo",
+        manageProtection: "Gestionar protección guardada",
+        protectionScope: "La protección solo se aplica a la restauración del gestor de archivos y al cambio de nombre compatible del chat directo, no a las acciones nativas de DSH.",
+        inherited: "Protegida por el espacio de trabajo",
+        protectedCount: n => "Protegidas: {n}".replace('{n}', n.toLocaleString('es')),
+        sidebar: "En la barra lateral de DSH, usa Opciones de vista → Ocultar archivadas.",
+        history: "Restaura la conversación antes de abrirla en DSH.",
+        count: n => "Conversaciones archivadas: {n}".replace('{n}', n.toLocaleString('es')),
+        loading: "Cargando conversaciones archivadas…",
+        empty: "No hay conversaciones archivadas.",
+        noResults: "No hay conversaciones archivadas que coincidan.",
+        unauthorized: "No tienes acceso a las conversaciones archivadas.",
+        disconnected: "Host desconectado.",
+        unavailable: "El catálogo de archivos no está disponible.",
+        error: "No se pudo cargar el catálogo de archivos.",
+        search: "Buscar conversaciones archivadas",
+        workspace: "Espacio de trabajo",
+        workspaces: "Todos los espacios de trabajo",
+        sort: "Ordenar por",
+        newest: "Más recientes",
+        oldest: "Más antiguas",
+        name: "Nombre",
+        protection: "Protección",
+        pinned: "Fijadas",
+        any: "Cualquiera",
+        yes: "Sí",
+        no: "No",
+        after: "Actualizadas desde",
+        updated: "Última actualización",
+        protected: "Protegida",
+        untitled: "Conversación sin título",
+        close: "Cerrar",
+        more: "Mostrar más",
+        refresh: "Actualizar archivo",
+        restore: "Restaurar",
+        confirm: "Confirmar restauración",
+        cancel: "Cancelar",
+        prompt: "¿Restaurar esta conversación a la lista de conversaciones de DSH?",
+        working: "Restaurando conversación…",
+        restored: "Conversación restaurada.",
+        failed: "No se pudo restaurar la conversación.",
+        changed: "La conversación o tu acceso han cambiado. Revisa la lista y vuelve a intentarlo.",
+      },
+      fr: {
+        title: "Conversations archivées",
+        navigation: "Archives",
+        protect: "Protéger",
+        protectWorkspace: "Protéger l’espace de travail",
+        manageProtection: "Gérer la protection enregistrée",
+        protectionScope: "La protection concerne uniquement la restauration dans le gestionnaire d’archives et le renommage pris en charge dans le chat direct, pas les actions natives de DSH.",
+        inherited: "Protégée par l’espace de travail",
+        protectedCount: n => "Protégées : {n}".replace('{n}', n.toLocaleString('fr')),
+        sidebar: "Dans la barre latérale de DSH, utilisez Options d’affichage → Masquer les archives.",
+        history: "Restaurez la conversation avant de l’ouvrir dans DSH.",
+        count: n => "Conversations archivées : {n}".replace('{n}', n.toLocaleString('fr')),
+        loading: "Chargement des conversations archivées…",
+        empty: "Aucune conversation archivée.",
+        noResults: "Aucune conversation archivée correspondante.",
+        unauthorized: "Vous n’avez pas accès aux conversations archivées.",
+        disconnected: "Hôte déconnecté.",
+        unavailable: "Catalogue des archives indisponible.",
+        error: "Impossible de charger le catalogue des archives.",
+        search: "Rechercher les conversations archivées",
+        workspace: "Espace de travail",
+        workspaces: "Tous les espaces de travail",
+        sort: "Trier par",
+        newest: "Plus récentes",
+        oldest: "Plus anciennes",
+        name: "Nom",
+        protection: "Protection",
+        pinned: "Épinglées",
+        any: "Tous",
+        yes: "Oui",
+        no: "Non",
+        after: "Mises à jour depuis",
+        updated: "Dernière mise à jour",
+        protected: "Protégée",
+        untitled: "Conversation sans titre",
+        close: "Fermer",
+        more: "Afficher plus",
+        refresh: "Actualiser les archives",
+        restore: "Restaurer",
+        confirm: "Confirmer la restauration",
+        cancel: "Annuler",
+        prompt: "Restaurer cette conversation dans la liste des conversations DSH ?",
+        working: "Restauration de la conversation…",
+        restored: "Conversation restaurée.",
+        failed: "Impossible de restaurer la conversation.",
+        changed: "La conversation ou vos droits d’accès ont changé. Vérifiez la liste et réessayez.",
+      },
+      de: {
+        title: "Archivierte Unterhaltungen",
+        navigation: "Archiv",
+        protect: "Schützen",
+        protectWorkspace: "Arbeitsbereich schützen",
+        manageProtection: "Gespeicherten Schutz verwalten",
+        protectionScope: "Der Schutz gilt nur für Wiederherstellungen im Archivmanager und unterstützte Umbenennungen im Direktchat, nicht für native DSH-Aktionen.",
+        inherited: "Durch Arbeitsbereich geschützt",
+        protectedCount: n => "Geschützt: {n}".replace('{n}', n.toLocaleString('de')),
+        sidebar: "In der DSH-Seitenleiste: Ansichtsoptionen → Archivierte ausblenden.",
+        history: "Stellen Sie die Unterhaltung vor dem Öffnen in DSH wieder her.",
+        count: n => "Archivierte Unterhaltungen: {n}".replace('{n}', n.toLocaleString('de')),
+        loading: "Archivierte Unterhaltungen werden geladen…",
+        empty: "Keine archivierten Unterhaltungen.",
+        noResults: "Keine passenden archivierten Unterhaltungen.",
+        unauthorized: "Sie haben keinen Zugriff auf archivierte Unterhaltungen.",
+        disconnected: "Host getrennt.",
+        unavailable: "Archivkatalog nicht verfügbar.",
+        error: "Archivkatalog konnte nicht geladen werden.",
+        search: "Archivierte Unterhaltungen durchsuchen",
+        workspace: "Arbeitsbereich",
+        workspaces: "Alle Arbeitsbereiche",
+        sort: "Sortieren nach",
+        newest: "Neueste",
+        oldest: "Älteste",
+        name: "Name",
+        protection: "Schutz",
+        pinned: "Angeheftet",
+        any: "Beliebig",
+        yes: "Ja",
+        no: "Nein",
+        after: "Aktualisiert ab",
+        updated: "Zuletzt aktualisiert",
+        protected: "Geschützt",
+        untitled: "Unterhaltung ohne Titel",
+        close: "Schließen",
+        more: "Mehr anzeigen",
+        refresh: "Archiv aktualisieren",
+        restore: "Wiederherstellen",
+        confirm: "Wiederherstellung bestätigen",
+        cancel: "Abbrechen",
+        prompt: "Diese Unterhaltung in der DSH-Unterhaltungsliste wiederherstellen?",
+        working: "Unterhaltung wird wiederhergestellt…",
+        restored: "Unterhaltung wiederhergestellt.",
+        failed: "Unterhaltung konnte nicht wiederhergestellt werden.",
+        changed: "Die Unterhaltung oder Ihre Zugriffsrechte haben sich geändert. Prüfen Sie die Liste und versuchen Sie es erneut.",
+      },
+      ja: {
+        title: "アーカイブ済みの会話",
+        navigation: "アーカイブ",
+        protect: "保護",
+        protectWorkspace: "ワークスペースを保護",
+        manageProtection: "保存済みの保護設定を管理",
+        protectionScope: "保護はアーカイブ管理の復元とダイレクトチャットで対応する名前変更のみに適用され、DSH の標準操作には適用されません。",
+        inherited: "ワークスペースによって保護済み",
+        protectedCount: n => "保護済み：{n}".replace('{n}', n.toLocaleString('ja')),
+        sidebar: "DSH のサイドバーでは表示オプション → アーカイブ済みを非表示にしてください。",
+        history: "DSH で開く前に会話を復元してください。",
+        count: n => "アーカイブ済みの会話：{n}".replace('{n}', n.toLocaleString('ja')),
+        loading: "アーカイブ済みの会話を読み込み中…",
+        empty: "アーカイブ済みの会話はありません。",
+        noResults: "一致するアーカイブ済みの会話がありません。",
+        unauthorized: "アーカイブ済みの会話へのアクセス権がありません。",
+        disconnected: "ホストとの接続が切れました。",
+        unavailable: "アーカイブカタログは利用できません。",
+        error: "アーカイブカタログを読み込めませんでした。",
+        search: "アーカイブ済みの会話を検索",
+        workspace: "ワークスペース",
+        workspaces: "すべてのワークスペース",
+        sort: "並べ替え",
+        newest: "新しい順",
+        oldest: "古い順",
+        name: "名前",
+        protection: "保護",
+        pinned: "ピン留め",
+        any: "すべて",
+        yes: "はい",
+        no: "いいえ",
+        after: "指定日以降に更新",
+        updated: "最終更新",
+        protected: "保護済み",
+        untitled: "無題の会話",
+        close: "閉じる",
+        more: "さらに表示",
+        refresh: "アーカイブを更新",
+        restore: "復元",
+        confirm: "復元を確認",
+        cancel: "キャンセル",
+        prompt: "この会話を DSH の会話一覧に復元しますか？",
+        working: "会話を復元中…",
+        restored: "会話を復元しました。",
+        failed: "会話を復元できませんでした。",
+        changed: "会話またはアクセス権が変更されました。一覧を確認して再試行してください。",
       },
     }
 
@@ -3142,7 +3611,7 @@ window.__ModuleLoader__.load({
     }
 
     function ArchivePage({ services, useRemoteAccess }) {
-      const language = useUiLanguage(services.locale)
+      const language = useSuiteNativeUiLanguage(services.locale)
       const settings = useSuiteRecord(services.settings, 'conversation-lifecycle', useRemoteAccess, services.connection)
       const generation = suiteWatch(services.host)
       const authorized = useRemoteAccess?.('settings/describe') === true
@@ -3532,6 +4001,11 @@ window.__ModuleLoader__.load({
         renameFailed: 'تعذّر حفظ الاسم.',
         incompleteTitles: 'بعض المحادثات لا تتوفر عناوينها في فهرس المضيف. قد لا يشملها البحث بالعنوان؛ جرّب معرّف الجلسة.',
       },
+      zh: {"open":"直接聊天","opening":"正在打开直接聊天","retryOpen":"重试打开直接聊天","openFailed":"无法打开直接聊天。请检查连接后重试。","history":"直接聊天记录","search":"搜索直接聊天","recent":"最后活动","creation":"创建时间","order":"排序依据","loading":"正在加载会话…","error":"直接聊天记录不可用。","empty":"暂无直接聊天会话。","noMatches":"没有匹配的会话。","previous":"上一页","next":"下一页","close":"关闭","retry":"重试","archived":"已归档","protected":"受保护","creationUnavailable":"无法获取完整的创建时间。按创建时间排序最多支持 100 个已注册会话，现按最后活动排序。","rename":"重命名","title":"会话标题","save":"保存","cancel":"取消","renameFailed":"无法保存名称。","incompleteTitles":"主机目录中部分会话缺少标题元数据。按标题搜索的结果可能不完整，请尝试使用会话 ID。"},
+      es: {"open":"Chat directo","opening":"Abriendo chat directo","retryOpen":"Reintentar abrir chat directo","openFailed":"No se pudo abrir el chat directo. Comprueba la conexión y vuelve a intentarlo.","history":"Historial del chat directo","search":"Buscar en chat directo","recent":"Última actividad","creation":"Fecha de creación","order":"Ordenar por","loading":"Cargando conversaciones…","error":"El historial del chat directo no está disponible.","empty":"Todavía no hay conversaciones directas.","noMatches":"Ninguna conversación coincide con la búsqueda.","previous":"Anterior","next":"Siguiente","close":"Cerrar","retry":"Reintentar","archived":"Archivada","protected":"Protegida","creationUnavailable":"No están disponibles todas las fechas de creación. Este orden admite hasta 100 conversaciones registradas. Se muestra el orden por última actividad.","rename":"Cambiar nombre","title":"Título de la conversación","save":"Guardar","cancel":"Cancelar","renameFailed":"No se pudo guardar el nombre.","incompleteTitles":"Algunas conversaciones no tienen metadatos de título en el catálogo del host. La búsqueda por título puede ser incompleta; prueba con un ID de sesión."},
+      fr: {"open":"Chat direct","opening":"Ouverture du chat direct","retryOpen":"Réessayer d’ouvrir le chat direct","openFailed":"Impossible d’ouvrir le chat direct. Vérifiez la connexion et réessayez.","history":"Historique du chat direct","search":"Rechercher dans le chat direct","recent":"Dernière activité","creation":"Date de création","order":"Trier par","loading":"Chargement des conversations…","error":"L’historique du chat direct est indisponible.","empty":"Aucune conversation directe pour le moment.","noMatches":"Aucune conversation ne correspond à la recherche.","previous":"Précédent","next":"Suivant","close":"Fermer","retry":"Réessayer","archived":"Archivée","protected":"Protégée","creationUnavailable":"Les dates de création complètes sont indisponibles. Ce tri prend en charge jusqu’à 100 conversations enregistrées. Tri par dernière activité affiché.","rename":"Renommer","title":"Titre de la conversation","save":"Enregistrer","cancel":"Annuler","renameFailed":"Impossible d’enregistrer le nom.","incompleteTitles":"Certaines conversations n’ont pas de métadonnées de titre dans le catalogue de l’hôte. La recherche par titre peut être incomplète ; essayez un ID de session."},
+      de: {"open":"Direktchat","opening":"Direktchat wird geöffnet","retryOpen":"Direktchat erneut öffnen","openFailed":"Der Direktchat konnte nicht geöffnet werden. Prüfen Sie die Verbindung und versuchen Sie es erneut.","history":"Direktchat-Verlauf","search":"Direktchat durchsuchen","recent":"Letzte Aktivität","creation":"Erstellungszeit","order":"Sortieren nach","loading":"Unterhaltungen werden geladen…","error":"Der Direktchat-Verlauf ist nicht verfügbar.","empty":"Noch keine Direktchat-Unterhaltungen.","noMatches":"Keine Unterhaltung entspricht der Suche.","previous":"Zurück","next":"Weiter","close":"Schließen","retry":"Erneut versuchen","archived":"Archiviert","protected":"Geschützt","creationUnavailable":"Vollständige Erstellungszeiten sind nicht verfügbar. Diese Sortierung unterstützt bis zu 100 registrierte Unterhaltungen. Sortierung nach letzter Aktivität wird angezeigt.","rename":"Umbenennen","title":"Unterhaltungstitel","save":"Speichern","cancel":"Abbrechen","renameFailed":"Der Name konnte nicht gespeichert werden.","incompleteTitles":"Für einige Unterhaltungen fehlen Titelmetadaten im Host-Katalog. Die Titelsuche kann unvollständig sein; versuchen Sie eine Sitzungs-ID."},
+      ja: {"open":"ダイレクトチャット","opening":"ダイレクトチャットを開いています","retryOpen":"ダイレクトチャットを再試行","openFailed":"ダイレクトチャットを開けませんでした。接続を確認して再試行してください。","history":"ダイレクトチャット履歴","search":"ダイレクトチャットを検索","recent":"最終アクティビティ","creation":"作成日時","order":"並べ替え","loading":"会話を読み込み中…","error":"ダイレクトチャット履歴は利用できません。","empty":"ダイレクトチャットの会話はまだありません。","noMatches":"検索条件に一致する会話がありません。","previous":"前へ","next":"次へ","close":"閉じる","retry":"再試行","archived":"アーカイブ済み","protected":"保護済み","creationUnavailable":"すべての作成日時を取得できません。作成日時順は登録済み会話100件まで対応します。最終アクティビティ順で表示しています。","rename":"名前を変更","title":"会話タイトル","save":"保存","cancel":"キャンセル","renameFailed":"名前を保存できませんでした。","incompleteTitles":"ホストカタログにタイトル情報がない会話があります。タイトル検索は不完全な場合があります。セッションIDで検索してください。"},
     }
 
     // Sort only authorized Session metadata. Never load transcripts or fabricate
@@ -3641,7 +4115,7 @@ window.__ModuleLoader__.load({
           })) : h('p', { role: 'status' }, inventory.length ? copy.noMatches : copy.empty),
           rows.length > limit ? h('div', { style: lifecycleActions },
             h(Button, { size: 'sm', disabled: activePage === 0, onClick: () => setPage(activePage - 1) }, copy.previous),
-            h('span', { 'aria-live': 'polite' }, `${activePage + 1} / ${Math.ceil(rows.length / limit)}`),
+            h('span', { 'aria-live': 'polite' }, `${(activePage + 1).toLocaleString(language)} / ${Math.ceil(rows.length / limit).toLocaleString(language)}`),
             h(Button, { size: 'sm', disabled: (activePage + 1) * limit >= rows.length, onClick: () => setPage(activePage + 1) }, copy.next)) : null,
           editing ? h('form', { onSubmit: rename },
             h('label', { style: lifecycleLabel }, copy.title, h('input', { style: lifecycleSelect, dir: 'auto', value: editing.title,
@@ -3665,7 +4139,7 @@ window.__ModuleLoader__.load({
     // Official DSH New Session HOC: mounts immediately beneath the native
     // New Session control, above global Plugins and Workspace/Projects rows.
     function DirectChatTopAction({ children, wide, useRemoteAccess, startChat, services }) {
-      const language = useUiLanguage(services?.locale)
+      const language = useSuiteNativeUiLanguage(services?.locale)
       return h('div', { 'data-abinadwan-direct-chat-top': '',
         style: { display: 'flex', flexDirection: 'column', gap: 4, width: '100%' } },
         children,
@@ -3806,7 +4280,7 @@ window.__ModuleLoader__.load({
           props => h(ArchivePage, { ...props, services })))
         ctx.slots.inject('sidebar.panellist', () => ctx.slots.register({ name: 'sidebar.panellist',
           id: archivePanel, order: 100,
-          label: () => archiveCopy[uiLanguage(services.locale?.getSnapshot?.())].navigation },
+          label: () => archiveCopy[suiteNativeUiLanguage(services.locale?.getSnapshot?.())].navigation },
           ({ size }) => h('svg', { width: size, height: size, viewBox: '0 0 24 24', fill: 'none',
             stroke: 'currentColor', strokeWidth: pluginGlyphStrokeWidth, strokeLinecap: 'round',
             strokeLinejoin: 'round', 'aria-hidden': true },

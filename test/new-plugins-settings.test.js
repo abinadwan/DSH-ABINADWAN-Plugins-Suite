@@ -1103,3 +1103,34 @@ test('statistics discard replies from a previous connection generation', async t
   assert.match(dialog.textContent, /Total7/)
   assert.doesNotMatch(dialog.textContent, /Total99/)
 })
+
+
+test('Archive keeps search, protected row and native restore guards while switching through all seven UI locales', async t => {
+  const { hub, fixture, settings } = await mountArchive(t)
+  await archiveSelect(hub(), 'Search archived conversations', 'Protected')
+  const input = hub().querySelector('input[type="search"]')
+  const panel = hub()
+  const nav = fixture.entries('sidebar.panellist').find(row => row.options.id === 'abinadwan-chat-control-archive')
+  const cases = [
+    ['zh','已归档的会话','归档','搜索已归档会话','恢复'],
+    ['es','Conversaciones archivadas','Archivo','Buscar conversaciones archivadas','Restaurar'],
+    ['fr','Conversations archivées','Archives','Rechercher les conversations archivées','Restaurer'],
+    ['de','Archivierte Unterhaltungen','Archiv','Archivierte Unterhaltungen durchsuchen','Wiederherstellen'],
+    ['ja','アーカイブ済みの会話','アーカイブ','アーカイブ済みの会話を検索','復元'],
+    ['ar','المحادثات المؤرشفة','الأرشيف','البحث في المحادثات المؤرشفة','استعادة'],
+    ['en','Archived Conversations','Archives','Search archived conversations','Restore'],
+  ]
+  for (const [revision,[lang,title,navigation,search,restore]] of cases.entries()) {
+    await act(async () => fixture.hostLocale.set({ active: lang, revision: revision + 1 }))
+    assert.equal(hub(), panel)
+    assert.equal(panel.getAttribute('aria-label'), title)
+    assert.equal(nav.options.label(), navigation)
+    assert.equal(panel.querySelector('input[type="search"]'), input)
+    assert.equal(input.value, 'Protected')
+    assert.ok(input.parentElement.textContent.includes(search))
+    assert.equal(input.closest('[lang][dir]').dir, lang === 'ar' ? 'rtl' : 'ltr')
+    assert.deepEqual([...panel.querySelectorAll('li strong')].map(row => row.textContent), ['Protected draft'])
+    assert.equal(archiveButton(panel, restore).disabled, true)
+    assert.deepEqual(settings.writes, [])
+  }
+})
