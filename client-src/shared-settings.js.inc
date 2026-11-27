@@ -216,6 +216,15 @@
         "Start or resume this chat before applying the saved effort.": "ابدأ المحادثة أو استأنفها قبل تطبيق المستوى المحفوظ."
     }
     const uiCopy = (value, language) => language === 'ar' ? uiArabicLabels[value] ?? value : value
+    // Only migrated components use the seven-language resolver until their catalogs are complete.
+    const suiteNativeUiLanguage = snapshot => {
+      const current = snapshot?.active ?? globalThis.document?.documentElement.lang
+      const id = typeof current === 'string' ? current.toLowerCase().split('-')[0] : 'en'
+      return ['en','ar','zh','es','fr','de','ja'].includes(id) ? id : 'en'
+    }
+    const useSuiteNativeUiLanguage = source => suiteNativeUiLanguage(React.useSyncExternalStore(
+      notify => source?.subscribe?.(notify) ?? (() => {}),
+      () => source?.getSnapshot?.(), () => source?.getSnapshot?.()))
     const uiLanguage = snapshot => {
       const current = snapshot?.active ?? globalThis.document?.documentElement.lang
       return typeof current === 'string' && current.toLowerCase().startsWith('ar') ? 'ar' : 'en'

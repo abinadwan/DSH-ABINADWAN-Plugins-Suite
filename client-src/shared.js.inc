@@ -13,8 +13,8 @@
         h('span', { style: { opacity: .75, textAlign: 'end' } },
           h('bdi', null, value == null ? '—' : String(value))))
     }
-    function section(name, rows) {
-      return h('details', { open: true, key: name, style: {
+    function section(name, rows, id = name) {
+      return h('details', { open: true, key: id, style: {
         padding: '12px 0', borderBottom: '1px solid rgba(127,127,127,.24)' } },
         h('summary', { style: { cursor: 'pointer', fontWeight: 650, marginBottom: 9,
           fontSize: 12 } }, name),

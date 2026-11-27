@@ -60,8 +60,8 @@ window.__ModuleLoader__.load({
         h('span', { style: { opacity: .75, textAlign: 'end' } },
           h('bdi', null, value == null ? '—' : String(value))))
     }
-    function section(name, rows) {
-      return h('details', { open: true, key: name, style: {
+    function section(name, rows, id = name) {
+      return h('details', { open: true, key: id, style: {
         padding: '12px 0', borderBottom: '1px solid rgba(127,127,127,.24)' } },
         h('summary', { style: { cursor: 'pointer', fontWeight: 650, marginBottom: 9,
           fontSize: 12 } }, name),
@@ -446,6 +446,182 @@ window.__ModuleLoader__.load({
             textDecoration:'underline'}},'View published releases'))
     }
 
+    // English source keys and existing Arabic copy are retained.
+    const environmentTranslations = {
+      "zh": {
+        "Environment & Context": "环境与上下文",
+        "Current context and workspace details": "当前上下文和工作区详情",
+        "Open Environment sidebar": "打开环境侧边栏",
+        "Environment": "环境",
+        "Browser": "浏览器",
+        "Workspaces": "工作区",
+        "Context": "上下文",
+        "Loading context usage for this Session…": "正在加载此会话的上下文用量…",
+        "Context usage is unavailable for this Session.": "无法获取此会话的上下文用量。",
+        "Context use is available after the model reports usage.": "模型报告用量后即可查看上下文用量。",
+        "{percent}% used": "已使用 {percent}%",
+        "Context occupancy": "上下文占用率",
+        "Messages (estimated)": "消息（估算）",
+        "Tool schemas (estimated)": "工具定义（估算）",
+        "System prompt (estimated)": "系统提示词（估算）",
+        "Free space": "剩余空间",
+        "Session": "会话",
+        "Status": "状态",
+        "Running": "运行中",
+        "Idle": "空闲",
+        "Outputs": "输出",
+        "Output tokens": "输出令牌数",
+        "Last activity": "最后活动",
+        "Output file lists require a separate, permission-checked files service.": "列出输出文件需要单独的、经过权限检查的文件服务。",
+        "Connectors": "连接器",
+        "Connector inventory is not available via the documented Client APIs used here.": "当前使用的已记录客户端 API 无法提供连接器列表。",
+        "Changes": "更改",
+        "Git changes require the Workspace changes integration.": "Git 更改需要工作区更改集成。",
+        "Read-only · No external requests from this Session panel.": "只读 · 此会话面板不会发出外部请求。",
+        "Workspace": "工作区",
+        "Unavailable": "不可用"
+      },
+      "es": {
+        "Environment & Context": "Entorno y contexto",
+        "Current context and workspace details": "Contexto actual y detalles del espacio de trabajo",
+        "Open Environment sidebar": "Abrir la barra lateral de entorno",
+        "Environment": "Entorno",
+        "Browser": "Navegador",
+        "Workspaces": "Espacios de trabajo",
+        "Context": "Contexto",
+        "Loading context usage for this Session…": "Cargando el uso del contexto de esta sesión…",
+        "Context usage is unavailable for this Session.": "El uso del contexto no está disponible para esta sesión.",
+        "Context use is available after the model reports usage.": "El uso del contexto estará disponible cuando el modelo informe del uso.",
+        "{percent}% used": "{percent}% utilizado",
+        "Context occupancy": "Ocupación del contexto",
+        "Messages (estimated)": "Mensajes (estimación)",
+        "Tool schemas (estimated)": "Esquemas de herramientas (estimación)",
+        "System prompt (estimated)": "Instrucciones del sistema (estimación)",
+        "Free space": "Espacio disponible",
+        "Session": "Sesión",
+        "Status": "Estado",
+        "Running": "En ejecución",
+        "Idle": "Inactiva",
+        "Outputs": "Resultados",
+        "Output tokens": "Tokens de salida",
+        "Last activity": "Última actividad",
+        "Output file lists require a separate, permission-checked files service.": "La lista de archivos de salida requiere un servicio de archivos independiente con control de permisos.",
+        "Connectors": "Conectores",
+        "Connector inventory is not available via the documented Client APIs used here.": "El inventario de conectores no está disponible mediante las API de cliente documentadas que se usan aquí.",
+        "Changes": "Cambios",
+        "Git changes require the Workspace changes integration.": "Los cambios de Git requieren la integración de cambios del espacio de trabajo.",
+        "Read-only · No external requests from this Session panel.": "Solo lectura · Este panel de sesión no realiza solicitudes externas.",
+        "Workspace": "Espacio de trabajo",
+        "Unavailable": "No disponible"
+      },
+      "fr": {
+        "Environment & Context": "Environnement et contexte",
+        "Current context and workspace details": "Contexte actuel et détails de l’espace de travail",
+        "Open Environment sidebar": "Ouvrir le panneau latéral Environnement",
+        "Environment": "Environnement",
+        "Browser": "Navigateur",
+        "Workspaces": "Espaces de travail",
+        "Context": "Contexte",
+        "Loading context usage for this Session…": "Chargement de l’utilisation du contexte de cette session…",
+        "Context usage is unavailable for this Session.": "L’utilisation du contexte n’est pas disponible pour cette session.",
+        "Context use is available after the model reports usage.": "L’utilisation du contexte est disponible lorsque le modèle communique ses données d’utilisation.",
+        "{percent}% used": "{percent} % utilisé",
+        "Context occupancy": "Occupation du contexte",
+        "Messages (estimated)": "Messages (estimation)",
+        "Tool schemas (estimated)": "Schémas d’outils (estimation)",
+        "System prompt (estimated)": "Instructions système (estimation)",
+        "Free space": "Espace disponible",
+        "Session": "Session",
+        "Status": "État",
+        "Running": "En cours",
+        "Idle": "Inactive",
+        "Outputs": "Sorties",
+        "Output tokens": "Jetons de sortie",
+        "Last activity": "Dernière activité",
+        "Output file lists require a separate, permission-checked files service.": "La liste des fichiers de sortie nécessite un service de fichiers distinct avec vérification des autorisations.",
+        "Connectors": "Connecteurs",
+        "Connector inventory is not available via the documented Client APIs used here.": "L’inventaire des connecteurs n’est pas accessible via les API client documentées utilisées ici.",
+        "Changes": "Modifications",
+        "Git changes require the Workspace changes integration.": "Les modifications Git nécessitent l’intégration des modifications de l’espace de travail.",
+        "Read-only · No external requests from this Session panel.": "Lecture seule · Ce panneau de session n’envoie aucune requête externe.",
+        "Workspace": "Espace de travail",
+        "Unavailable": "Indisponible"
+      },
+      "de": {
+        "Environment & Context": "Umgebung und Kontext",
+        "Current context and workspace details": "Aktueller Kontext und Arbeitsbereichsdetails",
+        "Open Environment sidebar": "Seitenleiste Umgebung öffnen",
+        "Environment": "Umgebung",
+        "Browser": "Browser",
+        "Workspaces": "Arbeitsbereiche",
+        "Context": "Kontext",
+        "Loading context usage for this Session…": "Kontextnutzung dieser Sitzung wird geladen…",
+        "Context usage is unavailable for this Session.": "Die Kontextnutzung ist für diese Sitzung nicht verfügbar.",
+        "Context use is available after the model reports usage.": "Die Kontextnutzung ist verfügbar, sobald das Modell Nutzungsdaten meldet.",
+        "{percent}% used": "{percent} % belegt",
+        "Context occupancy": "Kontextbelegung",
+        "Messages (estimated)": "Nachrichten (geschätzt)",
+        "Tool schemas (estimated)": "Werkzeugschemata (geschätzt)",
+        "System prompt (estimated)": "Systemanweisung (geschätzt)",
+        "Free space": "Freier Speicherplatz",
+        "Session": "Sitzung",
+        "Status": "Status",
+        "Running": "Aktiv",
+        "Idle": "Inaktiv",
+        "Outputs": "Ausgaben",
+        "Output tokens": "Ausgabetokens",
+        "Last activity": "Letzte Aktivität",
+        "Output file lists require a separate, permission-checked files service.": "Ausgabedateilisten erfordern einen separaten Dateidienst mit Berechtigungsprüfung.",
+        "Connectors": "Konnektoren",
+        "Connector inventory is not available via the documented Client APIs used here.": "Die Konnektorliste ist über die hier verwendeten dokumentierten Client-APIs nicht verfügbar.",
+        "Changes": "Änderungen",
+        "Git changes require the Workspace changes integration.": "Git-Änderungen erfordern die Integration für Arbeitsbereichsänderungen.",
+        "Read-only · No external requests from this Session panel.": "Schreibgeschützt · Dieses Sitzungsfenster sendet keine externen Anfragen.",
+        "Workspace": "Arbeitsbereich",
+        "Unavailable": "Nicht verfügbar"
+      },
+      "ja": {
+        "Environment & Context": "環境とコンテキスト",
+        "Current context and workspace details": "現在のコンテキストとワークスペースの詳細",
+        "Open Environment sidebar": "環境サイドバーを開く",
+        "Environment": "環境",
+        "Browser": "ブラウザー",
+        "Workspaces": "ワークスペース",
+        "Context": "コンテキスト",
+        "Loading context usage for this Session…": "このセッションのコンテキスト使用量を読み込み中…",
+        "Context usage is unavailable for this Session.": "このセッションのコンテキスト使用量は利用できません。",
+        "Context use is available after the model reports usage.": "モデルが使用量を報告するとコンテキスト使用量を確認できます。",
+        "{percent}% used": "{percent}% 使用済み",
+        "Context occupancy": "コンテキスト占有率",
+        "Messages (estimated)": "メッセージ（推定）",
+        "Tool schemas (estimated)": "ツールスキーマ（推定）",
+        "System prompt (estimated)": "システムプロンプト（推定）",
+        "Free space": "空き容量",
+        "Session": "セッション",
+        "Status": "状態",
+        "Running": "実行中",
+        "Idle": "待機中",
+        "Outputs": "出力",
+        "Output tokens": "出力トークン",
+        "Last activity": "最終アクティビティ",
+        "Output file lists require a separate, permission-checked files service.": "出力ファイル一覧には権限を確認する別のファイルサービスが必要です。",
+        "Connectors": "コネクター",
+        "Connector inventory is not available via the documented Client APIs used here.": "ここで使用する文書化されたクライアント API ではコネクター一覧を取得できません。",
+        "Changes": "変更",
+        "Git changes require the Workspace changes integration.": "Git の変更を表示するにはワークスペース変更の連携が必要です。",
+        "Read-only · No external requests from this Session panel.": "読み取り専用 · このセッションパネルは外部リクエストを送信しません。",
+        "Workspace": "ワークスペース",
+        "Unavailable": "利用不可"
+      }
+    }
+    const environmentCopy = (value, language) => environmentTranslations[language]?.[value] ?? uiCopy(value, language)
+    const environmentNumber = (value, language) => new Intl.NumberFormat(language).format(value)
+    const environmentCompact = (value, language) => {
+      if (good(value) === undefined) return '—'
+      return language === 'en' ? compact(value) : new Intl.NumberFormat(language, {
+        notation: 'compact', maximumFractionDigits: 1,
+      }).format(value)
+    }
     function environmentSession(sessions, id) {
       if (typeof id !== 'string' || !id.trim() || sessions?.phase !== 'ready' || sessions.state === 'error' ||
           !Array.isArray(sessions.ids) || sessions.ids.filter(value => value === id).length !== 1 ||
@@ -467,7 +643,9 @@ window.__ModuleLoader__.load({
     const environmentTokens = value => good(value) !== undefined && value <= Number.MAX_SAFE_INTEGER ? value : undefined
 
     function Details({ session, linked, projections, projectionState, language }) {
-      const t = value => uiCopy(value, language)
+      const t = value => environmentCopy(value, language)
+      const number = value => environmentNumber(value, language)
+      const formatCompact = value => environmentCompact(value, language)
       // Values come from the tab seat's Session-scoped `useProjection` hook when
       // the Host supplies it, else from this Session's list projection snapshot.
       const pressure = projections?.contextPressure
@@ -480,7 +658,7 @@ window.__ModuleLoader__.load({
         (navigator.userAgentData?.platform || navigator.platform) : undefined
       const environment = [
         line(t('Browser'), platform || t('Unavailable')),
-        line(t('Workspaces'), linked.length),
+        line(t('Workspaces'), number(linked.length)),
         ...linked.map(w => line(h('bdi', null, '▣ ' + (environmentText(w.title) || t('Workspace'))), environmentText(w.path) || '')),
       ]
       const context = []
@@ -491,34 +669,34 @@ window.__ModuleLoader__.load({
               ? t('Context usage is unavailable for this Session.')
               : t('Context use is available after the model reports usage.')))
       } else {
-        context.push(line(t('{percent}% used').replace('{percent}', pct), '~' + compact(used) + ' / ' + compact(max)))
+        context.push(line(t('{percent}% used').replace('{percent}', number(pct)), '~' + formatCompact(used) + ' / ' + formatCompact(max)))
         context.push(h('div', { role: 'progressbar', 'aria-label': t('Context occupancy'),
           'aria-valuenow': pct, 'aria-valuemin': 0, 'aria-valuemax': 100,
           style: { background: 'rgba(127,127,127,.25)', borderRadius: 8,
             height: 6, overflow: 'hidden', margin: '7px 0' } },
           h('div', { style: { width: pct + '%', height: '100%', background: '#378fdb' } })))
-        context.push(line(t('Messages (estimated)'), compact(environmentTokens(breakdown?.messageTokens))))
-        context.push(line(t('Tool schemas (estimated)'), compact(environmentTokens(breakdown?.toolsTokens))))
-        context.push(line(t('System prompt (estimated)'), compact(environmentTokens(breakdown?.systemTokens))))
-        context.push(line(t('Free space'), compact(Math.max(0, max - used))))
+        context.push(line(t('Messages (estimated)'), formatCompact(environmentTokens(breakdown?.messageTokens))))
+        context.push(line(t('Tool schemas (estimated)'), formatCompact(environmentTokens(breakdown?.toolsTokens))))
+        context.push(line(t('System prompt (estimated)'), formatCompact(environmentTokens(breakdown?.systemTokens))))
+        context.push(line(t('Free space'), formatCompact(Math.max(0, max - used))))
       }
       context.push(line(t('Session'), environmentText(session?.displayTitle) || t('Unavailable')))
       context.push(line(t('Status'), t(session?.running === true ? 'Running' : session?.running === false ? 'Idle' : 'Unavailable')))
       const outputs = [
-        line(t('Output tokens'), compact(environmentTokens(tokenUsage?.outputTokens))),
+        line(t('Output tokens'), formatCompact(environmentTokens(tokenUsage?.outputTokens))),
         line(t('Last activity'), good(session?.updatedAt) === undefined || session.updatedAt > 8640000000000000 ?
           t('Unavailable') : new Date(session.updatedAt).toLocaleString(language)),
         h('p', { key: 'output-note', style: muted },
           t('Output file lists require a separate, permission-checked files service.')),
       ]
       const cards = [
-        section(t('Environment'), environment),
-        section(t('Context'), context),
+        section(t('Environment'), environment, 'environment'),
+        section(t('Context'), context, 'context'),
         section(t('Connectors'), [h('p', { key: 'conn', style: muted },
-          t('Connector inventory is not available via the documented Client APIs used here.'))]),
-        section(t('Outputs'), outputs),
+          t('Connector inventory is not available via the documented Client APIs used here.'))], 'connectors'),
+        section(t('Outputs'), outputs, 'outputs'),
         section(t('Changes'), [h('p', { key: 'diff', style: muted },
-          t('Git changes require the Workspace changes integration.'))]),
+          t('Git changes require the Workspace changes integration.'))], 'changes'),
       ]
       return h('aside', { 'data-environment-right-sidebar': '', lang: language, dir: language === 'ar' ? 'rtl' : 'ltr',
         style: { height: '100%', overflowY: 'auto', boxSizing: 'border-box',
@@ -527,9 +705,9 @@ window.__ModuleLoader__.load({
         h('p', { style: muted }, t('Read-only · No external requests from this Session panel.')))
     }
     function HeaderButton({ openInspector, localeSource }) {
-      const language = useUiLanguage(localeSource)
+      const language = useSuiteNativeUiLanguage(localeSource)
       return h('button', { type: 'button', onClick: openInspector,
-        'aria-label': uiCopy('Open Environment sidebar', language), title: uiCopy('Environment', language),
+        'aria-label': environmentCopy('Open Environment sidebar', language), title: environmentCopy('Environment', language),
         'data-environment-header-action': '',
         style: { background: 'transparent', border: 0, color: 'inherit',
           display: 'inline-flex', justifyContent: 'center', alignItems: 'center',
@@ -542,7 +720,7 @@ window.__ModuleLoader__.load({
         const s = ctx.sessions.list
         const w = ctx.workspaces.list
         const localeSource = ctx.get?.('locale')
-        const translate = value => () => uiCopy(value, uiLanguage(localeSource?.getSnapshot?.()))
+        const translate = value => () => environmentCopy(value, suiteNativeUiLanguage(localeSource?.getSnapshot?.()))
         const subS = l => s.subscribe(l)
         const subW = l => w.subscribe(l)
         const getS = () => s.getSnapshot()
@@ -585,7 +763,7 @@ window.__ModuleLoader__.load({
           }
         }
         function Body(props) {
-          const language = useUiLanguage(localeSource)
+          const language = useSuiteNativeUiLanguage(localeSource)
           const sessions = React.useSyncExternalStore(subS, getS, getS)
           const workspaces = React.useSyncExternalStore(subW, getW, getW)
           const current = suiteWatch(connectionScope)
@@ -628,8 +806,8 @@ window.__ModuleLoader__.load({
         ctx.slots.inject('sidebar.right.pane.tab.title', () => ctx.slots.register({
           name: 'sidebar.right.pane.tab.title', key: TYPE + '/environment-context',
         }, function EnvironmentTitle() {
-          const language = useUiLanguage(localeSource)
-          return h('span', { lang: language }, uiCopy('Environment & Context', language))
+          const language = useSuiteNativeUiLanguage(localeSource)
+          return h('span', { lang: language }, environmentCopy('Environment & Context', language))
         }))
         ctx.slots.inject('conversation.session.header.utilities', () => ctx.slots.register({
           name: 'conversation.session.header.utilities',
@@ -2672,6 +2850,15 @@ window.__ModuleLoader__.load({
         "Start or resume this chat before applying the saved effort.": "ابدأ المحادثة أو استأنفها قبل تطبيق المستوى المحفوظ."
     }
     const uiCopy = (value, language) => language === 'ar' ? uiArabicLabels[value] ?? value : value
+    // Only migrated components use the seven-language resolver until their catalogs are complete.
+    const suiteNativeUiLanguage = snapshot => {
+      const current = snapshot?.active ?? globalThis.document?.documentElement.lang
+      const id = typeof current === 'string' ? current.toLowerCase().split('-')[0] : 'en'
+      return ['en','ar','zh','es','fr','de','ja'].includes(id) ? id : 'en'
+    }
+    const useSuiteNativeUiLanguage = source => suiteNativeUiLanguage(React.useSyncExternalStore(
+      notify => source?.subscribe?.(notify) ?? (() => {}),
+      () => source?.getSnapshot?.(), () => source?.getSnapshot?.()))
     const uiLanguage = snapshot => {
       const current = snapshot?.active ?? globalThis.document?.documentElement.lang
       return typeof current === 'string' && current.toLowerCase().startsWith('ar') ? 'ar' : 'en'

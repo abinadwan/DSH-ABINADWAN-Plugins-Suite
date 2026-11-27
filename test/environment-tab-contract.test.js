@@ -322,3 +322,50 @@ test('Environment projection-only renders reuse membership checks; new snapshots
   assert.match(view.text(), /New host/)
   assert.doesNotMatch(view.text(), /HomeBook|Output tokens45/)
 })
+
+
+test('Environment follows all seven known UI locales without remounting or changing Session data', async t => {
+  const app = await clientHarness({ React, hostLocale: 'en' })
+  t.after(() => app.dispose())
+  const view = await dom(t)
+  const tab = app.tabs.records.get('environment-dashboard')
+  const body = app.slots.records.get(tab.id)
+  const title = app.slots.records.get('sidebar.right.pane.tab.title:' + tab.id)
+  const header = app.slots.records.get('environment-sidebar-toggle')
+  await act(async () => view.root.render(React.createElement(React.Fragment, null,
+    React.createElement(body.component, body.options.inject('s1')),
+    React.createElement('div', { role: 'tab' }, React.createElement(title.component)),
+    React.createElement(header.component, header.options.inject()))))
+  const inspector = view.q('aside')
+  const first = view.q('aside details')
+  first.open = false
+  const cases = [
+    ['zh','环境与上下文','上下文占用率','输出令牌数','打开环境侧边栏'],
+    ['es','Entorno y contexto','Ocupación del contexto','Tokens de salida','Abrir la barra lateral de entorno'],
+    ['fr','Environnement et contexte','Occupation du contexte','Jetons de sortie','Ouvrir le panneau latéral Environnement'],
+    ['de','Umgebung und Kontext','Kontextbelegung','Ausgabetokens','Seitenleiste Umgebung öffnen'],
+    ['ja','環境とコンテキスト','コンテキスト占有率','出力トークン','環境サイドバーを開く'],
+    ['ar','البيئة والسياق','نسبة استخدام السياق','رموز الإخراج','فتح لوحة البيئة'],
+    ['en','Environment & Context','Context occupancy','Output tokens','Open Environment sidebar'],
+  ]
+  for (const [revision, [lang, name, occupancy, output, open]] of cases.entries()) {
+    await act(async () => app.hostLocale.set({ active: lang, revision: revision + 1 }))
+    assert.equal(tab.title(), name)
+    assert.equal(tab.guide[0].title(), name)
+    assert.equal(view.q('[role="tab"]').textContent, name)
+    assert.equal(view.q('aside'), inspector)
+    assert.equal(view.q('aside details'), first)
+    assert.equal(first.open, false)
+    assert.equal(inspector.lang, lang)
+    assert.equal(inspector.dir, lang === 'ar' ? 'rtl' : 'ltr')
+    assert.equal(view.q('[role="progressbar"]').getAttribute('aria-label'), occupancy)
+    assert.equal(view.q('[role="progressbar"]').getAttribute('aria-valuenow'), '38')
+    assert.equal(view.q('[data-environment-header-action]').getAttribute('aria-label'), open)
+    assert.ok(view.text().includes(output))
+    assert.match(view.text(), /HomeBook/)
+    assert.match(view.text(), /Demo/)
+    assert.ok(view.text().includes(lang === 'en' ? '1.2k' :
+      new Intl.NumberFormat(lang, { notation: 'compact', maximumFractionDigits: 1 }).format(1200)))
+    if (lang !== 'en') assert.doesNotMatch(view.text(), /Output tokens|Last activity|Connector inventory/)
+  }
+})
