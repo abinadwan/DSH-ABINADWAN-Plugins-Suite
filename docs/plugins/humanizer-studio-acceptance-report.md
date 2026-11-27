@@ -87,13 +87,28 @@ node --test qa/profile-host-check.mjs qa/adaptive-reasoning-host-check.mjs qa/di
 - After closing Profile A, scan both UTF-8 and UTF-16LE forms of unique source, brief, result, raw provider error and fake credential markers. The byte scan covered 6 Profile files (excluding installed dependencies), 1 Zstandard Session record with successful decompression, 2 DSH storage files, 102 Electron files including caches and browser storage, and 6 accessible Desktop process diagnostic files. Zero matches or read failures in those 117 files. Browser storage values were also inspected via the running renderer. This is scoped file inspection, without decryption or decoding of proprietary or compressed browser caches, deleted blocks, OS clipboard history, external diagnostics or background network traffic.
 - `Get-Acl` confirmed inheritance on the tested Profile and Studio file. This only describes the observed access entries. Effective access by other identities and physical erasure of deleted text or backup copies remain unverified.
 
+### HS-BUG-003 focused Desktop retest — 2026-11-27
+
+**OPEN — BLOCKED.** DSH Desktop 0.2.2-rc.5 was launched with the existing isolated Profile. The installed client carrier matched fix commit `6afb0e28860eba13631cc870fecb481c3573873f`. Windows displayed its lock screen over the app and prevented trusted keyboard and clipboard interaction. The checks below show the outcome of this native retest. The prior installed Chromium evidence remains recorded in DT-02b and DT-02c.
+
+| Requested case | Native Desktop retest |
+| --- | --- |
+| Typing in Result before and after processing | BLOCKED |
+| Paste, delete, cut and manual modification of Result | BLOCKED |
+| Selecting Result and copying it manually | BLOCKED |
+| Copy Result button and exact Windows clipboard text | BLOCKED |
+| Continued editing of Source | BLOCKED |
+| Replacing Result on a new processing request | BLOCKED |
+
+**Required action:** Unlock the Windows session. The native Desktop checks can then be executed against the isolated candidate.
+
 ## Findings and bug status
 
 | ID | Classification | Severity | Observation and status |
 | --- | --- | --- | --- |
 | HS-BUG-001 | Plugin defect | Medium | Historical Windows native dropdown contrast defect. Theme-token fix present. Full native popup comparison in dark/light remains open. |
 | HS-BUG-002 | Plugin defect | Low | Historical absence of elapsed feedback. Installed renderer passed live feedback, completion, cancellation and late-reply timer behavior. Live Host reconnect verification remains open. |
-| HS-BUG-003 | Plugin defect | Medium | Historical editable Result. Exact candidate passed generated-client state regression and installed Chromium editor checks. Trusted Windows keyboard, clipboard and drag coverage remains open. |
+| HS-BUG-003 | Plugin defect | Medium | Historical editable Result. Exact candidate passed generated-client state regression and installed Chromium editor checks. Focused native Desktop retest blocked by the Windows lock screen. HS-BUG-003 remains open. |
 | HS-OBS-001 | Model capability limitation | Low | Historical `qwen3.5:4b` completed Shorten and failed the shortening criterion. Owner disposition retained. Cause remains unconfirmed independently. |
 | HS-ERR-001 | External provider/API failure | Low | Historical K2 Horizon 375B A23B Proofread request failed. Owner attributed it to provider API; independent provider diagnosis unavailable. |
 | QA-01 | Environment limitation | Low | Restricted Sandbox source run failed due to junction `EPERM` with six skips. Same tests passed with three skips after authorized local rerun. |
