@@ -19,7 +19,7 @@
 
 <p align="center">
   <a href="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/workflows/test.yml"><img alt="CI" src="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/workflows/test.yml/badge.svg" /></a>
-  <a href="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.1.3"><img alt="Release v1.1.3" src="https://img.shields.io/badge/release-v1.1.3-22c55e" /></a>
+  <a href="https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.2.0"><img alt="Release v1.2.0" src="https://img.shields.io/badge/release-v1.2.0-22c55e" /></a>
   <a href="LICENSE"><img alt="MIT license" src="https://img.shields.io/badge/license-MIT-22c55e" /></a>
 </p>
 
@@ -31,9 +31,9 @@
   <a href="https://github.com/deepseek-ai/deepseek-harness"><img alt="DeepSeek Harness DSH" src="https://img.shields.io/badge/DeepSeek%20Harness-DSH-0F172A" /></a>
 </p>
 
-> **Release source [v1.1.3](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.1.3).** The [GitHub Releases page](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases) is authoritative for publication. Install only a published stable release using its full commit SHA. Includes the maintenance and privacy improvements to My Profile, Direct Chat, Archive Manager, Adaptive Reasoning and Environment & Context.
+> **Release source [v1.2.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.2.0).** The [GitHub Releases page](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases) is authoritative for publication. Install only a published stable release using its full commit SHA. Includes Humanizer Studio alongside the existing Skill, security and privacy hardening, and release/update verification improvements.
 >
-> **Development source:** `1.2.0` (unreleased candidate). See [CHANGELOG.md](CHANGELOG.md) for its improvements and verification status.
+> **Source version:** `1.2.0`. See [CHANGELOG.md](CHANGELOG.md) for its improvements and verification status.
 
 ## Overview
 
@@ -42,7 +42,7 @@ The suite installs as **one DSH bundle** containing **six independently toggleab
 | Component | Default | Full description |
 | --- | --- | --- |
 | <img src="plugins/environment-context/icon.png" width="32" alt="Environment & Context icon" /> **Environment & Context** | On | [Details](docs/DETAIL.md#environment--context) |
-| <img src="plugins/humanizer/icon.png" width="32" alt="Humanizer icon" /> **Humanizer** | On | Writing Skill + Humanizer Studio (v1.2.0 candidate) · [Details](docs/DETAIL.md#humanizer) |
+| <img src="plugins/humanizer/icon.png" width="32" alt="Humanizer icon" /> **Humanizer** | On | Writing Skill + Humanizer Studio (v1.2.0) · [Details](docs/DETAIL.md#humanizer) |
 | <img src="plugins/personal-profile/icon.png" width="32" alt="My Profile icon" /> **My Profile** | Off | [Details](docs/DETAIL.md#my-profile) |
 | <img src="plugins/direct-chat/assets/png/icon-256.png" width="32" alt="Direct Chat icon" /> **Direct Chat** | Off | [Details](docs/DETAIL.md#direct-chat) |
 | <img src="plugins/conversation-lifecycle/assets/png/icon-256.png" width="32" alt="Archive Manager icon" /> **Archive Manager** | Off | [Details](docs/DETAIL.md#chat-control) |
@@ -52,7 +52,7 @@ The suite installs as **one DSH bundle** containing **six independently toggleab
 
 ## Humanizer — Skill and Studio
 
-Humanizer remains one component with one activation switch, icon and identity. The existing **Humanizer Skill** supports editing inside DSH conversations when loaded by the agent. **Humanizer Studio** is a new standalone editing workspace in the unreleased v1.2.0 candidate, in the sidebar below Automation tasks when supported by the Host. It does not replace the Skill or add a seventh component.
+Humanizer remains one component with one activation switch, icon and identity. The existing **Humanizer Skill** supports editing inside DSH conversations when loaded by the agent. **Humanizer Studio** is a new standalone editing workspace in v1.2.0, in the sidebar below Automation tasks when supported by the Host. It does not replace the Skill or add a seventh component.
 
 | Studio service | Purpose |
 | --- | --- |
@@ -99,7 +99,7 @@ github:abinadwan/DSH-ABINADWAN-Plugins-Suite#RELEASE_COMMIT_SHA
 4. Complete the installation through the native Plugins UI, then **restart Harness** if requested.
 5. Open **Plugins → ABINADWAN Plugins Suite**, enable the bundle and select the components you want to activate.
 
-Replace `RELEASE_COMMIT_SHA` with the full commit SHA of the published [v1.1.3 release](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.1.3). Test development commits using a reviewed full SHA in a disposable DSH Profile.
+Replace `RELEASE_COMMIT_SHA` with the full commit SHA of the published [v1.2.0 release](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.2.0). Test development commits using a reviewed full SHA in a disposable DSH Profile.
 
 **Profile separation matters:** Desktop and CLI can use different DSH Profiles. Installing into a CLI Profile does not necessarily install into the Desktop Profile. Before replacing an existing installation, preserve its known-good revision, configuration and any relevant user backup.
 

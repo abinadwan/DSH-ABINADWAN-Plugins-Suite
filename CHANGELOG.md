@@ -2,7 +2,7 @@
 
 All notable changes are documented here.
 
-## [1.2.0] — development candidate (unreleased)
+## [1.2.0] — release source (2026-11-27)
 
 - Start owner-approved Humanizer Studio (HS-01 through HS-08) and additional security reviews 3.6 (Humanizer instruction integrity and privacy) and 3.7 (suite package, dependencies, updates and repository). Branch `feature/v1.2.0-humanizer-studio`, baseline `b883fe41f27fae0c89d6a4bda3d55f2f9bb65e54` (same source tree as published v1.1.3). No Studio runtime/UI is shipped by this initial commit.
 - Add an offline characterization of the public, pinned DSH LLM service for a standalone, tool-free one-shot text request using a synthetic adapter and no Session/Agent services. Check catalog membership, bounded request shape, separate system/input content, terminal success, and pre-aborted request behavior. This is a feasibility fixture, not a production authorization, storage, cancellation, provider or Desktop guarantee. Initial CI run 45910960119: standalone request succeeded on all four matrix targets; the pre-abort assertion failed because the native synthetic adapter was entered once despite cancellation. Add an unregistered Studio dispatch guard and independent regression fixtures for pre-abort, late-chunk suppression and iterator cleanup. Follow-up CI 45911280425 passed all four matrix jobs. Native cancellation after dispatch, Host admission, diagnostics and retention remain unverified. No DSH files or installed dependencies are modified.
@@ -23,7 +23,7 @@ All notable changes are documented here.
 - Record the owner-run manual functional round (all nine Studio services sampled successfully at least once; Qwen shortening quality failure and external K2 API failure retained). Fix HS-BUG-003: native read-only result textarea without a user-edit state callback, while retaining selection, explicit clipboard, model replies, opt-in restore and clear. Add browser regression assertions; final exact-SHA CI and installed Desktop verification pending. No merge or release.
 - Clarify Humanizer Plugin Manager descriptions in Arabic and English: the original runtime Skill and Humanizer Studio share one component identity and activation switch. Document all nine Studio operations, native model/effort selection, read-only output, clipboard/timing controls, explicit saved items and privacy limits in README and component references. Record HS-BUG-003 owner acceptance (8/8). No runtime or permission change, merge or release.
 - Record owner-approved security-scope closure: HS-BUG-001 light-mode pass, existing owner-only authorization and Host/Profile isolation evidence, scoped 117-file no-auto-persistence inspection, and tool-free prompt-injection controls. Exclude redundant live nonowner and unestablished same-window Profile-switch tests; preserve unexecuted cases and provider/OS/model limitations. No code change or promotion approval.
-- Source version metadata aligned at 1.2.0; published release references remain v1.1.3.
+- Owner approved promotion of v1.2.0 following scoped security closure and integration [PR #88](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/88), whose final candidate CI passed 5/5. Align README, component documentation, security policy and llms.txt with v1.2.0 release source. GitHub Releases remains authoritative for publication; retain historical limitations and unexecuted checks.
 
 ## [1.1.3] — release source (2026-11-27)
 

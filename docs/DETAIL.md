@@ -1,8 +1,8 @@
 # ABINADWAN Plugins Suite — component details
 
-**Release source [v1.1.3](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.1.3).** One community-maintained DSH bundle exposes six independently switchable components. The package's public identity remains `@abinadwan/dsh-plugins-suite`.
+**Release source [v1.2.0](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases/tag/v1.2.0).** One community-maintained DSH bundle exposes six independently switchable components. The package's public identity remains `@abinadwan/dsh-plugins-suite`.
 
-> **Development source:** `1.2.0` (unreleased candidate). See the [changelog](../CHANGELOG.md) for versioned changes.
+> **Source version:** `1.2.0`. See the [changelog](../CHANGELOG.md) for versioned changes.
 >
 > **Release boundary:** A version bump, development branch merge, or successful CI run does not publish a GitHub Release or validate every Desktop security path. See [the releases page](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/releases) for actually published artifacts.
 
@@ -11,7 +11,7 @@
 | Component | Default | Where to use it | Implemented boundary |
 | --- | --- | --- | --- |
 | <img src="../plugins/environment-context/icon.png" width="28" alt="Environment & Context icon"/> **Environment & Context** | On | Conversation header / right inspector | Read-only session summaries and estimated usage |
-| <img src="../plugins/humanizer/icon.png" width="28" alt="Humanizer icon"/> **Humanizer** | On | Skill registry / agent requests; Humanizer Studio sidebar (v1.2.0 candidate) | Runtime Skill and independent nine-operation editing workspace |
+| <img src="../plugins/humanizer/icon.png" width="28" alt="Humanizer icon"/> **Humanizer** | On | Skill registry / agent requests; Humanizer Studio sidebar (v1.2.0) | Runtime Skill and independent nine-operation editing workspace |
 | <img src="../plugins/personal-profile/icon.png" width="28" alt="My Profile icon"/> **My Profile** | Off | **Settings → My Profile** | Saved personal context and native system preferences |
 | <img src="../plugins/direct-chat/assets/png/icon-256.png" width="28" alt="Direct Chat icon"/> **Direct Chat** | Off | Below native **New Session** | One shared Workspace, independent native chat Sessions |
 | <img src="../plugins/conversation-lifecycle/assets/png/icon-256.png" width="28" alt="Archive Manager icon"/> **Archive Manager** | Off | **Archives** in the sidebar | Authorized archive browsing, search, protection and native restore |
@@ -37,7 +37,7 @@ Enabling the component registers the runtime Skill `abinadwan-humanizer` through
 
 **Scope:** the Skill is used only when loaded by the agent; it is **not** a background rewriter, universal interception layer or model-detector bypass. Its output follows the currently selected model/provider. After disabling, new Skill discovery is removed but an already loaded conversation may retain prior text in context.
 
-### Humanizer Studio — v1.2.0 candidate
+### Humanizer Studio — v1.2.0
 
 The same component also exposes an independent editing workspace below Automation tasks in the native sidebar when Host services are available. The Skill remains unchanged in identity and activation. Studio supports Humanize, Rewrite, Improve Style, Professional, Proofread, Shorten, Expand, Translate and Custom. Select a configured local or cloud model independently of the conversation, source/result languages and an editing brief when using Custom.
 
@@ -45,7 +45,7 @@ The same component also exposes an independent editing workspace below Automatio
 
 **Privacy:** no automatic saving or hidden Session/tool execution by Studio. Explicit Profile-local draft/history management supports one draft and up to ten history items; saved data is plaintext, restore does not invoke a model, and deletion is logical. Host middleware and selected providers may observe and retain submissions. Review model output; no guarantee of fidelity or detector evasion.
 
-**Verification:** nine of nine operations have at least one successful manual sample; HS-BUG-003 owner acceptance passed 8/8. These results do not establish complete release acceptance. Studio is not in published v1.1.3.
+**Verification:** nine of nine operations have at least one successful manual sample; HS-BUG-003 owner acceptance passed 8/8. These results are scoped; the owner approved the release with documented limitations and unexecuted cases. Studio is introduced in v1.2.0.
 
 [Humanizer Skill and Studio usage](../plugins/humanizer/README.md)
 
@@ -114,7 +114,7 @@ The supported installation identity is `@abinadwan/dsh-plugins-suite`. Select th
 github:abinadwan/DSH-ABINADWAN-Plugins-Suite#RELEASE_COMMIT_SHA
 ~~~
 
-For CLI installations, use the matching DSH `plugin --profile <name> add` workflow in the environment that runs that Profile. Back up My Profile and the Profile configuration before any replacement or migration. Install the published **v1.1.3** using its full release commit SHA. The updater discovers changes through published releases.
+For CLI installations, use the matching DSH `plugin --profile <name> add` workflow in the environment that runs that Profile. Back up My Profile and the Profile configuration before any replacement or migration. Install the published **v1.2.0** using its full release commit SHA. The updater discovers changes through published releases.
 
 **Suite updates (GitHub Releases)** lives on the suite's Plugins detail page. It checks for a published, non-prerelease GitHub Release on startup and every 24 hours while loaded, with manual **Check again**. If a newer release exists, **Update now** verifies the tag, immutable target SHA and remote package manifest; it requires user confirmation and delegates to DSH's `pluginManager.updateBundle`. There is no unattended install. In-app update requires the existing Git installation to be pinned to a complete commit SHA; unpinned Git installations receive manual migration guidance. Updates may require a restart, and Host rollback is attempted but cannot be guaranteed to succeed in every failure mode.
 
