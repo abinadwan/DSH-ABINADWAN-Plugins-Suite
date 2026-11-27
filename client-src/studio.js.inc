@@ -8,6 +8,9 @@
     ]
     const studioEmpty = Object.freeze([])
     const studioTextStyle = { font:'inherit', color:'inherit', background:'transparent', border:'1px solid var(--dsw-alias-border, #8886)', borderRadius:8, padding:9, minWidth:0 }
+    const studioSelectStyle = { ...studioTextStyle, colorScheme:'inherit', backgroundColor:'var(--dsw-alias-bg-layer-2, Canvas)', color:'var(--dsw-alias-label-primary, CanvasText)' }
+    const studioOptionStyle = { backgroundColor:studioSelectStyle.backgroundColor, color:studioSelectStyle.color, colorScheme:'inherit' }
+    function studioClock(){return performance.now()}
     const studioLabel = { display:'grid', gap:6, minWidth:0, fontSize:13 }
     const studioButton = { ...studioTextStyle, cursor:'pointer', textAlign:'start' }
     const studioLocaleId = /^[a-zA-Z]{2,8}(?:-[a-zA-Z0-9]{1,8})*$/
@@ -57,6 +60,24 @@
       const [busy,setBusy] = React.useState(false)
       const [notice,setNotice] = React.useState('')
       const pending = React.useRef(null)
+      const [timing,setTiming] = React.useState(null)
+      const timingRef = React.useRef(null)
+      function finishTiming(phase){
+        const run=timingRef.current
+        if(!run)return
+        timingRef.current=null
+        setTiming({...run,phase,elapsed:Math.max(0,studioClock()-run.started)})
+      }
+      React.useEffect(()=>{
+        if(!busy)return
+        const run=timingRef.current
+        if(!run)return
+        const timer=setInterval(()=>{
+          if(!current()||timingRef.current!==run)return
+          setTiming({...run,phase:'waiting',elapsed:Math.max(0,studioClock()-run.started)})
+        },250)
+        return ()=>clearInterval(timer)
+      },[busy,services,generation])
       const storagePending = React.useRef(null)
       const [saved,setSaved] = React.useState(null)
       const [storageBusy,setStorageBusy] = React.useState(false)
@@ -102,11 +123,13 @@
         setTo(entry.outputLanguage==='preserve'||known(entry.outputLanguage)?entry.outputLanguage:'preserve')
         const key=JSON.stringify([entry.provider,entry.model])
         setSelection(models.some(model=>model.key===key)?key:'')
+        setTiming(null)
         setNotice(tr('Saved text restored. Nothing was sent to a model.','تمت استعادة النص المحفوظ دون إرساله إلى موديل.'))
       }
       function stop() {
         pending.current?.abort()
         pending.current = null
+        finishTiming('cancelled')
         setBusy(false)
       }
       React.useEffect(() => {
@@ -146,23 +169,30 @@
         pending.current=controller
         const signal=AbortSignal.any([controller.signal,services.lifetime,AbortSignal.timeout(125000)])
         const valid=()=>current()&&pending.current===controller&&services.catalogRevision.getSnapshot()===revision
+        const run={started:studioClock(),model:chosen.model,service,elapsed:0,phase:'waiting'}
+        timingRef.current=run;setTiming(run)
         setBusy(true);setResult('');setNotice('')
         try {
           const reply=await studioFetch('edit',signal,{service,provider:chosen.provider,model:chosen.model,sourceText:source,
             inputLanguage:from,outputLanguage:to,...(service==='custom'?{editingBrief:brief}:{})})
-          if (!valid()||signal.aborted) return
+          if (!valid()) return
+          if(signal.aborted)throw Error('STUDIO_UNAVAILABLE')
           if(typeof reply?.text!=='string'||!reply.text.trim()||reply.text.length>24000)throw Error('STUDIO_UNAVAILABLE')
           setResult(reply.text)
+          finishTiming('completed')
           setNotice(tr('Completed. Review the result.','اكتملت المعالجة. راجع النتيجة.'))
         }catch{
-          if(valid()&&!controller.signal.aborted)setNotice(tr('Processing failed or was cancelled. No automatic retry.','تعذرت المعالجة أو أُلغيت. لن تتم إعادة المحاولة تلقائيًا.'))
+          if(valid()){
+            finishTiming(signal.aborted?'cancelled':'failed')
+            if(!controller.signal.aborted)setNotice(tr('Processing failed or was cancelled. No automatic retry.','تعذرت المعالجة أو أُلغيت. لن تتم إعادة المحاولة تلقائيًا.'))
+          }
         }finally{
           if(valid()){pending.current=null;setBusy(false)}
         }
       }
-      function clear() {stop();setSource('');setResult('');setBrief('');setNotice('')}
+      function clear() {stop();setTiming(null);setSource('');setResult('');setBrief('');setNotice('')}
       const choice=(label,value,onChange,children,extra={})=>h('label',{style:studioLabel},label,
-        h('select',{style:studioTextStyle,value,onChange:event=>onChange(event.target.value),disabled:busy||storageBusy,...extra},children))
+        h('select',{style:studioSelectStyle,value,onChange:event=>onChange(event.target.value),disabled:busy||storageBusy,...extra},children))
       const editor=(label,value,onChange,maxLength,dir,id)=>h('label',{style:studioLabel},label,
         h('textarea',{'data-studio-editor':id,style:{...studioTextStyle,minHeight:250,resize:'vertical',lineHeight:1.65},
           value,maxLength,dir,disabled:busy||storageBusy,spellCheck:false,autoComplete:'off',onChange:event=>onChange(event.target.value)}),
@@ -175,10 +205,10 @@
           h('button',{type:'button',style:studioButton,onClick:()=>setRefresh(value=>value+1)},tr('Retry','إعادة المحاولة'))):null,
         h('div',{style:{display:'grid',gap:12}},
           h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,180px),1fr))',gap:10}},
-            choice(tr('Model','الموديل'),selection,setSelection,[h('option',{key:'none',value:''},tr('Select model','اختر الموديل')),
-              ...catalog.groups.map(group=>h('optgroup',{key:group.id,label:group.name},group.models.map(model=>h('option',{key:model.id,value:JSON.stringify([group.id,model.id])},model.name))))],{'data-studio-model':''}),
-            choice(tr('Input language','لغة المصدر'),from,setFrom,[h('option',{key:'auto',value:'auto'},tr('Auto detect','اكتشاف تلقائي')),...locales.map(item=>h('option',{key:item.id,value:item.id},item.label))],{'data-studio-input-language':''}),
-            choice(tr('Output language','لغة النتيجة'),to,setTo,[h('option',{key:'preserve',value:'preserve'},tr('Preserve source','لغة المصدر')),...locales.map(item=>h('option',{key:item.id,value:item.id},item.label))],{'data-studio-output-language':''})),
+            choice(tr('Model','الموديل'),selection,setSelection,[h('option',{style:studioOptionStyle,key:'none',value:''},tr('Select model','اختر الموديل')),
+              ...catalog.groups.map(group=>h('optgroup',{style:studioOptionStyle,key:group.id,label:group.name},group.models.map(model=>h('option',{style:studioOptionStyle,key:model.id,value:JSON.stringify([group.id,model.id])},model.name))))],{'data-studio-model':''}),
+            choice(tr('Input language','لغة المصدر'),from,setFrom,[h('option',{style:studioOptionStyle,key:'auto',value:'auto'},tr('Auto detect','اكتشاف تلقائي')),...locales.map(item=>h('option',{style:studioOptionStyle,key:item.id,value:item.id},item.label))],{'data-studio-input-language':''}),
+            choice(tr('Output language','لغة النتيجة'),to,setTo,[h('option',{style:studioOptionStyle,key:'preserve',value:'preserve'},tr('Preserve source','لغة المصدر')),...locales.map(item=>h('option',{style:studioOptionStyle,key:item.id,value:item.id},item.label))],{'data-studio-output-language':''})),
           h('div',{style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(min(100%,260px),1fr))',gap:12}},
             h('nav',{'aria-label':tr('Editing services','خدمات التحرير'),style:{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(112px,1fr))',gap:6,alignContent:'start'}},
               studioTools.map(([id,en,ar])=>h('button',{key:id,type:'button',disabled:busy||storageBusy,'aria-pressed':service===id,'data-studio-service':id,style:{...studioButton,background:service===id?'#8060c526':'transparent'},onClick:()=>setService(id)},tr(en,ar)))),
@@ -192,7 +222,15 @@
             busy?h('button',{type:'button','data-studio-cancel':'',style:studioButton,onClick:()=>{stop();setNotice(tr('Cancelled.','أُلغيت المعالجة.'))}},tr('Cancel','إلغاء')):null,
             h('button',{type:'button','data-studio-clear':'',style:studioButton,onClick:clear},tr('Clear text','مسح النصوص')),
             h('button',{type:'button',disabled:busy||storageBusy,style:studioButton,onClick:()=>setRefresh(value=>value+1)},tr('Refresh models','تحديث الموديلات'))),
-          h('p',{role:'status','aria-live':'polite',style:lifecycleMuted},busy?tr('Processing…','جارٍ المعالجة…'):notice)),
+          h('p',{role:'status','aria-live':'polite',style:lifecycleMuted},busy?tr('Waiting for Host response…','بانتظار استجابة المضيف…'):notice),
+          timing?h('section',{'data-studio-timing':'','aria-label':tr('Last processing attempt','آخر محاولة معالجة'),style:{...studioTextStyle,display:'grid',gap:7}},
+            h('div',{style:{display:'flex',alignItems:'center',gap:12,flexWrap:'wrap'}},
+              h('strong',null,tr('Model: ','الموديل: ')+timing.model),
+              h('span',null,studioTools.find(row=>row[0]===timing.service)?.[language==='ar'?2:1]??timing.service),
+              h('span',{'data-studio-elapsed':'',dir:'ltr',style:{fontVariantNumeric:'tabular-nums'}},(timing.elapsed/1000).toFixed(2)+' s'),
+              h('span',{'data-studio-timing-phase':timing.phase},timing.phase==='waiting'?tr('In progress','قيد المعالجة'):timing.phase==='completed'?tr('Completed','مكتملة'):timing.phase==='cancelled'?tr('Cancelled locally','أُلغيت محليًا'):tr('Failed','فشلت'))),
+            timing.phase==='waiting'?h('progress',{'aria-label':tr('Processing in progress','المعالجة جارية'),style:{width:'100%',accentColor:'var(--dsw-alias-label-primary, CanvasText)'}}):null,
+            h('span',{style:lifecycleMuted},tr('Elapsed time measured in this window, including Host and provider overhead. Not token speed or an estimated completion time.','المدة مقاسة في هذه النافذة وتشمل وقت المضيف والمزوّد؛ ليست سرعة التوكنات أو تقديرًا لوقت الانتهاء.'))):null),
         h('section',{'aria-label':tr('Optional local storage','التخزين المحلي الاختياري'),style:{...studioTextStyle,display:'grid',gap:9}},
           h('h3',{style:{margin:0,fontSize:15}},tr('Draft and history','المسودة والسجل')),
           h('p',{style:lifecycleMuted},tr('Optional, manual saving of the current editor snapshot in this Host Profile, not a verified record of model execution. Saved text is not encrypted. One draft, up to 10 history items; deleting here does not erase backups or provider copies.','حفظ يدوي اختياري لحالة المحرر الحالية داخل Profile لهذا المضيف، وليس سجلًا موثقًا لتنفيذ الموديل. النص المحفوظ غير مشفر. مسودة واحدة وحتى 10 عناصر بالسجل؛ الحذف هنا لا يمحو النسخ الاحتياطية أو نسخ المزوّد.')),

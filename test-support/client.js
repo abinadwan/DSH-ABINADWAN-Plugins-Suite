@@ -335,6 +335,7 @@ export async function clientHarness(options = {}) {
     fetch: options.fetch || (() => { throw new Error('unexpected network request') }),
     navigator: options.navigator,
     document: options.document,
+    performance: options.performance || performance,
     AbortController, AbortSignal, URL, TextDecoder, Blob, crypto: globalThis.crypto,
   })
   const plugin = loaded.factory(name => {

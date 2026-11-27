@@ -30,10 +30,11 @@ test('Studio uses live native catalog, sends only explicit text, supports RTL an
   const container=dom.window.document.createElement('div')
   dom.window.document.body.append(container)
   const sent=[]
+  let now=1000
   const storageCalls=[]
   let delayedEdit=null, delayedLoad=null, catalogUnavailable=false
   let saved={version:1,revision:'initial',draft:null,history:[]}
-  const app=await clientHarness({React,document:dom.window.document,modelCatalog:()=>catalogUnavailable?{ok:false,error:{code:'unavailable',message:'fixture'}}:({groups:[{id:'p',name:'Provider',models:[{id:'m',name:'Model'}]}]}),
+  const app=await clientHarness({React,performance:{now:()=>now},document:dom.window.document,modelCatalog:()=>catalogUnavailable?{ok:false,error:{code:'unavailable',message:'fixture'}}:({groups:[{id:'p',name:'Provider',models:[{id:'m',name:'Model'}]}]}),
     fetch:async(url,options)=>{
       const path=new URL(url).pathname
       if(path.endsWith('/status'))return {ok:true,json:async()=>({available:true,protocol:1})}
@@ -60,6 +61,12 @@ test('Studio uses live native catalog, sends only explicit text, supports RTL an
   assert.equal(q('[data-studio-model]').options.length,2)
   assert.equal(q('[data-studio-output-language]').options.length,4)
   assert.equal(sent.length,0)
+  for(const selector of ['[data-studio-model]','[data-studio-input-language]','[data-studio-output-language]']){
+    const node=q(selector)
+    assert.equal(node.style.colorScheme,'inherit')
+    assert.match(node.style.backgroundColor,/--dsw-alias-bg-layer-2/)
+    for(const option of node.querySelectorAll('option,optgroup'))assert.match(option.style.backgroundColor,/--dsw-alias-bg-layer-2/)
+  }
   const change=async(selector,value)=>{
     const node=q(selector)
     const proto=node.tagName==='SELECT'?dom.window.HTMLSelectElement.prototype:dom.window.HTMLTextAreaElement.prototype
@@ -74,6 +81,9 @@ test('Studio uses live native catalog, sends only explicit text, supports RTL an
   assert.deepEqual(sent,[{service:'humanize',provider:'p',model:'m',sourceText:'نص 123',inputLanguage:'auto',outputLanguage:'ar'}])
   assert.equal(q('[data-studio-editor="result"]').value,'نتيجة 123')
   assert.equal(q('[data-studio-editor="result"]').dir,'rtl')
+  assert.ok(q('[data-studio-timing-phase="completed"]'))
+  assert.equal(q('[data-studio-elapsed]').textContent,'0.00 s')
+  assert.equal([...app.intervals.values()].some(i=>i.ms===250),false)
   assert.deepEqual(storageCalls,[],'processing must not touch persistent storage')
   await act(async()=>q('[data-studio-storage-open]').click())
   for(let i=0;i<3;i++)await act(async()=>{await tick()})
@@ -108,11 +118,25 @@ test('Studio uses live native catalog, sends only explicit text, supports RTL an
   delayedEdit=defer()
   await act(async()=>q('[data-studio-process]').click())
   assert.ok(q('[data-studio-cancel]'))
+  assert.ok(q('progress'))
+  now+=3750
+  const timer=[...app.intervals.values()].find(i=>i.ms===250)
+  assert.ok(timer)
+  await act(async()=>timer.callback())
+  assert.equal(q('[data-studio-elapsed]').textContent,'3.75 s')
+  await act(async()=>q('[data-studio-cancel]').click())
+  assert.ok(q('[data-studio-timing-phase="cancelled"]'))
+  assert.equal(q('[data-studio-elapsed]').textContent,'3.75 s')
+  assert.equal(q('progress'),null)
+  assert.equal([...app.intervals.values()].some(i=>i.ms===250),false)
+  await act(async()=>q('[data-studio-process]').click())
   await act(async()=>app.ctx.emit('connection/reset'))
   for(let i=0;i<4;i++)await act(async()=>{await tick()})
   await act(async()=>delayedEdit.resolve({ok:true,json:async()=>({text:'OLD_HOST_RESULT'})}))
   assert.equal(q('[data-studio-editor="source"]').value,'')
   assert.equal(q('[data-studio-editor="result"]').value,'')
+  assert.equal(q('[data-studio-timing]'),null)
+  assert.equal([...app.intervals.values()].some(i=>i.ms===250),false)
   delayedEdit=null
   delayedLoad=defer()
   await act(async()=>q('[data-studio-storage-open]').click())
