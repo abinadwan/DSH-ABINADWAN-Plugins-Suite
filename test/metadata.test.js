@@ -34,7 +34,7 @@ test('Humanizer metadata distinguishes the Skill and Studio without changing the
   for (const [language, skill, studio] of [['en', /Runtime writing skill/, /Humanizer Studio:.*local and cloud models/], ['ar', /مهارة لتحرير النصوص/, /استوديو Humanizer:.*الموديلات المحلية والسحابية/]]) {
     const {meta} = JSON.parse(read('plugins/humanizer/locale/' + language + '.json'))
     assert.equal(meta.title, 'Humanizer')
-    const lines = meta.description.split('\\n')
+    const lines = meta.description.split('\n')
     assert.equal(lines.length, 2)
     assert.match(lines[0], skill)
     assert.match(lines[1], studio)
