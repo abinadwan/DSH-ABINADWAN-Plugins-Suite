@@ -36,12 +36,12 @@ No merge to `develop` or `main`, ready-for-review transition or publication unti
 - Latest published release API at review: v1.1.3, release ID 459992837, stable, tag directly points to `47f219090247c3af47d8089312941d5236e591f9`. GitHub commit verification reports valid; release immutable=false. A verified commit is not an independently enforced signer-identity policy. The update UI pins a full commit and revalidates before confirmation dispatch; no immutable-tag enforcement or atomic Host CAS claim.
 - Repository metadata: default main, allow_auto_merge=false, main and develop report protected=true. Basic branch response reports classic protection enabled=false and required status contexts empty; this is not evidence that rulesets are absent. Detailed branch protection GET returned 403; rules-by-branch endpoint unavailable through connector. At that historical checkpoint, owner-side review remained open and no repository configuration had changed. Superseded by the 2026-11-27 closure evidence below.
 
-### Manual Desktop matrix (not run)
+### Manual Desktop matrix (original acceptance plan; partial execution recorded below)
 
 | ID | Scenario | Acceptance condition |
 | --- | --- | --- |
 | DT-01 | Install exact candidate SHA in isolated Profile | Existing six components and original Humanizer Skill remain usable; Studio appears beneath Automation tasks when visible; no core DSH modification. |
-| DT-02 | Enable/disable/reload; Arabic and English UI; narrow/wide windows | Panel appears once; native layout/navigation, keyboard/focus, clear labels, editable source/result, RTL/LTR and no horizontal overflow; disabling removes routes and panel. |
+| DT-02 | Enable/disable/reload; Arabic and English UI; narrow/wide windows | Panel appears once; native layout/navigation, keyboard/focus, clear labels, editable source and selectable read-only result (HS-BUG-003), RTL/LTR and no horizontal overflow; disabling removes routes and panel. |
 | DT-03 | Live model/locale catalog | Choose independent local model; switch locale; change provider/credentials; missing model fails closed. Existing conversation model and history unchanged. |
 | DT-04 | All nine operations | Run each operation against Arabic and English fixture prose on supported local Gemma and Qwen; record exact model IDs and results, including explicit translation target/custom brief. Preserve dates, numbers, names, citations, uncertainty and required language. |
 | DT-05 | Embedded instructions / hostile source | Synthetic source includes role delimiters and instructions to reveal a unique sentinel or access tools/files/profile; output treats these as source data, never invokes tools; record semantic failures independently of structural request tests. |
@@ -55,7 +55,7 @@ No merge to `develop` or `main`, ready-for-review transition or publication unti
 
 Use a unique sentinel per run. Example source: “The Riyadh review was scheduled for 15 December 2026. The preliminary estimate is SAR 12,450, subject to approval. Reference: [REF-07].” Arabic counterpart: “موعد مراجعة الرياض هو 15 ديسمبر 2026. التقدير الأولي 12,450 ريالًا، ويظل مشروطًا بالموافقة. المرجع: [REF-07].” For Grammar introduce only deliberate language errors; for Shorten add redundant phrasing; for Expand add no unsupported facts; for Translate select the opposite language. For Custom use a bounded style brief and a deliberately unrelated command in source. Score separately: fidelity, language/operation adherence, instruction isolation, no tool access, and terminal completion. Automated fixtures do not score naturalness or prove semantic obedience. Log no raw private content. Failed tests remain open, never relabeled as pass.
 
-**Desktop and real model evidence is still pending.** The current GitHub connection can inspect code/CI but cannot access the user's installed Windows DSH or local Ollama runtime. This table is an acceptance procedure, not executed results.
+**Historical checkpoint:** Desktop and real model evidence was pending when this matrix was first written. The owner-reported manual round below supplies partial evidence; the full Desktop/security acceptance matrix is not complete.
 
 
 ### Phase 3.7 follow-up
@@ -73,3 +73,62 @@ Candidate update confirmation now fences Host connection generations, rechecks l
 ### HS-09–11: clipboard and independent native effort
 
 Native contract reviewed at deepseek-ai/deepseek-harness@38a6a5c: packages/api/session-controller/src/catalog.ts resolves model reasoning through ctx.llm.resolveModelInfo; packages/llm/llm/src/types.ts defines opaque reasoningEffort IDs and ordered efforts with display names; packages/llm/llm/src/index.ts validates effort on the exact prepared adapter call. Studio uses the existing global native modelCatalog groups, not Adaptive Reasoning's session selection RPC or preferences. UI displays only native advertised effort names/IDs (plus a local omit/default choice); hides on missing/malformed capabilities, resets on route/catalog/Host/restore changes. Explicit IDs are validated again on the Host using resolveModelInfo and then native stream validation; omitted effort delegates native defaults. No separate Session, Agent, provider bypass, settings change or persistent effort record. Timing displays **requested** effort or model default, not provider-confirmed effective effort. Clipboard copies source/result only on direct click, no automatic writes or retries; OS clipboard may retain content; failures allow manual copying. All controls and metadata remain ephemeral. Real Desktop retest must include supported and unsupported models, changed effort, model switching, clipboard denial, exact text, timer and both themes. CI pending; no merge/release.
+
+
+### Owner-run functional acceptance round — 2026-11-27
+
+Branch: `feature/v1.2.0-humanizer-studio`, [draft PR #88](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/pull/88). HS-T01/02 preceded HS-09–11; the later round was reported after installing [8ae827a](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/commit/8ae827af356d73c3267d125ac44709627e0d7181). Evidence: owner-supplied Windows Desktop screenshots, copied synthetic test outputs and displayed timing/effort metadata in project conversation. Exact Desktop build, isolated Profile use, provider versions and independent provider traces were not recorded for every run. Timings are window-measured end-to-end durations including Host/provider overhead (not token throughput, ETA or pure inference); initial Humanize times were not measured. Scores are conversation-based editorial estimates, not a calibrated benchmark. Default means omit/delegate to model, not Off; requested effort is not verified effective effort. One observation per setting, no repeated controlled performance trials. Different operations/fixtures must not be treated as a model ranking.
+
+| Case | Model / environment | Operation | Requested effort | Time (s) | Editorial score | Result |
+| --- | --- | --- | --- | ---: | ---: | --- |
+| HS-T01 | Gemma 4 E4B / local | Humanize AR | not recorded | — | 80/100 | Pass; 265→238 characters, 10.2% shorter |
+| HS-T02 | Gemma 4 12B / local | Humanize AR | not recorded | — | 90/100 | Pass; 265→206 characters, 22.3% shorter |
+| HS-T03 | gemma4:12b / local | Rewrite AR | Medium | 29.00 | 90/100 | Pass; Studio counts 418→384 |
+| HS-T04-A | gemma4:12b / local | Rewrite AR | High | 27.13 | 90/100 | Pass |
+| HS-T04-B | gemma4:12b / local | Rewrite AR | Low | 29.40 | 90/100 | Pass |
+| HS-T04-C | gemma4:12b / local | Rewrite AR | Off | 27.11 | 90/100 | Pass; explicit Off, not Default |
+| HS-C01 | gpt-6.2-sol / cloud | Rewrite AR | Default | 7.45 | 97/100 | Pass |
+| HS-C02 | stealth/big-pickle / cloud (Free) | Rewrite AR | Default | 7.58 | 93/100 | Pass |
+| HS-ERR-001 | K2 Horizon 375B A23B / cloud | Proofread AR | Default | — | — | Failed API; external per owner, no independent root-cause verification |
+| HS-T07 | IFM/Jais-3-MoVA-36B-A4B / cloud | Proofread AR | Default | 11.77 | 100/100 | Pass, 12/12 targeted corrections |
+| HS-T08 | sensenova/sensenova-6.8-flash-lite / cloud | Professional AR | Default | 37.29 | 95/100 | Pass |
+| HS-T08-B | gpt-5.6-luna / cloud | Professional AR | Default | 5.76 | 98/100 | Pass |
+| HS-T09 | gpt-5.6-luna / cloud | Shorten AR | Default | 3.40 | 98/100 | Pass |
+| HS-T09-B | qwen3.5:4b / local | Shorten AR | Default | 21.97 | 50/100 | Completed technically; failed to shorten materially |
+| HS-T10 | gpt-6-sol / cloud | Expand AR | Default | 10.57 | 95/100 | Pass; conservative expansion |
+| HS-T11 | gpt-6-sol / cloud | Improve Style AR | Default | 6.66 | 98/100 | Pass |
+| HS-T12 | gpt-6-sol / cloud | Translate EN→AR | Default | 4.07 | 99/100 | Pass; VAT acronym omitted but meaning retained |
+| HS-T13 | gpt-6-sol / cloud | Custom AR | Default | 5.57 | 100/100 | Pass; five requested items, 70% completion |
+
+The round covers **9/9 services with at least one successful manual sample per service**, not a 100% success rate over all runs, full local/English coverage, or release acceptance. Sixteen operation attempts passed their sample criteria, one completed without satisfying the shortening goal, and one API attempt failed. Source counts and initial editorial estimates are owner-reported; do not infer unsupported metrics. Gemma 4 12B Rewrite Default was not tested. No monotonic effort/latency or quality relationship was established.
+
+#### Synthetic fixtures and observed fidelity
+
+- Humanize: review of 25 requests, 15 December 2026, SAR 12,450 estimated, final approval condition. Both Gemma runs retained the facts and introduced no new reported facts.
+- Rewrite: same Arabic source (418 Studio characters) for four Gemma efforts and both cloud runs: agreement at meeting 25 November 2026; 37 requests, 12 requiring data; deadline 10 December 2026; SAR 48,750 estimated; final approval before execution except preparatory work with no financial commitments. All preserved core facts. Medium/High changed agreement to approval; Medium added total-cost wording, Low retained terms but used awkward “يتضمن منها”, Off used “أعباء مالية” rather than “التزامات مالية”. GPT-6.2-Sol retained agreement, estimate and prohibition, with slight phrasing issue. Big Pickle used inspection instead of review and competent entities instead of concerned departments. No fabricated explicit facts identified.
+- Proofread: 12 targeted spelling/grammar corrections (hamza, final ta marbuta, agreement); Jais fixed all while retaining wording, 15 requests, Sunday 29 November 2026 and closure condition, without extraneous commentary.
+- Professional: SenseNova converted informal correspondence to formal Arabic, retained 8 of 23 requests, deadline before Wednesday 2 December 2026 and all requirements; slight direct reproach remained. GPT-5.6-Luna organized a longer redundant administrative fixture into three paragraphs with all facts preserved.
+- Shorten: same long Arabic fixture as the second Professional case (65 reviewed, 42 closed, 23 pending; 15 December 2026; SAR 32,500 estimate; data and approvals, prior approval for exceeding cost). GPT shortened while retaining these essentials, but omitted background purpose/time period. Qwen largely retained redundancy; not an operation-quality pass. Owner closed HS-OBS-001 as likely small-model instruction-following limitation, not an established causal diagnosis; no prompt special-casing or code change approved.
+- Expand: 18 reviewed, 11 closed, 20 December 2026, conditional on receipt of data. GPT added the derived remainder 7, no unsupported cost, commitment or reason. Conservative expansion is acceptable; no mandatory length multiplier.
+- Improve Style: 9 of 14 services developed, 5 remaining, expected completion 31 December 2026 conditional on resources. GPT improved cohesion, retaining facts; “عالجها” slightly stronger than “تم التعامل معها”.
+- Translate: English source about Digital Transformation Department, 24 requests, 17 approved, 7 pending, API and SSO by 15 December 2026, estimated SAR 85,000 excluding VAT, no production deployment until final approval and all security requirements met. GPT preserved meaning and API/SSO, translated VAT without retaining acronym.
+- Custom: 40 total, 28 closed, 12 pending, 20 December 2026 conditional on data and approvals, estimated SAR 45,000. Brief required exactly five named items, completion percentage within closed item, conditions within deadline, no introduction/conclusion. GPT satisfied all, deriving 70% (28/40).
+
+#### Findings and decisions
+
+| ID | Disposition |
+| --- | --- |
+| HS-BUG-001 | Theme dropdown fix implemented earlier; owner continued testing; full Windows light/dark native popup retest not documented here. |
+| HS-BUG-002 | Timer fix exercised in Desktop: live display 3.50 s during Rewrite and completed duration 29.00 s; other terminal timings reported. Full cancellation/reconnect acceptance remains open. |
+| HS-09–11 | Copy controls, native conditional effort and requested effort/timing display implemented at 8ae827a. Visible effort and timing observed across models; native provider application and OS clipboard exactness/denial still require final verification. |
+| HS-OBS-001 | Closed by owner as model limitation; keep failed quality result in record. No change to Shorten instructions. |
+| HS-ERR-001 | Closed by owner as external API failure; keep failed attempt in record. No independent API diagnosis. |
+| HS-BUG-003 | Owner demonstrated typing in empty Result editor, risking misleading test outputs. Root cause: shared textarea helper attached setResult to onChange. Fix makes Result native readOnly (not disabled), removes its user-edit state callback, retains selection/copy, count, model reply, explicit restore and clear. Added regression assertions for source editability, empty and completed result state, forced synthetic input, selection, clipboard state, saved snapshot and restore. jsdom synthetic events are not proof of actual Windows keyboard/paste behavior; manual verification and exact-SHA CI remain pending. |
+
+Do not claim read-only prevents DevTools modification, tampering outside Studio or verifies provenance of saved history/externally published text. Explicit draft/history save and restore remain opt-in; old snapshots may contain user-edited result text from earlier candidates. No new persistent storage introduced by this fix. Do not store live user input automatically or include private source text in public evidence.
+
+#### Remaining release gates (not yet accepted)
+
+- Install the corrected exact SHA; verify Result cannot be typed into, pasted into, cut or deleted, both empty and populated; selecting/copying, result replacement, explicit restore, character counter and clear still work. Retest source editing and existing controls.
+- Actual clipboard exactness and denied access; model switch supported/unsupported, effort reset and native adapter effective effort verification; empty/oversize inputs; cancellation, errors and retry.
+- Desktop privacy/no automatic storage, explicit storage/restore/delete, owner-only transport and Host generation fencing; hostile embedded instructions/tool isolation; remaining original DT matrix, both themes and supported languages/models; exact-SHA CI, documentation and owner approval. Preserve stable v1.1.3 until authorized promotion. No merge or release in this change.

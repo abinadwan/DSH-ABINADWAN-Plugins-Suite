@@ -63,6 +63,9 @@ test('Studio uses live native catalog, sends only explicit text, supports RTL an
   assert.equal(q('[data-studio-model]').options.length,3)
   assert.equal(q('[data-studio-effort]'),null)
   assert.equal(q('[data-studio-copy="result"]').disabled,true)
+  assert.equal(q('[data-studio-editor="source"]').readOnly,false)
+  assert.equal(q('[data-studio-editor="result"]').readOnly,true)
+  assert.equal(q('[data-studio-editor="result"]').disabled,false)
   assert.equal(q('[data-studio-output-language]').options.length,4)
   assert.equal(sent.length,0)
   for(const selector of ['[data-studio-model]','[data-studio-input-language]','[data-studio-output-language]']){
@@ -76,7 +79,12 @@ test('Studio uses live native catalog, sends only explicit text, supports RTL an
     const proto=node.tagName==='SELECT'?dom.window.HTMLSelectElement.prototype:dom.window.HTMLTextAreaElement.prototype
     await act(async()=>{if(node.tagName==='SELECT')node.value=value;else Object.getOwnPropertyDescriptor(proto,'value').set.call(node,value);node.dispatchEvent(new dom.window.Event(node.tagName==='SELECT'?'change':'input',{bubbles:true}))})
   }
+  // jsdom does not implement native typing/paste. Force a DOM input event to
+  // check that even a synthetic edit cannot populate the result state.
+  await change('[data-studio-editor="result"]','FORGED_EMPTY_RESULT')
+  assert.equal(q('[data-studio-copy="result"]').disabled,true)
   await change('[data-studio-model]',JSON.stringify(['p','m']))
+  assert.equal(q('[data-studio-editor="result"]').value,'')
   assert.deepEqual([...q('[data-studio-effort]').options].map(o=>o.value),['','vendor/x','vendor/y'])
   await change('[data-studio-effort]','vendor/y')
   await change('[data-studio-model]',JSON.stringify(['p','plain']))
@@ -93,9 +101,19 @@ test('Studio uses live native catalog, sends only explicit text, supports RTL an
   assert.equal(q('[data-studio-editor="result"]').value,'نتيجة 123')
   assert.equal(q('[data-studio-editor="result"]').dir,'rtl')
   assert.match(q('[data-studio-run-effort]').textContent,/Native Y/)
+  const resultEditor=q('[data-studio-editor="result"]')
+  assert.equal(resultEditor.readOnly,true)
+  assert.equal(resultEditor.disabled,false)
+  resultEditor.setSelectionRange(0,resultEditor.value.length)
+  assert.equal(resultEditor.selectionEnd,'نتيجة 123'.length)
+  // Simulate an attempted paste plus forced DOM input (not a native paste implementation).
+  await act(async()=>resultEditor.dispatchEvent(new dom.window.Event('paste',{bubbles:true,cancelable:true})))
+  await change('[data-studio-editor="result"]','FORGED_COMPLETED_RESULT')
+  // Copy uses the authoritative model result in state, not a mutated DOM value.
   await act(async()=>q('[data-studio-copy="result"]').click())
   await act(async()=>q('[data-studio-copy="source"]').click())
   assert.deepEqual(copied,['نتيجة 123','نص 123'])
+  assert.equal(q('[data-studio-editor="result"]').value,'نتيجة 123')
   rejectCopy=true
   await act(async()=>q('[data-studio-copy="result"]').click())
   assert.match(q('[data-studio-copy-notice]').textContent,/الحافظة غير متاحة/)
@@ -109,6 +127,7 @@ test('Studio uses live native catalog, sends only explicit text, supports RTL an
   await act(async()=>q('[data-studio-save-draft]').click())
   for(let i=0;i<3;i++)await act(async()=>{await tick()})
   assert.equal(saved.draft.sourceText,'نص 123')
+  assert.equal(saved.draft.result,'نتيجة 123')
   await act(async()=>q('[data-studio-save-history]').click())
   for(let i=0;i<3;i++)await act(async()=>{await tick()})
   assert.equal(saved.history.length,1)
@@ -116,6 +135,8 @@ test('Studio uses live native catalog, sends only explicit text, supports RTL an
   assert.equal(saved.draft.sourceText,'نص 123','editor clear does not silently delete saved items')
   await act(async()=>q('[data-studio-restore-draft]').click())
   assert.equal(q('[data-studio-editor="source"]').value,'نص 123')
+  assert.equal(q('[data-studio-editor="result"]').value,'نتيجة 123')
+  assert.equal(q('[data-studio-editor="result"]').readOnly,true)
   await act(async()=>q('[data-studio-clear-saved]').click())
   assert.equal(saved.history.length,1,'confirmation is required')
   await act(async()=>q('[data-studio-confirm-clear]').click())
