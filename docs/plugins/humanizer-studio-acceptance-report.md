@@ -1,6 +1,6 @@
 # Humanizer Studio v1.2.0 acceptance and security validation
 
-**Owner-approved security-scope closure — 2026-11-27.** The original Codex NO-GO recommendation is historical and its evidence is retained below. The owner has accepted the specific security and defect dispositions recorded in the closure section. Other unexecuted cases remain accurately identified; this is not blanket release approval. PR #88 remains Draft.
+**Owner-approved security-scope closure — 2026-11-27.** The original Codex NO-GO recommendation is historical and its evidence is retained below. The owner has accepted the specific security and defect dispositions recorded in the closure section. Other unexecuted cases remain accurately identified; this is not blanket release approval. PR #88 was Draft at this checkpoint; the owner later approved promotion.
 
 ## Candidate and environment
 
@@ -153,4 +153,4 @@ The owner reviewed the use cases and accepted the following dispositions in the 
 
 The original Codex release-blocker recommendation is superseded for the specific accepted/excluded items above. Do not repeat passed cases or expand security scope without concrete evidence of a defect or explicit owner direction. Preserve unexecuted native assistive-technology, clipboard-denial/drag-drop, live reconnect, unsupported-model Desktop, expanded bilingual quality, OS ACL, live network interruption and other historical coverage gaps as such; this decision does not claim they passed or silently resolve separate acceptance requirements. Existing owner service samples and automated results remain valid within their recorded scope.
 
-**Security review closed within the owner-approved scope.** Latest pre-closure metadata/test candidate `2ee95e68b1cfd29e2c59b0b0b448066e1a4b4797` passed [CI 46064717684](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/46064717684). Final PR review and explicit promotion approval remain separate. Keep v1.1.3 stable; no merge or release authorized.
+**Security review closed within the owner-approved scope.** Latest pre-closure metadata/test candidate `2ee95e68b1cfd29e2c59b0b0b448066e1a4b4797` passed [CI 46064717684](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/actions/runs/46064717684). The owner subsequently explicitly approved integration and publication of v1.2.0; PR #88 merged into develop at `046fd37d53d74a68b299e9555fc150984d56b2c2` after CI 5/5. Unexecuted cases remain identified, not passed. GitHub Releases is authoritative for publication.

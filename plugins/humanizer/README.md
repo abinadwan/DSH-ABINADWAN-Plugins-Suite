@@ -24,7 +24,7 @@ The instructions preserve facts, uncertainty, citations, source language and aut
 
 Automatic response interception, persistent style settings and background rewriting remain future work. The selected model produces revisions. The plugin provides guidance and adds zero dedicated model or external rewriting calls. Supplied text follows the user's existing DSH model/provider configuration.
 
-## Humanizer Studio (v1.2.0 — unreleased candidate)
+## Humanizer Studio (v1.2.0)
 
 The same Humanizer component includes a standalone editing workspace, separate from agent conversations. Enable Humanizer and open **Humanizer Studio** below **Automation tasks** in the native DSH sidebar when the required Host services are available. The original Skill remains independently usable on Hosts without Studio's Connection/LLM services; there is no second component or separate installation.
 
@@ -61,7 +61,7 @@ Studio uses owner-only native HTTP routes and bounded one-shot native LLM reques
 
 ### Verification and release status
 
-The original code candidate `6afb0e2` passed CI 5/5, all nine services have at least one successful owner-run sample, and HS-BUG-003 passed the eight focused owner Desktop acceptance checks. These are scoped results, not comprehensive privacy or release approval. See the [branch acceptance report](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/feature/v1.2.0-humanizer-studio/docs/plugins/humanizer-studio-acceptance-report.md) for remaining gates. The published stable release remains v1.1.3 until authorized promotion.
+The original code candidate `6afb0e2` passed CI 5/5, all nine services have at least one successful owner-run sample, and HS-BUG-003 passed the eight focused owner Desktop acceptance checks. These are scoped results, not comprehensive privacy or release approval. See the [acceptance report](https://github.com/abinadwan/DSH-ABINADWAN-Plugins-Suite/blob/v1.2.0/docs/plugins/humanizer-studio-acceptance-report.md) for scoped acceptance and remaining limitations. The owner approved promotion of v1.2.0; the GitHub Releases page determines publication.
 
 ## Licensing
 
