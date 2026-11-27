@@ -145,8 +145,15 @@
           const live = useLiveProjections(props.useProjection)
           const sessionId = props.sessionId
           const connected = current.active && Boolean(current.host) && host.getSnapshot() === current.host
-          const session = connected && sessions !== current.previousSessions ? environmentSession(sessions, sessionId) : undefined
-          const linked = session && workspaces !== current.previousWorkspaces ? environmentWorkspace(workspaces, sessionId) : []
+          // Native external-store snapshots are stable until invalidation.
+          // Revalidate on snapshot, Session or connection revision changes, not
+          // on unrelated live token/projection updates within the same seat.
+          const session = React.useMemo(() => connected && sessions !== current.previousSessions
+            ? environmentSession(sessions, sessionId) : undefined,
+          [sessions, sessionId, connected, current.revision, current.previousSessions])
+          const linked = React.useMemo(() => session && workspaces !== current.previousWorkspaces
+            ? environmentWorkspace(workspaces, sessionId) : [],
+          [workspaces, session, sessionId, current.revision, current.previousWorkspaces])
           const listed = session && Object.hasOwn(sessions.projectionsBySession ?? {}, sessionId)
             ? sessions.projectionsBySession[sessionId] : undefined
           const failed = ['error', 'migration-required'].includes(listed?.state)
