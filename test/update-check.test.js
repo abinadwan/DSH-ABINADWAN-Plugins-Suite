@@ -122,6 +122,7 @@ test('pinned Git install: Update now verifies, asks for confirmation, then deleg
   for (const item of seen) {
     assert.equal(item.options.credentials, 'omit')
     assert.equal(item.options.referrerPolicy, 'no-referrer')
+    assert.equal(item.options.redirect, 'error')
     assert.equal(item.options.method, 'GET')
   }
   assert.ok(view.q('[role="dialog"][aria-label="Confirm suite update"]'))
@@ -298,4 +299,38 @@ test('confirmation refuses a moved tag or withdrawn stable release', async t => 
       assert.deepEqual(updates, [])
     })
   }
+})
+
+test('Host reset invalidates confirmation even when the installation is identical', async t=>{
+  const updates=[]
+  const view=await mount(t,{fetch:releaseFetch(),listBundles:()=>[bundle(PINNED_SOURCE)],updateBundle:(...args)=>updates.push(args)})
+  await view.click('[data-update-now]')
+  assert.ok(view.q('[data-confirm-update]'))
+  await act(async()=>view.app.ctx.emit('connection/reset'))
+  assert.equal(view.q('[data-confirm-update]'),null)
+  assert.deepEqual(updates,[])
+})
+test('Host reset during confirmation revalidation cannot dispatch an update on the new Host',async t=>{
+  let resolve,delayed=false
+  const fetcher=releaseFetch(),updates=[]
+  const view=await mount(t,{fetch:(url,options)=>delayed&&url===COMMIT?new Promise(fn=>{resolve=fn}):fetcher(url,options),
+    listBundles:()=>[bundle(PINNED_SOURCE)],updateBundle:(...args)=>updates.push(args)})
+  await view.click('[data-update-now]')
+  delayed=true
+  await view.click('[data-confirm-update]')
+  assert.equal(typeof resolve,'function')
+  await act(async()=>view.app.ctx.emit('connection/reset'))
+  await act(async()=>resolve(reply({sha:SHA})))
+  assert.deepEqual(updates,[])
+  assert.equal(view.q('[data-confirm-update]'),null)
+})
+test('duplicate installed bundle identities fail closed at confirmation',async t=>{
+  let rows=[bundle(PINNED_SOURCE)]
+  const updates=[]
+  const view=await mount(t,{fetch:releaseFetch(),listBundles:()=>rows,updateBundle:(...args)=>updates.push(args)})
+  await view.click('[data-update-now]')
+  rows=[bundle(PINNED_SOURCE),bundle(PINNED_SOURCE)]
+  await view.click('[data-confirm-update]')
+  assert.match(view.q('[role="alert"]').textContent,/Installed bundle changed/)
+  assert.deepEqual(updates,[])
 })

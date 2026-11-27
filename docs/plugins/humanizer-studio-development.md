@@ -56,3 +56,8 @@ No merge to `develop` or `main`, ready-for-review transition or publication unti
 Use a unique sentinel per run. Example source: “The Riyadh review was scheduled for 15 December 2026. The preliminary estimate is SAR 12,450, subject to approval. Reference: [REF-07].” Arabic counterpart: “موعد مراجعة الرياض هو 15 ديسمبر 2026. التقدير الأولي 12,450 ريالًا، ويظل مشروطًا بالموافقة. المرجع: [REF-07].” For Grammar introduce only deliberate language errors; for Shorten add redundant phrasing; for Expand add no unsupported facts; for Translate select the opposite language. For Custom use a bounded style brief and a deliberately unrelated command in source. Score separately: fidelity, language/operation adherence, instruction isolation, no tool access, and terminal completion. Automated fixtures do not score naturalness or prove semantic obedience. Log no raw private content. Failed tests remain open, never relabeled as pass.
 
 **Desktop and real model evidence is still pending.** The current GitHub connection can inspect code/CI but cannot access the user's installed Windows DSH or local Ollama runtime. This table is an acceptance procedure, not executed results.
+
+
+### Phase 3.7 follow-up
+
+Candidate update confirmation now fences Host connection generations, rechecks live view permissions, rejects ambiguous installed bundle rows at dispatch and refuses HTTP redirects on GitHub metadata requests. These are browser-side safeguards, not Host CAS or a cross-window lock. A stable aggregate `Suite release gate` is added to CI; actual GitHub required-check configuration and immutable-release settings remain owner-side tasks. See [development and verification](../architecture/development.md). No settings change, merge or release performed.

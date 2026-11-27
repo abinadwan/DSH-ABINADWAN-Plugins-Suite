@@ -43,3 +43,17 @@ jobs:
           qa/direct-chat-catalog-host-check.mjs qa/new-plugins-host-check.mjs qa/humanizer-studio-host-check.mjs
       - name: Final candidate regression map and deterministic classifier benchmark
         run: npm run check:regression
+
+  # Stable check name for branch rules. Never succeed when a matrix job is
+  # failed, skipped or cancelled. No repository administration permission.
+  release-gate:
+    name: Suite release gate
+    if: ${{ always() }}
+    needs: [test]
+    runs-on: ubuntu-latest
+    permissions: {}
+    steps:
+      - name: Require every test matrix job to succeed
+        env:
+          MATRIX_RESULT: ${{ needs.test.result }}
+        run: test "$MATRIX_RESULT" = success

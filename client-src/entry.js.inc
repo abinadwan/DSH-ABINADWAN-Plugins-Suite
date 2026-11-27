@@ -49,7 +49,7 @@
       // `remote.pluginManager` is its own Cordis service (one per Remote
       // namespace). It must be injected here: Cordis 4 throws "cannot get
       // property without inject" when an un-injected namespace is read.
-      inject: ['slots', 'remote', 'remote.pluginManager', 'remoteAccess'],
+      inject: ['slots', 'remote', 'remote.pluginManager', 'remoteAccess', 'connection'],
       apply(ctx) {
         // The Arabic option is registered at suite scope, independently of Components.
         // Registration only: the selected DSH interface language is unchanged.
@@ -58,6 +58,15 @@
           return () => fiber.dispose()
         }, 'suite: bundled Arabic locale')
         const pluginManager = ctx.remote.pluginManager
+        const updateLifetime = new AbortController()
+        const updateListeners = new Set()
+        let updateSeatGeneration = 0
+        const invalidateUpdateSeat = () => { updateSeatGeneration++; for (const notify of [...updateListeners]) notify() }
+        const updateSeat = { lifetime:updateLifetime.signal, getSnapshot:()=>updateSeatGeneration,
+          subscribe:notify=>{updateListeners.add(notify);return()=>updateListeners.delete(notify)} }
+        ctx.effect(()=>()=>{updateLifetime.abort();invalidateUpdateSeat()})
+        ctx.on('connection/reset',invalidateUpdateSeat)
+        ctx.effect(()=>ctx.connection.generation.subscribe(invalidateUpdateSeat))
         // The suite browser lifetime owns the opt-in-free read-only version
         // check. A timer cannot install, enable or modify any plugin.
         ctx.effect(() => {
@@ -78,8 +87,9 @@
         // The official Plugins detail page owns update controls; never render them inside a Session tab.
         // `useRemoteAccess` is the root-scope standard hook every Slot entry receives.
         function VersionSlot({ subject, useRemoteAccess }) {
+          const generation = suiteWatch(updateSeat)
           if (subject?.kind !== 'bundle' || subject.pkg?.name !== TYPE) return null
-          return h(VersionUpdates, { installedVersion: subject.pkg.version, pluginManager, useRemoteAccess })
+          return h(VersionUpdates, { key:generation, installedVersion: subject.pkg.version, pluginManager, useRemoteAccess, seat:updateSeat, generation })
         }
         ctx.slots.inject('plugins.detail.section', () => ctx.slots.register({
           name: 'plugins.detail.section',
