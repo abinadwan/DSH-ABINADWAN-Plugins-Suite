@@ -4,6 +4,7 @@ Current source baseline: package 1.2.0 (unreleased development candidate), six i
 
 - [Installation and technology stack](../README.md)
 - [Six-component behavior and limitations](DETAIL.md)
+- [Humanizer Skill and Studio usage, controls and limitations](../plugins/humanizer/README.md)
 - [My Profile settings, privacy and migration](plugins/my-profile.md)
 - [Implemented improvements and verification evidence](IMPROVEMENTS.md)
 - [Artwork](design/BRANDING.md)

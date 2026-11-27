@@ -42,13 +42,33 @@ The suite installs as **one DSH bundle** containing **six independently toggleab
 | Component | Default | Full description |
 | --- | --- | --- |
 | <img src="plugins/environment-context/icon.png" width="32" alt="Environment & Context icon" /> **Environment & Context** | On | [Details](docs/DETAIL.md#environment--context) |
-| <img src="plugins/humanizer/icon.png" width="32" alt="Humanizer icon" /> **Humanizer** | On | [Details](docs/DETAIL.md#humanizer) |
+| <img src="plugins/humanizer/icon.png" width="32" alt="Humanizer icon" /> **Humanizer** | On | Writing Skill + Humanizer Studio (v1.2.0 candidate) · [Details](docs/DETAIL.md#humanizer) |
 | <img src="plugins/personal-profile/icon.png" width="32" alt="My Profile icon" /> **My Profile** | Off | [Details](docs/DETAIL.md#my-profile) |
 | <img src="plugins/direct-chat/assets/png/icon-256.png" width="32" alt="Direct Chat icon" /> **Direct Chat** | Off | [Details](docs/DETAIL.md#direct-chat) |
 | <img src="plugins/conversation-lifecycle/assets/png/icon-256.png" width="32" alt="Archive Manager icon" /> **Archive Manager** | Off | [Details](docs/DETAIL.md#chat-control) |
 | <img src="plugins/adaptive-reasoning/assets/png/icon-256.png" width="32" alt="Adaptive Reasoning icon" /> **Adaptive Reasoning** | Off | [Details](docs/DETAIL.md#adaptive-reasoning) |
 
 [Complete component capabilities and limitations](docs/DETAIL.md) · [Documentation index](docs/README.md)
+
+## Humanizer — Skill and Studio
+
+Humanizer remains one component with one activation switch, icon and identity. The existing **Humanizer Skill** supports editing inside DSH conversations when loaded by the agent. **Humanizer Studio** is a new standalone editing workspace in the unreleased v1.2.0 candidate, in the sidebar below Automation tasks when supported by the Host. It does not replace the Skill or add a seventh component.
+
+| Studio service | Purpose |
+| --- | --- |
+| Humanize | Improve natural phrasing |
+| Rewrite | Rephrase while retaining meaning |
+| Improve Style | Improve flow and readability |
+| Professional | Adapt to a professional tone |
+| Proofread | Correct spelling and grammar |
+| Shorten | Remove redundancy while preserving essentials |
+| Expand | Elaborate without unsupported facts |
+| Translate | Translate into the selected output language |
+| Custom | Follow an explicit editing brief |
+
+Studio uses the native DSH model catalog for configured local and cloud providers, with optional native reasoning effort only when advertised by the selected model. It offers source/result language controls, a read-only selectable result, explicit copy buttons, elapsed processing time and cancellation. Text remains transient by default; saving or restoring a Profile-local draft/history item is explicit. The selected provider and Host middleware may observe or retain submitted content. Review output for accuracy; no detector-evasion or guaranteed model-quality claims.
+
+[Humanizer usage and limitations](plugins/humanizer/README.md) · [Component reference](docs/DETAIL.md#humanizer)
 
 ## Technologies and architecture
 

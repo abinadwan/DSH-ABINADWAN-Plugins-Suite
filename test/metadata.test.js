@@ -29,3 +29,14 @@ test('packaged artwork stays self-contained and within size limits', () => {
   assert.equal(png.subarray(0,8).toString('hex'), '89504e470d0a1a0a')
   assert.ok(png.byteLength < 256 * 1024)
 })
+
+test('Humanizer metadata distinguishes the Skill and Studio without changing the component title', () => {
+  for (const [language, skill, studio] of [['en', /Runtime writing skill/, /Humanizer Studio:.*local and cloud models/], ['ar', /مهارة لتحرير النصوص/, /استوديو Humanizer:.*الموديلات المحلية والسحابية/]]) {
+    const {meta} = JSON.parse(read('plugins/humanizer/locale/' + language + '.json'))
+    assert.equal(meta.title, 'Humanizer')
+    const lines = meta.description.split('\\n')
+    assert.equal(lines.length, 2)
+    assert.match(lines[0], skill)
+    assert.match(lines[1], studio)
+  }
+})
